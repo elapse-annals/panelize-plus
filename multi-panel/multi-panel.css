@@ -2270,3 +2270,174 @@ html.snapshot-hide-cursor *::after {
 [data-theme="dark"] .btn-secondary:hover {
   background: #3a3a3a;
 }
+
+/* ===== Answer Stats ===== */
+.panel-header-right .adopt-answer-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.panel-header-right .adopt-answer-btn:disabled:hover {
+  background: transparent;
+}
+
+.panel-header-right .adopt-answer-btn.adopted {
+  color: #1976d2;
+}
+
+.panel-header-right .adopt-answer-btn.adopted .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1;
+}
+
+.answer-stats-empty {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.answer-stats-table-wrapper {
+  overflow-x: auto;
+}
+
+.answer-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: #333;
+}
+
+.answer-stats-table th,
+.answer-stats-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.answer-stats-table th {
+  font-weight: 600;
+  color: #666;
+}
+
+.answer-stats-table .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.answer-stats-note {
+  margin: 12px 0 0;
+  color: #888;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.answer-stats-section-title {
+  margin: 20px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.answer-stats-recent {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.answer-stats-recent li {
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.answer-stats-recent-header {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.answer-stats-recent-prompt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #333;
+}
+
+.answer-stats-recent-time {
+  flex-shrink: 0;
+  color: #999;
+  font-size: 12px;
+}
+
+.answer-stats-recent-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.answer-stats-chip {
+  padding: 2px 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  color: #666;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.answer-stats-chip.adopted {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.answer-stats-clear-btn {
+  margin-right: auto;
+  color: #d32f2f;
+}
+
+.modal-footer button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+[data-theme="dark"] .panel-header-right .adopt-answer-btn.adopted {
+  color: #64b5f6;
+}
+
+[data-theme="dark"] .answer-stats-empty,
+[data-theme="dark"] .answer-stats-table th {
+  color: #aaa;
+}
+
+[data-theme="dark"] .answer-stats-table,
+[data-theme="dark"] .answer-stats-section-title,
+[data-theme="dark"] .answer-stats-recent-prompt {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .answer-stats-table th,
+[data-theme="dark"] .answer-stats-table td {
+  border-bottom-color: #444;
+}
+
+[data-theme="dark"] .answer-stats-recent li {
+  border-bottom-color: #3a3a3a;
+}
+
+[data-theme="dark"] .answer-stats-chip {
+  border-color: #444;
+  color: #aaa;
+}
+
+[data-theme="dark"] .answer-stats-chip.adopted {
+  border-color: #64b5f6;
+  background: #1e3a52;
+  color: #90caf9;
+}
+
+[data-theme="dark"] .answer-stats-clear-btn {
+  color: #ff6b6b;
+}

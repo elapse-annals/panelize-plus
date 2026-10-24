@@ -965,5 +965,74 @@
   },
   "exitFocusPanelTitle": {
     "message": "Esci dalla visualizzazione ingrandita"
+  },
+  "adoptAnswerTitle": {
+    "message": "Adotta questa risposta"
+  },
+  "adoptedAnswerTitle": {
+    "message": "Adottata (clic per annullare)"
+  },
+  "answerStatsButtonTitle": {
+    "message": "Statistiche risposte"
+  },
+  "answerStatsTitle": {
+    "message": "Statistiche risposte"
+  },
+  "answerStatsEmpty": {
+    "message": "Nessuna statistica per ora. Invia una domanda a più IA, poi adotta la risposta migliore con il pulsante pollice in su del suo pannello."
+  },
+  "answerStatsColumnProvider": {
+    "message": "IA"
+  },
+  "answerStatsColumnRounds": {
+    "message": "Domande"
+  },
+  "answerStatsColumnFirstOutput": {
+    "message": "Primo testo"
+  },
+  "answerStatsColumnComplete": {
+    "message": "Completata"
+  },
+  "answerStatsColumnTimeouts": {
+    "message": "Timeout"
+  },
+  "answerStatsColumnAdopted": {
+    "message": "Adottate"
+  },
+  "answerStatsColumnAdoptionRate": {
+    "message": "Tasso di adozione"
+  },
+  "answerStatsNote": {
+    "message": "Tempi dall’invio al primo testo e alla risposta completata: mediana, con la media tra parentesi. Vengono misurati solo ChatGPT, Gemini e DeepSeek. Il tasso di adozione conta solo le domande in cui è stata adottata una risposta."
+  },
+  "answerStatsRecentTitle": {
+    "message": "Domande recenti"
+  },
+  "answerStatsClear": {
+    "message": "Cancella statistiche"
+  },
+  "answerStatsClearConfirm": {
+    "message": "Eliminare tutte le statistiche delle risposte?"
+  },
+  "answerStatsExport": {
+    "message": "Esporta JSON"
+  },
+  "answerStatsNotMeasured": {
+    "message": "Non misurato"
+  },
+  "answerStatsNoPrompt": {
+    "message": "(nessun testo)"
+  },
+  "answerStatsAdopted": {
+    "message": "Adottata"
+  },
+  "answerStatsStatus_pending": {
+    "message": "In corso"
+  },
+  "answerStatsStatus_timeout": {
+    "message": "Timeout"
+  },
+  "answerStatsStatus_cancelled": {
+    "message": "Annullata"
   }
 }

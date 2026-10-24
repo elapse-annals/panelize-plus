@@ -61,6 +61,9 @@
             <path d="M17.06 13c-1.86 0-3.42 1.33-3.82 3.1c-.95-.41-1.82-.3-2.48-.01C10.35 14.31 8.79 13 6.94 13C4.77 13 3 14.79 3 17s1.77 4 3.94 4c2.06 0 3.74-1.62 3.9-3.68c.34-.24 1.23-.69 2.32.02c.18 2.05 1.84 3.66 3.9 3.66c2.17 0 3.94-1.79 3.94-4s-1.77-4-3.94-4M6.94 19.86c-1.56 0-2.81-1.28-2.81-2.86s1.26-2.86 2.81-2.86c1.56 0 2.81 1.28 2.81 2.86s-1.25 2.86-2.81 2.86m10.12 0c-1.56 0-2.81-1.28-2.81-2.86s1.25-2.86 2.81-2.86s2.82 1.28 2.82 2.86s-1.27 2.86-2.82 2.86M22 10.5H2V12h20zm-6.47-7.87c-.22-.49-.78-.75-1.31-.58L12 2.79l-2.23-.74l-.05-.01c-.53-.15-1.09.13-1.29.64L6 9h12l-2.44-6.32z" />
           </svg>
         </button>
+        <button id="answer-stats-btn" class="toolbar-btn" data-i18n-title="answerStatsButtonTitle" title="Answer stats">
+          <span class="material-symbols-outlined" aria-hidden="true">leaderboard</span>
+        </button>
         <button id="share-snapshot-btn" class="toolbar-btn" data-i18n-title="shareButtonTitle" title="Share a snapshot of this comparison">
           <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>
           <span class="btn-text" data-i18n="shareButtonText">Share</span>
@@ -379,6 +382,46 @@
         <div class="modal-footer">
           <button id="cancel-variable-btn" class="btn-secondary">Cancel</button>
           <button id="apply-variable-btn" class="btn-primary">Apply</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Answer Stats Modal -->
+    <div id="answer-stats-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="answer-stats-modal-title">
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h3 id="answer-stats-modal-title" data-i18n="answerStatsTitle">Answer stats</h3>
+          <button class="close-btn" id="close-answer-stats-modal" data-i18n-title="shareDialogClose" data-i18n-aria="shareDialogClose" title="Close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p id="answer-stats-empty" class="answer-stats-empty" data-i18n="answerStatsEmpty">No stats yet. Send a question to several AIs, then adopt the best answer with the thumbs-up button in its panel.</p>
+          <div id="answer-stats-content" hidden>
+            <div class="answer-stats-table-wrapper">
+              <table id="answer-stats-table" class="answer-stats-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="answerStatsColumnProvider">AI</th>
+                    <th class="numeric" data-i18n="answerStatsColumnRounds">Questions</th>
+                    <th class="numeric" data-i18n="answerStatsColumnFirstOutput">First output</th>
+                    <th class="numeric" data-i18n="answerStatsColumnComplete">Complete</th>
+                    <th class="numeric" data-i18n="answerStatsColumnTimeouts">Timeouts</th>
+                    <th class="numeric" data-i18n="answerStatsColumnAdopted">Adopted</th>
+                    <th class="numeric" data-i18n="answerStatsColumnAdoptionRate">Adoption rate</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <p class="answer-stats-note" data-i18n="answerStatsNote">Times run from Send to the first text and to the finished answer: median, with the average in brackets. Only ChatGPT, Gemini and DeepSeek are timed. Adoption rate counts the questions where an answer was adopted.</p>
+            <h4 class="answer-stats-section-title" data-i18n="answerStatsRecentTitle">Recent questions</h4>
+            <ul id="answer-stats-recent" class="answer-stats-recent"></ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="answer-stats-clear-btn" class="btn-secondary answer-stats-clear-btn" data-i18n="answerStatsClear">Clear stats</button>
+          <button id="answer-stats-export-btn" class="btn-secondary" data-i18n="answerStatsExport">Export JSON</button>
         </div>
       </div>
     </div>

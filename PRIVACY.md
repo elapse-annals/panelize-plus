@@ -23,6 +23,11 @@ The following data is stored in browser-managed storage. Prompt library data rem
 
 **Purpose:** To provide prompt management functionality across browser sessions.
 
+#### Answer Statistics
+- For each question sent to several AI providers: a short summary of the question (at most 100 characters), how long each provider took to start and finish its answer, and which answer you adopted
+
+**Purpose:** To compare provider response speed and adopted answers in the Answer stats dialog. Stored only in this browser profile; you can export or clear it there.
+
 #### User Preferences and Settings
 - Selected theme (Light/Dark/Auto)
 - Enabled AI providers

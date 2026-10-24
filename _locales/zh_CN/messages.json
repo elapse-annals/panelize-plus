@@ -961,5 +961,74 @@
   },
   "exitFocusPanelTitle": {
     "message": "退出放大"
+  },
+  "adoptAnswerTitle": {
+    "message": "采纳这个回答"
+  },
+  "adoptedAnswerTitle": {
+    "message": "已采纳（点击撤销）"
+  },
+  "answerStatsButtonTitle": {
+    "message": "答复统计"
+  },
+  "answerStatsTitle": {
+    "message": "答复统计"
+  },
+  "answerStatsEmpty": {
+    "message": "还没有统计数据。把问题发送给多个 AI，再点面板上的点赞按钮采纳最好的回答。"
+  },
+  "answerStatsColumnProvider": {
+    "message": "AI"
+  },
+  "answerStatsColumnRounds": {
+    "message": "问题数"
+  },
+  "answerStatsColumnFirstOutput": {
+    "message": "首字"
+  },
+  "answerStatsColumnComplete": {
+    "message": "完成"
+  },
+  "answerStatsColumnTimeouts": {
+    "message": "超时"
+  },
+  "answerStatsColumnAdopted": {
+    "message": "采纳"
+  },
+  "answerStatsColumnAdoptionRate": {
+    "message": "采纳率"
+  },
+  "answerStatsNote": {
+    "message": "时间从点击发送开始，分别计到出现第一个字和回答完成：显示中位数，括号内为平均值。只对 ChatGPT、Gemini 和 DeepSeek 计时。采纳率只统计已采纳回答的问题。"
+  },
+  "answerStatsRecentTitle": {
+    "message": "最近的问题"
+  },
+  "answerStatsClear": {
+    "message": "清空统计"
+  },
+  "answerStatsClearConfirm": {
+    "message": "删除全部答复统计？"
+  },
+  "answerStatsExport": {
+    "message": "导出 JSON"
+  },
+  "answerStatsNotMeasured": {
+    "message": "未计时"
+  },
+  "answerStatsNoPrompt": {
+    "message": "（无文本）"
+  },
+  "answerStatsAdopted": {
+    "message": "已采纳"
+  },
+  "answerStatsStatus_pending": {
+    "message": "进行中"
+  },
+  "answerStatsStatus_timeout": {
+    "message": "超时"
+  },
+  "answerStatsStatus_cancelled": {
+    "message": "已取消"
   }
 }

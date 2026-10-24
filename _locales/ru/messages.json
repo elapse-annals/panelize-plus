@@ -965,5 +965,74 @@
   },
   "exitFocusPanelTitle": {
     "message": "Выйти из режима фокуса"
+  },
+  "adoptAnswerTitle": {
+    "message": "Принять этот ответ"
+  },
+  "adoptedAnswerTitle": {
+    "message": "Принят (нажмите, чтобы отменить)"
+  },
+  "answerStatsButtonTitle": {
+    "message": "Статистика ответов"
+  },
+  "answerStatsTitle": {
+    "message": "Статистика ответов"
+  },
+  "answerStatsEmpty": {
+    "message": "Статистики пока нет. Отправьте вопрос нескольким ИИ и примите лучший ответ кнопкой «нравится» на его панели."
+  },
+  "answerStatsColumnProvider": {
+    "message": "ИИ"
+  },
+  "answerStatsColumnRounds": {
+    "message": "Вопросы"
+  },
+  "answerStatsColumnFirstOutput": {
+    "message": "Первый текст"
+  },
+  "answerStatsColumnComplete": {
+    "message": "Готово"
+  },
+  "answerStatsColumnTimeouts": {
+    "message": "Тайм-ауты"
+  },
+  "answerStatsColumnAdopted": {
+    "message": "Принято"
+  },
+  "answerStatsColumnAdoptionRate": {
+    "message": "Доля принятых"
+  },
+  "answerStatsNote": {
+    "message": "Время от отправки до первого текста и до готового ответа: медиана, в скобках среднее. Измеряются только ChatGPT, Gemini и DeepSeek. Доля принятых учитывает только вопросы, в которых был принят ответ."
+  },
+  "answerStatsRecentTitle": {
+    "message": "Недавние вопросы"
+  },
+  "answerStatsClear": {
+    "message": "Очистить статистику"
+  },
+  "answerStatsClearConfirm": {
+    "message": "Удалить всю статистику ответов?"
+  },
+  "answerStatsExport": {
+    "message": "Экспорт в JSON"
+  },
+  "answerStatsNotMeasured": {
+    "message": "Не измеряется"
+  },
+  "answerStatsNoPrompt": {
+    "message": "(без текста)"
+  },
+  "answerStatsAdopted": {
+    "message": "Принят"
+  },
+  "answerStatsStatus_pending": {
+    "message": "Выполняется"
+  },
+  "answerStatsStatus_timeout": {
+    "message": "Тайм-аут"
+  },
+  "answerStatsStatus_cancelled": {
+    "message": "Отменён"
   }
 }

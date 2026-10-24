@@ -965,5 +965,74 @@
   },
   "exitFocusPanelTitle": {
     "message": "フォーカスを終了"
+  },
+  "adoptAnswerTitle": {
+    "message": "この回答を採用"
+  },
+  "adoptedAnswerTitle": {
+    "message": "採用済み（クリックで取り消し）"
+  },
+  "answerStatsButtonTitle": {
+    "message": "回答の統計"
+  },
+  "answerStatsTitle": {
+    "message": "回答の統計"
+  },
+  "answerStatsEmpty": {
+    "message": "まだ統計はありません。質問を複数の AI に送信し、パネルの高評価ボタンで最も良い回答を採用してください。"
+  },
+  "answerStatsColumnProvider": {
+    "message": "AI"
+  },
+  "answerStatsColumnRounds": {
+    "message": "質問数"
+  },
+  "answerStatsColumnFirstOutput": {
+    "message": "最初の出力"
+  },
+  "answerStatsColumnComplete": {
+    "message": "完了"
+  },
+  "answerStatsColumnTimeouts": {
+    "message": "タイムアウト"
+  },
+  "answerStatsColumnAdopted": {
+    "message": "採用"
+  },
+  "answerStatsColumnAdoptionRate": {
+    "message": "採用率"
+  },
+  "answerStatsNote": {
+    "message": "送信から最初のテキストが出るまでと回答が完了するまでの時間です。中央値を示し、括弧内は平均値です。計測対象は ChatGPT、Gemini、DeepSeek のみです。採用率は回答が採用された質問だけを数えます。"
+  },
+  "answerStatsRecentTitle": {
+    "message": "最近の質問"
+  },
+  "answerStatsClear": {
+    "message": "統計を消去"
+  },
+  "answerStatsClearConfirm": {
+    "message": "すべての回答統計を削除しますか？"
+  },
+  "answerStatsExport": {
+    "message": "JSON をエクスポート"
+  },
+  "answerStatsNotMeasured": {
+    "message": "計測なし"
+  },
+  "answerStatsNoPrompt": {
+    "message": "（テキストなし）"
+  },
+  "answerStatsAdopted": {
+    "message": "採用済み"
+  },
+  "answerStatsStatus_pending": {
+    "message": "進行中"
+  },
+  "answerStatsStatus_timeout": {
+    "message": "タイムアウト"
+  },
+  "answerStatsStatus_cancelled": {
+    "message": "キャンセル"
   }
 }

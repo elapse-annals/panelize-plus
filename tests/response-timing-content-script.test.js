@@ -1,0 +1,174 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const composerScriptSource = readFileSync(
+  resolve(process.cwd(), 'content-scripts/chatgpt-composer.js'),
+  'utf8'
+);
+const contentScriptSource = readFileSync(
+  resolve(process.cwd(), 'content-scripts/text-injection-all-providers.js'),
+  'utf8'
+);
+
+const START = Date.UTC(2026, 9, 24, 8, 0, 0);
+
+function dispatchMultiPanelMessage(payload) {
+  window.dispatchEvent(new MessageEvent('message', { data: payload }));
+}
+
+function getTimingCalls(requestId) {
+  return window.parent.postMessage.mock.calls
+    .map(call => call[0])
+    .filter(payload => (
+      payload?.type === 'PANELIZE_RESPONSE_TIMING'
+      && payload?.context === 'multi-panel-provider-status'
+      && payload?.requestId === requestId
+    ));
+}
+
+function getPhases(requestId) {
+  return getTimingCalls(requestId).map(call => call.phase);
+}
+
+function startSend(requestId) {
+  dispatchMultiPanelMessage({ type: 'TRIGGER_SEND', requestId, context: 'multi-panel' });
+}
+
+describe('response timing content script', () => {
+  beforeAll(() => {
+    window.eval(composerScriptSource);
+    window.eval(contentScriptSource);
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ now: START });
+    Object.defineProperty(window, 'parent', {
+      configurable: true,
+      value: { postMessage: vi.fn() },
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('times a ChatGPT answer from first text until the stop button is gone and the text settles', async () => {
+    window.happyDOM.setURL('https://chatgpt.com/c/test');
+    document.body.innerHTML = `
+      <main id="thread">
+        <div data-message-author-role="assistant">Earlier answer</div>
+      </main>
+      <form data-type="unified-composer">
+        <div id="prompt-textarea" contenteditable="true" role="textbox"></div>
+      </form>
+    `;
+    const thread = document.getElementById('thread');
+    const composer = document.querySelector('form');
+
+    startSend('req-chatgpt');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(getPhases('req-chatgpt')).toEqual([]);
+
+    composer.insertAdjacentHTML('beforeend', '<button data-testid="stop-button">Stop</button>');
+    thread.insertAdjacentHTML('beforeend', '<div data-message-author-role="assistant" id="answer">Hel</div>');
+    await vi.advanceTimersByTimeAsync(250);
+    expect(getTimingCalls('req-chatgpt')).toEqual([
+      expect.objectContaining({ phase: 'first-output', provider: 'chatgpt', at: START + 1250 }),
+    ]);
+
+    await vi.advanceTimersByTimeAsync(750);
+    document.getElementById('answer').textContent = 'Hello world';
+    await vi.advanceTimersByTimeAsync(250);
+    const lastChangeAt = Date.now();
+
+    // Still streaming while the stop button shows, however long the text pauses.
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(getPhases('req-chatgpt')).toEqual(['first-output']);
+
+    composer.querySelector('[data-testid="stop-button"]').remove();
+    await vi.advanceTimersByTimeAsync(250);
+    expect(getTimingCalls('req-chatgpt')).toEqual([
+      expect.objectContaining({ phase: 'first-output' }),
+      expect.objectContaining({ phase: 'complete', at: lastChangeAt }),
+    ]);
+  });
+
+  it('completes a DeepSeek answer once its text has not changed for the settle time', async () => {
+    window.happyDOM.setURL('https://chat.deepseek.com/a/chat/s/test');
+    document.body.innerHTML = '<div id="thread"></div>';
+    const thread = document.getElementById('thread');
+
+    startSend('req-deepseek');
+    await vi.advanceTimersByTimeAsync(500);
+    thread.insertAdjacentHTML('beforeend', '<div class="ds-markdown" id="answer">Thinking</div>');
+    await vi.advanceTimersByTimeAsync(250);
+    const firstOutputAt = Date.now();
+
+    await vi.advanceTimersByTimeAsync(3000);
+    document.getElementById('answer').textContent = 'Thinking done. Answer';
+    await vi.advanceTimersByTimeAsync(250);
+    const lastChangeAt = Date.now();
+
+    await vi.advanceTimersByTimeAsync(4500);
+    expect(getPhases('req-deepseek')).toEqual(['first-output']);
+
+    await vi.advanceTimersByTimeAsync(750);
+    expect(getTimingCalls('req-deepseek')).toEqual([
+      expect.objectContaining({ phase: 'first-output', provider: 'deepseek', at: firstOutputAt }),
+      expect.objectContaining({ phase: 'complete', at: lastChangeAt }),
+    ]);
+  });
+
+  it('does not count a re-rendered previous answer as new output', async () => {
+    window.happyDOM.setURL('https://gemini.google.com/app/test');
+    document.body.innerHTML = '<div id="thread"><model-response>Earlier answer</model-response></div>';
+    const thread = document.getElementById('thread');
+
+    startSend('req-gemini');
+    await vi.advanceTimersByTimeAsync(500);
+    thread.innerHTML = '<model-response>Earlier answer</model-response>';
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(getPhases('req-gemini')).toEqual([]);
+
+    thread.insertAdjacentHTML('beforeend', '<model-response>New answer</model-response>');
+    await vi.advanceTimersByTimeAsync(250);
+    expect(getPhases('req-gemini')).toEqual(['first-output']);
+  });
+
+  it('reports cancelled when a new chat starts and when another send replaces it', async () => {
+    window.happyDOM.setURL('https://chat.deepseek.com/a/chat/s/test');
+    document.body.innerHTML = '<div id="thread"></div>';
+
+    startSend('req-replaced');
+    await vi.advanceTimersByTimeAsync(250);
+    startSend('req-new-chat');
+    await vi.advanceTimersByTimeAsync(250);
+    dispatchMultiPanelMessage({ type: 'NEW_CHAT', context: 'multi-panel' });
+
+    expect(getPhases('req-replaced')).toEqual(['cancelled']);
+    expect(getPhases('req-new-chat')).toEqual(['cancelled']);
+  });
+
+  it('reports a timeout when no answer appears', async () => {
+    window.happyDOM.setURL('https://chat.deepseek.com/a/chat/s/test');
+    document.body.innerHTML = '<div id="thread"></div>';
+
+    startSend('req-timeout');
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000 - 250);
+    expect(getPhases('req-timeout')).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(250);
+    expect(getPhases('req-timeout')).toEqual(['timeout']);
+  });
+
+  it('does not time providers without timing support', async () => {
+    window.happyDOM.setURL('https://www.kimi.com/chat/test');
+    document.body.innerHTML = '<div class="markdown">Answer</div>';
+
+    startSend('req-kimi');
+    await vi.advanceTimersByTimeAsync(10000);
+
+    expect(getPhases('req-kimi')).toEqual([]);
+  });
+});

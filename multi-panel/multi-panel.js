@@ -93,6 +93,15 @@ import {
   updatePanelFitState
 } from '../modules/panel-fit.js';
 import { setupPanelResize } from '../modules/panel-resize.js';
+import {
+  aggregateAnswerStats,
+  applyTimingEvent,
+  clearAnswerRounds,
+  createRound,
+  getAllAnswerRounds,
+  saveAnswerRound,
+  toggleRoundAdoption
+} from '../modules/answer-stats.js';
 import { createPointerGuard, createPointerTracker } from '../modules/pointer-guard.js';
 
 
@@ -133,6 +142,12 @@ let tempChatRetryTimerIds = new Map();
 let tempChatCleanupTimerId = null;
 let tempChatPendingPanelIds = new Set();
 let tempChatButtonRestoreTimerId = null;
+// Recent answer stats rounds by send request id, for timing reports and the
+// adopt buttons. The latest round is the one the adopt buttons act on.
+const answerRounds = new Map();
+let latestAnswerRoundId = null;
+// Text of the last Fill, used as the question when Send then submits it.
+let pendingFilledPromptText = '';
 let isTemporaryChatModeEnabled = false;
 
 function getThemeAwareProviderIcon(provider) {
@@ -207,6 +222,9 @@ const PANELIZE_PROVIDER_USER_INTERACTION = 'PANELIZE_PROVIDER_USER_INTERACTION';
 const PANELIZE_TEMP_CHAT_ENABLED = 'PANELIZE_TEMP_CHAT_ENABLED';
 const PANELIZE_PROVIDER_LOCATION = 'PANELIZE_PROVIDER_LOCATION';
 const PANELIZE_PAGE_WIDTH = 'PANELIZE_PAGE_WIDTH';
+const PANELIZE_RESPONSE_TIMING = 'PANELIZE_RESPONSE_TIMING';
+const MAX_IN_MEMORY_ANSWER_ROUNDS = 20;
+const ANSWER_STATS_RECENT_LIMIT = 20;
 const TEMP_CHAT_RETRY_DELAYS = [1200, 2500, 4000];
 const TEMP_CHAT_OPERATION_TIMEOUT_MS = 5000;
 const TEMP_CHAT_SUPPORTED_PROVIDERS = new Set(['chatgpt', 'gemini', 'claude', 'grok', 'yuanbao']);
@@ -264,6 +282,7 @@ async function init() {
   setupEventListeners();
   setupRatingPrompt();
   setupShareSnapshot();
+  setupAnswerStats();
   updateTemporaryChatButtonState();
   focusUnifiedInput({ force: true });
 
@@ -449,6 +468,9 @@ function getPanelHeaderRightHtml(providerId) {
 
   return `
     ${googleModeSelect}
+    <button class="adopt-answer-btn" title="${getLocalizedText('adoptAnswerTitle', 'Adopt this answer')}" aria-pressed="false" disabled>
+      <span class="material-symbols-outlined">thumb_up</span>
+    </button>
     ${openTopLevelBtn}
     <button class="refresh-panel-btn" title="Refresh">
       <span class="material-symbols-outlined">refresh</span>
@@ -526,6 +548,14 @@ function bindPanelHeaderActions(panelId) {
   if (!panel || !panelEl) {
     return;
   }
+
+  const adoptBtn = panelEl.querySelector('.adopt-answer-btn');
+  if (adoptBtn) {
+    adoptBtn.addEventListener('click', () => {
+      adoptPanelAnswer(panelId);
+    });
+  }
+  updateAdoptButtons();
 
   const openTopLevelBtn = panelEl.querySelector('.open-provider-top-level-btn');
   if (openTopLevelBtn) {
@@ -958,6 +988,9 @@ function handleProviderStatusMessage(event) {
           }, '*');
         }
       }
+      break;
+    case PANELIZE_RESPONSE_TIMING:
+      handleAnswerTimingMessage(panel, data);
       break;
     case PANELIZE_TEMP_CHAT_ENABLED:
       if (!tempChatPendingPanelIds.has(panel.id)) {
@@ -1685,6 +1718,7 @@ export async function broadcastMessage(text, autoSubmit = true) {
       targetPanels.forEach(panel => sendFocusFillingPanelIds.add(panel.id));
     }
 
+    const sentAt = Date.now();
     // Send to all panels, or only the panels that failed the previous image fill.
     const panelResults = await Promise.allSettled(
       targetPanels.map(panel => {
@@ -1789,6 +1823,7 @@ export async function broadcastMessage(text, autoSubmit = true) {
 
       if (successfulCount > 0) {
         rememberSnapshotPrompt(text);
+        pendingFilledPromptText = text;
       }
 
       if (shouldClearFillPayload(summary)) {
@@ -1834,6 +1869,13 @@ export async function broadcastMessage(text, autoSubmit = true) {
 
     if (shouldAutoSubmit && totalSuccessful > 0) {
       recordSendForRatingPrompt();
+      const sentPanelIds = new Set(
+        normalizedResults.filter(result => result.ok).map(result => result.panelId)
+      );
+      startAnswerRound(requestId, text, sentAt, panels.filter(panel => sentPanelIds.has(panel.id)));
+      pendingFilledPromptText = '';
+    } else if (!shouldAutoSubmit && totalSuccessful > 0) {
+      pendingFilledPromptText = text;
     }
 
     if (totalSuccessful > 0) {
@@ -2867,6 +2909,8 @@ async function triggerSendButtons() {
     statusEl.className = 'send-status';
 
     // Send TRIGGER_SEND message to all panels
+    const sentAt = Date.now();
+    const sentPanels = [];
     panels.forEach(panel => {
       if (panel.iframe && panel.iframe.contentWindow) {
         panel.iframe.contentWindow.postMessage({
@@ -2875,8 +2919,11 @@ async function triggerSendButtons() {
           providerMode: getPanelProviderMode(panel),
           context: 'multi-panel'
         }, '*');
+        sentPanels.push(panel);
       }
     });
+    startAnswerRound(sendFocusRequestId, pendingFilledPromptText, sentAt, sentPanels);
+    pendingFilledPromptText = '';
 
     // Update status
     statusEl.textContent = `Sent to ${panels.length} AIs`;
@@ -2899,6 +2946,274 @@ async function triggerSendButtons() {
     sendBtn.disabled = false;
     fillBtn.disabled = false;
   }
+}
+
+// ===== Answer Stats =====
+function getLatestAnswerRound() {
+  return latestAnswerRoundId ? answerRounds.get(latestAnswerRoundId) || null : null;
+}
+
+// A panel switched to another provider no longer shows the answer it was sent.
+function isPanelInAnswerRound(round, panel) {
+  return Boolean(round && panel && round.answers[panel.id]?.providerId === panel.providerId);
+}
+
+function persistAnswerRound(round) {
+  answerRounds.set(round.id, round);
+  saveAnswerRound(round).catch(error => {
+    console.warn('[Multi-Panel] Failed to save answer stats:', error);
+  });
+  if (isAnswerStatsModalOpen()) {
+    void renderAnswerStats();
+  }
+}
+
+function startAnswerRound(requestId, text, sentAt, roundPanels) {
+  if (!requestId || roundPanels.length === 0) {
+    return;
+  }
+
+  const round = createRound({
+    id: requestId,
+    createdAt: sentAt,
+    text,
+    panels: roundPanels.map(panel => ({ id: panel.id, providerId: panel.providerId }))
+  });
+  latestAnswerRoundId = round.id;
+  persistAnswerRound(round);
+
+  // Older rounds stay in storage; their panels have moved on.
+  while (answerRounds.size > MAX_IN_MEMORY_ANSWER_ROUNDS) {
+    answerRounds.delete(answerRounds.keys().next().value);
+  }
+  updateAdoptButtons();
+}
+
+function handleAnswerTimingMessage(panel, data) {
+  const round = answerRounds.get(data.requestId);
+  if (!isPanelInAnswerRound(round, panel)) {
+    return;
+  }
+
+  const nextRound = applyTimingEvent(round, panel.id, data.phase, data.at);
+  if (nextRound) {
+    persistAnswerRound(nextRound);
+  }
+}
+
+function adoptPanelAnswer(panelId) {
+  const round = getLatestAnswerRound();
+  const panel = panels.find(candidate => candidate.id === panelId);
+  if (!isPanelInAnswerRound(round, panel)) {
+    return;
+  }
+
+  persistAnswerRound(toggleRoundAdoption(round, panelId));
+  updateAdoptButtons();
+}
+
+function updateAdoptButtons() {
+  const round = getLatestAnswerRound();
+  panels.forEach(panel => {
+    const button = document.getElementById(panel.id)?.querySelector('.adopt-answer-btn');
+    if (!button) {
+      return;
+    }
+
+    const canAdopt = isPanelInAnswerRound(round, panel);
+    const isAdopted = canAdopt && round.adoptedPanelId === panel.id;
+    button.disabled = !canAdopt;
+    button.classList.toggle('adopted', isAdopted);
+    button.title = isAdopted
+      ? getLocalizedText('adoptedAnswerTitle', 'Adopted (click to undo)')
+      : getLocalizedText('adoptAnswerTitle', 'Adopt this answer');
+    button.setAttribute('aria-label', button.title);
+    button.setAttribute('aria-pressed', String(isAdopted));
+  });
+}
+
+function isAnswerStatsModalOpen() {
+  const modal = document.getElementById('answer-stats-modal');
+  return Boolean(modal && modal.style.display !== 'none');
+}
+
+function openAnswerStatsModal() {
+  document.getElementById('answer-stats-modal').style.display = 'flex';
+  void renderAnswerStats();
+}
+
+function closeAnswerStatsModal() {
+  document.getElementById('answer-stats-modal').style.display = 'none';
+}
+
+function formatAnswerDuration(ms) {
+  if (!Number.isFinite(ms)) {
+    return '—';
+  }
+  return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+}
+
+function formatAnswerTiming(medianMs, averageMs) {
+  if (!Number.isFinite(medianMs)) {
+    return '—';
+  }
+  return `${formatAnswerDuration(medianMs)} (${formatAnswerDuration(averageMs)})`;
+}
+
+function getProviderDisplayName(providerId) {
+  return getProviderById(providerId)?.name || providerId;
+}
+
+function createCell(tagName, text, className = '') {
+  const cell = document.createElement(tagName);
+  cell.textContent = text;
+  if (className) {
+    cell.className = className;
+  }
+  return cell;
+}
+
+function renderAnswerStatsTable(stats) {
+  const table = document.getElementById('answer-stats-table');
+  const body = table.querySelector('tbody');
+  body.replaceChildren();
+
+  stats.forEach(entry => {
+    const row = document.createElement('tr');
+    const notMeasured = getLocalizedText('answerStatsNotMeasured', 'Not measured');
+    const firstOutput = createCell('td', entry.timed
+      ? formatAnswerTiming(entry.medianFirstOutputMs, entry.avgFirstOutputMs)
+      : '—', 'numeric');
+    const complete = createCell('td', entry.timed
+      ? formatAnswerTiming(entry.medianCompleteMs, entry.avgCompleteMs)
+      : '—', 'numeric');
+    if (!entry.timed) {
+      firstOutput.title = notMeasured;
+      complete.title = notMeasured;
+    }
+
+    row.append(
+      createCell('td', getProviderDisplayName(entry.providerId)),
+      createCell('td', String(entry.rounds), 'numeric'),
+      firstOutput,
+      complete,
+      createCell('td', entry.timed ? String(entry.timeoutCount) : '—', 'numeric'),
+      createCell('td', String(entry.adoptedCount), 'numeric'),
+      createCell('td', entry.adoptionRate === null
+        ? '—'
+        : `${Math.round(entry.adoptionRate * 100)}%`, 'numeric')
+    );
+    body.appendChild(row);
+  });
+}
+
+function renderAnswerStatsRecent(rounds) {
+  const list = document.getElementById('answer-stats-recent');
+  list.replaceChildren();
+  const locale = getTranslationLocale();
+
+  rounds.slice(0, ANSWER_STATS_RECENT_LIMIT).forEach(round => {
+    const item = document.createElement('li');
+    const header = document.createElement('div');
+    header.className = 'answer-stats-recent-header';
+    header.append(
+      createCell('span', round.promptSummary || getLocalizedText('answerStatsNoPrompt', '(no text)'), 'answer-stats-recent-prompt'),
+      createCell('span', new Date(round.createdAt).toLocaleString(locale), 'answer-stats-recent-time')
+    );
+
+    const answers = document.createElement('div');
+    answers.className = 'answer-stats-recent-answers';
+    Object.entries(round.answers).forEach(([panelId, answer]) => {
+      const isAdopted = round.adoptedPanelId === panelId;
+      let timing = '';
+      if (answer.timed) {
+        timing = answer.status === 'complete'
+          ? formatAnswerDuration(answer.completeMs)
+          : getLocalizedText(`answerStatsStatus_${answer.status}`, answer.status);
+      }
+      const chip = createCell(
+        'span',
+        timing ? `${getProviderDisplayName(answer.providerId)} · ${timing}` : getProviderDisplayName(answer.providerId),
+        `answer-stats-chip${isAdopted ? ' adopted' : ''}`
+      );
+      if (isAdopted) {
+        chip.title = getLocalizedText('answerStatsAdopted', 'Adopted');
+      }
+      answers.appendChild(chip);
+    });
+
+    item.append(header, answers);
+    list.appendChild(item);
+  });
+}
+
+async function renderAnswerStats() {
+  const emptyEl = document.getElementById('answer-stats-empty');
+  const contentEl = document.getElementById('answer-stats-content');
+  let rounds = [];
+  try {
+    rounds = await getAllAnswerRounds();
+  } catch (error) {
+    console.warn('[Multi-Panel] Failed to load answer stats:', error);
+  }
+
+  const hasRounds = rounds.length > 0;
+  emptyEl.hidden = hasRounds;
+  contentEl.hidden = !hasRounds;
+  document.getElementById('answer-stats-export-btn').disabled = !hasRounds;
+  document.getElementById('answer-stats-clear-btn').disabled = !hasRounds;
+  if (!hasRounds) {
+    return;
+  }
+
+  renderAnswerStatsTable(aggregateAnswerStats(rounds));
+  renderAnswerStatsRecent(rounds);
+}
+
+async function exportAnswerStats() {
+  try {
+    const rounds = await getAllAnswerRounds();
+    const blob = new Blob([JSON.stringify({ exportedAt: Date.now(), rounds }, null, 2)], {
+      type: 'application/json'
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `panelize-answer-stats-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    console.error('[Multi-Panel] Failed to export answer stats:', error);
+  }
+}
+
+async function clearAnswerStats() {
+  if (!window.confirm(getLocalizedText('answerStatsClearConfirm', 'Delete all answer stats?'))) {
+    return;
+  }
+
+  try {
+    await clearAnswerRounds();
+  } catch (error) {
+    console.error('[Multi-Panel] Failed to clear answer stats:', error);
+    return;
+  }
+  answerRounds.clear();
+  latestAnswerRoundId = null;
+  updateAdoptButtons();
+  await renderAnswerStats();
+}
+
+function setupAnswerStats() {
+  document.getElementById('answer-stats-btn')?.addEventListener('click', openAnswerStatsModal);
+  document.getElementById('close-answer-stats-modal')?.addEventListener('click', closeAnswerStatsModal);
+  document.getElementById('answer-stats-export-btn')?.addEventListener('click', exportAnswerStats);
+  document.getElementById('answer-stats-clear-btn')?.addEventListener('click', clearAnswerStats);
+  document.getElementById('answer-stats-modal')?.addEventListener('click', (event) => {
+    if (event.target.id === 'answer-stats-modal') {
+      closeAnswerStatsModal();
+    }
+  });
 }
 
 // ===== Panel Fit =====

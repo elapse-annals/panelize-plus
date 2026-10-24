@@ -965,5 +965,74 @@
   },
   "exitFocusPanelTitle": {
     "message": "Salir del modo de enfoque"
+  },
+  "adoptAnswerTitle": {
+    "message": "Adoptar esta respuesta"
+  },
+  "adoptedAnswerTitle": {
+    "message": "Adoptada (haz clic para deshacer)"
+  },
+  "answerStatsButtonTitle": {
+    "message": "Estadísticas de respuestas"
+  },
+  "answerStatsTitle": {
+    "message": "Estadísticas de respuestas"
+  },
+  "answerStatsEmpty": {
+    "message": "Aún no hay estadísticas. Envía una pregunta a varias IA y adopta la mejor respuesta con el botón de pulgar arriba de su panel."
+  },
+  "answerStatsColumnProvider": {
+    "message": "IA"
+  },
+  "answerStatsColumnRounds": {
+    "message": "Preguntas"
+  },
+  "answerStatsColumnFirstOutput": {
+    "message": "Primer texto"
+  },
+  "answerStatsColumnComplete": {
+    "message": "Completada"
+  },
+  "answerStatsColumnTimeouts": {
+    "message": "Tiempos agotados"
+  },
+  "answerStatsColumnAdopted": {
+    "message": "Adoptadas"
+  },
+  "answerStatsColumnAdoptionRate": {
+    "message": "Tasa de adopción"
+  },
+  "answerStatsNote": {
+    "message": "Tiempos desde el envío hasta el primer texto y hasta la respuesta terminada: mediana, con la media entre paréntesis. Solo se miden ChatGPT, Gemini y DeepSeek. La tasa de adopción solo cuenta las preguntas en las que se adoptó una respuesta."
+  },
+  "answerStatsRecentTitle": {
+    "message": "Preguntas recientes"
+  },
+  "answerStatsClear": {
+    "message": "Borrar estadísticas"
+  },
+  "answerStatsClearConfirm": {
+    "message": "¿Eliminar todas las estadísticas de respuestas?"
+  },
+  "answerStatsExport": {
+    "message": "Exportar JSON"
+  },
+  "answerStatsNotMeasured": {
+    "message": "Sin medir"
+  },
+  "answerStatsNoPrompt": {
+    "message": "(sin texto)"
+  },
+  "answerStatsAdopted": {
+    "message": "Adoptada"
+  },
+  "answerStatsStatus_pending": {
+    "message": "En curso"
+  },
+  "answerStatsStatus_timeout": {
+    "message": "Tiempo agotado"
+  },
+  "answerStatsStatus_cancelled": {
+    "message": "Cancelada"
   }
 }

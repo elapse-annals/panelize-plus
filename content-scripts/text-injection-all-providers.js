@@ -12,6 +12,7 @@
   const PANELIZE_PROVIDER_BUSY = 'PANELIZE_PROVIDER_BUSY';
   const PANELIZE_PROVIDER_IDLE = 'PANELIZE_PROVIDER_IDLE';
   const PANELIZE_PROVIDER_USER_INTERACTION = 'PANELIZE_PROVIDER_USER_INTERACTION';
+  const PANELIZE_RESPONSE_TIMING = 'PANELIZE_RESPONSE_TIMING';
   const PANELIZE_TEMP_CHAT_ENABLED = 'PANELIZE_TEMP_CHAT_ENABLED';
   const PANELIZE_PROVIDER_LOCATION = 'PANELIZE_PROVIDER_LOCATION';
   const PANELIZE_RESTORE_USER_FOCUS = 'PANELIZE_RESTORE_USER_FOCUS';
@@ -91,6 +92,31 @@
   const CHATGPT_STOP_BUTTON_SELECTOR = 'button[data-testid="stop-button"]';
   const CHATGPT_SEND_TRACKING_IDLE_DELAY_MS = 800;
   const CHATGPT_SEND_TRACKING_NO_BUSY_TIMEOUT_MS = 2000;
+  // Response timing for answer stats. An answer is the last assistant turn
+  // added after the send; it is done once the provider's stop control is gone
+  // and its text has not changed for the provider's settle time. Without a
+  // known stop control, the settle time alone decides.
+  const RESPONSE_TIMING_PROVIDERS = {
+    chatgpt: {
+      answerSelector: '[data-message-author-role="assistant"]',
+      busySelector: CHATGPT_STOP_BUTTON_SELECTOR,
+      settleMs: 3000
+    },
+    gemini: {
+      answerSelector: 'model-response',
+      busySelector: 'button.send-button.stop, button[aria-label="Stop response"]',
+      settleMs: 3000
+    },
+    deepseek: {
+      answerSelector: '.ds-markdown',
+      busySelector: null,
+      // Reasoning can pause between the thinking and the answer.
+      settleMs: 5000
+    }
+  };
+  const RESPONSE_TIMING_CHECK_INTERVAL_MS = 250;
+  const RESPONSE_TIMING_NO_OUTPUT_TIMEOUT_MS = 5 * 60 * 1000;
+  const RESPONSE_TIMING_MAX_DURATION_MS = 15 * 60 * 1000;
   const MULTI_PANEL_USER_INTERACTION_TRACKING_TIMEOUT_MS = 90000;
   const TEMP_CHAT_POLL_INTERVAL_MS = 200;
   const TEMP_CHAT_POLL_TIMEOUT_MS = 1200;
@@ -107,6 +133,7 @@
   });
   let googleSearchReplaceOnNextFill = true;
   let chatgptSendTracking = null;
+  let responseTiming = null;
   let multiPanelUserInteractionTracking = null;
   let yuanbaoTemporaryChatActivation = null;
   let yuanbaoTemporaryChatLastClickAt = -Infinity;
@@ -1031,6 +1058,117 @@
 
     chatgptSendTracking = tracking;
     evaluateChatgptSendTrackingState();
+  }
+
+  function getResponseAnswerState(config) {
+    const answers = document.querySelectorAll(config.answerSelector);
+    const answer = answers.length > 0 ? answers[answers.length - 1] : null;
+    return {
+      count: answers.length,
+      answer,
+      text: answer ? (answer.textContent || '').trim() : ''
+    };
+  }
+
+  function postResponseTiming(tracking, phase, at) {
+    if (window.parent === window) {
+      return;
+    }
+
+    window.parent.postMessage({
+      type: PANELIZE_RESPONSE_TIMING,
+      requestId: tracking.requestId,
+      provider: tracking.provider,
+      phase,
+      at,
+      context: MULTI_PANEL_PROVIDER_STATUS_CONTEXT
+    }, '*');
+  }
+
+  function stopResponseTiming(phase = null) {
+    const tracking = responseTiming;
+    if (!tracking) {
+      return;
+    }
+
+    clearInterval(tracking.intervalId);
+    responseTiming = null;
+    if (phase) {
+      postResponseTiming(tracking, phase, Date.now());
+    }
+  }
+
+  function checkResponseTiming() {
+    const tracking = responseTiming;
+    if (!tracking) {
+      return;
+    }
+
+    const now = Date.now();
+    const { config, baseline } = tracking;
+    const state = getResponseAnswerState(config);
+    // Re-rendering can replace the previous answer's node, so a new node only
+    // counts as the answer once its text differs from the previous answer.
+    const isNewAnswer = Boolean(state.text) && (
+      state.count > baseline.count
+      || (state.answer !== baseline.answer && state.text !== baseline.text)
+    );
+
+    if (isNewAnswer && state.text !== tracking.lastText) {
+      tracking.lastText = state.text;
+      tracking.lastChangeAt = now;
+      if (!tracking.firstOutputAt) {
+        tracking.firstOutputAt = now;
+        postResponseTiming(tracking, 'first-output', now);
+      }
+    }
+
+    if (!tracking.firstOutputAt) {
+      if (now - tracking.startedAt >= RESPONSE_TIMING_NO_OUTPUT_TIMEOUT_MS) {
+        stopResponseTiming('timeout');
+      }
+      return;
+    }
+
+    if (now - tracking.startedAt >= RESPONSE_TIMING_MAX_DURATION_MS) {
+      stopResponseTiming('timeout');
+      return;
+    }
+
+    if (config.busySelector && document.querySelector(config.busySelector)) {
+      return;
+    }
+
+    if (now - tracking.lastChangeAt >= config.settleMs) {
+      // The answer finished when its text last changed, not when the settle
+      // time ran out.
+      const completedAt = tracking.lastChangeAt;
+      clearInterval(tracking.intervalId);
+      responseTiming = null;
+      postResponseTiming(tracking, 'complete', completedAt);
+    }
+  }
+
+  function startResponseTiming(provider, requestId) {
+    const config = RESPONSE_TIMING_PROVIDERS[provider];
+    if (!config || !requestId) {
+      return;
+    }
+
+    stopResponseTiming('cancelled');
+
+    const baseline = getResponseAnswerState(config);
+    responseTiming = {
+      requestId,
+      provider,
+      config,
+      baseline,
+      startedAt: Date.now(),
+      firstOutputAt: null,
+      lastChangeAt: null,
+      lastText: '',
+      intervalId: setInterval(checkResponseTiming, RESPONSE_TIMING_CHECK_INTERVAL_MS)
+    };
   }
 
   function findGoogleInput(mode) {
@@ -2004,6 +2142,9 @@
 
       if (provider === 'chatgpt' && autoSubmit && requestId) {
         startChatgptSendTracking(requestId);
+      }
+      if (autoSubmit && requestId) {
+        startResponseTiming(provider, requestId);
       }
 
       const succeededImageIds = [];
@@ -3474,6 +3615,7 @@
         if (provider === 'chatgpt' && event.data.requestId) {
           startChatgptSendTracking(event.data.requestId);
         }
+        startResponseTiming(provider, event.data.requestId);
         console.log('[Text Injection] Triggering send for', provider);
         clickSendButton(provider, providerMode);
       }
@@ -3487,6 +3629,7 @@
       if (provider === 'chatgpt') {
         stopChatgptSendTracking();
       }
+      stopResponseTiming('cancelled');
       const providerMode = provider === 'google'
         ? normalizeGoogleProviderMode(event.data.providerMode)
         : null;
@@ -3574,6 +3717,9 @@
       } else {
         stopChatgptSendTracking();
       }
+    }
+    if (shouldAutoSubmit) {
+      startResponseTiming(provider, event.data.requestId);
     }
 
     if (provider === 'google') {

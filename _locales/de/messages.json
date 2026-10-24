@@ -965,5 +965,74 @@
   },
   "exitFocusPanelTitle": {
     "message": "Fokusmodus beenden"
+  },
+  "adoptAnswerTitle": {
+    "message": "Diese Antwort übernehmen"
+  },
+  "adoptedAnswerTitle": {
+    "message": "Übernommen (zum Rückgängigmachen klicken)"
+  },
+  "answerStatsButtonTitle": {
+    "message": "Antwortstatistik"
+  },
+  "answerStatsTitle": {
+    "message": "Antwortstatistik"
+  },
+  "answerStatsEmpty": {
+    "message": "Noch keine Statistik. Sende eine Frage an mehrere KIs und übernimm dann die beste Antwort mit dem Daumen-hoch-Button im Panel."
+  },
+  "answerStatsColumnProvider": {
+    "message": "KI"
+  },
+  "answerStatsColumnRounds": {
+    "message": "Fragen"
+  },
+  "answerStatsColumnFirstOutput": {
+    "message": "Erste Ausgabe"
+  },
+  "answerStatsColumnComplete": {
+    "message": "Fertig"
+  },
+  "answerStatsColumnTimeouts": {
+    "message": "Zeitüberschreitungen"
+  },
+  "answerStatsColumnAdopted": {
+    "message": "Übernommen"
+  },
+  "answerStatsColumnAdoptionRate": {
+    "message": "Übernahmequote"
+  },
+  "answerStatsNote": {
+    "message": "Zeiten ab dem Senden bis zum ersten Text und bis zur fertigen Antwort: Median, in Klammern der Durchschnitt. Gemessen werden nur ChatGPT, Gemini und DeepSeek. Die Übernahmequote zählt nur Fragen, bei denen eine Antwort übernommen wurde."
+  },
+  "answerStatsRecentTitle": {
+    "message": "Letzte Fragen"
+  },
+  "answerStatsClear": {
+    "message": "Statistik löschen"
+  },
+  "answerStatsClearConfirm": {
+    "message": "Gesamte Antwortstatistik löschen?"
+  },
+  "answerStatsExport": {
+    "message": "JSON exportieren"
+  },
+  "answerStatsNotMeasured": {
+    "message": "Nicht gemessen"
+  },
+  "answerStatsNoPrompt": {
+    "message": "(kein Text)"
+  },
+  "answerStatsAdopted": {
+    "message": "Übernommen"
+  },
+  "answerStatsStatus_pending": {
+    "message": "Läuft"
+  },
+  "answerStatsStatus_timeout": {
+    "message": "Zeitüberschreitung"
+  },
+  "answerStatsStatus_cancelled": {
+    "message": "Abgebrochen"
   }
 }

@@ -965,5 +965,74 @@
   },
   "exitFocusPanelTitle": {
     "message": "Quitter le mode agrandi"
+  },
+  "adoptAnswerTitle": {
+    "message": "Adopter cette réponse"
+  },
+  "adoptedAnswerTitle": {
+    "message": "Adoptée (cliquer pour annuler)"
+  },
+  "answerStatsButtonTitle": {
+    "message": "Statistiques des réponses"
+  },
+  "answerStatsTitle": {
+    "message": "Statistiques des réponses"
+  },
+  "answerStatsEmpty": {
+    "message": "Aucune statistique pour l’instant. Envoyez une question à plusieurs IA, puis adoptez la meilleure réponse avec le bouton pouce levé de son panneau."
+  },
+  "answerStatsColumnProvider": {
+    "message": "IA"
+  },
+  "answerStatsColumnRounds": {
+    "message": "Questions"
+  },
+  "answerStatsColumnFirstOutput": {
+    "message": "Premier texte"
+  },
+  "answerStatsColumnComplete": {
+    "message": "Terminé"
+  },
+  "answerStatsColumnTimeouts": {
+    "message": "Délais dépassés"
+  },
+  "answerStatsColumnAdopted": {
+    "message": "Adoptées"
+  },
+  "answerStatsColumnAdoptionRate": {
+    "message": "Taux d’adoption"
+  },
+  "answerStatsNote": {
+    "message": "Durées depuis l’envoi jusqu’au premier texte et jusqu’à la réponse terminée : médiane, avec la moyenne entre parenthèses. Seuls ChatGPT, Gemini et DeepSeek sont chronométrés. Le taux d’adoption ne compte que les questions dont une réponse a été adoptée."
+  },
+  "answerStatsRecentTitle": {
+    "message": "Questions récentes"
+  },
+  "answerStatsClear": {
+    "message": "Effacer les statistiques"
+  },
+  "answerStatsClearConfirm": {
+    "message": "Supprimer toutes les statistiques des réponses ?"
+  },
+  "answerStatsExport": {
+    "message": "Exporter en JSON"
+  },
+  "answerStatsNotMeasured": {
+    "message": "Non mesuré"
+  },
+  "answerStatsNoPrompt": {
+    "message": "(sans texte)"
+  },
+  "answerStatsAdopted": {
+    "message": "Adoptée"
+  },
+  "answerStatsStatus_pending": {
+    "message": "En cours"
+  },
+  "answerStatsStatus_timeout": {
+    "message": "Délai dépassé"
+  },
+  "answerStatsStatus_cancelled": {
+    "message": "Annulée"
   }
 }

@@ -982,5 +982,74 @@
   },
   "exitFocusPanelTitle": {
     "message": "Exit focus mode"
+  },
+  "adoptAnswerTitle": {
+    "message": "Adopt this answer"
+  },
+  "adoptedAnswerTitle": {
+    "message": "Adopted (click to undo)"
+  },
+  "answerStatsButtonTitle": {
+    "message": "Answer stats"
+  },
+  "answerStatsTitle": {
+    "message": "Answer stats"
+  },
+  "answerStatsEmpty": {
+    "message": "No stats yet. Send a question to several AIs, then adopt the best answer with the thumbs-up button in its panel."
+  },
+  "answerStatsColumnProvider": {
+    "message": "AI"
+  },
+  "answerStatsColumnRounds": {
+    "message": "Questions"
+  },
+  "answerStatsColumnFirstOutput": {
+    "message": "First output"
+  },
+  "answerStatsColumnComplete": {
+    "message": "Complete"
+  },
+  "answerStatsColumnTimeouts": {
+    "message": "Timeouts"
+  },
+  "answerStatsColumnAdopted": {
+    "message": "Adopted"
+  },
+  "answerStatsColumnAdoptionRate": {
+    "message": "Adoption rate"
+  },
+  "answerStatsNote": {
+    "message": "Times run from Send to the first text and to the finished answer: median, with the average in brackets. Only ChatGPT, Gemini and DeepSeek are timed. Adoption rate counts the questions where an answer was adopted."
+  },
+  "answerStatsRecentTitle": {
+    "message": "Recent questions"
+  },
+  "answerStatsClear": {
+    "message": "Clear stats"
+  },
+  "answerStatsClearConfirm": {
+    "message": "Delete all answer stats?"
+  },
+  "answerStatsExport": {
+    "message": "Export JSON"
+  },
+  "answerStatsNotMeasured": {
+    "message": "Not measured"
+  },
+  "answerStatsNoPrompt": {
+    "message": "(no text)"
+  },
+  "answerStatsAdopted": {
+    "message": "Adopted"
+  },
+  "answerStatsStatus_pending": {
+    "message": "In progress"
+  },
+  "answerStatsStatus_timeout": {
+    "message": "Timed out"
+  },
+  "answerStatsStatus_cancelled": {
+    "message": "Cancelled"
   }
 }
