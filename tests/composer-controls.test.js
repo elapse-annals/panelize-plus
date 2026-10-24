@@ -213,6 +213,53 @@ describe('composer control async state', () => {
     expect(controls.isTierBusy()).toBe(false);
   });
 
+  it('starts on Default and never switches the AIs while Default is selected', async () => {
+    const panel = makePanel('panel-a');
+    await setupControls([panel]);
+
+    const defaultButton = document.querySelector('.tier-option[data-tier="default"]');
+    expect(defaultButton.getAttribute('aria-checked')).toBe('true');
+    expect(document.querySelector('.tier-option[data-tier="fast"]').getAttribute('aria-checked')).toBe('false');
+
+    defaultButton.click();
+    await flushMicrotasks();
+    await vi.advanceTimersByTimeAsync(10000);
+
+    expect(mocks.saveSetting).toHaveBeenCalledWith('selectedProviderTier', null);
+    expect(mocks.runProviderTierBatch).not.toHaveBeenCalled();
+  });
+
+  it('returns from a selected tier to Default without switching the AIs again', async () => {
+    settingsState.selectedProviderTier = 'deep';
+    const panel = makePanel('panel-a');
+    await setupControls([panel]);
+    expect(document.querySelector('.tier-option[data-tier="default"]').getAttribute('aria-checked')).toBe('false');
+    expect(document.querySelector('.tier-option[data-tier="default"]').dataset.requested).toBe('false');
+
+    document.querySelector('.tier-option[data-tier="default"]').click();
+    await flushMicrotasks();
+    await vi.advanceTimersByTimeAsync(10000);
+
+    expect(mocks.saveSetting).toHaveBeenCalledWith('selectedProviderTier', null);
+    expect(document.querySelector('.tier-option[data-tier="default"]').getAttribute('aria-checked')).toBe('true');
+    const deepButton = document.querySelector('.tier-option[data-tier="deep"]');
+    expect(deepButton.dataset.requested).toBe('false');
+    expect(deepButton.getAttribute('aria-checked')).toBe('false');
+    expect(mocks.runProviderTierBatch).not.toHaveBeenCalled();
+  });
+
+  it('moves focus across all four reasoning levels with the arrow keys', async () => {
+    await setupControls([]);
+    const options = [...document.querySelectorAll('.tier-option')];
+    expect(options.map(option => option.dataset.tier)).toEqual(['default', 'fast', 'balanced', 'deep']);
+
+    options[0].focus();
+    options[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(document.activeElement).toBe(options[3]);
+    options[3].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(document.activeElement).toBe(options[0]);
+  });
+
   it('keeps the latest external tier request queued while another tier batch is busy', async () => {
     settingsState.selectedProviderTier = 'balanced';
     const panel = makePanel('panel-a');

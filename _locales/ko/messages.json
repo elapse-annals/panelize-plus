@@ -1078,6 +1078,12 @@
   "composerTierLabel": {
     "message": "AI reasoning level"
   },
+  "composerTierDefault": {
+    "message": "기본"
+  },
+  "composerTierDefaultHint": {
+    "message": "각 AI의 현재 설정 유지"
+  },
   "composerTierFast": {
     "message": "Fast"
   },

@@ -1072,6 +1072,12 @@
   "composerTierLabel": {
     "message": "AI 推理档位"
   },
+  "composerTierDefault": {
+    "message": "默认"
+  },
+  "composerTierDefaultHint": {
+    "message": "保持各 AI 当前设置，不做切换"
+  },
   "composerTierFast": {
     "message": "快速"
   },

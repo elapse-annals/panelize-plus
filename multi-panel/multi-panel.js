@@ -3921,6 +3921,14 @@ function setupEventListeners() {
   const inputBar = document.getElementById('input-bar');
   inputBar.addEventListener('focusin', resizeTextarea);
   inputBar.addEventListener('focusout', () => setTimeout(resizeTextarea, 0));
+  let resizeFrame = 0;
+  window.addEventListener('resize', () => {
+    if (resizeFrame || !inputBar.contains(document.activeElement)) return;
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = 0;
+      resizeTextarea();
+    });
+  });
   inputTextarea.addEventListener('compositionstart', () => {
     isInputComposing = true;
   });
@@ -4027,6 +4035,11 @@ function setupEventListeners() {
   });
 }
 
+// Long drafts may grow to 40% of the window (capped) while the composer is focused.
+function getComposerMaxHeight() {
+  return Math.round(Math.min(window.innerHeight * 0.4, 360));
+}
+
 function resizeTextarea() {
   const textarea = document.getElementById('unified-input');
   const inputBar = document.getElementById('input-bar');
@@ -4035,7 +4048,7 @@ function resizeTextarea() {
   // Collapse to one line once focus leaves the composer so the overhang never
   // covers panel content the user is reading.
   const expanded = Boolean(inputBar?.contains(document.activeElement));
-  const height = expanded ? Math.min(textarea.scrollHeight, 150) : restHeight;
+  const height = expanded ? Math.max(restHeight, Math.min(textarea.scrollHeight, getComposerMaxHeight())) : restHeight;
   textarea.style.height = height + 'px';
   // The bar keeps its one-line height; extra lines overhang the panels so
   // typing never resizes (and re-lays out) the provider iframes.

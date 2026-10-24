@@ -130,6 +130,7 @@
           <button id="clear-all-btn" class="clear-btn" title="Clear All Inputs">
             <span class="material-symbols-outlined">backspace</span>
           </button>
+          <span class="composer-divider" aria-hidden="true"></span>
           <!-- Fill Input Boxes Button (no auto-send) -->
           <button id="fill-input-btn" class="fill-btn" title="Fill Input Boxes">
             <span class="material-symbols-outlined">input</span>
@@ -150,6 +151,7 @@
           </button>
           <span class="composer-divider" aria-hidden="true"></span>
           <div id="provider-tier-controls" class="tier-controls" role="radiogroup" data-i18n-aria="composerTierLabel" aria-label="AI reasoning level">
+            <button type="button" class="tier-option" data-tier="default" role="radio" aria-checked="true" data-i18n="composerTierDefault" data-i18n-title="composerTierDefaultHint" title="Keep each AI's current setting">Default</button>
             <button type="button" class="tier-option" data-tier="fast" data-shortcut-action="tierFast" role="radio" aria-checked="false" data-i18n="composerTierFast">Fast</button>
             <button type="button" class="tier-option" data-tier="balanced" data-shortcut-action="tierBalanced" role="radio" aria-checked="false" data-i18n="composerTierBalanced">Balanced</button>
             <button type="button" class="tier-option" data-tier="deep" data-shortcut-action="tierDeep" role="radio" aria-checked="false" data-i18n="composerTierDeep">Deep</button>

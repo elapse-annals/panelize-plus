@@ -1078,6 +1078,12 @@
   "composerTierLabel": {
     "message": "AI reasoning level"
   },
+  "composerTierDefault": {
+    "message": "Standard"
+  },
+  "composerTierDefaultHint": {
+    "message": "Aktuelle Einstellung jeder KI beibehalten"
+  },
   "composerTierFast": {
     "message": "Fast"
   },

@@ -1078,6 +1078,12 @@
   "composerTierLabel": {
     "message": "AI reasoning level"
   },
+  "composerTierDefault": {
+    "message": "По умолчанию"
+  },
+  "composerTierDefaultHint": {
+    "message": "Сохранить текущую настройку каждого ИИ"
+  },
   "composerTierFast": {
     "message": "Fast"
   },

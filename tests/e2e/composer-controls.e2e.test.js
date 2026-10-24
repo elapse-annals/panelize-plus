@@ -124,7 +124,8 @@ test.describe('Composer controls browser fixtures', () => {
 
       const page = await openConfiguredMultiPanel(extension, { providers: ['chatgpt'], enabledProviders: MANUAL_ORDER, layout: '1x1' });
       await expect(page.locator('#composer-new-chat-btn')).toBeVisible();
-      await expect(page.locator('.tier-option')).toHaveCount(3);
+      await expect(page.locator('.tier-option')).toHaveCount(4);
+      await expect(page.locator('.tier-option[data-tier="default"]')).toHaveAttribute('aria-checked', 'true');
       await expect(page.locator('#provider-sort-btn')).toBeVisible();
       await expect(page.locator('#keyboard-shortcuts-btn')).toBeVisible();
       await expect(page.locator('#new-chat-btn')).toBeVisible();

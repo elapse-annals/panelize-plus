@@ -15,6 +15,7 @@ import {
   runProviderTierBatch
 } from './provider-tiers.js';
 
+const DEFAULT_TIER = 'default';
 const ACTION_LABELS = {
   send: ['composerSend', 'Send to all'],
   fill: ['composerFill', 'Fill inputs'],
@@ -117,9 +118,12 @@ export async function setupComposerControls({
       && supported.every(result => isOnTier(result, selectedTier))
       && results.every(Boolean));
     document.querySelectorAll('.tier-option').forEach(button => {
-      button.setAttribute('aria-checked', String(allMatched && button.dataset.tier === selectedTier));
+      // Default leaves every AI on its own setting, so it needs no confirmation.
+      const isDefault = button.dataset.tier === DEFAULT_TIER;
+      const requested = isDefault ? !selectedTier : button.dataset.tier === selectedTier;
+      button.setAttribute('aria-checked', String(isDefault ? requested : allMatched && requested));
       button.disabled = tierBusy;
-      button.dataset.requested = String(button.dataset.tier === selectedTier);
+      button.dataset.requested = String(requested);
     });
     const status = byId('tier-status');
     if (tierBusy) status.textContent = tr('composerSwitching', 'Switching…');
@@ -195,6 +199,17 @@ export async function setupComposerControls({
       renderTierState();
       if (pendingDesiredTier !== undefined) scheduleDesiredTier();
     }
+  }
+
+  /** Stops applying a tier; open AIs keep whatever mode they are on. */
+  async function selectDefaultTier() {
+    if (tierBusy) return;
+    pendingDesiredTier = undefined;
+    clearTimeout(desiredTierTimer);
+    tierGeneration += 1;
+    selectedTier = null;
+    renderTierState();
+    await saveSetting('selectedProviderTier', null);
   }
 
   function scheduleDesiredTier() {
@@ -367,13 +382,17 @@ export async function setupComposerControls({
   }
 
   document.querySelectorAll('.tier-option').forEach(button => {
-    button.addEventListener('click', () => applyTier(button.dataset.tier));
+    button.addEventListener('click', () => (button.dataset.tier === DEFAULT_TIER
+      ? selectDefaultTier() : applyTier(button.dataset.tier)));
     button.addEventListener('keydown', event => {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
-      const index = PROVIDER_TIER_IDS.indexOf(button.dataset.tier);
-      const next = event.key === 'Home' ? 0 : event.key === 'End' ? 2 : (index + (event.key === 'ArrowRight' ? 1 : 2)) % 3;
-      document.querySelector(`.tier-option[data-tier="${PROVIDER_TIER_IDS[next]}"]`)?.focus();
+      const options = [...document.querySelectorAll('.tier-option')];
+      const index = options.indexOf(button);
+      const count = options.length;
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? count - 1
+        : (index + (event.key === 'ArrowRight' ? 1 : count - 1)) % count;
+      options[next]?.focus();
     });
   });
   byId('unified-input').addEventListener('focus', pulse);

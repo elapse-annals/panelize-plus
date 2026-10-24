@@ -2554,18 +2554,104 @@ html.snapshot-hide-cursor *::after {
   color: #ff6b6b;
 }
 
-/* Composer overrides also apply after the existing dark-theme textarea rules. */
+/* Composer overrides also apply after the existing dark-theme textarea rules.
+   One accent (--composer-accent) drives the primary action, focus and the
+   selected reasoning level so the bar reads as a single control. */
+#input-bar {
+  --composer-accent: #6b5bb0;
+  --composer-accent-hover: #5a4b9c;
+  --composer-accent-soft: #f0eff8;
+  --composer-accent-ink: #48447a;
+  --composer-muted: #647087;
+  --composer-line: #e4e6ee;
+}
+[data-theme="dark"] #input-bar {
+  --composer-accent: #7a6bc4;
+  --composer-accent-hover: #8a7bd4;
+  --composer-accent-soft: #393344;
+  --composer-accent-ink: #d2c5f4;
+  --composer-muted: #b4b2c2;
+  --composer-line: #42414d;
+}
+#input-bar .input-container { padding: 5px 8px 2px; }
+#input-bar .composer-controls { padding: 0 8px 4px; }
+#input-bar .input-wrapper.drag-over { background: var(--composer-accent-soft); border-radius: 10px; }
 #input-bar #unified-input {
   border: 0;
   border-radius: 10px;
   padding: 5px 6px;
+  max-height: min(40vh, 360px);
   background: transparent;
   box-shadow: none;
 }
 #input-bar #unified-input:focus { outline: none; border: 0; }
-#input-bar .input-btn { border: 0; background: transparent; }
+#input-bar .input-btn,
+#input-bar .clear-btn {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--composer-muted);
+}
+#input-bar .input-btn:hover { color: var(--composer-accent-ink); background: var(--composer-accent-soft); }
+#input-bar .clear-btn:hover { color: #d32f2f; background: #fdecec; }
+[data-theme="dark"] #input-bar .clear-btn:hover { color: #ff8a80; background: #4a2a2e; }
 #input-bar .input-actions { gap: 6px; }
-#input-bar .send-btn { border-radius: 10px; padding: 0 14px; }
+#input-bar .input-actions .composer-divider { height: 18px; background: var(--composer-line); }
+#input-bar .fill-btn {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--composer-line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--composer-accent-ink);
+}
+#input-bar .fill-btn:hover:not(:disabled) { border-color: var(--composer-accent); background: var(--composer-accent-soft); }
+#input-bar .fill-btn:disabled { background: transparent; color: var(--composer-muted); opacity: .55; }
+#input-bar .send-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--composer-accent);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(80, 64, 150, .25);
+}
+#input-bar .send-btn:hover:not(:disabled) { background: var(--composer-accent-hover); }
+#input-bar .send-btn:disabled { background: var(--composer-line); color: var(--composer-muted); box-shadow: none; }
+#input-bar .input-btn:focus-visible, #input-bar .clear-btn:focus-visible,
+#input-bar .fill-btn:focus-visible, #input-bar .send-btn:focus-visible {
+  outline: 2px solid #8a79b5;
+  outline-offset: 2px;
+}
+/* Control row: equal heights so the divider, levels and status line up. */
+#input-bar .composer-controls-left { gap: 4px 6px; }
+#input-bar .composer-control { min-height: 26px; }
+#input-bar .tier-option { min-height: 22px; padding: 1px 10px; transition: background-color .15s ease, color .15s ease, box-shadow .15s ease; }
+/* Confirmed level: solid accent. Requested but not yet confirmed on every AI
+   (or switching): outlined, matching the "x/y switched · mixed" status. */
+#input-bar .tier-option[aria-checked="true"] {
+  color: #fff;
+  background: var(--composer-accent);
+  box-shadow: 0 1px 3px rgba(80, 64, 150, .3);
+}
+#input-bar .tier-option[data-requested="true"][aria-checked="false"] {
+  color: var(--composer-accent-ink);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #9d8fd6;
+}
+[data-theme="dark"] #input-bar .tier-option[data-requested="true"][aria-checked="false"] {
+  background: #2f2a3a;
+  box-shadow: inset 0 0 0 1px #8e7fd0;
+}
+#input-bar .tier-option[data-requested="true"]:disabled { opacity: .75; }
+#input-bar .tier-option[aria-checked="true"]:hover { color: #fff; }
+#input-bar .composer-status {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 /* A draft taller than one line overhangs the panels instead of shrinking them;
    --composer-overflow is the extra textarea height (see resizeTextarea). */
 #input-bar .composer-shell { margin-top: calc(-1 * var(--composer-overflow, 0px)); }
@@ -2577,20 +2663,32 @@ html.snapshot-hide-cursor *::after {
 [data-theme="dark"] .composer-control:hover, [data-theme="dark"] .composer-control[aria-pressed="true"] { color: #d2c5f4; background: #393344; }
 [data-theme="dark"] .tier-controls { background: #1e1e24; }
 [data-theme="dark"] .tier-option[aria-checked="true"] { color: #e0d5ff; background: #44394f; }
+[data-theme="dark"] #input-bar .tier-option[aria-checked="true"] { color: #fff; background: var(--composer-accent); }
+[data-theme="dark"] #input-bar .tier-option[data-requested="true"][aria-checked="false"] { color: var(--composer-accent-ink); }
 [data-theme="dark"] .composer-divider { background: #42414d; }
 [data-theme="dark"] .composer-help, [data-theme="dark"] .composer-status, [data-theme="dark"] .composer-result-row { color: #aaa6b8; }
 [data-theme="dark"] .composer-table td, [data-theme="dark"] .composer-table th, [data-theme="dark"] .composer-shortcut-field input { border-color: #43414e; }
 @media (max-width: 760px) {
   #input-bar { padding: 6px; }
   #input-bar .input-container { flex-wrap: wrap; }
-  #input-bar .input-wrapper { flex-basis: calc(100% - 110px); }
+  #input-bar .input-wrapper { flex: 1 1 calc(100% - 82px); }
   #input-bar .input-actions { width: 100%; justify-content: flex-end; }
   .composer-controls { gap: 8px 4px; }
   .composer-controls-right { margin-left: auto; }
   .composer-shortcut-field input { width: 155px; }
 }
+/* Phone width: actions and secondary controls become icon-only; their
+   titles and aria-labels (see updateTooltips) still name them. */
+@media (max-width: 520px) {
+  #input-bar .fill-btn .btn-text, #input-bar .send-btn .btn-text { display: none; }
+  #input-bar .fill-btn, #input-bar .send-btn { padding: 0 10px; }
+  #composer-new-chat-btn > span:not(.material-symbols-outlined),
+  #provider-sort-label,
+  #input-bar .composer-status { display: none; }
+  #input-bar .tier-option { padding: 1px 8px; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .composer-shell, .composer-control, .tier-option { transition: none; }
+  .composer-shell, .composer-control, .tier-option, #input-bar .tier-option { transition: none; }
   .composer-shell.composer-pulse::before { animation: none; }
 }
 
