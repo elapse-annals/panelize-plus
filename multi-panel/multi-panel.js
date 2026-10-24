@@ -271,30 +271,29 @@ function normalizeLayout(layout) {
 // ===== Initialization =====
 async function init() {
   document.addEventListener('panelize:themechange', refreshThemeAwareProviderIcons);
-  await applyTheme();
-  await initializeLanguage();
+  await Promise.all([applyTheme(), initializeLanguage()]);
   translatePage();
   registerRuntimeMessageListener();
   registerStorageChangeListener();
 
-  // Detect window type and load mode
-  await detectWindowType();
-
-  // Restore state if needed (after mode switch)
-  await restoreStateIfNeeded();
+  // Detect window type and load mode, and restore state if needed (after mode
+  // switch). The restored state must be saved before the settings are loaded.
+  await Promise.all([detectWindowType(), restoreStateIfNeeded()]);
 
   // Load saved settings
   await loadSettings();
 
-  await setupPanelResize({
-    grid: document.getElementById('panel-grid'),
-    getLayout: () => currentLayout,
-    storage: chrome.storage.local,
-    label: t('panelResizeHandle')
-  });
-
-  // Initialize panels
-  await initializePanels();
+  // Initialize panels while the column widths load; the resize handles follow
+  // layout changes made meanwhile.
+  await Promise.all([
+    setupPanelResize({
+      grid: document.getElementById('panel-grid'),
+      getLayout: () => currentLayout,
+      storage: chrome.storage.local,
+      label: t('panelResizeHandle')
+    }),
+    initializePanels()
+  ]);
 
   // Setup event listeners
   setupEventListeners();
@@ -1186,12 +1185,13 @@ async function loadSettings() {
 // ===== Open Mode Management =====
 async function detectWindowType() {
   try {
-    const currentWindow = await chrome.windows.getCurrent();
+    // 同时读取窗口类型和设置中的模式
+    const [currentWindow, settings] = await Promise.all([
+      chrome.windows.getCurrent(),
+      chrome.storage.sync.get({ openMode: 'tab' })
+    ]);
     // popup 类型的窗口 type 为 'popup'
     isPopupWindow = currentWindow.type === 'popup';
-
-    // 读取设置中的模式
-    const settings = await chrome.storage.sync.get({ openMode: 'tab' });
     currentOpenMode = settings.openMode;
 
     updateToggleButton();
@@ -1280,11 +1280,12 @@ async function toggleOpenMode() {
 
 async function restoreStateIfNeeded() {
   try {
-    // Try session storage first, then local storage
-    let result = await chrome.storage.session.get('preservedState');
-    if (!result.preservedState) {
-      result = await chrome.storage.local.get('preservedState');
-    }
+    // Prefer session storage, then local storage; read both at once
+    const [sessionResult, localResult] = await Promise.all([
+      chrome.storage.session.get('preservedState'),
+      chrome.storage.local.get('preservedState')
+    ]);
+    const result = sessionResult.preservedState ? sessionResult : localResult;
 
     if (result.preservedState) {
       const state = result.preservedState;
@@ -1335,15 +1336,18 @@ async function restoreStateIfNeeded() {
 
 async function initializePanels() {
   try {
-    const settings = await chrome.storage.sync.get({
-      providerOrder: null,
-      enabledProviders: DEFAULT_PROVIDERS,
-      multiPanelProviders: DEFAULT_PROVIDERS,
-      startupProviders: null
-    });
     // The provider service applies permission checks and the selected manual or
     // local-statistics order consistently with the add/switch menus.
-    const providerIds = (await getEnabledProviders()).map(({ id }) => id);
+    const [settings, enabledProviders] = await Promise.all([
+      chrome.storage.sync.get({
+        providerOrder: null,
+        enabledProviders: DEFAULT_PROVIDERS,
+        multiPanelProviders: DEFAULT_PROVIDERS,
+        startupProviders: null
+      }),
+      getEnabledProviders()
+    ]);
+    const providerIds = enabledProviders.map(({ id }) => id);
 
     const panelCount = LAYOUT_PANEL_COUNTS[currentLayout] || 4;
     const startupProviderIds = resolveStartupProviderIds(
@@ -1359,10 +1363,17 @@ async function initializePanels() {
       document.getElementById('panel-grid').className = `layout-${currentLayout}`;
     }
 
-    // Create all panels and load in parallel for fastest total time
+    // Sync provider sessions together, then create all panels at once so their
+    // frames load in parallel. Syncing first keeps it ahead of the frame loads,
+    // which delay extension storage calls.
+    await Promise.all([...new Set(startupProviderIds)].map(syncProviderSession));
     for (const providerId of startupProviderIds) {
-      await addPanel(providerId);
+      createPanel(providerId);
     }
+
+    // Not awaited: storage calls are slow while the frames load, and nothing
+    // during startup reads it back.
+    saveProviderConfiguration();
 
     // Update panel selectors in toolbar
     updatePanelSelectors();
@@ -1418,15 +1429,29 @@ async function addPanel(providerId) {
   // panel being added.
   await syncProviderSession(providerId);
 
+  if (!createPanel(providerId)) {
+    return;
+  }
+
+  // Save provider configuration
+  await saveProviderConfiguration();
+
+  // Update panel selectors to show logo and name
+  updatePanelSelectors();
+}
+
+// Synchronous so concurrent callers cannot both pass the capacity check.
+// Callers sync the provider session first.
+function createPanel(providerId) {
   if (panels.length >= MAX_PANELS) {
     showToast(`Maximum number of panels reached (${MAX_PANELS})`);
-    return;
+    return null;
   }
 
   const provider = getProviderById(providerId);
   if (!provider) {
     console.error('Provider not found:', providerId);
-    return;
+    return null;
   }
 
   // Everything from the capacity check to panels.push() below runs without
@@ -1525,11 +1550,7 @@ async function addPanel(providerId) {
 
   bindPanelHeaderActions(panelId);
 
-  // Save provider configuration
-  await saveProviderConfiguration();
-
-  // Update panel selectors to show logo and name
-  updatePanelSelectors();
+  return panel;
 }
 
 function removePanel(panelId) {
