@@ -1277,22 +1277,29 @@ async function initializePanels() {
 // ===== Panel Management =====
 
 function setFocusedPanel(panelId) {
+  const wasFocusActive = focusedPanelId !== null;
   focusedPanelId = panels.some(panel => panel.id === panelId) ? panelId : null;
   document.getElementById('main-content').classList.toggle('panel-focus-active', focusedPanelId !== null);
 
   // An absolutely positioned panel no longer occupies a grid cell. Keep the
   // other panels in their original columns so their hidden frames keep their
-  // viewport sizes, including when columns have custom widths.
+  // viewport sizes, including when columns have custom widths. Cells are only
+  // assigned on entering focus, so removing a panel does not shift the rest.
   const grid = document.getElementById('panel-grid');
-  const columnCount = focusedPanelId
+  const columnCount = focusedPanelId && !wasFocusActive
     ? window.getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length
     : 0;
   panels.forEach((panel, index) => {
     const panelEl = document.getElementById(panel.id);
     const isFocused = panel.id === focusedPanelId;
     panelEl.classList.toggle('panel-focused', isFocused);
-    panelEl.style.gridColumnStart = columnCount ? String(index % columnCount + 1) : '';
-    panelEl.style.gridRowStart = columnCount ? String(Math.floor(index / columnCount) + 1) : '';
+    if (!focusedPanelId) {
+      panelEl.style.gridColumnStart = '';
+      panelEl.style.gridRowStart = '';
+    } else if (columnCount) {
+      panelEl.style.gridColumnStart = String(index % columnCount + 1);
+      panelEl.style.gridRowStart = String(Math.floor(index / columnCount) + 1);
+    }
     const button = panelEl.querySelector('.focus-panel-btn');
     if (button) {
       button.title = isFocused
@@ -3137,12 +3144,17 @@ function setupEventListeners() {
   if (!layoutBtn) return;
 
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || event.defaultPrevented || !focusedPanelId ||
-        isFocusInOpenModal() || isShareModalOpen()) {
+    // Escape during IME composition only cancels the candidate.
+    if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing || event.keyCode === 229 ||
+        !focusedPanelId || isFocusInOpenModal() || isShareModalOpen()) {
       return;
     }
     // Opening a dialog can leave focus on its toolbar trigger.
     if (Array.from(document.querySelectorAll('.modal')).some(modal => window.getComputedStyle(modal).display !== 'none')) {
+      return;
+    }
+    // The provider and add-panel menus are not modals but are still open popups.
+    if (document.querySelector('.provider-switcher-menu, .add-panel-menu')) {
       return;
     }
     setFocusedPanel(null);

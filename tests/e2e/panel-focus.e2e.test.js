@@ -377,3 +377,65 @@ test('toolbar sharing and a share snapshot request exit panel focus', async () =
     await extension.close();
   }
 });
+
+test('removing another panel keeps hidden cells, and Escape waits for IME and open menus', async () => {
+  test.setTimeout(60_000);
+  const providers = ['chatgpt', 'claude', 'gemini', 'grok'];
+  const extension = await launchExtension({ viewport: { width: 1280, height: 800 } });
+  try {
+    await routeProviderFixtures(extension, providers);
+    const page = await openMultiPanel(extension, { providers, layout: '2x2' });
+    await waitForProviderFixtures(page, providers);
+
+    const equalWidths = await getColumnWidths(page);
+    await dragFirstResizeHandle(page, -80);
+    await expect.poll(() => getColumnWidths(page)).not.toEqual(equalWidths);
+
+    const focusedId = await focusPanel(page, 0);
+    const removedId = await page.locator('#panel-grid .panel-item').nth(1).getAttribute('id');
+    const hiddenBefore = (await getPanelMetrics(page)).filter(panel => ![focusedId, removedId].includes(panel.id));
+    await page.locator(`.panel-selector[data-panel-id="${removedId}"] .remove-panel`).click();
+    await expect(page.locator('#panel-grid iframe')).toHaveCount(3);
+    await expect(page.locator('#panel-grid')).toHaveClass(/layout-2x2/);
+    await expect(page.locator(`#${focusedId}`)).toHaveClass(/panel-focused/);
+
+    const hiddenAfter = await getPanelMetrics(page);
+    hiddenBefore.forEach(before => {
+      const after = hiddenAfter.find(panel => panel.id === before.id);
+      expect(after.visibility).toBe('hidden');
+      for (const key of ['x', 'y', 'width', 'height']) {
+        expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
+      }
+    });
+
+    await page.locator('#unified-input').focus();
+    await page.evaluate(() => {
+      document.getElementById('unified-input').dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Escape', isComposing: true, bubbles: true, cancelable: true,
+      }));
+    });
+    await expect(page.locator('#main-content')).toHaveClass(/panel-focus-active/);
+
+    await page.locator(`#${focusedId} .switch-provider-btn`).click();
+    await expect(page.locator('.provider-switcher-menu')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#main-content')).toHaveClass(/panel-focus-active/);
+    await page.locator('#unified-input').click();
+    await expect(page.locator('.provider-switcher-menu')).toHaveCount(0);
+
+    await page.click('#add-panel-btn');
+    await expect(page.locator('.add-panel-menu')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#main-content')).toHaveClass(/panel-focus-active/);
+    await page.locator('#unified-input').click();
+    await expect(page.locator('.add-panel-menu')).toHaveCount(0);
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#main-content')).not.toHaveClass(/panel-focus-active/);
+    expect(await page.locator('#panel-grid .panel-item').evaluateAll(panels =>
+      panels.map(panel => panel.style.gridColumnStart + panel.style.gridRowStart)
+    )).toEqual(['', '', '']);
+  } finally {
+    await extension.close();
+  }
+});
