@@ -959,5 +959,11 @@
   },
   "msgShareWatermarkDisabled": {
     "message": "공유 이미지 워터마크가 꺼졌습니다"
+  },
+  "focusPanelTitle": {
+    "message": "이 패널에 집중"
+  },
+  "exitFocusPanelTitle": {
+    "message": "집중 모드 종료"
   }
 }

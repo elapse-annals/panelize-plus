@@ -959,5 +959,11 @@
   },
   "msgShareWatermarkDisabled": {
     "message": "Filigrane des images partagées désactivé"
+  },
+  "focusPanelTitle": {
+    "message": "Agrandir ce panneau"
+  },
+  "exitFocusPanelTitle": {
+    "message": "Quitter le mode agrandi"
   }
 }

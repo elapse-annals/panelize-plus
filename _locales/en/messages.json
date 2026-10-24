@@ -976,5 +976,11 @@
   },
   "msgShareWatermarkDisabled": {
     "message": "Watermark on shared images disabled"
+  },
+  "focusPanelTitle": {
+    "message": "Focus this panel"
+  },
+  "exitFocusPanelTitle": {
+    "message": "Exit focus mode"
   }
 }

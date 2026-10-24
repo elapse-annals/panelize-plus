@@ -959,5 +959,11 @@
   },
   "msgShareWatermarkDisabled": {
     "message": "共有画像の透かしを無効にしました"
+  },
+  "focusPanelTitle": {
+    "message": "このパネルにフォーカス"
+  },
+  "exitFocusPanelTitle": {
+    "message": "フォーカスを終了"
   }
 }

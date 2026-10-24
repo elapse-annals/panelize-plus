@@ -955,5 +955,11 @@
   },
   "msgShareWatermarkDisabled": {
     "message": "已关闭分享图片水印"
+  },
+  "focusPanelTitle": {
+    "message": "放大此面板"
+  },
+  "exitFocusPanelTitle": {
+    "message": "退出放大"
   }
 }

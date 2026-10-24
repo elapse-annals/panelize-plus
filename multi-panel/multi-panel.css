@@ -252,6 +252,12 @@ body {
   background: #e3f2fd;
 }
 
+.panel-selector.panel-focused {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
 .panel-selector .provider-icon {
   width: 20px;
   height: 20px;
@@ -287,6 +293,24 @@ body {
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
+}
+
+/* Focus overlays one panel while preserving the grid and iframe sizes below. */
+#main-content.panel-focus-active #panel-grid {
+  overflow: hidden;
+  position: static;
+}
+
+#main-content.panel-focus-active .panel-item.panel-focused {
+  position: absolute;
+  inset: 4px;
+  z-index: 3;
+}
+
+#main-content.panel-focus-active .panel-item:not(.panel-focused),
+#main-content.panel-focus-active .panel-resize-handles {
+  visibility: hidden;
 }
 
 /* ===== Panel Grid ===== */
@@ -1462,6 +1486,12 @@ body {
 [data-theme="dark"] .panel-selector:hover {
   border-color: #64b5f6;
   background: #1a3a5a;
+}
+
+[data-theme="dark"] .panel-selector.panel-focused {
+  border-color: #64b5f6;
+  background: #1a3a5a;
+  color: #90caf9;
 }
 
 [data-theme="dark"] #panel-grid {

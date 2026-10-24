@@ -959,5 +959,11 @@
   },
   "msgShareWatermarkDisabled": {
     "message": "Filigrana sulle immagini condivise disattivata"
+  },
+  "focusPanelTitle": {
+    "message": "Metti a fuoco questo pannello"
+  },
+  "exitFocusPanelTitle": {
+    "message": "Esci dalla visualizzazione ingrandita"
   }
 }

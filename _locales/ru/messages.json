@@ -959,5 +959,11 @@
   },
   "msgShareWatermarkDisabled": {
     "message": "Водяной знак на изображениях выключен"
+  },
+  "focusPanelTitle": {
+    "message": "Сфокусировать эту панель"
+  },
+  "exitFocusPanelTitle": {
+    "message": "Выйти из режима фокуса"
   }
 }

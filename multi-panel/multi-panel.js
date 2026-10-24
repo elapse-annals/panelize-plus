@@ -99,6 +99,7 @@ import { createPointerGuard, createPointerTracker } from '../modules/pointer-gua
 // ===== State Management =====
 let currentLayout = '1x3';
 let panels = []; // Array of { id, providerId, iframe, state }
+let focusedPanelId = null;
 // Re-fits pages when their panel changes width (window, layout or drag).
 const panelFitObserver = typeof ResizeObserver === 'function'
   ? new ResizeObserver((entries) => {
@@ -452,6 +453,9 @@ function getPanelHeaderRightHtml(providerId) {
     <button class="refresh-panel-btn" title="Refresh">
       <span class="material-symbols-outlined">refresh</span>
     </button>
+    <button class="focus-panel-btn" title="${getLocalizedText('focusPanelTitle', 'Focus this panel')}" aria-pressed="false">
+      <span class="material-symbols-outlined">open_in_full</span>
+    </button>
     <button class="switch-provider-btn" title="Switch Provider">
       <span class="material-symbols-outlined">swap_horiz</span>
     </button>
@@ -536,6 +540,15 @@ function bindPanelHeaderActions(panelId) {
       reloadPanelIframe(panel);
     });
   }
+
+  const focusBtn = panelEl.querySelector('.focus-panel-btn');
+  if (focusBtn) {
+    focusBtn.addEventListener('click', () => {
+      setFocusedPanel(focusedPanelId === panelId ? null : panelId);
+    });
+  }
+  // Provider switches replace the header, including the focus button.
+  setFocusedPanel(focusedPanelId);
 
   const switchBtn = panelEl.querySelector('.switch-provider-btn');
   if (switchBtn) {
@@ -1263,6 +1276,38 @@ async function initializePanels() {
 
 // ===== Panel Management =====
 
+function setFocusedPanel(panelId) {
+  focusedPanelId = panels.some(panel => panel.id === panelId) ? panelId : null;
+  document.getElementById('main-content').classList.toggle('panel-focus-active', focusedPanelId !== null);
+
+  // An absolutely positioned panel no longer occupies a grid cell. Keep the
+  // other panels in their original columns so their hidden frames keep their
+  // viewport sizes, including when columns have custom widths.
+  const grid = document.getElementById('panel-grid');
+  const columnCount = focusedPanelId
+    ? window.getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length
+    : 0;
+  panels.forEach((panel, index) => {
+    const panelEl = document.getElementById(panel.id);
+    const isFocused = panel.id === focusedPanelId;
+    panelEl.classList.toggle('panel-focused', isFocused);
+    panelEl.style.gridColumnStart = columnCount ? String(index % columnCount + 1) : '';
+    panelEl.style.gridRowStart = columnCount ? String(Math.floor(index / columnCount) + 1) : '';
+    const button = panelEl.querySelector('.focus-panel-btn');
+    if (button) {
+      button.title = isFocused
+        ? getLocalizedText('exitFocusPanelTitle', 'Exit focus mode')
+        : getLocalizedText('focusPanelTitle', 'Focus this panel');
+      button.setAttribute('aria-label', button.title);
+      button.setAttribute('aria-pressed', String(isFocused));
+      button.querySelector('.material-symbols-outlined').textContent = isFocused ? 'close_fullscreen' : 'open_in_full';
+    }
+  });
+  document.querySelectorAll('.panel-selector').forEach(selector => {
+    selector.classList.toggle('panel-focused', selector.dataset.panelId === focusedPanelId);
+  });
+}
+
 async function addPanel(providerId) {
   // Sync before the capacity check so no await separates the check from the
   // panel being added.
@@ -1288,6 +1333,7 @@ async function addPanel(providerId) {
   const adjustedLayout = getAutoAdjustedLayout(currentLayout, newPanelCount);
 
   if (adjustedLayout) {
+    setFocusedPanel(null);
     // Apply layout directly without calling setLayout (to avoid recursion from adjustPanelCount)
     currentLayout = adjustedLayout;
     const panelGrid = document.getElementById('panel-grid');
@@ -1381,6 +1427,10 @@ async function addPanel(providerId) {
 function removePanel(panelId) {
   const panelIndex = panels.findIndex(p => p.id === panelId);
   if (panelIndex === -1) return;
+
+  if (focusedPanelId === panelId || getAutoShrunkLayout(currentLayout, panels.length - 1)) {
+    setFocusedPanel(null);
+  }
 
   const fitContainer = panels[panelIndex].iframe?.parentElement;
   if (fitContainer) {
@@ -1487,6 +1537,12 @@ function updatePanelSelectors() {
       </button>
     `;
 
+    selector.addEventListener('click', () => {
+      if (focusedPanelId) {
+        setFocusedPanel(panel.id);
+      }
+    });
+
     // Remove button handler
     const removeBtn = selector.querySelector('.remove-panel');
     removeBtn.addEventListener('click', (e) => {
@@ -1500,6 +1556,7 @@ function updatePanelSelectors() {
 
     selectorsContainer.appendChild(selector);
   });
+  setFocusedPanel(focusedPanelId);
 }
 
 async function saveProviderConfiguration() {
@@ -2525,6 +2582,7 @@ function cancelSnapshotCapture() {
 }
 
 async function shareComparisonSnapshot() {
+  setFocusedPanel(null);
   return captureSnapshot(await loadPreferredSnapshotMode(), { refresh: true });
 }
 
@@ -2547,6 +2605,7 @@ async function handleShareSnapshotRequest(payload = {}) {
   if (payload.tabId !== await getCurrentTabId() || isCapturingSnapshot) {
     return;
   }
+  setFocusedPanel(null);
   captureSnapshot(isShareModalOpen() ? snapshotMode : await loadPreferredSnapshotMode(), { refresh: true });
 }
 
@@ -2853,6 +2912,7 @@ function updatePanelFit(panel) {
 function setLayout(layout) {
   if (!LAYOUT_PANEL_COUNTS[layout]) return;
 
+  setFocusedPanel(null);
   currentLayout = layout;
 
   const panelGrid = document.getElementById('panel-grid');
@@ -2875,6 +2935,7 @@ function setLayout(layout) {
 }
 
 async function adjustPanelCount(targetCount) {
+  setFocusedPanel(null);
   const enabledProviders = await getEnabledProviders();
   const maxAllowedCount = Math.min(targetCount, MAX_PANELS, enabledProviders.length);
 
@@ -3074,6 +3135,18 @@ async function searchPromptLibrary(query) {
 function setupEventListeners() {
   const layoutBtn = document.getElementById('layout-btn');
   if (!layoutBtn) return;
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || event.defaultPrevented || !focusedPanelId ||
+        isFocusInOpenModal() || isShareModalOpen()) {
+      return;
+    }
+    // Opening a dialog can leave focus on its toolbar trigger.
+    if (Array.from(document.querySelectorAll('.modal')).some(modal => window.getComputedStyle(modal).display !== 'none')) {
+      return;
+    }
+    setFocusedPanel(null);
+  });
 
   // Layout button
   layoutBtn.addEventListener('click', openLayoutModal);

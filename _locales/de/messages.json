@@ -959,5 +959,11 @@
   },
   "msgShareWatermarkDisabled": {
     "message": "Wasserzeichen auf geteilten Bildern deaktiviert"
+  },
+  "focusPanelTitle": {
+    "message": "Dieses Panel fokussieren"
+  },
+  "exitFocusPanelTitle": {
+    "message": "Fokusmodus beenden"
   }
 }

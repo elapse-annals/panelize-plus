@@ -959,5 +959,11 @@
   },
   "msgShareWatermarkDisabled": {
     "message": "Marca de agua en imágenes compartidas desactivada"
+  },
+  "focusPanelTitle": {
+    "message": "Enfocar este panel"
+  },
+  "exitFocusPanelTitle": {
+    "message": "Salir del modo de enfoque"
   }
 }

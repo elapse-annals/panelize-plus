@@ -955,5 +955,11 @@
   },
   "msgShareWatermarkDisabled": {
     "message": "已關閉分享圖片浮水印"
+  },
+  "focusPanelTitle": {
+    "message": "聚焦此面板"
+  },
+  "exitFocusPanelTitle": {
+    "message": "退出聚焦模式"
   }
 }
