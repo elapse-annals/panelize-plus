@@ -3,6 +3,12 @@ import {
   OPTIONAL_PROVIDER_CONFIGS,
   filterProvidersWithGrantedAccess
 } from './optional-provider-access.js';
+import { normalizeProviderOrder } from './provider-order.js';
+import {
+  getFrequentProviderOrder,
+  normalizeProviderSortMode,
+  PROVIDER_SORT_MODE_FREQUENT
+} from './provider-ranking.js';
 
 const YUANBAO_DEFAULT_URL = 'https://yuanbao.tencent.com/chat/naQivTmsDa';
 
@@ -128,6 +134,26 @@ export const PROVIDERS = [
     iconDark: '/icons/providers/dark/yuanbao.png',
     enabled: true,
     optionalOrigins: OPTIONAL_PROVIDER_CONFIGS.yuanbao.origins
+  },
+  {
+    id: 'mimo',
+    name: 'MiMo',
+    url: 'https://aistudio.xiaomimimo.com/#/c',
+    topLevelUrl: 'https://aistudio.xiaomimimo.com/#/c',
+    icon: '/icons/providers/mimo.png',
+    iconDark: '/icons/providers/dark/mimo.png',
+    enabled: true,
+    optionalOrigins: OPTIONAL_PROVIDER_CONFIGS.mimo.origins
+  },
+  {
+    id: 'meta-ai',
+    name: 'Meta AI',
+    url: 'https://www.meta.ai/',
+    topLevelUrl: 'https://www.meta.ai/',
+    icon: '/icons/providers/meta-ai.png',
+    iconDark: '/icons/providers/dark/meta-ai.png',
+    enabled: true,
+    optionalOrigins: OPTIONAL_PROVIDER_CONFIGS['meta-ai'].origins
   }
 ];
 
@@ -159,7 +185,8 @@ export async function getProviderByIdWithSettings(id) {
 export async function getEnabledProviders() {
   let settings = {
     enabledProviders: DEFAULT_PROVIDER_IDS,
-    providerOrder: null
+    providerOrder: null,
+    providerSortMode: 'manual'
   };
   
   try {
@@ -173,20 +200,22 @@ export async function getEnabledProviders() {
   // Synced preferences may include optional providers that are not authorized on
   // this device. Keep the preference intact, but do not load inaccessible panels.
   const availableProviderIds = await filterProvidersWithGrantedAccess(settings.enabledProviders);
-  let enabledProviders = PROVIDERS.filter(p => availableProviderIds.includes(p.id));
+  const allProviderIds = PROVIDERS.map(provider => provider.id);
+  // Older settings stored the user's panel order only in enabledProviders.
+  // Keep that order until a non-empty providerOrder has been saved.
+  const manualOrderSource = Array.isArray(settings.providerOrder) && settings.providerOrder.length > 0
+    ? settings.providerOrder
+    : settings.enabledProviders;
+  const manualOrder = normalizeProviderOrder(
+    manualOrderSource,
+    allProviderIds
+  );
+  const orderedProviderIds = normalizeProviderSortMode(settings.providerSortMode) === PROVIDER_SORT_MODE_FREQUENT
+    ? await getFrequentProviderOrder(availableProviderIds, manualOrder)
+    : normalizeProviderOrder(manualOrder, availableProviderIds);
+  const providerById = new Map(PROVIDERS.map(provider => [provider.id, provider]));
 
-  // Sort by custom order if available
-  if (settings.providerOrder && Array.isArray(settings.providerOrder)) {
-    enabledProviders.sort((a, b) => {
-      const indexA = settings.providerOrder.indexOf(a.id);
-      const indexB = settings.providerOrder.indexOf(b.id);
-      // If not in order array, put at the end
-      if (indexA === -1 && indexB === -1) return 0;
-      if (indexA === -1) return 1;
-      if (indexB === -1) return -1;
-      return indexA - indexB;
-    });
-  }
-
-  return enabledProviders;
+  return orderedProviderIds
+    .map(providerId => providerById.get(providerId))
+    .filter(Boolean);
 }

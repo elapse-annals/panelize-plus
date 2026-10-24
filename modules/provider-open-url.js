@@ -13,7 +13,9 @@ const PROVIDER_ALLOWED_HOSTS = {
   'qwen-global': new Set(['chat.qwen.ai']),
   chatglm: new Set(['chatglm.cn']),
   'zai-global': new Set(['chat.z.ai']),
-  yuanbao: new Set(['yuanbao.tencent.com'])
+  yuanbao: new Set(['yuanbao.tencent.com']),
+  mimo: new Set(['aistudio.xiaomimimo.com']),
+  'meta-ai': new Set(['www.meta.ai'])
 };
 
 const QWEN_GLOBAL_NON_CONVERSATION_IDS = new Set(['new-chat', 'new-branch', 'guest']);
@@ -99,6 +101,11 @@ export function isProviderCurrentUrl(providerId, rawUrl) {
         /^\/chat\/[^/]+\/[^/]+\/?$/.test(url.pathname) &&
         url.searchParams.get('chatMode') !== 'temp'
       );
+    case 'mimo':
+      // MiMo routes conversations in the hash: #/chat/<id>.
+      return /^#\/chat\/[^/]+\/?$/.test(url.hash);
+    case 'meta-ai':
+      return /^\/prompt\/[^/]+\/?$/.test(url.pathname);
     default:
       return false;
   }

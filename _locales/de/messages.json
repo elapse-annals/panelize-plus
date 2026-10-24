@@ -86,6 +86,12 @@
   "descEnabledProviders": {
     "message": "Wählen Sie aus, welche KI-Anbieter in Panelize angezeigt werden"
   },
+  "labelOpenOnStartup": {
+    "message": "Beim Start öffnen"
+  },
+  "descStartupProviders": {
+    "message": "Aktiviere „Beim Start öffnen“, um die Panels zu wählen, die beim Start von Panelize geöffnet werden. Ist nichts ausgewählt, öffnen sich die ersten aktivierten Anbieter, die in das Layout passen."
+  },
   "sectionKeyboardShortcuts": {
     "message": "Tastaturkürzel"
   },
@@ -141,7 +147,7 @@
     "message": "Passen Sie an, wie die Enter-Taste und Modifikatortasten funktionieren, wenn Sie in KI-Anbieter-Eingabefeldern tippen."
   },
   "descEnterBehavior2": {
-    "message": "<strong>Gilt für:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao und Google (KI-Modus)."
+    "message": "<strong>Gilt für:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI und Google (KI-Modus)."
   },
   "labelEnableEnterCustomization": {
     "message": "Enter-Tasten-Anpassung aktivieren"
@@ -292,11 +298,19 @@
   },
   "msgProviderPermissionRequired": {
     "message": "Websitezugriff ist erforderlich, um $PROVIDER$ zu aktivieren.",
-    "placeholders": { "provider": { "content": "$1" } }
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
   },
   "msgProviderPermissionRequestFailed": {
     "message": "Websitezugriff für $PROVIDER$ konnte nicht angefordert werden.",
-    "placeholders": { "provider": { "content": "$1" } }
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
   },
   "msgShortcutEnabled": {
     "message": "Tastaturkürzel aktiviert"
@@ -813,7 +827,9 @@
   "switchToPopupModeTitle": {
     "message": "Zum Popup-Modus wechseln"
   },
-  "openProviderTopLevelTitle": { "message": "In neuem Tab öffnen" },
+  "openProviderTopLevelTitle": {
+    "message": "In neuem Tab öffnen"
+  },
   "msgOpenModeUpdated": {
     "message": "Öffnungsmodus aktualisiert"
   },
@@ -1034,5 +1050,185 @@
   },
   "answerStatsStatus_cancelled": {
     "message": "Abgebrochen"
+  },
+  "answerStatsColumnEngaged": {
+    "message": "Nutzung"
+  },
+  "answerStatsColumnScore": {
+    "message": "Punkte"
+  },
+  "answerStatsScoreNote": {
+    "message": "Punkte: Eine übernommene Antwort bringt 5 Punkte. Die Nutzung einer Antwort bringt bis zu 3 weitere: 1 für Klicken oder Scrollen in ihrem Bereich, 1 für das Vergrößern des Bereichs und 1 je 30 s Nutzungszeit. Die Nutzungszeit summiert die Abstände zwischen Klicks und Scrollen von höchstens 15 s sowie die Zeit, in der der Bereich vergrößert ist."
+  },
+  "labelProviderSortMode": {
+    "message": "Provider order"
+  },
+  "descProviderSortMode": {
+    "message": "Choose a manual order or sort providers by your local usage statistics."
+  },
+  "optionProviderSortManual": {
+    "message": "Manual"
+  },
+  "optionProviderSortFrequent": {
+    "message": "Most used"
+  },
+  "composerNewChat": {
+    "message": "New conversation"
+  },
+  "composerTierLabel": {
+    "message": "AI reasoning level"
+  },
+  "composerTierFast": {
+    "message": "Fast"
+  },
+  "composerTierBalanced": {
+    "message": "Balanced"
+  },
+  "composerTierDeep": {
+    "message": "Deep"
+  },
+  "composerTierDetails": {
+    "message": "AI mode mapping"
+  },
+  "composerTierHelp": {
+    "message": "Levels switch the available model or reasoning setting in each open AI. Search, research and agent settings stay independent."
+  },
+  "composerProvider": {
+    "message": "AI"
+  },
+  "composerActualMode": {
+    "message": "Actual mode"
+  },
+  "composerResult": {
+    "message": "Result"
+  },
+  "composerRefresh": {
+    "message": "Refresh"
+  },
+  "composerRetryFailed": {
+    "message": "Retry unsuccessful"
+  },
+  "composerShortcuts": {
+    "message": "Keyboard shortcuts"
+  },
+  "composerShortcutsEnabled": {
+    "message": "Enable shortcuts in Panelize and its AI panels"
+  },
+  "composerShortcutsHelp": {
+    "message": "Focus a shortcut field and press a key combination. Backspace clears it. Browser shortcuts are reserved."
+  },
+  "composerShortcutsReset": {
+    "message": "Reset shortcuts"
+  },
+  "composerShortcutsSave": {
+    "message": "Save"
+  },
+  "composerSend": {
+    "message": "Send to all"
+  },
+  "composerFill": {
+    "message": "Fill inputs"
+  },
+  "composerFocusInput": {
+    "message": "Focus input"
+  },
+  "composerPromptLibrary": {
+    "message": "Prompt library"
+  },
+  "composerLayout": {
+    "message": "Layout"
+  },
+  "composerNotChecked": {
+    "message": "Not checked"
+  },
+  "composerSwitched": {
+    "message": "Confirmed"
+  },
+  "composerUnsupported": {
+    "message": "Not supported"
+  },
+  "composerUnavailable": {
+    "message": "Unavailable for this account or page"
+  },
+  "composerTimeout": {
+    "message": "Not confirmed"
+  },
+  "composerNotConfirmed": {
+    "message": "Not confirmed"
+  },
+  "composerSwitching": {
+    "message": "Switching…"
+  },
+  "composerTierApplied": {
+    "message": "$1 AIs switched"
+  },
+  "composerTierMixed": {
+    "message": "$1/$2 switched · mixed"
+  },
+  "composerSortUpdated": {
+    "message": "Order applies to AI menus and the next startup."
+  },
+  "composerUnassigned": {
+    "message": "Unassigned"
+  },
+  "composerShortcutInvalid": {
+    "message": "This combination is reserved or already used."
+  },
+  "composerActionBusy": {
+    "message": "Wait for the current operation to finish."
+  },
+  "composerStartingChats": {
+    "message": "Starting new conversations…"
+  },
+  "composerNewChatsPartial": {
+    "message": "$1 confirmed; not confirmed: $2"
+  },
+  "composerNewChatsDone": {
+    "message": "$1 new conversations ready"
+  },
+  "blindModeTitle": {
+    "message": "Blindmodus: KI-Namen ausblenden und Seitenstile angleichen"
+  },
+  "blindModeOn": {
+    "message": "Blindmodus an: KI-Namen sind ausgeblendet"
+  },
+  "blindModeOff": {
+    "message": "Blindmodus aus: KI-Namen werden angezeigt"
+  },
+  "blindModeStatsHidden": {
+    "message": "Blindmodus ausschalten, um die Antwortstatistik zu sehen"
+  },
+  "blindPanelLabel": {
+    "message": "Modell $1"
+  },
+  "wideContentTitle": {
+    "message": "Breite Ansicht: Antworten nutzen die volle Panelbreite"
+  },
+  "sectionTierRecipes": {
+    "message": "Zuordnung der Denkstufen"
+  },
+  "labelTierRecipes": {
+    "message": "Was Schnell, Ausgewogen und Gründlich auf jeder Seite wählen"
+  },
+  "descTierRecipes": {
+    "message": "Modell und Denkoption genau so eingeben, wie die Seite sie anzeigt. Alternativen mit | trennen, z. B. 快速|Fast. Beide leer lassen, um die Stufe zu überspringen."
+  },
+  "btnResetTierRecipes": {
+    "message": "Standard wiederherstellen"
+  },
+  "labelTierProvider": {
+    "message": "KI"
+  },
+  "labelTierModel": {
+    "message": "Modell"
+  },
+  "labelTierThinking": {
+    "message": "Denken"
+  },
+  "toastTierRecipesSaved": {
+    "message": "Zuordnung der Denkstufen gespeichert"
+  },
+  "toastTierRecipesReset": {
+    "message": "Zuordnung der Denkstufen auf Standard zurückgesetzt"
   }
 }

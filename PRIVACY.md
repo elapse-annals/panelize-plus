@@ -1,6 +1,6 @@
 # Privacy Policy for Panelize
 
-**Last Updated: September 22, 2026**
+**Last Updated: October 24, 2026**
 
 ## Overview
 
@@ -24,9 +24,9 @@ The following data is stored in browser-managed storage. Prompt library data rem
 **Purpose:** To provide prompt management functionality across browser sessions.
 
 #### Answer Statistics
-- For each question sent to several AI providers: a short summary of the question (at most 100 characters), how long each provider took to start and finish its answer, and which answer you adopted
+- For each question sent to several AI providers: a short summary of the question (at most 100 characters), how long each provider took to start and finish its answer, which answer you adopted, and how much you used each answer (number of clicks, scrolls and panel enlargements in its panel, and engaged time)
 
-**Purpose:** To compare provider response speed and adopted answers in the Answer stats dialog. Stored only in this browser profile; you can export or clear it there.
+**Purpose:** To compare provider response speed, adopted answers and scores in the Answer stats dialog. Only these counts and times are kept, never what you clicked or read. Stored only in this browser profile; you can export or clear it there.
 
 #### User Preferences and Settings
 - Selected theme (Light/Dark/Auto)
@@ -78,7 +78,7 @@ All data collected by Panelize is used solely for providing extension functional
 
 ### AI Provider Websites
 
-Panelize loads AI provider websites (ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen, ChatGLM, Z.ai, Yuanbao, and Google AI Mode) inside embedded panels. These providers operate under their own privacy policies.
+Panelize loads AI provider websites (ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen, ChatGLM, Z.ai, Yuanbao, MiMo, Meta AI, and Google AI Mode) inside embedded panels. These providers operate under their own privacy policies.
 
 When you interact with these AI providers through Panelize, you are subject to their respective privacy policies. Panelize does not collect or store the content of your conversations with these services.
 
@@ -87,6 +87,8 @@ When you interact with these AI providers through Panelize, you are subject to t
 Provider websites use your existing browser session cookies when they load inside panels. Because Chromium omits `SameSite=Lax` and `SameSite=Strict` cookies on WebSocket handshakes initiated from embedded extension panels, Panelize uses the `cookies` API locally in your browser to forward existing `grok.com` session cookies to Grok's own `wss://grok.com/*` WebSocket requests made from Panelize's Multi-Panel tabs. The forwarding applies only while the Multi-Panel page is the top-level page of a tab; it does not apply when another website embeds a Panelize page. The forwarding rule lasts only for the browser session; cookie values are not saved in Panelize's settings or sent to Panelize-operated servers or unrelated third parties.
 
 Panelize also preserves your existing Grok cookie consent choices by setting the `OptanonAlertBoxClosed` and `OptanonConsent` cookies to `SameSite=None; Secure`, allowing Grok to read and save those choices inside its embedded panel. This happens only when you open Grok in the Multi-Panel page. This preserves the choice you make in Grok's cookie controls and does not automatically accept cookies on your behalf.
+
+When MiMo is enabled and its site access is granted, Panelize copies MiMo's first-party partitioned session cookies and its `xiaomichatbot_ph` cookie into a browser cookie partition reserved for this extension. This lets the MiMo panel use your existing login and read the session field its own website requires. The original cookies remain unchanged. Copies use `SameSite=None; Secure`, retain their original expiry and HttpOnly restrictions, and are removed when the source session ends or MiMo is disabled. Only cookie identities are recorded in local extension storage for cleanup; cookie values remain in the browser cookie store and are never sent to Panelize-operated servers.
 
 ### Update Checks
 
@@ -162,7 +164,7 @@ Panelize requests the following Chrome extension permissions:
 | Permission | Purpose |
 |------------|---------|
 | `storage` | Store your prompts and settings locally |
-| `cookies` | Attach existing `grok.com` session cookies to Grok's embedded WebSocket connections and preserve your Grok cookie consent choices inside Panelize |
+| `cookies` | Attach Grok session cookies to its embedded WebSocket connections, preserve Grok consent choices, and share MiMo sessions with its Panelize cookie partition |
 | `contextMenus` | Add "Send to Panelize" option when right-clicking |
 | `declarativeNetRequest` | Allow AI provider websites to load in embedded panels (bypass X-Frame-Options) |
 | `declarativeNetRequestWithHostAccess` | Apply header modifications for specific AI provider domains |

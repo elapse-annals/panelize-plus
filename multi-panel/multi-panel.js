@@ -8,6 +8,7 @@
 import { PROVIDERS, getProviderById, getEnabledProviders, getProviderIcon } from '../modules/providers.js';
 import { DEFAULT_PROVIDER_IDS } from '../modules/provider-defaults.js';
 import { GROK_WEBSOCKET_COOKIE_SYNC_ACTION } from '../modules/grok-websocket-cookies.js';
+import { MIMO_SESSION_COOKIE_SYNC_ACTION } from '../modules/mimo-session-cookies.js';
 import {
   DEFAULT_GOOGLE_PROVIDER_MODE,
   GOOGLE_PROVIDER_MODE_AI,
@@ -93,8 +94,11 @@ import {
   updatePanelFitState
 } from '../modules/panel-fit.js';
 import { setupPanelResize } from '../modules/panel-resize.js';
+import { getStartupLayout, resolveStartupProviderIds } from '../modules/startup-providers.js';
 import {
+  ENGAGEMENT_KIND,
   aggregateAnswerStats,
+  applyEngagementEvent,
   applyTimingEvent,
   clearAnswerRounds,
   createRound,
@@ -103,6 +107,9 @@ import {
   toggleRoundAdoption
 } from '../modules/answer-stats.js';
 import { createPointerGuard, createPointerTracker } from '../modules/pointer-guard.js';
+import { setupComposerControls } from '../modules/composer-controls.js';
+import { runNewChatBatch } from '../modules/new-chat-actions.js';
+import { assignBlindLabels } from '../modules/blind-labels.js';
 
 
 // ===== State Management =====
@@ -146,9 +153,18 @@ let tempChatButtonRestoreTimerId = null;
 // adopt buttons. The latest round is the one the adopt buttons act on.
 const answerRounds = new Map();
 let latestAnswerRoundId = null;
+// The answer whose panel is in focus mode, counted as engagement with it.
+let zoomedAnswer = null;
 // Text of the last Fill, used as the question when Send then submits it.
 let pendingFilledPromptText = '';
 let isTemporaryChatModeEnabled = false;
+let composerControls = null;
+let isBlindModeEnabled = false;
+let isWideContentEnabled = false;
+let blindLabels = new Map(); // panel id -> letter, stable while blind mode stays on
+let isNewChatBusy = false;
+let failedNewChatPanelIds = new Set();
+const newChatResults = new Map();
 
 function getThemeAwareProviderIcon(provider) {
   return getProviderIcon(provider);
@@ -223,6 +239,8 @@ const PANELIZE_TEMP_CHAT_ENABLED = 'PANELIZE_TEMP_CHAT_ENABLED';
 const PANELIZE_PROVIDER_LOCATION = 'PANELIZE_PROVIDER_LOCATION';
 const PANELIZE_PAGE_WIDTH = 'PANELIZE_PAGE_WIDTH';
 const PANELIZE_RESPONSE_TIMING = 'PANELIZE_RESPONSE_TIMING';
+const PANELIZE_ANSWER_ENGAGEMENT = 'PANELIZE_ANSWER_ENGAGEMENT';
+const PANELIZE_PAGE_STYLE = 'PANELIZE_PAGE_STYLE';
 const MAX_IN_MEMORY_ANSWER_ROUNDS = 20;
 const ANSWER_STATS_RECENT_LIMIT = 20;
 const TEMP_CHAT_RETRY_DELAYS = [1200, 2500, 4000];
@@ -283,11 +301,27 @@ async function init() {
   setupRatingPrompt();
   setupShareSnapshot();
   setupAnswerStats();
+  composerControls = await setupComposerControls({
+    getPanels: () => panels,
+    send: () => broadcastMessage(document.getElementById('unified-input').value, true),
+    fill: () => broadcastMessage(document.getElementById('unified-input').value, false),
+    newConversation: () => newChatAllProviders(),
+    focusInput: () => focusUnifiedInput({ force: true }),
+    openPromptLibrary: openPromptModal,
+    openLayout: openLayoutModal,
+    isOperationBusy: () => isNewChatBusy || broadcastGate.isActive(),
+    text: getLocalizedText,
+    notify: showToast,
+    getPanelName: getPanelDisplayName,
+    isBlindMode: () => isBlindModeEnabled
+  });
+  updatePageStyleButtons();
   updateTemporaryChatButtonState();
   focusUnifiedInput({ force: true });
 
   isInitialized = true;
   await handlePendingMultiPanelAction();
+  document.documentElement.dataset.panelizeReady = 'true';
 }
 
 function focusUnifiedInput({ force = false } = {}) {
@@ -348,6 +382,26 @@ async function requestGrokWebSocketCookieSync() {
   } catch (error) {
     console.warn('[Multi-Panel] Grok WebSocket cookie sync failed:', error);
   }
+}
+
+async function requestMimoSessionCookieSync() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: MIMO_SESSION_COOKIE_SYNC_ACTION });
+    if (!response?.success) {
+      console.warn('[Multi-Panel] MiMo session synchronization failed');
+    }
+  } catch {
+    console.warn('[Multi-Panel] MiMo session synchronization failed');
+  }
+}
+
+const PROVIDER_SESSION_SYNC = {
+  grok: requestGrokWebSocketCookieSync,
+  mimo: requestMimoSessionCookieSync
+};
+
+async function syncProviderSession(providerId) {
+  await PROVIDER_SESSION_SYNC[providerId]?.();
 }
 
 function isTemporaryChatSupportedProvider(providerId) {
@@ -503,7 +557,10 @@ function showPanelLoadingState(panelEl, provider) {
   loadingEl.innerHTML = `<img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="loading-icon" data-provider-id="${provider.id}"><span class="loading-text">Loading ${provider.name}...</span>`;
 }
 
-function reloadPanelIframe(panel, overrideUrl = null) {
+async function reloadPanelIframe(panel, overrideUrl = null) {
+  if (panel.providerId === 'mimo') {
+    await requestMimoSessionCookieSync();
+  }
   const panelEl = document.getElementById(panel.id);
   const provider = getProviderById(panel.providerId);
   if (!panelEl || !provider) {
@@ -630,6 +687,13 @@ function registerStorageChangeListener() {
       return;
     }
 
+    if (changes.blindModeEnabled || changes.wideContentEnabled) {
+      setPageStyleModes({
+        blind: changes.blindModeEnabled ? changes.blindModeEnabled.newValue === true : isBlindModeEnabled,
+        wide: changes.wideContentEnabled ? changes.wideContentEnabled.newValue === true : isWideContentEnabled
+      }, { persist: false });
+    }
+
     if (changes.googleProviderMode?.newValue) {
       const nextMode = normalizeGoogleProviderMode(changes.googleProviderMode.newValue);
       if (nextMode === currentGoogleProviderMode) {
@@ -667,7 +731,7 @@ function cancelUnifiedInputFocusRestoreAfterSend() {
 function setTemporaryChatButtonDisabled(disabled) {
   const temporaryChatBtn = document.getElementById('temporary-chat-btn');
   if (temporaryChatBtn) {
-    temporaryChatBtn.disabled = disabled;
+    temporaryChatBtn.disabled = disabled || isNewChatBusy;
   }
 }
 
@@ -744,9 +808,7 @@ function startTemporaryChatActivationCycle() {
   }, TEMP_CHAT_OPERATION_TIMEOUT_MS);
 }
 
-function startFreshChatForPanel(panel, options = {}) {
-  const preferInPageNewChat = options.preferInPageNewChat === true;
-
+function startFreshChatForPanel(panel) {
   if (!panel) {
     return;
   }
@@ -757,12 +819,6 @@ function startFreshChatForPanel(panel, options = {}) {
   }
 
   if (requiresTemporaryChatActivationRetry(panel.providerId) && !isUrlDrivenTemporaryChatProvider(panel.providerId)) {
-    postNewChatToPanel(panel);
-    startTemporaryChatActivationForPanel(panel);
-    return;
-  }
-
-  if (panel.providerId === 'grok' && preferInPageNewChat) {
     postNewChatToPanel(panel);
     startTemporaryChatActivationForPanel(panel);
     return;
@@ -781,7 +837,7 @@ function isUnifiedInputOrNewChatControl(target) {
     return false;
   }
 
-  return Boolean(target.closest('#unified-input, #new-chat-btn, #temporary-chat-btn'));
+  return Boolean(target.closest('#unified-input, #new-chat-btn, #composer-new-chat-btn, #retry-new-chat-btn, #temporary-chat-btn'));
 }
 
 function isUnifiedInputOrSendControl(target) {
@@ -992,6 +1048,9 @@ function handleProviderStatusMessage(event) {
     case PANELIZE_RESPONSE_TIMING:
       handleAnswerTimingMessage(panel, data);
       break;
+    case PANELIZE_ANSWER_ENGAGEMENT:
+      handleAnswerEngagementMessage(panel, data);
+      break;
     case PANELIZE_TEMP_CHAT_ENABLED:
       if (!tempChatPendingPanelIds.has(panel.id)) {
         return;
@@ -1104,10 +1163,15 @@ async function loadSettings() {
       multiPanelLayout: '1x3',
       multiPanelProviders: DEFAULT_PROVIDERS,
       openMode: 'tab',
-      googleProviderMode: DEFAULT_GOOGLE_PROVIDER_MODE
+      googleProviderMode: DEFAULT_GOOGLE_PROVIDER_MODE,
+      blindModeEnabled: false,
+      wideContentEnabled: false
     });
 
     currentLayout = normalizeLayout(settings.multiPanelLayout);
+    isBlindModeEnabled = settings.blindModeEnabled === true;
+    isWideContentEnabled = settings.wideContentEnabled === true;
+    document.body.classList.toggle('blind-mode', isBlindModeEnabled);
     currentOpenMode = settings.openMode || 'tab';
     currentGoogleProviderMode = normalizeGoogleProviderMode(settings.googleProviderMode);
 
@@ -1274,30 +1338,30 @@ async function initializePanels() {
     const settings = await chrome.storage.sync.get({
       providerOrder: null,
       enabledProviders: DEFAULT_PROVIDERS,
-      multiPanelProviders: DEFAULT_PROVIDERS
+      multiPanelProviders: DEFAULT_PROVIDERS,
+      startupProviders: null
     });
-    const availableProviderIds = new Set(
-      (await getEnabledProviders()).map(({ id }) => id)
-    );
-
-    // Use providerOrder if available (from settings page), fallback to multiPanelProviders
-    let providerIds;
-    if (settings.providerOrder && Array.isArray(settings.providerOrder) && settings.providerOrder.length > 0) {
-      // Use providerOrder directly since it now reflects enabled providers in correct order
-      // Filter to providers that are enabled and authorized on this device.
-      providerIds = settings.providerOrder.filter(id => availableProviderIds.has(id));
-    } else {
-      // Fallback: use enabledProviders in their stored order, or multiPanelProviders
-      const configuredProviderIds = settings.enabledProviders || settings.multiPanelProviders;
-      providerIds = configuredProviderIds.filter(id => availableProviderIds.has(id));
-    }
+    // The provider service applies permission checks and the selected manual or
+    // local-statistics order consistently with the add/switch menus.
+    const providerIds = (await getEnabledProviders()).map(({ id }) => id);
 
     const panelCount = LAYOUT_PANEL_COUNTS[currentLayout] || 4;
-    const count = Math.min(providerIds.length, panelCount);
+    const startupProviderIds = resolveStartupProviderIds(
+      providerIds,
+      settings.startupProviders,
+      panelCount,
+      MAX_PANELS
+    );
+
+    const startupLayout = getStartupLayout(currentLayout, startupProviderIds.length);
+    if (startupLayout !== currentLayout) {
+      currentLayout = startupLayout;
+      document.getElementById('panel-grid').className = `layout-${currentLayout}`;
+    }
 
     // Create all panels and load in parallel for fastest total time
-    for (let i = 0; i < count; i++) {
-      await addPanel(providerIds[i]);
+    for (const providerId of startupProviderIds) {
+      await addPanel(providerId);
     }
 
     // Update panel selectors in toolbar
@@ -1346,14 +1410,13 @@ function setFocusedPanel(panelId) {
   document.querySelectorAll('.panel-selector').forEach(selector => {
     selector.classList.toggle('panel-focused', selector.dataset.panelId === focusedPanelId);
   });
+  updateZoomedAnswer();
 }
 
 async function addPanel(providerId) {
   // Sync before the capacity check so no await separates the check from the
   // panel being added.
-  if (providerId === 'grok') {
-    await requestGrokWebSocketCookieSync();
-  }
+  await syncProviderSession(providerId);
 
   if (panels.length >= MAX_PANELS) {
     showToast(`Maximum number of panels reached (${MAX_PANELS})`);
@@ -1398,7 +1461,8 @@ async function addPanel(providerId) {
     <div class="panel-header">
       <div class="panel-header-left">
         <img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="provider-icon" data-provider-id="${provider.id}">
-        <span>${provider.name}</span>
+        <span class="provider-name">${provider.name}</span>
+        <span class="blind-label" aria-hidden="true"></span>
       </div>
       <div class="panel-header-right">${getPanelHeaderRightHtml(providerId)}</div>
     </div>
@@ -1428,6 +1492,10 @@ async function addPanel(providerId) {
   iframe.addEventListener('load', () => {
     loadingEl.classList.add('hidden');
     const panel = panels.find(p => p.id === panelId);
+    if (panel) {
+      postPageStyleToPanel(panel);
+      composerControls?.panelLoaded(panel);
+    }
     if (isTemporaryChatModeEnabled && panel && requiresTemporaryChatActivationRetry(panel.providerId)) {
       startTemporaryChatActivationForPanel(panel);
     }
@@ -1467,6 +1535,8 @@ async function addPanel(providerId) {
 function removePanel(panelId) {
   const panelIndex = panels.findIndex(p => p.id === panelId);
   if (panelIndex === -1) return;
+  failedNewChatPanelIds.delete(panelId);
+  newChatResults.delete(panelId);
 
   if (focusedPanelId === panelId || getAutoShrunkLayout(currentLayout, panels.length - 1)) {
     setFocusedPanel(null);
@@ -1485,6 +1555,7 @@ function removePanel(panelId) {
 
   // Remove from arrays and sets
   panels.splice(panelIndex, 1);
+  composerControls?.panelsChanged();
   loadingPanelIds.delete(panelId);
   resetFillRetryState();
 
@@ -1527,13 +1598,11 @@ async function switchPanelProvider(panelId, newProviderId) {
     syncGoogleModeControls();
   }
 
-  if (newProviderId === 'grok') {
-    await requestGrokWebSocketCookieSync();
-  }
+  await syncProviderSession(newProviderId);
 
   // Update panel header
   const headerIcon = panelEl.querySelector('.panel-header-left img');
-  const headerName = panelEl.querySelector('.panel-header-left span');
+  const headerName = panelEl.querySelector('.panel-header-left .provider-name');
   const headerRight = panelEl.querySelector('.panel-header-right');
   headerIcon.src = getThemeAwareProviderIcon(provider);
   headerIcon.dataset.providerId = provider.id;
@@ -1545,7 +1614,10 @@ async function switchPanelProvider(panelId, newProviderId) {
   const iframe = panelEl.querySelector('iframe');
 
   // Update panel data
+  failedNewChatPanelIds.delete(panelId);
+  newChatResults.delete(panelId);
   panel.providerId = newProviderId;
+  composerControls?.panelsChanged();
   panel.iframe = iframe;
   panel.currentUrl = null;
   panel.pageNeededWidth = 0;
@@ -1571,7 +1643,8 @@ function updatePanelSelectors() {
     selector.dataset.panelId = panel.id;
     selector.innerHTML = `
       <img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="provider-icon" data-provider-id="${provider.id}">
-      <span>${provider.name}</span>
+      <span class="provider-name">${provider.name}</span>
+      <span class="blind-label" aria-hidden="true"></span>
       <button class="remove-panel" title="Remove panel">
         <span class="material-symbols-outlined">close</span>
       </button>
@@ -1597,6 +1670,65 @@ function updatePanelSelectors() {
     selectorsContainer.appendChild(selector);
   });
   setFocusedPanel(focusedPanelId);
+  renderBlindLabels();
+}
+
+// ===== Blind mode & wide content =====
+
+function getPanelDisplayName(panel) {
+  if (isBlindModeEnabled && blindLabels.has(panel.id)) {
+    return getLocalizedText('blindPanelLabel', 'Model $1', [blindLabels.get(panel.id)]);
+  }
+  return getProviderById(panel.providerId)?.name || panel.providerId;
+}
+
+function renderBlindLabels() {
+  blindLabels = isBlindModeEnabled ? assignBlindLabels(panels.map(panel => panel.id), blindLabels) : new Map();
+  panels.forEach(panel => {
+    const text = isBlindModeEnabled ? getPanelDisplayName(panel) : '';
+    document.querySelectorAll(`#${CSS.escape(panel.id)} .blind-label, .panel-selector[data-panel-id="${panel.id}"] .blind-label`)
+      .forEach(label => { label.textContent = text; });
+  });
+  composerControls?.panelsChanged();
+}
+
+function postPageStyleToPanel(panel) {
+  panel?.iframe?.contentWindow?.postMessage({
+    type: PANELIZE_PAGE_STYLE,
+    wide: isWideContentEnabled,
+    blind: isBlindModeEnabled,
+    context: 'multi-panel'
+  }, '*');
+}
+
+function updatePageStyleButtons() {
+  [['blind-mode-btn', isBlindModeEnabled], ['wide-content-btn', isWideContentEnabled]].forEach(([id, enabled]) => {
+    const button = document.getElementById(id);
+    if (!button) return;
+    button.classList.toggle('active', enabled);
+    button.setAttribute('aria-pressed', String(enabled));
+  });
+}
+
+async function setPageStyleModes({ blind = isBlindModeEnabled, wide = isWideContentEnabled } = {}, { persist = true } = {}) {
+  const blindChanged = blind !== isBlindModeEnabled;
+  if (!blindChanged && wide === isWideContentEnabled) return;
+  isBlindModeEnabled = blind;
+  isWideContentEnabled = wide;
+  document.body.classList.toggle('blind-mode', isBlindModeEnabled);
+  updatePageStyleButtons();
+  if (blindChanged) {
+    renderBlindLabels();
+    // Answer stats name providers, so they stay closed while identities are hidden.
+    if (isBlindModeEnabled) closeAnswerStatsModal();
+    showToast(isBlindModeEnabled
+      ? getLocalizedText('blindModeOn', 'Blind mode on: AI names are hidden')
+      : getLocalizedText('blindModeOff', 'Blind mode off: AI names are shown'));
+  }
+  panels.forEach(postPageStyleToPanel);
+  if (persist) {
+    await chrome.storage.sync.set({ blindModeEnabled: isBlindModeEnabled, wideContentEnabled: isWideContentEnabled });
+  }
 }
 
 async function saveProviderConfiguration() {
@@ -1664,6 +1796,10 @@ function setFillRetryState(panelIds) {
 }
 
 export async function broadcastMessage(text, autoSubmit = true) {
+  if (isNewChatBusy || composerControls?.isTierBusy()) {
+    showToast(getLocalizedText('composerActionBusy', 'Wait for the current operation to finish.'));
+    return;
+  }
   if (!broadcastGate.tryAcquire()) {
     return;
   }
@@ -2819,27 +2955,92 @@ window.removeImageById = (imageId) => {
 };
 
 // Create new chat for all panels
-async function newChatAllProviders() {
-  const newChatBtn = document.getElementById('new-chat-btn');
+// Matches a snapshot taken before an await against the live panel list, so a
+// panel removed or switched to another provider meanwhile is ignored.
+function findCurrentPanel(target) {
+  return panels.find(panel => panel.id === target.id && panel.providerId === target.providerId);
+}
 
-  // Disable button during operation
-  newChatBtn.disabled = true;
-
-  if (isTemporaryChatModeEnabled) {
-    startTemporaryChatActivationCycle();
+async function newChatAllProviders({ retryFailed = false } = {}) {
+  if (isNewChatBusy || broadcastGate.isActive() || composerControls?.isTierBusy()) return;
+  const targetPanels = panels.filter(panel => !retryFailed || failedNewChatPanelIds.has(panel.id))
+    .map(({ id, providerId, iframe }) => ({ id, providerId, iframe }));
+  if (!targetPanels.length) return;
+  isNewChatBusy = true;
+  setTemporaryChatButtonDisabled(true);
+  const buttons = ['new-chat-btn', 'composer-new-chat-btn', 'retry-new-chat-btn'].map(id => document.getElementById(id));
+  buttons.forEach(button => { button.disabled = true; });
+  const row = document.getElementById('new-chat-status-row');
+  const status = document.getElementById('new-chat-status');
+  const retry = document.getElementById('retry-new-chat-btn');
+  row.hidden = false;
+  status.textContent = getLocalizedText('composerStartingChats', 'Starting new conversations…');
+  retry.hidden = true;
+  if (!retryFailed) {
+    failedNewChatPanelIds.clear();
+    newChatResults.clear();
   }
-
-  panels.forEach(panel => {
-    startFreshChatForPanel(panel, { preferInPageNewChat: true });
-  });
-
-  restoreUnifiedInputFocusAfterNewChat();
-  showToast('New chat created for all AIs');
-
-  // Re-enable button
-  setTimeout(() => {
-    newChatBtn.disabled = false;
-  }, 1000);
+  try {
+    if (isTemporaryChatModeEnabled) startTemporaryChatActivationCycle();
+    restoreUnifiedInputFocusAfterNewChat();
+    const requestId = `new-chat-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const { results } = await runNewChatBatch({
+      panels: targetPanels,
+      requestId,
+      providerModes: getPanelProviderMode,
+      dispatch(panel, message) {
+        if (!findCurrentPanel(panel)) throw new Error('Panel changed');
+        if (isTemporaryChatModeEnabled && isUrlDrivenTemporaryChatProvider(panel.providerId) && panel.providerId !== 'grok') {
+          const onLoad = () => {
+            if (!findCurrentPanel(panel) || !isNewChatBusy) return;
+            panel.iframe.contentWindow?.postMessage({ ...message, type: 'VERIFY_NEW_CHAT' }, '*');
+          };
+          panel.iframe.addEventListener('load', onLoad, { once: true });
+          // Do not retain listeners if a provider never finishes loading.
+          setTimeout(() => panel.iframe.removeEventListener('load', onLoad), 20000);
+          reloadPanelIframe(panel, getTemporaryChatUrl(panel.providerId));
+        } else {
+          panel.iframe.contentWindow.postMessage(message, '*');
+          if (isTemporaryChatModeEnabled) startTemporaryChatActivationForPanel(panel);
+        }
+      }
+    });
+    const currentResults = results.filter(result => findCurrentPanel({ id: result.panelId, providerId: result.provider }));
+    currentResults.forEach(result => {
+      newChatResults.set(result.panelId, result);
+      if (result.ok) failedNewChatPanelIds.delete(result.panelId);
+      else failedNewChatPanelIds.add(result.panelId);
+    });
+    const failedNames = panels.filter(panel => failedNewChatPanelIds.has(panel.id)).map(panel => getProviderById(panel.providerId)?.name || panel.providerId);
+    const confirmedCount = panels.filter(panel => {
+      const result = newChatResults.get(panel.id);
+      return result?.provider === panel.providerId && result.ok;
+    }).length;
+    status.textContent = failedNames.length
+      ? getLocalizedText('composerNewChatsPartial', '$1 confirmed; not confirmed: $2', [String(confirmedCount), failedNames.join(', ')])
+      : getLocalizedText('composerNewChatsDone', '$1 new conversations ready', [String(confirmedCount)]);
+    retry.hidden = failedNames.length === 0;
+    const successful = targetPanels.filter(panel => currentResults.some(result => result.panelId === panel.id && result.ok));
+    // Clear answer attribution only after the provider confirmed a fresh chat.
+    if (successful.length) {
+      successful.forEach(target => {
+        const panel = findCurrentPanel(target);
+        if (panel) panel.clearedAnswerRoundId = latestAnswerRoundId;
+      });
+      updateAdoptButtons();
+      await composerControls?.restoreTier(successful);
+    }
+  } catch (error) {
+    status.textContent = getLocalizedText('composerNotConfirmed', 'Not confirmed');
+    targetPanels.forEach(panel => {
+      if (findCurrentPanel(panel)) failedNewChatPanelIds.add(panel.id);
+    });
+    retry.hidden = false;
+  } finally {
+    isNewChatBusy = false;
+    buttons.forEach(button => { button.disabled = false; });
+    setTemporaryChatButtonDisabled(false);
+  }
 }
 
 function scheduleTemporaryChatRetry(panel, delay) {
@@ -2862,6 +3063,7 @@ function scheduleTemporaryChatRetry(panel, delay) {
 }
 
 async function temporaryChatAllProviders() {
+  if (isNewChatBusy || broadcastGate.isActive() || composerControls?.isTierBusy()) return;
   if (isTemporaryChatModeEnabled) {
     cancelTemporaryChatActivation({ restoreButton: false });
     setTemporaryChatModeEnabled(false);
@@ -2955,7 +3157,8 @@ function getLatestAnswerRound() {
 
 // A panel switched to another provider no longer shows the answer it was sent.
 function isPanelInAnswerRound(round, panel) {
-  return Boolean(round && panel && round.answers[panel.id]?.providerId === panel.providerId);
+  return Boolean(round && panel && panel.clearedAnswerRoundId !== round.id
+    && round.answers[panel.id]?.providerId === panel.providerId);
 }
 
 function persistAnswerRound(round) {
@@ -2977,10 +3180,12 @@ function startAnswerRound(requestId, text, sentAt, roundPanels) {
     id: requestId,
     createdAt: sentAt,
     text,
-    panels: roundPanels.map(panel => ({ id: panel.id, providerId: panel.providerId }))
+    panels: roundPanels.map(panel => ({ id: panel.id, providerId: panel.providerId })),
+    blind: isBlindModeEnabled
   });
   latestAnswerRoundId = round.id;
   persistAnswerRound(round);
+  updateZoomedAnswer();
 
   // Older rounds stay in storage; their panels have moved on.
   while (answerRounds.size > MAX_IN_MEMORY_ANSWER_ROUNDS) {
@@ -2998,6 +3203,41 @@ function handleAnswerTimingMessage(panel, data) {
   const nextRound = applyTimingEvent(round, panel.id, data.phase, data.at);
   if (nextRound) {
     persistAnswerRound(nextRound);
+  }
+}
+
+function recordAnswerEngagement(roundId, panelId, kind) {
+  const round = answerRounds.get(roundId);
+  const nextRound = round ? applyEngagementEvent(round, panelId, kind, Date.now()) : null;
+  if (nextRound) {
+    persistAnswerRound(nextRound);
+  }
+}
+
+function handleAnswerEngagementMessage(panel, data) {
+  const round = answerRounds.get(data.requestId);
+  if (!isPanelInAnswerRound(round, panel)
+    || (data.kind !== ENGAGEMENT_KIND.CLICK && data.kind !== ENGAGEMENT_KIND.SCROLL)) {
+    return;
+  }
+  recordAnswerEngagement(round.id, panel.id, data.kind);
+}
+
+// Focus mode on a panel counts as enlarging the latest answer it shows.
+function updateZoomedAnswer() {
+  const round = getLatestAnswerRound();
+  const panel = panels.find(candidate => candidate.id === focusedPanelId);
+  const next = isPanelInAnswerRound(round, panel) ? { roundId: round.id, panelId: panel.id } : null;
+  if (next?.roundId === zoomedAnswer?.roundId && next?.panelId === zoomedAnswer?.panelId) {
+    return;
+  }
+
+  if (zoomedAnswer) {
+    recordAnswerEngagement(zoomedAnswer.roundId, zoomedAnswer.panelId, ENGAGEMENT_KIND.ZOOM_OUT);
+  }
+  zoomedAnswer = next;
+  if (next) {
+    recordAnswerEngagement(next.roundId, next.panelId, ENGAGEMENT_KIND.ZOOM_IN);
   }
 }
 
@@ -3038,6 +3278,10 @@ function isAnswerStatsModalOpen() {
 }
 
 function openAnswerStatsModal() {
+  if (isBlindModeEnabled) {
+    showToast(getLocalizedText('blindModeStatsHidden', 'Turn off blind mode to see answer stats'));
+    return;
+  }
   document.getElementById('answer-stats-modal').style.display = 'flex';
   void renderAnswerStats();
 }
@@ -3051,6 +3295,16 @@ function formatAnswerDuration(ms) {
     return '—';
   }
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+}
+
+function formatEngagedDuration(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) {
+    return '—';
+  }
+  if (ms < 1000) {
+    return '<1 s';
+  }
+  return ms < 60000 ? `${Math.round(ms / 1000)} s` : `${(ms / 60000).toFixed(1)} min`;
 }
 
 function formatAnswerTiming(medianMs, averageMs) {
@@ -3101,7 +3355,9 @@ function renderAnswerStatsTable(stats) {
       createCell('td', String(entry.adoptedCount), 'numeric'),
       createCell('td', entry.adoptionRate === null
         ? '—'
-        : `${Math.round(entry.adoptionRate * 100)}%`, 'numeric')
+        : `${Math.round(entry.adoptionRate * 100)}%`, 'numeric'),
+      createCell('td', formatEngagedDuration(entry.activeMs), 'numeric'),
+      createCell('td', String(entry.score), 'numeric')
     );
     body.appendChild(row);
   });
@@ -3200,6 +3456,7 @@ async function clearAnswerStats() {
   }
   answerRounds.clear();
   latestAnswerRoundId = null;
+  zoomedAnswer = null;
   updateAdoptButtons();
   await renderAnswerStats();
 }
@@ -3489,6 +3746,8 @@ function setupEventListeners() {
 
   // Toggle toolbar button and expand bar
   document.getElementById('toggle-toolbar-btn').addEventListener('click', toggleToolbar);
+  document.getElementById('blind-mode-btn')?.addEventListener('click', () => setPageStyleModes({ blind: !isBlindModeEnabled }));
+  document.getElementById('wide-content-btn')?.addEventListener('click', () => setPageStyleModes({ wide: !isWideContentEnabled }));
   document.getElementById('toolbar-expand-bar').addEventListener('click', toggleToolbar);
 
   // New Chat button
@@ -3499,6 +3758,11 @@ function setupEventListeners() {
   newChatBtn.addEventListener('pointerdown', preserveNewChatButtonFocus);
   newChatBtn.addEventListener('mousedown', preserveNewChatButtonFocus);
   newChatBtn.addEventListener('click', newChatAllProviders);
+  const composerNewChatBtn = document.getElementById('composer-new-chat-btn');
+  composerNewChatBtn.addEventListener('pointerdown', preserveNewChatButtonFocus);
+  composerNewChatBtn.addEventListener('mousedown', preserveNewChatButtonFocus);
+  composerNewChatBtn.addEventListener('click', () => newChatAllProviders());
+  document.getElementById('retry-new-chat-btn').addEventListener('click', () => newChatAllProviders({ retryFailed: true }));
 
   // Temporary Chat button
   const temporaryChatBtn = document.getElementById('temporary-chat-btn');
@@ -3652,6 +3916,11 @@ function setupEventListeners() {
     resetFillRetryState();
     resizeTextarea();
   });
+  // Re-measure after focus settles: the draft overhangs the panels only while
+  // focus is inside the composer.
+  const inputBar = document.getElementById('input-bar');
+  inputBar.addEventListener('focusin', resizeTextarea);
+  inputBar.addEventListener('focusout', () => setTimeout(resizeTextarea, 0));
   inputTextarea.addEventListener('compositionstart', () => {
     isInputComposing = true;
   });
@@ -3659,7 +3928,7 @@ function setupEventListeners() {
     isInputComposing = false;
   });
   inputTextarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
       if (isInputComposing || e.isComposing) {
         return;
       }
@@ -3760,8 +4029,19 @@ function setupEventListeners() {
 
 function resizeTextarea() {
   const textarea = document.getElementById('unified-input');
+  const inputBar = document.getElementById('input-bar');
   textarea.style.height = 'auto';
-  textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
+  const restHeight = textarea.offsetHeight;
+  // Collapse to one line once focus leaves the composer so the overhang never
+  // covers panel content the user is reading.
+  const expanded = Boolean(inputBar?.contains(document.activeElement));
+  const height = expanded ? Math.min(textarea.scrollHeight, 150) : restHeight;
+  textarea.style.height = height + 'px';
+  // The bar keeps its one-line height; extra lines overhang the panels so
+  // typing never resizes (and re-lays out) the provider iframes.
+  const overflow = Math.max(0, height - restHeight);
+  inputBar?.style.setProperty('--composer-overflow', `${overflow}px`);
+  inputBar?.classList.toggle('composer-expanded', overflow > 0);
 }
 
 // ===== Modal Functions =====

@@ -24,6 +24,25 @@ const TIMING_PHASE_STATUS = {
   cancelled: ANSWER_STATUS.CANCELLED
 };
 
+// Engagement with an answer: clicks and scrolls in its panel and enlarging the
+// panel (focus mode). Active time adds the gaps between interactions up to
+// ENGAGEMENT_ACTIVE_GAP_MS apart, and the time the panel stays enlarged.
+export const ENGAGEMENT_KIND = Object.freeze({
+  CLICK: 'click',
+  SCROLL: 'scroll',
+  ZOOM_IN: 'zoom-in',
+  ZOOM_OUT: 'zoom-out'
+});
+export const ENGAGEMENT_ACTIVE_GAP_MS = 15 * 1000;
+export const ENGAGEMENT_ZOOM_MAX_GAP_MS = 5 * 60 * 1000;
+
+// Score: an adopted answer earns ADOPTED_ANSWER_POINTS. Engagement earns up to
+// MAX_ENGAGEMENT_POINTS more: one for clicking or scrolling, one for enlarging
+// the panel and one per ENGAGEMENT_POINT_ACTIVE_MS of active time.
+export const ADOPTED_ANSWER_POINTS = 5;
+export const MAX_ENGAGEMENT_POINTS = 3;
+export const ENGAGEMENT_POINT_ACTIVE_MS = 30 * 1000;
+
 let db = null;
 
 export function isAnswerTimingProvider(providerId) {
@@ -42,9 +61,12 @@ export function summarizePromptText(text, maxLength = PROMPT_SUMMARY_MAX_LENGTH)
  * A question sent to the given panels. Panels of providers without timing
  * support still take part, so their answers can be adopted.
  *
- * @param {{ id: string, createdAt: number, text: string, panels: Array<{ id: string, providerId: string }> }} options
+ * `blind` marks rounds sent while provider names were hidden; older rounds
+ * have no such field.
+ *
+ * @param {{ id: string, createdAt: number, text: string, panels: Array<{ id: string, providerId: string }>, blind?: boolean }} options
  */
-export function createRound({ id, createdAt, text, panels }) {
+export function createRound({ id, createdAt, text, panels, blind = false }) {
   const answers = {};
   panels.forEach(panel => {
     answers[panel.id] = {
@@ -62,6 +84,7 @@ export function createRound({ id, createdAt, text, panels }) {
     promptSummary: summarizePromptText(text),
     adoptedPanelId: null,
     adoptedProviderId: null,
+    ...(blind ? { blind: true } : {}),
     answers
   };
 }
@@ -112,6 +135,72 @@ export function toggleRoundAdoption(round, panelId) {
   return { ...round, adoptedPanelId: panelId, adoptedProviderId: answer.providerId };
 }
 
+function createEngagement() {
+  return {
+    clicks: 0,
+    scrolls: 0,
+    zooms: 0,
+    activeMs: 0,
+    lastActiveAt: null,
+    zoomedSince: null
+  };
+}
+
+/**
+ * Applies a click, scroll or focus mode change on a panel. Returns the updated
+ * round, or null when the event changes nothing (unknown panel or kind, or a
+ * zoom change that does not change the zoom).
+ */
+export function applyEngagementEvent(round, panelId, kind, at) {
+  const answer = round?.answers?.[panelId];
+  if (!answer || !Object.values(ENGAGEMENT_KIND).includes(kind) || !Number.isFinite(at)) {
+    return null;
+  }
+
+  const next = { ...createEngagement(), ...answer.engagement };
+  const isZoomed = next.zoomedSince !== null;
+  if ((kind === ENGAGEMENT_KIND.ZOOM_IN && isZoomed) || (kind === ENGAGEMENT_KIND.ZOOM_OUT && !isZoomed)) {
+    return null;
+  }
+
+  if (next.lastActiveAt !== null) {
+    const gap = Math.max(0, at - next.lastActiveAt);
+    if (isZoomed) {
+      next.activeMs += Math.min(gap, ENGAGEMENT_ZOOM_MAX_GAP_MS);
+    } else if (gap <= ENGAGEMENT_ACTIVE_GAP_MS) {
+      next.activeMs += gap;
+    }
+  }
+  next.activeMs = Math.round(next.activeMs);
+  next.lastActiveAt = at;
+
+  if (kind === ENGAGEMENT_KIND.CLICK) {
+    next.clicks += 1;
+  } else if (kind === ENGAGEMENT_KIND.SCROLL) {
+    next.scrolls += 1;
+  } else if (kind === ENGAGEMENT_KIND.ZOOM_IN) {
+    next.zooms += 1;
+    next.zoomedSince = at;
+  } else {
+    next.zoomedSince = null;
+  }
+
+  return {
+    ...round,
+    answers: { ...round.answers, [panelId]: { ...answer, engagement: next } }
+  };
+}
+
+export function getEngagementPoints(engagement) {
+  if (!engagement) {
+    return 0;
+  }
+  const points = (engagement.clicks + engagement.scrolls > 0 ? 1 : 0)
+    + (engagement.zooms > 0 ? 1 : 0)
+    + Math.floor(engagement.activeMs / ENGAGEMENT_POINT_ACTIVE_MS);
+  return Math.min(MAX_ENGAGEMENT_POINTS, points);
+}
+
 function average(values) {
   if (values.length === 0) {
     return null;
@@ -133,7 +222,8 @@ function median(values) {
 /**
  * Per-provider totals. A provider shown in two panels of one round counts
  * once for that round; its fastest answer counts for timing.
- * Adoption rate only counts rounds where some answer was adopted.
+ * Adoption rate only counts rounds where some answer was adopted. Score adds
+ * the adoption points and the best engagement points of each round.
  */
 export function aggregateAnswerStats(rounds) {
   const byProvider = new Map();
@@ -148,6 +238,9 @@ export function aggregateAnswerStats(rounds) {
         adoptedCount: 0,
         completeCount: 0,
         timeoutCount: 0,
+        engagedRounds: 0,
+        activeMs: 0,
+        score: 0,
         firstOutputValues: [],
         completeValues: []
       });
@@ -172,8 +265,16 @@ export function aggregateAnswerStats(rounds) {
         entry.decidedRounds += 1;
         if (round.adoptedProviderId === providerId) {
           entry.adoptedCount += 1;
+          entry.score += ADOPTED_ANSWER_POINTS;
         }
       }
+
+      const engagements = answers.map(answer => answer.engagement).filter(Boolean);
+      if (engagements.some(engagement => engagement.clicks + engagement.scrolls + engagement.zooms > 0)) {
+        entry.engagedRounds += 1;
+      }
+      entry.activeMs += engagements.reduce((sum, engagement) => sum + (engagement.activeMs || 0), 0);
+      entry.score += Math.max(0, ...engagements.map(getEngagementPoints));
 
       const completed = answers.filter(answer => answer.status === ANSWER_STATUS.COMPLETE);
       if (completed.length > 0) {
@@ -200,7 +301,7 @@ export function aggregateAnswerStats(rounds) {
       medianCompleteMs: median(completeValues),
       adoptionRate: entry.decidedRounds > 0 ? entry.adoptedCount / entry.decidedRounds : null
     }))
-    .sort((a, b) => b.adoptedCount - a.adoptedCount || b.rounds - a.rounds);
+    .sort((a, b) => b.score - a.score || b.adoptedCount - a.adoptedCount || b.rounds - a.rounds);
 }
 
 // ===== IndexedDB =====

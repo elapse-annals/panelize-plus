@@ -86,6 +86,12 @@
   "descEnabledProviders": {
     "message": "Panelize に表示する AI プロバイダーを選択してください"
   },
+  "labelOpenOnStartup": {
+    "message": "起動時に開く"
+  },
+  "descStartupProviders": {
+    "message": "「起動時に開く」にチェックすると、Panelize の起動時に開くパネルを選べます。何もチェックしない場合は、レイアウトに収まる有効なプロバイダーが順に開きます。"
+  },
   "sectionKeyboardShortcuts": {
     "message": "キーボードショートカット"
   },
@@ -141,7 +147,7 @@
     "message": "AI プロバイダーの入力フィールドで Enter キーと修飾キーがどのように機能するかをカスタマイズします。"
   },
   "descEnterBehavior2": {
-    "message": "<strong>適用先:</strong> ChatGPT、Claude、Gemini、Grok、DeepSeek、Kimi、Doubao、Qwen (China)、Qwen (Global)、Zhipu (China)、Z.ai (Global)、Yuanbao、Google（AI モード）。"
+    "message": "<strong>適用先:</strong> ChatGPT、Claude、Gemini、Grok、DeepSeek、Kimi、Doubao、Qwen (China)、Qwen (Global)、Zhipu (China)、Z.ai (Global)、Yuanbao、MiMo、Meta AI、Google（AI モード）。"
   },
   "labelEnableEnterCustomization": {
     "message": "Enter キーのカスタマイズを有効にする"
@@ -292,11 +298,19 @@
   },
   "msgProviderPermissionRequired": {
     "message": "$PROVIDER$ を有効にするにはサイトへのアクセス権が必要です。",
-    "placeholders": { "provider": { "content": "$1" } }
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
   },
   "msgProviderPermissionRequestFailed": {
     "message": "$PROVIDER$ のサイトアクセス権をリクエストできませんでした。",
-    "placeholders": { "provider": { "content": "$1" } }
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
   },
   "msgShortcutEnabled": {
     "message": "キーボードショートカットが有効になりました"
@@ -813,7 +827,9 @@
   "switchToPopupModeTitle": {
     "message": "ポップアップモードに切り替え"
   },
-  "openProviderTopLevelTitle": { "message": "新しいタブで開く" },
+  "openProviderTopLevelTitle": {
+    "message": "新しいタブで開く"
+  },
   "msgOpenModeUpdated": {
     "message": "開くモードを更新しました"
   },
@@ -1034,5 +1050,185 @@
   },
   "answerStatsStatus_cancelled": {
     "message": "キャンセル"
+  },
+  "answerStatsColumnEngaged": {
+    "message": "操作時間"
+  },
+  "answerStatsColumnScore": {
+    "message": "スコア"
+  },
+  "answerStatsScoreNote": {
+    "message": "スコア：採用した回答は 5 点です。回答の利用でさらに最大 3 点加算されます。パネル内のクリックやスクロールで 1 点、パネルの拡大で 1 点、操作時間 30 秒ごとに 1 点です。操作時間は 15 秒以内の間隔で続いたクリックとスクロールの間の時間と、パネルを拡大していた時間の合計です。"
+  },
+  "labelProviderSortMode": {
+    "message": "Provider order"
+  },
+  "descProviderSortMode": {
+    "message": "Choose a manual order or sort providers by your local usage statistics."
+  },
+  "optionProviderSortManual": {
+    "message": "Manual"
+  },
+  "optionProviderSortFrequent": {
+    "message": "Most used"
+  },
+  "composerNewChat": {
+    "message": "New conversation"
+  },
+  "composerTierLabel": {
+    "message": "AI reasoning level"
+  },
+  "composerTierFast": {
+    "message": "Fast"
+  },
+  "composerTierBalanced": {
+    "message": "Balanced"
+  },
+  "composerTierDeep": {
+    "message": "Deep"
+  },
+  "composerTierDetails": {
+    "message": "AI mode mapping"
+  },
+  "composerTierHelp": {
+    "message": "Levels switch the available model or reasoning setting in each open AI. Search, research and agent settings stay independent."
+  },
+  "composerProvider": {
+    "message": "AI"
+  },
+  "composerActualMode": {
+    "message": "Actual mode"
+  },
+  "composerResult": {
+    "message": "Result"
+  },
+  "composerRefresh": {
+    "message": "Refresh"
+  },
+  "composerRetryFailed": {
+    "message": "Retry unsuccessful"
+  },
+  "composerShortcuts": {
+    "message": "Keyboard shortcuts"
+  },
+  "composerShortcutsEnabled": {
+    "message": "Enable shortcuts in Panelize and its AI panels"
+  },
+  "composerShortcutsHelp": {
+    "message": "Focus a shortcut field and press a key combination. Backspace clears it. Browser shortcuts are reserved."
+  },
+  "composerShortcutsReset": {
+    "message": "Reset shortcuts"
+  },
+  "composerShortcutsSave": {
+    "message": "Save"
+  },
+  "composerSend": {
+    "message": "Send to all"
+  },
+  "composerFill": {
+    "message": "Fill inputs"
+  },
+  "composerFocusInput": {
+    "message": "Focus input"
+  },
+  "composerPromptLibrary": {
+    "message": "Prompt library"
+  },
+  "composerLayout": {
+    "message": "Layout"
+  },
+  "composerNotChecked": {
+    "message": "Not checked"
+  },
+  "composerSwitched": {
+    "message": "Confirmed"
+  },
+  "composerUnsupported": {
+    "message": "Not supported"
+  },
+  "composerUnavailable": {
+    "message": "Unavailable for this account or page"
+  },
+  "composerTimeout": {
+    "message": "Not confirmed"
+  },
+  "composerNotConfirmed": {
+    "message": "Not confirmed"
+  },
+  "composerSwitching": {
+    "message": "Switching…"
+  },
+  "composerTierApplied": {
+    "message": "$1 AIs switched"
+  },
+  "composerTierMixed": {
+    "message": "$1/$2 switched · mixed"
+  },
+  "composerSortUpdated": {
+    "message": "Order applies to AI menus and the next startup."
+  },
+  "composerUnassigned": {
+    "message": "Unassigned"
+  },
+  "composerShortcutInvalid": {
+    "message": "This combination is reserved or already used."
+  },
+  "composerActionBusy": {
+    "message": "Wait for the current operation to finish."
+  },
+  "composerStartingChats": {
+    "message": "Starting new conversations…"
+  },
+  "composerNewChatsPartial": {
+    "message": "$1 confirmed; not confirmed: $2"
+  },
+  "composerNewChatsDone": {
+    "message": "$1 new conversations ready"
+  },
+  "blindModeTitle": {
+    "message": "ブラインドモード：AI 名を隠しページの見た目を統一"
+  },
+  "blindModeOn": {
+    "message": "ブラインドモードをオンにしました：AI 名は非表示です"
+  },
+  "blindModeOff": {
+    "message": "ブラインドモードをオフにしました：AI 名を表示しています"
+  },
+  "blindModeStatsHidden": {
+    "message": "回答統計を見るにはブラインドモードをオフにしてください"
+  },
+  "blindPanelLabel": {
+    "message": "モデル $1"
+  },
+  "wideContentTitle": {
+    "message": "ワイド表示：回答をパネル幅いっぱいに表示"
+  },
+  "sectionTierRecipes": {
+    "message": "推論レベルの割り当て"
+  },
+  "labelTierRecipes": {
+    "message": "各サイトで「高速・バランス・詳細」が選ぶ項目"
+  },
+  "descTierRecipes": {
+    "message": "サイトの表示どおりにモデルと思考の項目を入力します。候補は | で区切ります（例: 快速|Fast）。両方空欄ならそのレベルでは切り替えません。"
+  },
+  "btnResetTierRecipes": {
+    "message": "既定に戻す"
+  },
+  "labelTierProvider": {
+    "message": "AI"
+  },
+  "labelTierModel": {
+    "message": "モデル"
+  },
+  "labelTierThinking": {
+    "message": "思考"
+  },
+  "toastTierRecipesSaved": {
+    "message": "推論レベルの割り当てを保存しました"
+  },
+  "toastTierRecipesReset": {
+    "message": "推論レベルの割り当てを既定に戻しました"
   }
 }

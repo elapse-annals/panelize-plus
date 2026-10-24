@@ -31,6 +31,23 @@ function getPhases(requestId) {
   return getTimingCalls(requestId).map(call => call.phase);
 }
 
+function getEngagementKinds(requestId) {
+  return window.parent.postMessage.mock.calls
+    .map(call => call[0])
+    .filter(payload => (
+      payload?.type === 'PANELIZE_ANSWER_ENGAGEMENT'
+      && payload?.context === 'multi-panel-provider-status'
+      && payload?.requestId === requestId
+    ))
+    .map(payload => payload.kind);
+}
+
+function dispatchUserEvent(type, { trusted = true } = {}) {
+  const event = new Event(type, { bubbles: true });
+  Object.defineProperty(event, 'isTrusted', { value: trusted });
+  document.body.dispatchEvent(event);
+}
+
 function startSend(requestId) {
   dispatchMultiPanelMessage({ type: 'TRIGGER_SEND', requestId, context: 'multi-panel' });
 }
@@ -160,6 +177,37 @@ describe('response timing content script', () => {
 
     await vi.advanceTimersByTimeAsync(250);
     expect(getPhases('req-timeout')).toEqual(['timeout']);
+  });
+
+  it('reports clicks and scrolls on the last sent answer for every provider', async () => {
+    window.happyDOM.setURL('https://www.kimi.com/chat/test');
+    document.body.innerHTML = '<div class="markdown">Answer</div>';
+
+    dispatchUserEvent('pointerdown');
+    expect(getEngagementKinds(undefined)).toEqual([]);
+
+    startSend('req-engaged');
+    dispatchUserEvent('pointerdown');
+    dispatchUserEvent('wheel');
+    // Reported at most once per second for each kind, and only for user input.
+    dispatchUserEvent('wheel');
+    dispatchUserEvent('touchmove');
+    dispatchUserEvent('pointerdown', { trusted: false });
+    expect(getEngagementKinds('req-engaged')).toEqual(['click', 'scroll']);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    dispatchUserEvent('touchmove');
+    expect(getEngagementKinds('req-engaged')).toEqual(['click', 'scroll', 'scroll']);
+    expect(window.parent.postMessage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ provider: 'kimi' }),
+      '*'
+    );
+
+    // A new chat no longer shows the answer.
+    dispatchMultiPanelMessage({ type: 'NEW_CHAT', context: 'multi-panel' });
+    await vi.advanceTimersByTimeAsync(1000);
+    dispatchUserEvent('pointerdown');
+    expect(getEngagementKinds('req-engaged')).toEqual(['click', 'scroll', 'scroll']);
   });
 
   it('does not time providers without timing support', async () => {

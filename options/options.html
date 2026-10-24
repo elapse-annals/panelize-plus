@@ -139,11 +139,44 @@
           <div class="setting-info">
             <div class="setting-label" data-i18n="labelEnabledProviders">Enabled Providers</div>
             <div class="setting-description" data-i18n="descEnabledProviders">Select which AI providers appear in Panelize</div>
+            <div class="setting-description" data-i18n="descStartupProviders">Check "Open on launch" to choose the panels that open when Panelize starts. If none are checked, the first enabled providers that fit the layout open.</div>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label" data-i18n="labelProviderSortMode">Provider order</div>
+            <div class="setting-description" data-i18n="descProviderSortMode">Choose a manual order or sort providers by your local usage statistics.</div>
+          </div>
+          <div class="setting-control">
+            <select id="provider-sort-mode-select">
+              <option value="manual" data-i18n="optionProviderSortManual">Manual</option>
+              <option value="frequent" data-i18n="optionProviderSortFrequent">Most used</option>
+            </select>
           </div>
         </div>
 
         <div class="provider-list" id="provider-list">
           <!-- Provider items will be dynamically generated -->
+        </div>
+      </section>
+
+      <!-- Reasoning level mapping -->
+      <section class="section">
+        <h2 class="section-title" data-i18n="sectionTierRecipes">Reasoning level mapping</h2>
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label" data-i18n="labelTierRecipes">What Fast, Balanced and Deep pick on each site</div>
+            <div class="setting-description" data-i18n="descTierRecipes">Enter the model and thinking option exactly as the site shows them. Use | between alternatives, for example 快速|Fast. Leave both empty to skip that level.</div>
+          </div>
+          <div class="setting-control">
+            <button id="reset-tier-recipes-btn" class="btn btn-secondary" data-i18n="btnResetTierRecipes">Restore defaults</button>
+          </div>
+        </div>
+        <div class="tier-recipe-scroll">
+          <table class="tier-recipe-table" id="tier-recipe-table">
+            <!-- Rows are generated from the built-in recipes -->
+          </table>
         </div>
       </section>
 

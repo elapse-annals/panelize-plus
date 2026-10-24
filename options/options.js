@@ -3,6 +3,12 @@ import { PROVIDERS, getProviderIcon } from '../modules/providers.js';
 import { DEFAULT_PROVIDER_IDS } from '../modules/provider-defaults.js';
 import { appendProviderToOrder, normalizeProviderOrder } from '../modules/provider-order.js';
 import {
+  getFrequentProviderOrder,
+  normalizeProviderSortMode,
+  PROVIDER_SORT_MODE_FREQUENT
+} from '../modules/provider-ranking.js';
+import { normalizeStartupProviders } from '../modules/startup-providers.js';
+import {
   hasOptionalProviderPermission,
   requestOptionalProviderPermission
 } from '../modules/optional-provider-access.js';
@@ -26,6 +32,14 @@ import {
   checkForUpdates
 } from '../modules/version-checker.js';
 import { t, translatePage, getCurrentLanguage, initializeLanguage } from '../modules/i18n.js';
+import {
+  PROVIDER_TIER_IDS,
+  TIER_RECIPE_PROVIDERS,
+  buildTierRecipeOverrides,
+  getEffectiveTierRecipes,
+  tierRecipeFromFields,
+  tierRecipeToFields
+} from '../modules/provider-tiers.js';
 const DEFAULT_ENABLED_PROVIDERS = DEFAULT_PROVIDER_IDS;
 
 function fitSelectWidth(select) {
@@ -251,6 +265,7 @@ async function init() {
   const isFromWebStore = await hideUpdateCheckingIfNeeded();
   await loadVersionDisplay(!isFromWebStore);  // T073: Load and display version info
   await renderProviderList();
+  await renderTierRecipeEditor();
   setupEventListeners();
   setupStorageChangeListener();
   setupPermissionChangeListeners();
@@ -275,6 +290,11 @@ async function loadSettings() {
     shortcutToggle.checked = keyboardShortcutEnabled;
   }
   updateShortcutHelperVisibility(keyboardShortcutEnabled);
+
+  const providerSortModeSelect = document.getElementById('provider-sort-mode-select');
+  if (providerSortModeSelect) {
+    providerSortModeSelect.value = normalizeProviderSortMode(settings.providerSortMode);
+  }
 
   // Source URL placement setting
   const sourceUrlPlacementSelect = document.getElementById('source-url-placement-select');
@@ -320,12 +340,113 @@ async function loadSettings() {
 }
 
 // T052-T053: Render provider enable/disable toggles with drag-and-drop reordering
+const TIER_COLUMN_LABELS = {
+  fast: ['composerTierFast', 'Fast'],
+  balanced: ['composerTierBalanced', 'Balanced'],
+  deep: ['composerTierDeep', 'Deep']
+};
+
+function translated(key, fallback) {
+  const message = t(key);
+  return message && message !== key ? message : fallback;
+}
+
+function createRecipeInput(providerId, tier, field, value, label) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'tier-recipe-input';
+  input.value = value;
+  input.placeholder = label;
+  input.maxLength = 120;
+  input.dataset.provider = providerId;
+  input.dataset.tier = tier;
+  input.dataset.field = field;
+  input.setAttribute('aria-label', label);
+  return input;
+}
+
+// The options page lists every recipe provider, enabled or not, so a
+// mapping can be prepared before the provider is turned on.
+async function renderTierRecipeEditor() {
+  const table = document.getElementById('tier-recipe-table');
+  if (!table) return;
+  const overrides = await getSetting('providerTierRecipes');
+  const modelLabel = translated('labelTierModel', 'Model');
+  const thinkingLabel = translated('labelTierThinking', 'Thinking');
+  table.replaceChildren();
+
+  const head = table.createTHead().insertRow();
+  [translated('labelTierProvider', 'AI'), ...PROVIDER_TIER_IDS.map(tier => translated(...TIER_COLUMN_LABELS[tier]))]
+    .forEach(text => {
+      const cell = document.createElement('th');
+      cell.textContent = text;
+      head.append(cell);
+    });
+
+  const body = table.createTBody();
+  TIER_RECIPE_PROVIDERS.forEach(providerId => {
+    const provider = PROVIDERS.find(candidate => candidate.id === providerId);
+    if (!provider) return;
+    const recipes = getEffectiveTierRecipes(providerId, overrides);
+    const row = body.insertRow();
+    const nameCell = document.createElement('th');
+    nameCell.scope = 'row';
+    nameCell.textContent = provider.name;
+    row.append(nameCell);
+    PROVIDER_TIER_IDS.forEach(tier => {
+      const cell = row.insertCell();
+      const fields = tierRecipeToFields(recipes[tier]);
+      if (fields.toggleOn !== null) {
+        const label = document.createElement('label');
+        label.className = 'tier-recipe-toggle';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = fields.toggleOn;
+        checkbox.dataset.provider = providerId;
+        checkbox.dataset.tier = tier;
+        checkbox.dataset.field = 'toggleOn';
+        label.append(checkbox, document.createTextNode(` ${thinkingLabel}`));
+        cell.append(label);
+        return;
+      }
+      cell.append(
+        createRecipeInput(providerId, tier, 'model', fields.model, modelLabel),
+        createRecipeInput(providerId, tier, 'thinking', fields.thinking, thinkingLabel)
+      );
+    });
+  });
+}
+
+async function saveTierRecipesFromEditor() {
+  const table = document.getElementById('tier-recipe-table');
+  const fieldsByCell = {};
+  table.querySelectorAll('[data-provider][data-tier][data-field]').forEach(control => {
+    const { provider, tier, field } = control.dataset;
+    fieldsByCell[provider] ??= {};
+    fieldsByCell[provider][tier] ??= {};
+    fieldsByCell[provider][tier][field] = control.type === 'checkbox' ? control.checked : control.value;
+  });
+  const recipes = Object.fromEntries(Object.entries(fieldsByCell).map(([provider, tiers]) => [
+    provider,
+    Object.fromEntries(Object.entries(tiers).map(([tier, fields]) => [tier, tierRecipeFromFields(provider, tier, fields)]))
+  ]));
+  await saveSetting('providerTierRecipes', buildTierRecipeOverrides(recipes));
+  showToast('success', 'toastTierRecipesSaved');
+}
+
 async function renderProviderList() {
   const settings = await getSettings();
   const enabledProviders = getEnabledProvidersOrDefault(settings);
   const googleProviderMode = getGoogleProviderModeOrDefault(settings);
-  const displayOrder = getProviderDisplayOrder(settings);
+  const manualDisplayOrder = getProviderDisplayOrder(settings);
+  const sortMode = normalizeProviderSortMode(settings.providerSortMode);
+  const allProviderIds = PROVIDERS.map(provider => provider.id);
+  const displayOrder = sortMode === PROVIDER_SORT_MODE_FREQUENT
+    ? await getFrequentProviderOrder(allProviderIds, manualDisplayOrder)
+    : manualDisplayOrder;
+  const startupProviders = normalizeStartupProviders(settings.startupProviders) || [];
   const listContainer = document.getElementById('provider-list');
+  listContainer.dataset.sortMode = sortMode;
   const providerAccessEntries = await Promise.all(PROVIDERS.map(async (provider) => [
     provider.id,
     await hasOptionalProviderPermission(provider.id)
@@ -341,16 +462,26 @@ async function renderProviderList() {
     const isEnabledPreference = enabledProviders.includes(provider.id);
     const hasAccess = providerAccess.get(provider.id) !== false;
     const isEnabled = isEnabledPreference && hasAccess;
+    const isDraggable = isEnabled && sortMode !== PROVIDER_SORT_MODE_FREQUENT;
     const googleModeControl = provider.id === 'google'
       ? renderGoogleModeSelectMarkup(googleProviderMode, isEnabled)
       : '';
+    const startupControl = isEnabled
+      ? `
+        <label class="startup-provider-toggle" title="${t('labelOpenOnStartup')}">
+          <input type="checkbox" data-startup-provider-id="${provider.id}"
+                 ${startupProviders.includes(provider.id) ? 'checked' : ''} />
+          <span>${t('labelOpenOnStartup')}</span>
+        </label>
+      `
+      : '';
 
     return `
-      <div class="provider-item ${isEnabled ? 'draggable' : ''}"
+      <div class="provider-item ${isDraggable ? 'draggable' : ''}"
            data-provider-id="${provider.id}"
            data-enabled-preference="${isEnabledPreference}"
            data-has-access="${hasAccess}"
-           draggable="${isEnabled}">
+           draggable="${isDraggable}">
         <div class="provider-info">
           ${isEnabled ? '<span class="drag-handle material-symbols-outlined">drag_indicator</span>' : ''}
           <div class="provider-icon">
@@ -361,6 +492,7 @@ async function renderProviderList() {
         </div>
         <div class="provider-controls">
           ${googleModeControl}
+          ${startupControl}
           <div class="toggle-switch ${isEnabled ? 'active' : ''}" data-provider-id="${provider.id}"></div>
         </div>
       </div>
@@ -423,6 +555,18 @@ async function renderProviderList() {
     });
   });
 
+  listContainer.querySelectorAll('.startup-provider-toggle').forEach(label => {
+    label.addEventListener('mousedown', (event) => {
+      event.stopPropagation();
+    });
+  });
+
+  listContainer.querySelectorAll('[data-startup-provider-id]').forEach(checkbox => {
+    checkbox.addEventListener('change', async (event) => {
+      await toggleStartupProvider(event.target.dataset.startupProviderId, event.target.checked);
+    });
+  });
+
   // Setup drag-and-drop for enabled providers
   setupProviderDragAndDrop(listContainer);
   refreshAutoSizedSelects(listContainer);
@@ -441,6 +585,19 @@ function setupStorageChangeListener() {
     if (changes.googleProviderMode) {
       renderProviderList().catch((error) => {
         console.error('Error syncing Google mode control:', error);
+      });
+    }
+
+    // Skip echoes of this page's own saves so typing is never interrupted.
+    if (changes.providerTierRecipes && !document.getElementById('tier-recipe-table')?.contains(document.activeElement)) {
+      renderTierRecipeEditor().catch((error) => {
+        console.error('Error syncing reasoning level mapping:', error);
+      });
+    }
+
+    if (changes.providerSortMode || changes.providerOrder || changes.enabledProviders) {
+      renderProviderList().catch((error) => {
+        console.error('Error syncing provider order:', error);
       });
     }
   });
@@ -494,6 +651,10 @@ function setupProviderDragAndDrop(container) {
 // Save the new provider order
 async function saveProviderOrder(container) {
   const settings = await getSettings();
+  if (normalizeProviderSortMode(settings.providerSortMode) === PROVIDER_SORT_MODE_FREQUENT) {
+    return;
+  }
+
   const enabledProviders = getEnabledProvidersOrDefault(settings);
   const items = container.querySelectorAll('.provider-item');
   const newOrder = Array.from(items).map(item => item.dataset.providerId);
@@ -536,6 +697,19 @@ async function toggleProvider(providerId) {
 
   await saveSettings({ enabledProviders, providerOrder });
   await renderProviderList();
+  showStatus('success', t('msgProviderSettingsUpdated'));
+}
+
+async function toggleStartupProvider(providerId, shouldOpen) {
+  const settings = await getSettings();
+  const startupProviders = (normalizeStartupProviders(settings.startupProviders) || [])
+    .filter(id => id !== providerId);
+
+  if (shouldOpen) {
+    startupProviders.push(providerId);
+  }
+
+  await saveSetting('startupProviders', startupProviders.length > 0 ? startupProviders : null);
   showStatus('success', t('msgProviderSettingsUpdated'));
 }
 
@@ -606,6 +780,19 @@ async function getDefaultLibraryLanguage() {
 
 // T057-T064: Setup event listeners
 function setupEventListeners() {
+  const tierRecipeTable = document.getElementById('tier-recipe-table');
+  // Text fields save when they lose focus; checkboxes save right away.
+  tierRecipeTable?.addEventListener('change', () => {
+    saveTierRecipesFromEditor().catch((error) => {
+      console.error('Failed to save reasoning level mapping:', error);
+    });
+  });
+  document.getElementById('reset-tier-recipes-btn')?.addEventListener('click', async () => {
+    await saveSetting('providerTierRecipes', null);
+    await renderTierRecipeEditor();
+    showToast('success', 'toastTierRecipesReset');
+  });
+
   document.addEventListener('panelize:themechange', () => {
     renderProviderList().catch((error) => {
       console.error('Failed to refresh provider icons after theme change:', error);
@@ -766,6 +953,15 @@ function setupEventListeners() {
       const enabled = e.target.checked;
       await saveSetting('shareWatermarkEnabled', enabled);
       showStatus('success', enabled ? t('msgShareWatermarkEnabled') : t('msgShareWatermarkDisabled'));
+    });
+  }
+
+  const providerSortModeSelect = document.getElementById('provider-sort-mode-select');
+  if (providerSortModeSelect) {
+    providerSortModeSelect.addEventListener('change', async (event) => {
+      await saveSetting('providerSortMode', normalizeProviderSortMode(event.target.value));
+      await renderProviderList();
+      showStatus('success', t('msgProviderSettingsUpdated'));
     });
   }
 

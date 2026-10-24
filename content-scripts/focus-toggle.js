@@ -64,6 +64,18 @@ function findProviderInput() {
            document.querySelector('.ql-editor[contenteditable="true"]');
   }
 
+  // MiMo
+  if (host === 'aistudio.xiaomimimo.com') {
+    return window.ButtonFinderUtils?.findMimoInput() || null;
+  }
+
+  // Meta AI: focus the visible Lexical editor, not its hidden mirror textarea.
+  if (host === 'www.meta.ai') {
+    return document.querySelector('[data-testid="composer-input"][contenteditable="true"]') ||
+           document.querySelector('textarea[data-testid="composer-input"]') ||
+           document.querySelector('[data-slot="logged-out-composer-input"] input[type="text"]');
+  }
+
   // Generic fallback: find any visible textarea or contenteditable
   const textarea = document.querySelector('textarea:not([hidden])');
   if (textarea && textarea.offsetParent !== null) return textarea;

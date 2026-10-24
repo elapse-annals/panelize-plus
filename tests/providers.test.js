@@ -14,7 +14,7 @@ describe('providers module', () => {
 
   describe('PROVIDERS constant', () => {
     it('should contain all expected providers', () => {
-      expect(PROVIDERS).toHaveLength(13);
+      expect(PROVIDERS).toHaveLength(15);
       const providerIds = PROVIDERS.map((p) => p.id);
       expect(providerIds).toEqual([
         'chatgpt',
@@ -30,6 +30,8 @@ describe('providers module', () => {
         'chatglm',
         'zai-global',
         'yuanbao',
+        'mimo',
+        'meta-ai',
       ]);
     });
 
@@ -63,6 +65,20 @@ describe('providers module', () => {
         url: 'https://yuanbao.tencent.com/chat/naQivTmsDa',
         icon: '/icons/providers/yuanbao.png',
         optionalOrigins: ['https://yuanbao.tencent.com/*'],
+      });
+      expect(getProviderById('mimo')).toMatchObject({
+        name: 'MiMo',
+        url: 'https://aistudio.xiaomimimo.com/#/c',
+        icon: '/icons/providers/mimo.png',
+        iconDark: '/icons/providers/dark/mimo.png',
+        optionalOrigins: ['https://aistudio.xiaomimimo.com/*', 'https://xiaomimimo.com/*', 'https://account.xiaomi.com/*'],
+      });
+      expect(getProviderById('meta-ai')).toMatchObject({
+        name: 'Meta AI',
+        url: 'https://www.meta.ai/',
+        icon: '/icons/providers/meta-ai.png',
+        iconDark: '/icons/providers/dark/meta-ai.png',
+        optionalOrigins: ['https://www.meta.ai/*'],
       });
     });
 

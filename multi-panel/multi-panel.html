@@ -61,6 +61,12 @@
             <path d="M17.06 13c-1.86 0-3.42 1.33-3.82 3.1c-.95-.41-1.82-.3-2.48-.01C10.35 14.31 8.79 13 6.94 13C4.77 13 3 14.79 3 17s1.77 4 3.94 4c2.06 0 3.74-1.62 3.9-3.68c.34-.24 1.23-.69 2.32.02c.18 2.05 1.84 3.66 3.9 3.66c2.17 0 3.94-1.79 3.94-4s-1.77-4-3.94-4M6.94 19.86c-1.56 0-2.81-1.28-2.81-2.86s1.26-2.86 2.81-2.86c1.56 0 2.81 1.28 2.81 2.86s-1.25 2.86-2.81 2.86m10.12 0c-1.56 0-2.81-1.28-2.81-2.86s1.25-2.86 2.81-2.86s2.82 1.28 2.82 2.86s-1.27 2.86-2.82 2.86M22 10.5H2V12h20zm-6.47-7.87c-.22-.49-.78-.75-1.31-.58L12 2.79l-2.23-.74l-.05-.01c-.53-.15-1.09.13-1.29.64L6 9h12l-2.44-6.32z" />
           </svg>
         </button>
+        <button id="wide-content-btn" class="toolbar-btn" data-i18n-title="wideContentTitle" data-i18n-aria="wideContentTitle" title="Wide content: let answers use the full panel width" aria-label="Wide content: let answers use the full panel width" aria-pressed="false">
+          <span class="material-symbols-outlined" aria-hidden="true">fit_width</span>
+        </button>
+        <button id="blind-mode-btn" class="toolbar-btn" data-i18n-title="blindModeTitle" data-i18n-aria="blindModeTitle" title="Blind mode: hide AI names and unify page styles" aria-label="Blind mode: hide AI names and unify page styles" aria-pressed="false">
+          <span class="material-symbols-outlined" aria-hidden="true">visibility_off</span>
+        </button>
         <button id="answer-stats-btn" class="toolbar-btn" data-i18n-title="answerStatsButtonTitle" title="Answer stats">
           <span class="material-symbols-outlined" aria-hidden="true">leaderboard</span>
         </button>
@@ -105,6 +111,7 @@
 
     <!-- Bottom Input Bar -->
     <footer id="input-bar">
+      <div class="composer-shell" id="composer-shell">
       <div class="input-container">
         <button id="prompt-library-btn" class="input-btn" title="Prompt Library">
           <span class="material-symbols-outlined">auto_awesome</span>
@@ -135,6 +142,38 @@
           </button>
         </div>
       </div>
+      <div class="composer-controls">
+        <div class="composer-controls-left">
+          <button id="composer-new-chat-btn" class="composer-control" data-shortcut-action="newConversation" data-i18n-title="composerNewChat" title="New conversation">
+            <span class="material-symbols-outlined" aria-hidden="true">add_comment</span>
+            <span data-i18n="composerNewChat">New conversation</span>
+          </button>
+          <span class="composer-divider" aria-hidden="true"></span>
+          <div id="provider-tier-controls" class="tier-controls" role="radiogroup" data-i18n-aria="composerTierLabel" aria-label="AI reasoning level">
+            <button type="button" class="tier-option" data-tier="fast" data-shortcut-action="tierFast" role="radio" aria-checked="false" data-i18n="composerTierFast">Fast</button>
+            <button type="button" class="tier-option" data-tier="balanced" data-shortcut-action="tierBalanced" role="radio" aria-checked="false" data-i18n="composerTierBalanced">Balanced</button>
+            <button type="button" class="tier-option" data-tier="deep" data-shortcut-action="tierDeep" role="radio" aria-checked="false" data-i18n="composerTierDeep">Deep</button>
+          </div>
+          <button id="tier-details-btn" class="composer-control tier-details-btn" data-i18n-title="composerTierDetails" title="View AI mode mapping">
+            <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+          </button>
+          <span id="tier-status" class="composer-status" role="status" aria-live="polite"></span>
+        </div>
+        <div class="composer-controls-right">
+          <button id="provider-sort-btn" class="composer-control" data-shortcut-action="togglePopularSort" aria-pressed="false">
+            <span class="material-symbols-outlined" aria-hidden="true">sort</span>
+            <span id="provider-sort-label" data-i18n="optionProviderSortManual">Manual</span>
+          </button>
+          <button id="keyboard-shortcuts-btn" class="composer-control" data-i18n-title="composerShortcuts" title="Keyboard shortcuts">
+            <span class="material-symbols-outlined" aria-hidden="true">keyboard</span>
+          </button>
+        </div>
+      </div>
+      <div id="new-chat-status-row" class="composer-result-row" hidden>
+        <span id="new-chat-status" role="status" aria-live="polite"></span>
+        <button id="retry-new-chat-btn" class="composer-link" data-i18n="composerRetryFailed" hidden>Retry unsuccessful</button>
+      </div>
+      </div>
       <div id="snapshot-progress" class="snapshot-progress" role="status" hidden>
         <span class="material-symbols-outlined snapshot-progress-icon" aria-hidden="true">photo_camera</span>
         <span id="snapshot-progress-text" class="snapshot-progress-text"></span>
@@ -142,6 +181,42 @@
         <button id="snapshot-cancel-btn" type="button" class="btn-secondary snapshot-cancel-btn" data-i18n="shareProgressCancel">Cancel</button>
       </div>
     </footer>
+
+    <div id="tier-details-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="tier-details-title">
+      <div class="modal-content composer-dialog">
+        <div class="modal-header">
+          <h3 id="tier-details-title" data-i18n="composerTierDetails">AI mode mapping</h3>
+          <button class="close-btn" id="close-tier-details" data-i18n-aria="shareDialogClose" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="modal-body">
+          <p class="composer-help" data-i18n="composerTierHelp">Levels switch the available model or reasoning setting in each open AI. Search, research and agent settings stay independent.</p>
+          <div class="composer-table-scroll"><table class="composer-table"><thead><tr><th data-i18n="composerProvider">AI</th><th data-i18n="composerActualMode">Actual mode</th><th data-i18n="composerResult">Result</th></tr></thead><tbody id="tier-details-body"></tbody></table></div>
+        </div>
+        <div class="modal-footer">
+          <button id="refresh-tier-state-btn" class="btn-secondary" data-i18n="composerRefresh">Refresh</button>
+          <button id="retry-tier-btn" class="btn-primary" data-i18n="composerRetryFailed">Retry unsuccessful</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="keyboard-shortcuts-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="keyboard-shortcuts-title">
+      <div class="modal-content composer-dialog">
+        <div class="modal-header">
+          <h3 id="keyboard-shortcuts-title" data-i18n="composerShortcuts">Keyboard shortcuts</h3>
+          <button class="close-btn" id="close-keyboard-shortcuts" data-i18n-aria="shareDialogClose" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="modal-body">
+          <label class="composer-shortcut-toggle"><input id="page-shortcuts-enabled" type="checkbox" checked><span data-i18n="composerShortcutsEnabled">Enable shortcuts in Panelize and its AI panels</span></label>
+          <p class="composer-help" data-i18n="composerShortcutsHelp">Focus a shortcut field and press a key combination. Backspace clears it. Browser shortcuts are reserved.</p>
+          <div id="keyboard-shortcuts-fields" class="composer-shortcut-fields"></div>
+          <p id="keyboard-shortcuts-error" class="composer-error" role="alert"></p>
+        </div>
+        <div class="modal-footer">
+          <button id="reset-keyboard-shortcuts" class="btn-secondary" data-i18n="composerShortcutsReset">Reset shortcuts</button>
+          <button id="save-keyboard-shortcuts" class="btn-primary" data-i18n="composerShortcutsSave">Save</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Layout Selector Modal -->
     <div id="layout-modal" class="modal" style="display: none;">
@@ -409,12 +484,15 @@
                     <th class="numeric" data-i18n="answerStatsColumnTimeouts">Timeouts</th>
                     <th class="numeric" data-i18n="answerStatsColumnAdopted">Adopted</th>
                     <th class="numeric" data-i18n="answerStatsColumnAdoptionRate">Adoption rate</th>
+                    <th class="numeric" data-i18n="answerStatsColumnEngaged">Engaged</th>
+                    <th class="numeric" data-i18n="answerStatsColumnScore">Score</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
               </table>
             </div>
             <p class="answer-stats-note" data-i18n="answerStatsNote">Times run from Send to the first text and to the finished answer: median, with the average in brackets. Only ChatGPT, Gemini and DeepSeek are timed. Adoption rate counts the questions where an answer was adopted.</p>
+            <p class="answer-stats-note" data-i18n="answerStatsScoreNote">Score: an adopted answer earns 5 points. Using an answer earns up to 3 more: 1 for clicking or scrolling in its panel, 1 for enlarging the panel, and 1 for every 30 s of engaged time. Engaged time adds the gaps between clicks and scrolls up to 15 s apart, and the time the panel stays enlarged.</p>
             <h4 class="answer-stats-section-title" data-i18n="answerStatsRecentTitle">Recent questions</h4>
             <ul id="answer-stats-recent" class="answer-stats-recent"></ul>
           </div>

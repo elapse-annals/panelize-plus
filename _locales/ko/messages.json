@@ -86,6 +86,12 @@
   "descEnabledProviders": {
     "message": "Panelize에 표시할 AI 제공자를 선택하세요"
   },
+  "labelOpenOnStartup": {
+    "message": "시작 시 열기"
+  },
+  "descStartupProviders": {
+    "message": "\"시작 시 열기\"를 선택하면 Panelize 시작 시 열릴 패널을 고를 수 있습니다. 아무것도 선택하지 않으면 레이아웃에 맞는 활성화된 제공업체가 순서대로 열립니다."
+  },
   "sectionKeyboardShortcuts": {
     "message": "키보드 단축키"
   },
@@ -141,7 +147,7 @@
     "message": "AI 제공자 입력 필드에서 Enter 키와 수정 키가 작동하는 방식을 사용자 지정합니다."
   },
   "descEnterBehavior2": {
-    "message": "<strong>적용 대상:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao 및 Google (AI 모드)."
+    "message": "<strong>적용 대상:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI 및 Google (AI 모드)."
   },
   "labelEnableEnterCustomization": {
     "message": "Enter 키 사용자 지정 활성화"
@@ -292,11 +298,19 @@
   },
   "msgProviderPermissionRequired": {
     "message": "$PROVIDER$을(를) 사용하려면 사이트 접근 권한이 필요합니다.",
-    "placeholders": { "provider": { "content": "$1" } }
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
   },
   "msgProviderPermissionRequestFailed": {
     "message": "$PROVIDER$의 사이트 접근 권한을 요청하지 못했습니다.",
-    "placeholders": { "provider": { "content": "$1" } }
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
   },
   "msgShortcutEnabled": {
     "message": "키보드 단축키가 활성화되었습니다"
@@ -813,7 +827,9 @@
   "switchToPopupModeTitle": {
     "message": "팝업 모드로 전환"
   },
-  "openProviderTopLevelTitle": { "message": "새 탭에서 열기" },
+  "openProviderTopLevelTitle": {
+    "message": "새 탭에서 열기"
+  },
   "msgOpenModeUpdated": {
     "message": "열기 모드가 업데이트되었습니다"
   },
@@ -1034,5 +1050,185 @@
   },
   "answerStatsStatus_cancelled": {
     "message": "취소됨"
+  },
+  "answerStatsColumnEngaged": {
+    "message": "사용 시간"
+  },
+  "answerStatsColumnScore": {
+    "message": "점수"
+  },
+  "answerStatsScoreNote": {
+    "message": "점수: 채택한 답변은 5점입니다. 답변을 사용하면 최대 3점이 더해집니다. 패널에서 클릭하거나 스크롤하면 1점, 패널을 확대하면 1점, 사용 시간 30초마다 1점입니다. 사용 시간은 15초 이내 간격으로 이어진 클릭과 스크롤 사이의 시간과 패널을 확대한 시간을 더한 값입니다."
+  },
+  "labelProviderSortMode": {
+    "message": "Provider order"
+  },
+  "descProviderSortMode": {
+    "message": "Choose a manual order or sort providers by your local usage statistics."
+  },
+  "optionProviderSortManual": {
+    "message": "Manual"
+  },
+  "optionProviderSortFrequent": {
+    "message": "Most used"
+  },
+  "composerNewChat": {
+    "message": "New conversation"
+  },
+  "composerTierLabel": {
+    "message": "AI reasoning level"
+  },
+  "composerTierFast": {
+    "message": "Fast"
+  },
+  "composerTierBalanced": {
+    "message": "Balanced"
+  },
+  "composerTierDeep": {
+    "message": "Deep"
+  },
+  "composerTierDetails": {
+    "message": "AI mode mapping"
+  },
+  "composerTierHelp": {
+    "message": "Levels switch the available model or reasoning setting in each open AI. Search, research and agent settings stay independent."
+  },
+  "composerProvider": {
+    "message": "AI"
+  },
+  "composerActualMode": {
+    "message": "Actual mode"
+  },
+  "composerResult": {
+    "message": "Result"
+  },
+  "composerRefresh": {
+    "message": "Refresh"
+  },
+  "composerRetryFailed": {
+    "message": "Retry unsuccessful"
+  },
+  "composerShortcuts": {
+    "message": "Keyboard shortcuts"
+  },
+  "composerShortcutsEnabled": {
+    "message": "Enable shortcuts in Panelize and its AI panels"
+  },
+  "composerShortcutsHelp": {
+    "message": "Focus a shortcut field and press a key combination. Backspace clears it. Browser shortcuts are reserved."
+  },
+  "composerShortcutsReset": {
+    "message": "Reset shortcuts"
+  },
+  "composerShortcutsSave": {
+    "message": "Save"
+  },
+  "composerSend": {
+    "message": "Send to all"
+  },
+  "composerFill": {
+    "message": "Fill inputs"
+  },
+  "composerFocusInput": {
+    "message": "Focus input"
+  },
+  "composerPromptLibrary": {
+    "message": "Prompt library"
+  },
+  "composerLayout": {
+    "message": "Layout"
+  },
+  "composerNotChecked": {
+    "message": "Not checked"
+  },
+  "composerSwitched": {
+    "message": "Confirmed"
+  },
+  "composerUnsupported": {
+    "message": "Not supported"
+  },
+  "composerUnavailable": {
+    "message": "Unavailable for this account or page"
+  },
+  "composerTimeout": {
+    "message": "Not confirmed"
+  },
+  "composerNotConfirmed": {
+    "message": "Not confirmed"
+  },
+  "composerSwitching": {
+    "message": "Switching…"
+  },
+  "composerTierApplied": {
+    "message": "$1 AIs switched"
+  },
+  "composerTierMixed": {
+    "message": "$1/$2 switched · mixed"
+  },
+  "composerSortUpdated": {
+    "message": "Order applies to AI menus and the next startup."
+  },
+  "composerUnassigned": {
+    "message": "Unassigned"
+  },
+  "composerShortcutInvalid": {
+    "message": "This combination is reserved or already used."
+  },
+  "composerActionBusy": {
+    "message": "Wait for the current operation to finish."
+  },
+  "composerStartingChats": {
+    "message": "Starting new conversations…"
+  },
+  "composerNewChatsPartial": {
+    "message": "$1 confirmed; not confirmed: $2"
+  },
+  "composerNewChatsDone": {
+    "message": "$1 new conversations ready"
+  },
+  "blindModeTitle": {
+    "message": "블라인드 모드: AI 이름을 숨기고 페이지 스타일 통일"
+  },
+  "blindModeOn": {
+    "message": "블라인드 모드 켜짐: AI 이름이 숨겨졌습니다"
+  },
+  "blindModeOff": {
+    "message": "블라인드 모드 꺼짐: AI 이름이 표시됩니다"
+  },
+  "blindModeStatsHidden": {
+    "message": "답변 통계를 보려면 블라인드 모드를 끄세요"
+  },
+  "blindPanelLabel": {
+    "message": "모델 $1"
+  },
+  "wideContentTitle": {
+    "message": "와이드 보기: 답변이 패널 너비 전체를 사용"
+  },
+  "sectionTierRecipes": {
+    "message": "추론 단계 매핑"
+  },
+  "labelTierRecipes": {
+    "message": "사이트별로 빠름·균형·심층이 선택하는 항목"
+  },
+  "descTierRecipes": {
+    "message": "사이트에 표시된 그대로 모델과 사고 옵션을 입력하세요. 후보는 | 로 구분합니다(예: 快速|Fast). 둘 다 비우면 해당 단계는 전환하지 않습니다."
+  },
+  "btnResetTierRecipes": {
+    "message": "기본값 복원"
+  },
+  "labelTierProvider": {
+    "message": "AI"
+  },
+  "labelTierModel": {
+    "message": "모델"
+  },
+  "labelTierThinking": {
+    "message": "사고"
+  },
+  "toastTierRecipesSaved": {
+    "message": "추론 단계 매핑을 저장했습니다"
+  },
+  "toastTierRecipesReset": {
+    "message": "추론 단계 매핑을 기본값으로 복원했습니다"
   }
 }

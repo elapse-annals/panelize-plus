@@ -86,6 +86,12 @@
   "descEnabledProviders": {
     "message": "Выберите, какие провайдеры ИИ отображаются в Panelize"
   },
+  "labelOpenOnStartup": {
+    "message": "Открывать при запуске"
+  },
+  "descStartupProviders": {
+    "message": "Отметьте «Открывать при запуске», чтобы выбрать панели, которые открываются при запуске Panelize. Если ничего не отмечено, открываются первые включённые провайдеры, помещающиеся в макет."
+  },
   "sectionKeyboardShortcuts": {
     "message": "Горячие клавиши"
   },
@@ -141,7 +147,7 @@
     "message": "Настройте, как работают клавиша Enter и модификаторы при вводе в полях ввода провайдеров ИИ."
   },
   "descEnterBehavior2": {
-    "message": "<strong>Применяется к:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao и Google (AI Mode)."
+    "message": "<strong>Применяется к:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI и Google (AI Mode)."
   },
   "labelEnableEnterCustomization": {
     "message": "Включить настройку клавиши Enter"
@@ -292,11 +298,19 @@
   },
   "msgProviderPermissionRequired": {
     "message": "Для включения $PROVIDER$ требуется доступ к сайту.",
-    "placeholders": { "provider": { "content": "$1" } }
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
   },
   "msgProviderPermissionRequestFailed": {
     "message": "Не удалось запросить доступ к сайту для $PROVIDER$.",
-    "placeholders": { "provider": { "content": "$1" } }
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
   },
   "msgShortcutEnabled": {
     "message": "Горячие клавиши включены"
@@ -813,7 +827,9 @@
   "switchToPopupModeTitle": {
     "message": "Переключиться в режим всплывающего окна"
   },
-  "openProviderTopLevelTitle": { "message": "Открыть в новой вкладке" },
+  "openProviderTopLevelTitle": {
+    "message": "Открыть в новой вкладке"
+  },
   "msgOpenModeUpdated": {
     "message": "Режим открытия обновлен"
   },
@@ -1034,5 +1050,185 @@
   },
   "answerStatsStatus_cancelled": {
     "message": "Отменён"
+  },
+  "answerStatsColumnEngaged": {
+    "message": "Работа"
+  },
+  "answerStatsColumnScore": {
+    "message": "Баллы"
+  },
+  "answerStatsScoreNote": {
+    "message": "Баллы: принятый ответ даёт 5 баллов. Работа с ответом даёт ещё до 3: 1 за щелчок или прокрутку в его панели, 1 за увеличение панели и 1 за каждые 30 с работы. Время работы складывается из промежутков не длиннее 15 с между щелчками и прокрутками и времени, пока панель увеличена."
+  },
+  "labelProviderSortMode": {
+    "message": "Provider order"
+  },
+  "descProviderSortMode": {
+    "message": "Choose a manual order or sort providers by your local usage statistics."
+  },
+  "optionProviderSortManual": {
+    "message": "Manual"
+  },
+  "optionProviderSortFrequent": {
+    "message": "Most used"
+  },
+  "composerNewChat": {
+    "message": "New conversation"
+  },
+  "composerTierLabel": {
+    "message": "AI reasoning level"
+  },
+  "composerTierFast": {
+    "message": "Fast"
+  },
+  "composerTierBalanced": {
+    "message": "Balanced"
+  },
+  "composerTierDeep": {
+    "message": "Deep"
+  },
+  "composerTierDetails": {
+    "message": "AI mode mapping"
+  },
+  "composerTierHelp": {
+    "message": "Levels switch the available model or reasoning setting in each open AI. Search, research and agent settings stay independent."
+  },
+  "composerProvider": {
+    "message": "AI"
+  },
+  "composerActualMode": {
+    "message": "Actual mode"
+  },
+  "composerResult": {
+    "message": "Result"
+  },
+  "composerRefresh": {
+    "message": "Refresh"
+  },
+  "composerRetryFailed": {
+    "message": "Retry unsuccessful"
+  },
+  "composerShortcuts": {
+    "message": "Keyboard shortcuts"
+  },
+  "composerShortcutsEnabled": {
+    "message": "Enable shortcuts in Panelize and its AI panels"
+  },
+  "composerShortcutsHelp": {
+    "message": "Focus a shortcut field and press a key combination. Backspace clears it. Browser shortcuts are reserved."
+  },
+  "composerShortcutsReset": {
+    "message": "Reset shortcuts"
+  },
+  "composerShortcutsSave": {
+    "message": "Save"
+  },
+  "composerSend": {
+    "message": "Send to all"
+  },
+  "composerFill": {
+    "message": "Fill inputs"
+  },
+  "composerFocusInput": {
+    "message": "Focus input"
+  },
+  "composerPromptLibrary": {
+    "message": "Prompt library"
+  },
+  "composerLayout": {
+    "message": "Layout"
+  },
+  "composerNotChecked": {
+    "message": "Not checked"
+  },
+  "composerSwitched": {
+    "message": "Confirmed"
+  },
+  "composerUnsupported": {
+    "message": "Not supported"
+  },
+  "composerUnavailable": {
+    "message": "Unavailable for this account or page"
+  },
+  "composerTimeout": {
+    "message": "Not confirmed"
+  },
+  "composerNotConfirmed": {
+    "message": "Not confirmed"
+  },
+  "composerSwitching": {
+    "message": "Switching…"
+  },
+  "composerTierApplied": {
+    "message": "$1 AIs switched"
+  },
+  "composerTierMixed": {
+    "message": "$1/$2 switched · mixed"
+  },
+  "composerSortUpdated": {
+    "message": "Order applies to AI menus and the next startup."
+  },
+  "composerUnassigned": {
+    "message": "Unassigned"
+  },
+  "composerShortcutInvalid": {
+    "message": "This combination is reserved or already used."
+  },
+  "composerActionBusy": {
+    "message": "Wait for the current operation to finish."
+  },
+  "composerStartingChats": {
+    "message": "Starting new conversations…"
+  },
+  "composerNewChatsPartial": {
+    "message": "$1 confirmed; not confirmed: $2"
+  },
+  "composerNewChatsDone": {
+    "message": "$1 new conversations ready"
+  },
+  "blindModeTitle": {
+    "message": "Слепой режим: скрыть названия ИИ и выровнять стили страниц"
+  },
+  "blindModeOn": {
+    "message": "Слепой режим включён: названия ИИ скрыты"
+  },
+  "blindModeOff": {
+    "message": "Слепой режим выключен: названия ИИ показаны"
+  },
+  "blindModeStatsHidden": {
+    "message": "Выключите слепой режим, чтобы увидеть статистику ответов"
+  },
+  "blindPanelLabel": {
+    "message": "Модель $1"
+  },
+  "wideContentTitle": {
+    "message": "Широкий режим: ответы занимают всю ширину панели"
+  },
+  "sectionTierRecipes": {
+    "message": "Сопоставление уровней рассуждения"
+  },
+  "labelTierRecipes": {
+    "message": "Что выбирают «Быстро», «Сбалансированно» и «Глубоко» на каждом сайте"
+  },
+  "descTierRecipes": {
+    "message": "Введите модель и вариант рассуждения точно так, как их показывает сайт. Варианты разделяйте |, например 快速|Fast. Оставьте оба поля пустыми, чтобы пропустить уровень."
+  },
+  "btnResetTierRecipes": {
+    "message": "Восстановить по умолчанию"
+  },
+  "labelTierProvider": {
+    "message": "ИИ"
+  },
+  "labelTierModel": {
+    "message": "Модель"
+  },
+  "labelTierThinking": {
+    "message": "Рассуждение"
+  },
+  "toastTierRecipesSaved": {
+    "message": "Сопоставление уровней сохранено"
+  },
+  "toastTierRecipesReset": {
+    "message": "Сопоставление уровней сброшено"
   }
 }

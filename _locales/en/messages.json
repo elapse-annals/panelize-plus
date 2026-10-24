@@ -140,6 +140,12 @@
   "descEnabledProviders": {
     "message": "Select which AI providers appear in Panelize"
   },
+  "labelOpenOnStartup": {
+    "message": "Open on launch"
+  },
+  "descStartupProviders": {
+    "message": "Check \"Open on launch\" to choose the panels that open when Panelize starts. If none are checked, the first enabled providers that fit the layout open."
+  },
   "sectionKeyboardShortcuts": {
     "message": "Keyboard Shortcuts"
   },
@@ -195,7 +201,7 @@
     "message": "Customize how Enter and modifier keys work when typing in AI provider input fields."
   },
   "descEnterBehavior2": {
-    "message": "<strong>Applies to:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, and Google (AI Mode)."
+    "message": "<strong>Applies to:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, and Google (AI Mode)."
   },
   "labelEnableEnterCustomization": {
     "message": "Enable Enter Key Customization"
@@ -346,11 +352,19 @@
   },
   "msgProviderPermissionRequired": {
     "message": "Site access is required to enable $PROVIDER$.",
-    "placeholders": { "provider": { "content": "$1" } }
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
   },
   "msgProviderPermissionRequestFailed": {
     "message": "Could not request site access for $PROVIDER$.",
-    "placeholders": { "provider": { "content": "$1" } }
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
   },
   "msgShortcutEnabled": {
     "message": "Keyboard shortcut enabled"
@@ -1051,5 +1065,185 @@
   },
   "answerStatsStatus_cancelled": {
     "message": "Cancelled"
+  },
+  "answerStatsColumnEngaged": {
+    "message": "Engaged"
+  },
+  "answerStatsColumnScore": {
+    "message": "Score"
+  },
+  "answerStatsScoreNote": {
+    "message": "Score: an adopted answer earns 5 points. Using an answer earns up to 3 more: 1 for clicking or scrolling in its panel, 1 for enlarging the panel, and 1 for every 30 s of engaged time. Engaged time adds the gaps between clicks and scrolls up to 15 s apart, and the time the panel stays enlarged."
+  },
+  "labelProviderSortMode": {
+    "message": "Provider order"
+  },
+  "descProviderSortMode": {
+    "message": "Choose a manual order or sort providers by your local usage statistics."
+  },
+  "optionProviderSortManual": {
+    "message": "Manual"
+  },
+  "optionProviderSortFrequent": {
+    "message": "Most used"
+  },
+  "composerNewChat": {
+    "message": "New conversation"
+  },
+  "composerTierLabel": {
+    "message": "AI reasoning level"
+  },
+  "composerTierFast": {
+    "message": "Fast"
+  },
+  "composerTierBalanced": {
+    "message": "Balanced"
+  },
+  "composerTierDeep": {
+    "message": "Deep"
+  },
+  "composerTierDetails": {
+    "message": "AI mode mapping"
+  },
+  "composerTierHelp": {
+    "message": "Levels switch the available model or reasoning setting in each open AI. Search, research and agent settings stay independent."
+  },
+  "composerProvider": {
+    "message": "AI"
+  },
+  "composerActualMode": {
+    "message": "Actual mode"
+  },
+  "composerResult": {
+    "message": "Result"
+  },
+  "composerRefresh": {
+    "message": "Refresh"
+  },
+  "composerRetryFailed": {
+    "message": "Retry unsuccessful"
+  },
+  "composerShortcuts": {
+    "message": "Keyboard shortcuts"
+  },
+  "composerShortcutsEnabled": {
+    "message": "Enable shortcuts in Panelize and its AI panels"
+  },
+  "composerShortcutsHelp": {
+    "message": "Focus a shortcut field and press a key combination. Backspace clears it. Browser shortcuts are reserved."
+  },
+  "composerShortcutsReset": {
+    "message": "Reset shortcuts"
+  },
+  "composerShortcutsSave": {
+    "message": "Save"
+  },
+  "composerSend": {
+    "message": "Send to all"
+  },
+  "composerFill": {
+    "message": "Fill inputs"
+  },
+  "composerFocusInput": {
+    "message": "Focus input"
+  },
+  "composerPromptLibrary": {
+    "message": "Prompt library"
+  },
+  "composerLayout": {
+    "message": "Layout"
+  },
+  "composerNotChecked": {
+    "message": "Not checked"
+  },
+  "composerSwitched": {
+    "message": "Confirmed"
+  },
+  "composerUnsupported": {
+    "message": "Not supported"
+  },
+  "composerUnavailable": {
+    "message": "Unavailable for this account or page"
+  },
+  "composerTimeout": {
+    "message": "Not confirmed"
+  },
+  "composerNotConfirmed": {
+    "message": "Not confirmed"
+  },
+  "composerSwitching": {
+    "message": "Switching…"
+  },
+  "composerTierApplied": {
+    "message": "$1 AIs switched"
+  },
+  "composerTierMixed": {
+    "message": "$1/$2 switched · mixed"
+  },
+  "composerSortUpdated": {
+    "message": "Order applies to AI menus and the next startup."
+  },
+  "composerUnassigned": {
+    "message": "Unassigned"
+  },
+  "composerShortcutInvalid": {
+    "message": "This combination is reserved or already used."
+  },
+  "composerActionBusy": {
+    "message": "Wait for the current operation to finish."
+  },
+  "composerStartingChats": {
+    "message": "Starting new conversations…"
+  },
+  "composerNewChatsPartial": {
+    "message": "$1 confirmed; not confirmed: $2"
+  },
+  "composerNewChatsDone": {
+    "message": "$1 new conversations ready"
+  },
+  "blindModeTitle": {
+    "message": "Blind mode: hide AI names and unify page styles"
+  },
+  "blindModeOn": {
+    "message": "Blind mode on: AI names are hidden"
+  },
+  "blindModeOff": {
+    "message": "Blind mode off: AI names are shown"
+  },
+  "blindModeStatsHidden": {
+    "message": "Turn off blind mode to see answer stats"
+  },
+  "blindPanelLabel": {
+    "message": "Model $1"
+  },
+  "wideContentTitle": {
+    "message": "Wide content: let answers use the full panel width"
+  },
+  "sectionTierRecipes": {
+    "message": "Reasoning level mapping"
+  },
+  "labelTierRecipes": {
+    "message": "What Fast, Balanced and Deep pick on each site"
+  },
+  "descTierRecipes": {
+    "message": "Enter the model and thinking option exactly as the site shows them. Use | between alternatives, for example 快速|Fast. Leave both empty to skip that level."
+  },
+  "btnResetTierRecipes": {
+    "message": "Restore defaults"
+  },
+  "labelTierProvider": {
+    "message": "AI"
+  },
+  "labelTierModel": {
+    "message": "Model"
+  },
+  "labelTierThinking": {
+    "message": "Thinking"
+  },
+  "toastTierRecipesSaved": {
+    "message": "Reasoning level mapping saved"
+  },
+  "toastTierRecipesReset": {
+    "message": "Reasoning level mapping restored to defaults"
   }
 }

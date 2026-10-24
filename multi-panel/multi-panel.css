@@ -826,28 +826,133 @@ body {
 }
 
 /* ===== Input Bar ===== */
+/* The composer owns its border so images, tools and reasoning levels read as
+   one control. Motion is a single short sweep on deliberate interaction. */
+.composer-shell {
+  --composer-edge: #d9deeb;
+  position: relative;
+  max-width: 1200px;
+  margin: 0 auto;
+  border: 1px solid var(--composer-edge);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 3px 16px rgba(30, 42, 70, .04);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.composer-shell:focus-within {
+  --composer-edge: #a9a4da;
+  box-shadow: 0 0 0 3px rgba(120, 104, 185, .055);
+}
+.composer-shell::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(110deg, #8394d8, #c49acb, #91bfc5, #8394d8);
+  background-size: 250% 100%;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+}
+.composer-shell.composer-pulse::before { animation: composer-edge-sweep .85s ease-out 1; }
+@keyframes composer-edge-sweep {
+  0% { opacity: 0; background-position: 100% 0; }
+  20% { opacity: .8; }
+  75% { opacity: .5; }
+  100% { opacity: 0; background-position: 0 0; }
+}
+.composer-controls, .composer-controls-left, .composer-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.composer-controls { justify-content: space-between; padding: 0 8px 5px; flex-wrap: wrap; gap: 6px; }
+.composer-controls-left { flex-wrap: wrap; }
+.composer-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  color: #647087;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.composer-control .material-symbols-outlined { font-size: 15px; }
+.composer-control:hover { color: #48447a; background: #f0eff8; }
+.composer-control[aria-pressed="true"] { color: #635799; background: #f1eef9; }
+.composer-control:disabled, .tier-option:disabled { opacity: .55; cursor: progress; }
+.composer-control:focus-visible, .tier-option:focus-visible, .composer-link:focus-visible {
+  outline: 2px solid #8a79b5;
+  outline-offset: 2px;
+}
+.composer-divider { width: 1px; height: 14px; background: #e4e6ee; }
+.tier-controls { display: inline-flex; gap: 2px; background: #f3f4f8; padding: 2px; border-radius: 8px; }
+.tier-option {
+  padding: 1px 9px;
+  min-height: 20px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #657087;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.tier-option[aria-checked="true"] { color: #574681; background: #fff; box-shadow: 0 1px 4px #26253d15; }
+.tier-option:hover { color: #574681; }
+.composer-status, .composer-result-row { font-size: 12px; color: #6d7485; }
+.composer-result-row { padding: 0 12px 6px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.composer-result-row[hidden] { display: none; }
+.composer-link { border: none; color: #71609a; font: inherit; background: transparent; cursor: pointer; text-decoration: underline; }
+.composer-dialog { width: min(620px, calc(100vw - 32px)); }
+.composer-help { color: #767d8d; font-size: 12px; line-height: 1.65; margin-bottom: 14px; }
+.composer-table-scroll { overflow-x: auto; }
+.composer-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.composer-table th, .composer-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e9eaf0; }
+.composer-table th { font-size: 12px; color: #7b7e8e; font-weight: 500; }
+.composer-shortcut-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px; }
+.composer-shortcut-fields { display: grid; gap: 8px; }
+.composer-shortcut-field { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 13px; }
+.composer-shortcut-field input { min-width: 0; width: 180px; padding: 8px 10px; background: transparent; color: inherit; border: 1px solid #dddde7; border-radius: 7px; font: inherit; }
+.composer-error { font-size: 12px; color: #c74242; min-height: 18px; margin-top: 12px; }
 #input-bar {
   position: relative;
   background: #fff;
   border-top: 1px solid #e0e0e0;
-  padding: 12px 16px;
+  padding: 6px 12px;
   flex-shrink: 0;
+  /* Above the panels so a multi-line draft can grow upward over them. */
+  z-index: 5;
 }
 
 .input-container {
   display: flex;
   align-items: flex-end;
-  gap: 12px;
+  gap: 6px;
   max-width: 1200px;
   margin: 0 auto;
+  padding: 6px 8px 4px;
 }
 
 .input-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   background: #fff;
@@ -865,6 +970,7 @@ body {
 
 .input-wrapper {
   flex: 1;
+  min-width: 0;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -944,7 +1050,7 @@ body {
   font-family: inherit;
   line-height: 1.5;
   resize: none;
-  min-height: 40px;
+  min-height: 32px;
   max-height: 150px;
   overflow-y: auto;
   transition: border-color 0.2s;
@@ -982,13 +1088,14 @@ body {
 .send-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
   border: none;
   border-radius: 8px;
   background: #1976d2;
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s;
@@ -1004,20 +1111,21 @@ body {
 }
 
 .send-btn .material-symbols-outlined {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 /* Fill Button - fills input boxes without sending */
 .fill-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   background: #f5f5f5;
   color: #333;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -1035,7 +1143,7 @@ body {
 }
 
 .fill-btn .material-symbols-outlined {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 /* Clear Button - clears all input boxes */
@@ -1043,8 +1151,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   background: #f5f5f5;
@@ -1060,7 +1168,11 @@ body {
 }
 
 .clear-btn .material-symbols-outlined {
-  font-size: 20px;
+  font-size: 18px;
+}
+
+.input-btn .material-symbols-outlined {
+  font-size: 18px;
 }
 
 /* ===== Modal Styles ===== */
@@ -2441,3 +2553,74 @@ html.snapshot-hide-cursor *::after {
 [data-theme="dark"] .answer-stats-clear-btn {
   color: #ff6b6b;
 }
+
+/* Composer overrides also apply after the existing dark-theme textarea rules. */
+#input-bar #unified-input {
+  border: 0;
+  border-radius: 10px;
+  padding: 5px 6px;
+  background: transparent;
+  box-shadow: none;
+}
+#input-bar #unified-input:focus { outline: none; border: 0; }
+#input-bar .input-btn { border: 0; background: transparent; }
+#input-bar .input-actions { gap: 6px; }
+#input-bar .send-btn { border-radius: 10px; padding: 0 14px; }
+/* A draft taller than one line overhangs the panels instead of shrinking them;
+   --composer-overflow is the extra textarea height (see resizeTextarea). */
+#input-bar .composer-shell { margin-top: calc(-1 * var(--composer-overflow, 0px)); }
+#input-bar.composer-expanded .composer-shell { box-shadow: 0 -8px 24px rgba(30, 42, 70, .12); }
+[data-theme="dark"] #input-bar.composer-expanded .composer-shell { box-shadow: 0 -8px 24px #0006; }
+[data-theme="dark"] .composer-shell { --composer-edge: #41414e; background: #26262b; box-shadow: 0 3px 16px #0001; }
+[data-theme="dark"] .composer-shell:focus-within { --composer-edge: #6e6588; }
+[data-theme="dark"] .composer-control, [data-theme="dark"] .tier-option { color: #b4b2c2; }
+[data-theme="dark"] .composer-control:hover, [data-theme="dark"] .composer-control[aria-pressed="true"] { color: #d2c5f4; background: #393344; }
+[data-theme="dark"] .tier-controls { background: #1e1e24; }
+[data-theme="dark"] .tier-option[aria-checked="true"] { color: #e0d5ff; background: #44394f; }
+[data-theme="dark"] .composer-divider { background: #42414d; }
+[data-theme="dark"] .composer-help, [data-theme="dark"] .composer-status, [data-theme="dark"] .composer-result-row { color: #aaa6b8; }
+[data-theme="dark"] .composer-table td, [data-theme="dark"] .composer-table th, [data-theme="dark"] .composer-shortcut-field input { border-color: #43414e; }
+@media (max-width: 760px) {
+  #input-bar { padding: 6px; }
+  #input-bar .input-container { flex-wrap: wrap; }
+  #input-bar .input-wrapper { flex-basis: calc(100% - 110px); }
+  #input-bar .input-actions { width: 100%; justify-content: flex-end; }
+  .composer-controls { gap: 8px 4px; }
+  .composer-controls-right { margin-left: auto; }
+  .composer-shortcut-field input { width: 155px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-shell, .composer-control, .tier-option { transition: none; }
+  .composer-shell.composer-pulse::before { animation: none; }
+}
+
+/* ===== Blind mode ===== */
+/* Anonymous labels replace every provider name and icon the page shows, and
+   controls that reveal the provider (open in tab, switch, Google mode) hide. */
+.blind-label { display: none; }
+body.blind-mode .blind-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: #ece9f6;
+  color: #574681;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+body.blind-mode .panel-header-left .provider-icon,
+body.blind-mode .panel-header-left .provider-name,
+body.blind-mode .panel-selector .provider-icon,
+body.blind-mode .panel-selector .provider-name,
+body.blind-mode .panel-loading,
+body.blind-mode .panel-header-right .open-provider-top-level-btn,
+body.blind-mode .panel-header-right .switch-provider-btn,
+body.blind-mode .panel-header-right .panel-google-mode-select,
+body.blind-mode #answer-stats-btn {
+  display: none !important;
+}
+@container (max-width: 300px) {
+  body.blind-mode .panel-header-left .blind-label { display: inline-flex; }
+}
+[data-theme="dark"] body.blind-mode .blind-label { background: #393344; color: #d2c5f4; }

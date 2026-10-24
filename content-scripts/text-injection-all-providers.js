@@ -9,10 +9,13 @@
   const MULTI_PANEL_PROVIDER_STATUS_CONTEXT = 'multi-panel-provider-status';
   const MULTI_PANEL_ACTION_RESULT_CONTEXT = 'multi-panel-action-result';
   const PANELIZE_ACTION_RESULT = 'PANELIZE_ACTION_RESULT';
+  const PANELIZE_NEW_CHAT_RESULT = 'PANELIZE_NEW_CHAT_RESULT';
+  const MULTI_PANEL_NEW_CHAT_RESULT_CONTEXT = 'multi-panel-new-chat-result';
   const PANELIZE_PROVIDER_BUSY = 'PANELIZE_PROVIDER_BUSY';
   const PANELIZE_PROVIDER_IDLE = 'PANELIZE_PROVIDER_IDLE';
   const PANELIZE_PROVIDER_USER_INTERACTION = 'PANELIZE_PROVIDER_USER_INTERACTION';
   const PANELIZE_RESPONSE_TIMING = 'PANELIZE_RESPONSE_TIMING';
+  const PANELIZE_ANSWER_ENGAGEMENT = 'PANELIZE_ANSWER_ENGAGEMENT';
   const PANELIZE_TEMP_CHAT_ENABLED = 'PANELIZE_TEMP_CHAT_ENABLED';
   const PANELIZE_PROVIDER_LOCATION = 'PANELIZE_PROVIDER_LOCATION';
   const PANELIZE_RESTORE_USER_FOCUS = 'PANELIZE_RESTORE_USER_FOCUS';
@@ -117,13 +120,53 @@
   const RESPONSE_TIMING_CHECK_INTERVAL_MS = 250;
   const RESPONSE_TIMING_NO_OUTPUT_TIMEOUT_MS = 5 * 60 * 1000;
   const RESPONSE_TIMING_MAX_DURATION_MS = 15 * 60 * 1000;
+  // Clicks and scrolls on the last sent answer count towards its answer stats
+  // score. Each kind is reported at most once per interval.
+  const ANSWER_ENGAGEMENT_REPORT_INTERVAL_MS = 1000;
+  const ANSWER_ENGAGEMENT_EVENT_KINDS = {
+    pointerdown: 'click',
+    wheel: 'scroll',
+    touchmove: 'scroll'
+  };
   const MULTI_PANEL_USER_INTERACTION_TRACKING_TIMEOUT_MS = 90000;
   const TEMP_CHAT_POLL_INTERVAL_MS = 200;
   const TEMP_CHAT_POLL_TIMEOUT_MS = 1200;
   const YUANBAO_TEMP_CHAT_CLICK_COOLDOWN_MS = 5000;
   const IMAGE_UPLOAD_PREVIEW_TIMEOUT_MS = 6000;
+  const NEW_CHAT_PENDING_STORAGE_PREFIX = 'panelize.pending-new-chat.v1:';
+  const NEW_CHAT_PENDING_MAX_AGE_MS = 2 * 60 * 1000;
+  const NEW_CHAT_CONFIRMATION_TIMEOUT_MS = 12000;
+  const NEW_CHAT_RECOVERY_STABLE_MS = 1800;
+  const NEW_CHAT_CLICK_STABLE_MS = 750;
+  const NEW_CHAT_CONFIRMATION_POLL_MS = 200;
+  const NEW_CHAT_ASSISTANT_TURN_SELECTORS = [
+    '[data-message-author-role="assistant"]',
+    '[data-testid="assistant-message"]',
+    'model-response',
+    '[data-role="assistant"]',
+    '[data-author="assistant"]',
+    '[data-message-role="assistant"]'
+  ].join(', ');
+  const NEW_CHAT_ATTACHMENT_PREVIEW_SELECTORS = [
+    '[role="list"][aria-label="Conversation attachments"] > *',
+    '[aria-label="Conversation attachments"] > *',
+    '[data-testid*="attachment-preview"]',
+    '[data-testid*="file-preview"]',
+    '[data-testid*="image-preview"]',
+    '[data-slot*="attachment-preview"]',
+    '[class*="attachment-preview"]',
+    '[class*="file-preview"]',
+    '[class*="image-preview"]',
+    '[data-file-name]',
+    '.image-thumbnail',
+    '.file-list-box-content-list > *',
+    'button[aria-label*="No text extracted"]',
+    'button[aria-label*="Attached file"]',
+    'img[src^="blob:"]'
+  ].join(', ');
+  const MULTI_PANEL_EXTENSION_ORIGIN = getExtensionOrigin();
   const SLOW_COMPOSER_PROVIDERS = new Set([
-    'deepseek', 'kimi', 'doubao', 'chatglm', 'zai-global', 'yuanbao'
+    'deepseek', 'kimi', 'doubao', 'chatglm', 'zai-global', 'yuanbao', 'mimo', 'meta-ai'
   ]);
   const IMAGE_INJECTION_REASONS = Object.freeze({
     CONTROL_NOT_FOUND: 'control-not-found',
@@ -134,9 +177,11 @@
   let googleSearchReplaceOnNextFill = true;
   let chatgptSendTracking = null;
   let responseTiming = null;
+  let answerEngagement = null;
   let multiPanelUserInteractionTracking = null;
   let yuanbaoTemporaryChatActivation = null;
   let yuanbaoTemporaryChatLastClickAt = -Infinity;
+  const pendingNewChatRequests = new Map();
   // Element the user focused with the interaction reported to multi-panel,
   // in case the parent's focus restore took focus away before it heard back.
   let lastUserFocus = null;
@@ -204,6 +249,17 @@
       '.chat-command-editor-specail .ql-editor[contenteditable="true"]',
       '.ql-editor[contenteditable="true"][data-placeholder]'
     ],
+    // Injection uses ButtonFinderUtils.findMimoInput() (see findProviderInputs());
+    // this entry lets selector-based tooling such as the live smoke test find it.
+    mimo: ['textarea'],
+    // Prefer Meta AI's visible Lexical editor; its textarea mirror can be hidden.
+    'meta-ai': [
+      '[data-testid="composer-input"][contenteditable="true"]',
+      'textarea[data-testid="composer-input"]',
+      'input[data-testid="composer-input"]',
+      // Signed out, Meta AI shows a plain one-line input instead.
+      '[data-slot="logged-out-composer-input"] input[type="text"]'
+    ],
     google: [
       'textarea.ITIRGe',
       'textarea[aria-label="Ask anything"]',
@@ -238,6 +294,8 @@
     chatglm: true,
     'zai-global': true,
     yuanbao: true,
+    mimo: true,
+    'meta-ai': true,
     google: true  // Google AI Mode supports images
   };
 
@@ -255,6 +313,8 @@
     chatglm: ['input.el-upload__input[type="file"]'],
     'zai-global': ['input[type="file"][multiple][accept*=".png"]'],
     yuanbao: ['input[type="file"][multiple][accept*="image"]'],
+    mimo: ['input[type="file"][multiple][accept*="image"]'],
+    'meta-ai': ['input[type="file"]'],
     google: ['input[type="file"]']
   };
 
@@ -360,6 +420,17 @@
       '#yuanbao-send-btn[aria-label="Send"]',
       '#yuanbao-send-btn'
     ],
+    mimo: [
+      'button[data-track-id="home_send_btn"]'
+    ],
+    // Meta AI swaps this button for composer-stop-button while answering.
+    // Its logged-out composer uses a separate, localized control without a test id.
+    'meta-ai': [
+      'button[data-testid="composer-send-button"]',
+      '[data-slot="logged-out-composer-controls"] button[data-slot="button"][aria-label="Send"]',
+      '[data-slot="logged-out-composer-controls"] button[data-slot="button"][aria-label="发送"]',
+      '[data-slot="logged-out-composer-controls"] button[data-slot="button"][aria-label="發送"]'
+    ],
     google: [
       'button[data-xid="input-plate-send-button"]',
       'button[aria-label="Send"]',
@@ -441,6 +512,13 @@
       '[role="button"][aria-label="新建对话"]',
       '[role="button"][aria-label="新建對話"]'
     ],
+    mimo: [
+      'button[data-track-id="navbar_new_chat_btn"]',
+      'button[data-track-id="sidebar_ultra_new_chat_btn"]'
+    ],
+    'meta-ai': [
+      '[data-testid="new-chat-button"]'
+    ],
     google: [
       'button[aria-label="New search"]',
       'a[aria-label="Google"]',
@@ -463,6 +541,8 @@
     'zai-global': 'https://chat.z.ai/',
     // Keep this in sync with YUANBAO_DEFAULT_URL in modules/providers.js.
     yuanbao: 'https://yuanbao.tencent.com/chat/naQivTmsDa',
+    mimo: 'https://aistudio.xiaomimimo.com/#/c',
+    'meta-ai': 'https://www.meta.ai/',
     google: 'https://www.google.com/search?udm=50'
   };
 
@@ -514,6 +594,10 @@
       return 'zai-global';
     } else if (hostname === 'yuanbao.tencent.com') {
       return 'yuanbao';
+    } else if (hostname === 'aistudio.xiaomimimo.com') {
+      return 'mimo';
+    } else if (hostname === 'www.meta.ai') {
+      return 'meta-ai';
     } else if (hostname.includes('google.com') || hostname.includes('google.') || hostname === 'www.google.com') {
       // Google Search / AI Mode
       // Always return 'google' for any google.com page
@@ -521,6 +605,33 @@
       return 'google';
     }
     return null;
+  }
+
+  function getExtensionOrigin() {
+    try {
+      const url = new URL(chrome.runtime.getURL('/'));
+      if (!['chrome-extension:', 'moz-extension:', 'safari-web-extension:'].includes(url.protocol)) {
+        return null;
+      }
+      return url.origin === 'null' ? `${url.protocol}//${url.host}` : url.origin;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function isTrustedNewChatHostMessage(event, data) {
+    return Boolean(
+      MULTI_PANEL_EXTENSION_ORIGIN &&
+      window.parent !== window &&
+      event?.source === window.parent &&
+      event?.origin === MULTI_PANEL_EXTENSION_ORIGIN &&
+      data &&
+      data.context === 'multi-panel' &&
+      ['NEW_CHAT', 'VERIFY_NEW_CHAT'].includes(data.type) &&
+      typeof data.requestId === 'string' &&
+      data.requestId.length > 0 &&
+      data.requestId.length <= 160
+    );
   }
 
   function normalizeGoogleProviderMode(mode) {
@@ -1171,6 +1282,40 @@
     };
   }
 
+  function startAnswerEngagement(provider, requestId) {
+    answerEngagement = provider && requestId
+      ? { requestId, provider, lastReportedAt: {} }
+      : null;
+  }
+
+  function handleAnswerEngagementEvent(event) {
+    const tracking = answerEngagement;
+    const kind = ANSWER_ENGAGEMENT_EVENT_KINDS[event.type];
+    if (!tracking || !kind || !event.isTrusted || window.parent === window) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - (tracking.lastReportedAt[kind] ?? -Infinity) < ANSWER_ENGAGEMENT_REPORT_INTERVAL_MS) {
+      return;
+    }
+    tracking.lastReportedAt[kind] = now;
+
+    window.parent.postMessage({
+      type: PANELIZE_ANSWER_ENGAGEMENT,
+      requestId: tracking.requestId,
+      provider: tracking.provider,
+      kind,
+      context: MULTI_PANEL_PROVIDER_STATUS_CONTEXT
+    }, '*');
+  }
+
+  function setupAnswerEngagementReporting() {
+    Object.keys(ANSWER_ENGAGEMENT_EVENT_KINDS).forEach(type => {
+      document.addEventListener(type, handleAnswerEngagementEvent, { capture: true, passive: true });
+    });
+  }
+
   function findGoogleInput(mode) {
     return findFirstVisibleElement(getGoogleInputSelectors(mode));
   }
@@ -1285,6 +1430,10 @@
 
     if (provider === 'yuanbao') {
       return window.ButtonFinderUtils?.isYuanbaoSendControl(element) === true;
+    }
+
+    if (provider === 'mimo') {
+      return window.ButtonFinderUtils?.isMimoSendIcon(element) === true;
     }
 
     return !element.classList.contains('disabled');
@@ -1482,6 +1631,14 @@
   function* findProviderInputs(provider) {
     if (provider === 'chatgpt') {
       yield getChatgptComposer()?.findEditor() || null;
+      return;
+    }
+    if (provider === 'mimo') {
+      yield window.ButtonFinderUtils?.findMimoInput() || null;
+      return;
+    }
+    if (provider === 'meta-ai') {
+      yield findFirstVisibleElement(PROVIDER_SELECTORS[provider]);
       return;
     }
     for (const selector of PROVIDER_SELECTORS[provider] || []) {
@@ -1921,6 +2078,377 @@
     return false;
   }
 
+  function getPendingNewChatStorageKey(requestId, panelId = '') {
+    return `${NEW_CHAT_PENDING_STORAGE_PREFIX}${encodeURIComponent(requestId)}:${encodeURIComponent(panelId)}`;
+  }
+
+  function getNewChatRequestMapKey(requestId, panelId = '') {
+    return `${requestId}\u0000${panelId}`;
+  }
+
+  function writePendingNewChatRequest(data, provider, providerMode) {
+    if (typeof data.requestId !== 'string' || data.requestId.length === 0) {
+      return null;
+    }
+
+    const panelId = typeof data.panelId === 'string' ? data.panelId : '';
+    const key = getPendingNewChatStorageKey(data.requestId, panelId);
+    try {
+      sessionStorage.setItem(key, JSON.stringify({
+        requestId: data.requestId,
+        provider,
+        providerMode,
+        panelId,
+        createdAt: Date.now()
+      }));
+      return key;
+    } catch (error) {
+      console.warn('[New Chat] Could not persist navigation recovery state:', error);
+      return null;
+    }
+  }
+
+  function clearPendingNewChatRequest(key) {
+    if (!key) return;
+    try {
+      sessionStorage.removeItem(key);
+    } catch (error) {
+      console.warn('[New Chat] Could not clear navigation recovery state:', error);
+    }
+  }
+
+  function findPendingNewChatRequests() {
+    const pending = [];
+    const expiredKeys = [];
+    try {
+      for (let index = 0; index < sessionStorage.length; index += 1) {
+        const key = sessionStorage.key(index);
+        if (!key?.startsWith(NEW_CHAT_PENDING_STORAGE_PREFIX)) continue;
+        try {
+          const value = JSON.parse(sessionStorage.getItem(key) || 'null');
+          if (!value || typeof value.requestId !== 'string' || typeof value.provider !== 'string') {
+            expiredKeys.push(key);
+          } else if (!Number.isFinite(value.createdAt) || Date.now() - value.createdAt > NEW_CHAT_PENDING_MAX_AGE_MS) {
+            expiredKeys.push(key);
+          } else {
+            pending.push({ ...value, storageKey: key });
+          }
+        } catch (error) {
+          expiredKeys.push(key);
+        }
+      }
+      expiredKeys.forEach(clearPendingNewChatRequest);
+    } catch (error) {
+      console.warn('[New Chat] Could not inspect navigation recovery state:', error);
+    }
+    return pending;
+  }
+
+  function getNewChatComposer(provider, providerMode) {
+    return provider === 'google'
+      ? findGoogleInput(providerMode)
+      : findProviderInput(provider);
+  }
+
+  function getNewChatComposerContainer(provider, composer) {
+    if (!composer) return null;
+
+    let providerContainer = null;
+    switch (provider) {
+      case 'chatgpt':
+        providerContainer = getChatgptComposer()?.findForm?.(composer) || composer.closest('form');
+        break;
+      case 'grok':
+        providerContainer = getGrokComposer();
+        break;
+      case 'deepseek':
+        providerContainer = getDeepSeekComposer();
+        break;
+      case 'kimi':
+        providerContainer = getKimiComposer();
+        break;
+      case 'yuanbao':
+        providerContainer = getYuanbaoComposer();
+        break;
+      case 'mimo':
+        providerContainer = getMimoComposer();
+        break;
+      default:
+        break;
+    }
+
+    if (providerContainer?.contains(composer)) return providerContainer;
+    return composer.closest(
+      'form, [data-testid*="composer"], [data-slot*="composer"], [class*="composer"], ' +
+      '[id*="composer"], .chat-editor, #chat-box, [data-chat-input-layout="true"]'
+    ) || findClosestAncestorContaining(composer, 'input[type="file"]') || composer;
+  }
+
+  function hasNewChatComposerAttachments(provider, composer) {
+    const container = getNewChatComposerContainer(provider, composer);
+    if (!container) return false;
+
+    const hasSelectedFiles = [...(container.querySelectorAll('input[type="file"]') || [])]
+      .some(input => Number(input.files?.length) > 0);
+    if (hasSelectedFiles) return true;
+
+    try {
+      return [...container.querySelectorAll(NEW_CHAT_ATTACHMENT_PREVIEW_SELECTORS)]
+        .some(isVisibleElement);
+    } catch (error) {
+      console.warn('[New Chat] Could not inspect composer attachments:', error);
+      return true;
+    }
+  }
+
+  function getNewChatComposerText(element) {
+    if (!element) return '';
+    if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
+      return String(element.value || '').trim();
+    }
+    return String(element.innerText ?? element.textContent ?? '').trim();
+  }
+
+  function isNewChatComposerEmpty(provider, element) {
+    if (!element || !isVisibleElement(element) || getNewChatComposerText(element) !== '') {
+      return false;
+    }
+    return !hasNewChatComposerAttachments(provider, element);
+  }
+
+  function countVisibleNewChatMessages(selector) {
+    try {
+      return [...document.querySelectorAll(selector)].filter(isVisibleElement).length;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  function captureNewChatState(provider, providerMode) {
+    const composer = getNewChatComposer(provider, providerMode);
+    return {
+      url: window.location.href,
+      composerFound: Boolean(composer && isVisibleElement(composer)),
+      composerEmpty: isNewChatComposerEmpty(provider, composer),
+      composerTextLength: getNewChatComposerText(composer).length,
+      userMessageCount: countVisibleNewChatMessages(SNAPSHOT_USER_TURN_SELECTORS),
+      assistantMessageCount: countVisibleNewChatMessages(NEW_CHAT_ASSISTANT_TURN_SELECTORS)
+    };
+  }
+
+  function isCanonicalFreshNewChatUrl(provider, providerMode) {
+    try {
+      const currentUrl = new URL(window.location.href);
+      if (provider === 'google') {
+        return normalizeGoogleProviderMode(providerMode) === GOOGLE_PROVIDER_MODE_SEARCH
+          ? currentUrl.pathname === '/'
+          : currentUrl.pathname === '/search' && currentUrl.searchParams.get('udm') === '50';
+      }
+
+      const expectedUrl = new URL(NEW_CHAT_URLS[provider]);
+      const normalizePath = pathname => pathname.replace(/\/+$/, '') || '/';
+      return normalizePath(currentUrl.pathname) === normalizePath(expectedUrl.pathname) &&
+        (!expectedUrl.hash || currentUrl.hash === expectedUrl.hash);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function isBlankConversation(state) {
+    return Boolean(
+      state &&
+      state.composerFound &&
+      state.composerEmpty &&
+      state.userMessageCount === 0 &&
+      state.assistantMessageCount === 0
+    );
+  }
+
+  function isAlreadyFreshNewChatState(state, provider, providerMode) {
+    return isBlankConversation(state) && isCanonicalFreshNewChatUrl(provider, providerMode);
+  }
+
+  function hasNewChatTransition(before, after) {
+    return Boolean(
+      before && after && (
+        before.url !== after.url ||
+        before.userMessageCount > after.userMessageCount ||
+        before.assistantMessageCount > after.assistantMessageCount ||
+        (before.composerTextLength > 0 && after.composerEmpty)
+      )
+    );
+  }
+
+  async function waitForNewChatState(provider, providerMode, {
+    baseline = null,
+    timeoutMs = NEW_CHAT_CONFIRMATION_TIMEOUT_MS,
+    stableMs = NEW_CHAT_CLICK_STABLE_MS,
+    requireTransition = Boolean(baseline)
+  } = {}) {
+    const deadline = Date.now() + timeoutMs;
+    let stableSince = null;
+
+    while (Date.now() <= deadline) {
+      const state = captureNewChatState(provider, providerMode);
+      const blankConversation = isBlankConversation(state);
+      const transitioned = !requireTransition || hasNewChatTransition(baseline, state);
+
+      if (blankConversation && transitioned) {
+        if (stableSince === null) stableSince = Date.now();
+        if (Date.now() - stableSince >= stableMs) {
+          return { verified: true };
+        }
+      } else {
+        stableSince = null;
+      }
+
+      await sleep(NEW_CHAT_CONFIRMATION_POLL_MS);
+    }
+
+    return { verified: false, reason: 'confirmation-timeout' };
+  }
+
+  function postNewChatResult({ requestId, provider, panelId, status, reason }) {
+    if (!requestId) return;
+    try {
+      window.parent.postMessage({
+        type: PANELIZE_NEW_CHAT_RESULT,
+        context: MULTI_PANEL_NEW_CHAT_RESULT_CONTEXT,
+        requestId,
+        provider,
+        ...(typeof panelId === 'string' ? { panelId } : {}),
+        status,
+        ...(reason ? { reason } : {})
+      }, MULTI_PANEL_EXTENSION_ORIGIN || '*');
+    } catch (error) {
+      console.warn('[New Chat] Could not report the result to the host:', error);
+    }
+  }
+
+  function getNewChatResultIdentity(data, detectedProvider) {
+    return {
+      requestId: data.requestId,
+      provider: typeof data.provider === 'string' ? data.provider : detectedProvider,
+      panelId: typeof data.panelId === 'string' ? data.panelId : undefined
+    };
+  }
+
+  function resolveNewChatRequest(data, detectedProvider) {
+    const identity = getNewChatResultIdentity(data, detectedProvider);
+    if (!detectedProvider) {
+      return { identity, failure: { ...identity, status: 'failed', reason: 'provider-not-detected' } };
+    }
+    if (identity.provider && identity.provider !== detectedProvider) {
+      return { identity, failure: { ...identity, status: 'failed', reason: 'provider-mismatch' } };
+    }
+    const providerMode = detectedProvider === 'google'
+      ? normalizeGoogleProviderMode(data.providerMode)
+      : null;
+    return { identity, providerMode };
+  }
+
+  async function verifyNewChatRequest(data, detectedProvider, { baseline = null, recovery = false } = {}) {
+    const { identity, providerMode, failure } = resolveNewChatRequest(data, detectedProvider);
+    if (failure) return failure;
+    const provider = detectedProvider;
+
+    const baselineIsAlreadyFresh = isAlreadyFreshNewChatState(baseline, provider, providerMode);
+    const result = await waitForNewChatState(provider, providerMode, {
+      baseline,
+      timeoutMs: NEW_CHAT_CONFIRMATION_TIMEOUT_MS,
+      stableMs: recovery ? NEW_CHAT_RECOVERY_STABLE_MS : NEW_CHAT_CLICK_STABLE_MS,
+      requireTransition: Boolean(baseline) && !baselineIsAlreadyFresh
+    });
+
+    return result.verified
+      ? { ...identity, provider: detectedProvider, status: 'verified' }
+      : { ...identity, provider: detectedProvider, status: 'unconfirmed', reason: result.reason };
+  }
+
+  function submitNewChatRequest(data, detectedProvider, type) {
+    if (typeof data.requestId !== 'string' || data.requestId.length === 0) {
+      return;
+    }
+
+    const mapKey = getNewChatRequestMapKey(data.requestId, data.panelId || '');
+    const existing = pendingNewChatRequests.get(mapKey);
+    if (existing) {
+      existing.then(result => postNewChatResult(result));
+      return;
+    }
+
+    const task = (async () => {
+      if (type === 'VERIFY_NEW_CHAT') {
+        const result = await verifyNewChatRequest(data, detectedProvider, { recovery: true });
+        clearPendingNewChatRequest(getPendingNewChatStorageKey(data.requestId, data.panelId || ''));
+        return result;
+      }
+
+      const { identity, providerMode, failure } = resolveNewChatRequest(data, detectedProvider);
+      if (failure) return failure;
+      const provider = detectedProvider;
+
+      const baseline = captureNewChatState(provider, providerMode);
+      const storageKey = writePendingNewChatRequest(data, detectedProvider, providerMode);
+      let started = false;
+      try {
+        started = clickNewChatButton(detectedProvider, providerMode);
+      } catch (error) {
+        console.warn('[New Chat] Provider new-chat control failed:', error);
+        clearPendingNewChatRequest(storageKey);
+        return { ...identity, provider: detectedProvider, status: 'failed', reason: 'click-error' };
+      }
+
+      if (!started) {
+        clearPendingNewChatRequest(storageKey);
+        return { ...identity, provider: detectedProvider, status: 'failed', reason: 'control-not-found' };
+      }
+
+      const result = await verifyNewChatRequest(data, detectedProvider, { baseline });
+      clearPendingNewChatRequest(storageKey);
+      return result;
+    })();
+
+    pendingNewChatRequests.set(mapKey, task);
+    task.then(result => postNewChatResult(result)).catch(error => {
+      console.error('[New Chat] Could not verify the new conversation:', error);
+      const identity = getNewChatResultIdentity(data, detectedProvider);
+      postNewChatResult({ ...identity, status: 'unconfirmed', reason: 'verification-error' });
+    });
+
+    // Keep a small idempotency cache so a duplicate host message cannot click
+    // the provider's new-chat control twice.
+    if (pendingNewChatRequests.size > 32) {
+      const oldestRequestKey = pendingNewChatRequests.keys().next().value;
+      pendingNewChatRequests.delete(oldestRequestKey);
+    }
+  }
+
+  function recoverPendingNewChatRequests() {
+    const detectedProvider = detectProvider();
+    if (!detectedProvider) return;
+
+    for (const pending of findPendingNewChatRequests()) {
+      if (pending.provider !== detectedProvider) continue;
+      const mapKey = getNewChatRequestMapKey(pending.requestId, pending.panelId || '');
+      const existing = pendingNewChatRequests.get(mapKey);
+      if (existing) continue;
+
+      const task = verifyNewChatRequest(pending, detectedProvider, { recovery: true });
+      pendingNewChatRequests.set(mapKey, task);
+      task.then(result => postNewChatResult(result)).catch(error => {
+        console.error('[New Chat] Could not recover the new conversation result:', error);
+        postNewChatResult({
+          requestId: pending.requestId,
+          provider: detectedProvider,
+          panelId: pending.panelId,
+          status: 'unconfirmed',
+          reason: 'verification-error'
+        });
+      });
+    }
+  }
+
   // Inject text into an element (textarea or contenteditable)
   function injectTextIntoElement(element, text, provider = null) {
     if (!element || !text || typeof text !== 'string' || text.trim() === '') {
@@ -2145,6 +2673,7 @@
       }
       if (autoSubmit && requestId) {
         startResponseTiming(provider, requestId);
+        startAnswerEngagement(provider, requestId);
       }
 
       const succeededImageIds = [];
@@ -2279,6 +2808,9 @@
         break;
       case 'yuanbao':
         result = await injectImageToYuanbao(imageData, { retry });
+        break;
+      case 'mimo':
+        result = await injectImageToMimo(imageData, { retry });
         break;
       case 'google':
         result = await injectImageToGoogle(imageData);
@@ -2557,6 +3089,65 @@
       return createImageInjectionFailure(IMAGE_INJECTION_REASONS.PREVIEW_TIMEOUT);
     } catch (error) {
       console.error('[Image Injection] Yuanbao error:', error);
+      return createImageInjectionFailure(IMAGE_INJECTION_REASONS.INJECTION_ERROR);
+    }
+  }
+
+  function getMimoComposer() {
+    const editor = window.ButtonFinderUtils?.findMimoInput() || null;
+    return findClosestAncestorContaining(editor, 'input[type="file"]');
+  }
+
+  function findMimoFileInput(composer) {
+    return [...(composer?.querySelectorAll('input[type="file"]') || [])]
+      .find(input => input.multiple && acceptsImageFiles(input)) || null;
+  }
+
+  function countMimoCompletedPreviews(composer, fileName) {
+    const filenameEvidence = countFilenamePreviewEvidence(composer, fileName);
+    const uploadedImages = [...(composer?.querySelectorAll('img') || [])].filter(image => {
+      const source = image.getAttribute('src') || '';
+      const container = image.closest(
+        '[class*="attachment"], [class*="upload"], [class*="preview"], [class*="file"]'
+      );
+      return Boolean(container && /^https:\/\//.test(source));
+    }).length;
+    return Math.max(filenameEvidence, uploadedImages);
+  }
+
+  async function injectImageToMimo(imageData, { retry = false } = {}) {
+    try {
+      const composer = getMimoComposer();
+      const fileInput = findMimoFileInput(composer);
+      if (!composer || !fileInput) {
+        return createImageInjectionFailure(IMAGE_INJECTION_REASONS.CONTROL_NOT_FOUND);
+      }
+
+      const countCompleted = () => countMimoCompletedPreviews(composer, imageData.name);
+      if (retry) {
+        const reconciled = await reconcilePendingProviderImage('mimo', imageData, countCompleted);
+        if (reconciled) {
+          return reconciled;
+        }
+      }
+
+      const previousCount = countCompleted();
+      const file = await createImageFile(imageData);
+      if (!assignFilesToInput(fileInput, [file])) {
+        return createImageInjectionFailure(IMAGE_INJECTION_REASONS.INJECTION_ERROR);
+      }
+      dispatchFileInputEvents(fileInput);
+
+      const accepted = await waitForPreviewIncrease(countCompleted, previousCount);
+      if (accepted) {
+        pendingProviderImageUploads.delete(getProviderImageKey('mimo', imageData));
+        return createImageInjectionSuccess();
+      }
+
+      rememberPendingProviderImage('mimo', imageData, previousCount);
+      return createImageInjectionFailure(IMAGE_INJECTION_REASONS.PREVIEW_TIMEOUT);
+    } catch (error) {
+      console.error('[Image Injection] MiMo error:', error);
       return createImageInjectionFailure(IMAGE_INJECTION_REASONS.INJECTION_ERROR);
     }
   }
@@ -3616,20 +4207,31 @@
           startChatgptSendTracking(event.data.requestId);
         }
         startResponseTiming(provider, event.data.requestId);
+        startAnswerEngagement(provider, event.data.requestId);
         console.log('[Text Injection] Triggering send for', provider);
         clickSendButton(provider, providerMode);
       }
       return;
     }
 
+    // Verify a new-chat state after a host-driven reload. This path never
+    // clicks a control; the host has already selected the destination URL.
+    if (event.data.type === 'VERIFY_NEW_CHAT' && event.data.context === 'multi-panel') {
+      if (!isTrustedNewChatHostMessage(event, event.data)) return;
+      submitNewChatRequest(event.data, detectProvider(), 'VERIFY_NEW_CHAT');
+      return;
+    }
+
     // Handle NEW_CHAT messages (create new chat)
     if (event.data.type === 'NEW_CHAT' && event.data.context === 'multi-panel') {
+      if (event.data.requestId && !isTrustedNewChatHostMessage(event, event.data)) return;
       const provider = detectProvider();
       stopMultiPanelUserInteractionTracking();
       if (provider === 'chatgpt') {
         stopChatgptSendTracking();
       }
       stopResponseTiming('cancelled');
+      startAnswerEngagement(null, null);
       const providerMode = provider === 'google'
         ? normalizeGoogleProviderMode(event.data.providerMode)
         : null;
@@ -3637,9 +4239,16 @@
       console.log('[Text Injection] Current URL:', window.location.href);
       if (provider) {
         console.log('[Text Injection] Creating new chat for', provider);
-        clickNewChatButton(provider, providerMode);
+        if (event.data.requestId) {
+          submitNewChatRequest({ ...event.data, provider: event.data.provider || provider }, provider, 'NEW_CHAT');
+        } else {
+          clickNewChatButton(provider, providerMode);
+        }
       } else {
         console.warn('[Text Injection] Provider not detected for NEW_CHAT');
+        if (event.data.requestId) {
+          submitNewChatRequest(event.data, provider, 'NEW_CHAT');
+        }
       }
       return;
     }
@@ -3720,6 +4329,7 @@
     }
     if (shouldAutoSubmit) {
       startResponseTiming(provider, event.data.requestId);
+      startAnswerEngagement(provider, event.data.requestId);
     }
 
     if (provider === 'google') {
@@ -4817,5 +5427,11 @@
   // Listen for messages from the multi-panel host
   setupProviderLocationReporting();
   setupPageWidthReporting();
+  setupAnswerEngagementReporting();
   window.addEventListener('message', handleTextInjection);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', recoverPendingNewChatRequests, { once: true });
+  } else {
+    recoverPendingNewChatRequests();
+  }
 })();

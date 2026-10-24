@@ -8,6 +8,21 @@ import {
   syncOptionalProviderAccess,
 } from '../modules/optional-provider-access.js';
 
+function currentScripts(providerIds) {
+  return providerIds.map((providerId) => {
+    const script = { ...OPTIONAL_PROVIDER_CONFIGS[providerId].contentScript };
+    delete script.persistAcrossSessions;
+    return script;
+  });
+}
+
+function currentFrameRules(providerIds) {
+  return providerIds
+    .map((providerId) => OPTIONAL_PROVIDER_CONFIGS[providerId].frameRule)
+    .filter(Boolean)
+    .map(({ id, action, condition }) => ({ condition, action, id }));
+}
+
 describe('optional provider access', () => {
   beforeEach(() => {
     chrome.permissions = {
@@ -18,6 +33,7 @@ describe('optional provider access', () => {
       getRegisteredContentScripts: vi.fn(() => Promise.resolve([])),
       registerContentScripts: vi.fn(() => Promise.resolve()),
       unregisterContentScripts: vi.fn(() => Promise.resolve()),
+      updateContentScripts: vi.fn(() => Promise.resolve()),
     };
     chrome.declarativeNetRequest = {
       getDynamicRules: vi.fn(() => Promise.resolve([])),
@@ -68,6 +84,74 @@ describe('optional provider access', () => {
       },
     });
     expect(OPTIONAL_PROVIDER_CONFIGS.yuanbao.frameRule).toBeUndefined();
+    expect(OPTIONAL_PROVIDER_CONFIGS.mimo).toMatchObject({
+      origins: ['https://aistudio.xiaomimimo.com/*', 'https://xiaomimimo.com/*', 'https://account.xiaomi.com/*'],
+      contentScript: {
+        id: 'mimo-scripts',
+        matches: ['https://aistudio.xiaomimimo.com/*'],
+      },
+      frameRule: { id: 1005 },
+    });
+    expect(OPTIONAL_PROVIDER_CONFIGS['meta-ai']).toMatchObject({
+      origins: ['https://www.meta.ai/*'],
+      contentScript: {
+        id: 'meta-ai-scripts',
+        matches: ['https://www.meta.ai/*'],
+      },
+      frameRule: {
+        id: 1006,
+        condition: { urlFilter: 'https://www.meta.ai/*', resourceTypes: ['sub_frame'] },
+      },
+    });
+  });
+
+  it('lets the MiMo panel frame its Xiaomi Account sign-in page', () => {
+    expect(OPTIONAL_PROVIDER_CONFIGS.mimo.frameRule.condition).toEqual({
+      requestDomains: ['aistudio.xiaomimimo.com', 'account.xiaomi.com'],
+      resourceTypes: ['sub_frame'],
+    });
+    expect(OPTIONAL_PROVIDER_CONFIGS.mimo.frameRule.action.responseHeaders).toEqual([
+      { header: 'X-Frame-Options', operation: 'remove' },
+      { header: 'Content-Security-Policy', operation: 'remove' },
+    ]);
+  });
+
+  it('replaces a stale MiMo frame rule that only matches the studio host', async () => {
+    chrome.permissions.contains.mockResolvedValue(true);
+    chrome.scripting.getRegisteredContentScripts.mockResolvedValue(currentScripts(['mimo']));
+    chrome.declarativeNetRequest.getDynamicRules.mockResolvedValue([{
+      ...OPTIONAL_PROVIDER_CONFIGS.mimo.frameRule,
+      condition: {
+        urlFilter: 'https://aistudio.xiaomimimo.com/*',
+        resourceTypes: ['sub_frame'],
+      },
+    }]);
+
+    await syncOptionalProviderAccess(['mimo']);
+
+    expect(chrome.declarativeNetRequest.updateDynamicRules).toHaveBeenCalledWith({
+      removeRuleIds: [1005],
+      addRules: [OPTIONAL_PROVIDER_CONFIGS.mimo.frameRule],
+    });
+  });
+
+  it('updates an existing MiMo content script when its registered file list is stale', async () => {
+    chrome.permissions.contains.mockResolvedValue(true);
+    chrome.scripting.getRegisteredContentScripts.mockResolvedValue([{
+      ...OPTIONAL_PROVIDER_CONFIGS.mimo.contentScript,
+      js: ['content-scripts/button-finder-utils.js'],
+    }]);
+    chrome.declarativeNetRequest.getDynamicRules.mockResolvedValue([
+      OPTIONAL_PROVIDER_CONFIGS.mimo.frameRule,
+    ]);
+
+    await syncOptionalProviderAccess(['mimo']);
+
+    expect(chrome.scripting.updateContentScripts).toHaveBeenCalledWith([
+      OPTIONAL_PROVIDER_CONFIGS.mimo.contentScript,
+    ]);
+    expect(chrome.scripting.registerContentScripts).not.toHaveBeenCalled();
+    expect(chrome.scripting.unregisterContentScripts).not.toHaveBeenCalled();
   });
 
   it('places each provider-specific Enter behavior script explicitly in registration order', () => {
@@ -76,6 +160,9 @@ describe('optional provider access', () => {
       'content-scripts/enter-behavior-utils.js',
       'content-scripts/enter-behavior-qwen-cn.js',
       'content-scripts/text-injection-all-providers.js',
+      'content-scripts/keyboard-shortcuts.js',
+      'content-scripts/provider-tiers.js',
+      'content-scripts/page-style.js',
       'content-scripts/focus-toggle.js',
     ]);
     expect(OPTIONAL_PROVIDER_CONFIGS['qwen-global'].contentScript.js).toEqual([
@@ -83,6 +170,9 @@ describe('optional provider access', () => {
       'content-scripts/enter-behavior-utils.js',
       'content-scripts/enter-behavior-qwen-global.js',
       'content-scripts/text-injection-all-providers.js',
+      'content-scripts/keyboard-shortcuts.js',
+      'content-scripts/provider-tiers.js',
+      'content-scripts/page-style.js',
       'content-scripts/focus-toggle.js',
     ]);
     expect(OPTIONAL_PROVIDER_CONFIGS.chatglm.contentScript.js).toEqual([
@@ -90,6 +180,9 @@ describe('optional provider access', () => {
       'content-scripts/enter-behavior-utils.js',
       'content-scripts/enter-behavior-chatglm.js',
       'content-scripts/text-injection-all-providers.js',
+      'content-scripts/keyboard-shortcuts.js',
+      'content-scripts/provider-tiers.js',
+      'content-scripts/page-style.js',
       'content-scripts/focus-toggle.js',
     ]);
     expect(OPTIONAL_PROVIDER_CONFIGS['zai-global'].contentScript.js).toEqual([
@@ -97,6 +190,9 @@ describe('optional provider access', () => {
       'content-scripts/enter-behavior-utils.js',
       'content-scripts/enter-behavior-zai-global.js',
       'content-scripts/text-injection-all-providers.js',
+      'content-scripts/keyboard-shortcuts.js',
+      'content-scripts/provider-tiers.js',
+      'content-scripts/page-style.js',
       'content-scripts/focus-toggle.js',
     ]);
     expect(OPTIONAL_PROVIDER_CONFIGS.yuanbao.contentScript.js).toEqual([
@@ -104,6 +200,29 @@ describe('optional provider access', () => {
       'content-scripts/enter-behavior-utils.js',
       'content-scripts/enter-behavior-yuanbao.js',
       'content-scripts/text-injection-all-providers.js',
+      'content-scripts/keyboard-shortcuts.js',
+      'content-scripts/provider-tiers.js',
+      'content-scripts/page-style.js',
+      'content-scripts/focus-toggle.js',
+    ]);
+    expect(OPTIONAL_PROVIDER_CONFIGS.mimo.contentScript.js).toEqual([
+      'content-scripts/button-finder-utils.js',
+      'content-scripts/enter-behavior-utils.js',
+      'content-scripts/enter-behavior-mimo.js',
+      'content-scripts/text-injection-all-providers.js',
+      'content-scripts/keyboard-shortcuts.js',
+      'content-scripts/provider-tiers.js',
+      'content-scripts/page-style.js',
+      'content-scripts/focus-toggle.js',
+    ]);
+    expect(OPTIONAL_PROVIDER_CONFIGS['meta-ai'].contentScript.js).toEqual([
+      'content-scripts/button-finder-utils.js',
+      'content-scripts/enter-behavior-utils.js',
+      'content-scripts/enter-behavior-meta-ai.js',
+      'content-scripts/text-injection-all-providers.js',
+      'content-scripts/keyboard-shortcuts.js',
+      'content-scripts/provider-tiers.js',
+      'content-scripts/page-style.js',
       'content-scripts/focus-toggle.js',
     ]);
   });
@@ -237,6 +356,8 @@ describe('optional provider access', () => {
       { id: 'chatglm-scripts' },
       { id: 'zai-global-scripts' },
       { id: 'yuanbao-scripts' },
+      { id: 'mimo-scripts' },
+      { id: 'meta-ai-scripts' },
       { id: 'unrelated-script' },
     ]);
     chrome.declarativeNetRequest.getDynamicRules.mockResolvedValue([
@@ -244,6 +365,8 @@ describe('optional provider access', () => {
       { id: 1002 },
       { id: 1003 },
       { id: 1004 },
+      { id: 1005 },
+      { id: 1006 },
       { id: 9999 },
     ]);
 
@@ -256,10 +379,12 @@ describe('optional provider access', () => {
         'chatglm-scripts',
         'zai-global-scripts',
         'yuanbao-scripts',
+        'mimo-scripts',
+        'meta-ai-scripts',
       ],
     });
     expect(chrome.declarativeNetRequest.updateDynamicRules).toHaveBeenCalledWith({
-      removeRuleIds: [1001, 1002, 1003, 1004],
+      removeRuleIds: [1001, 1002, 1003, 1004, 1005, 1006],
       addRules: [],
     });
   });
@@ -268,19 +393,12 @@ describe('optional provider access', () => {
     chrome.permissions.contains.mockImplementation(({ origins }) =>
       Promise.resolve(!origins.includes('https://www.qianwen.com/*'))
     );
-    chrome.scripting.getRegisteredContentScripts.mockResolvedValue([
-      { id: 'qwen-cn-scripts' },
-      { id: 'qwen-global-scripts' },
-      { id: 'chatglm-scripts' },
-      { id: 'zai-global-scripts' },
-      { id: 'yuanbao-scripts' },
-    ]);
-    chrome.declarativeNetRequest.getDynamicRules.mockResolvedValue([
-      { id: 1001 },
-      { id: 1002 },
-      { id: 1003 },
-      { id: 1004 },
-    ]);
+    chrome.scripting.getRegisteredContentScripts.mockResolvedValue(currentScripts([
+      'qwen-cn', 'qwen-global', 'chatglm', 'zai-global', 'yuanbao',
+    ]));
+    chrome.declarativeNetRequest.getDynamicRules.mockResolvedValue(currentFrameRules([
+      'qwen-cn', 'qwen-global', 'chatglm', 'zai-global',
+    ]));
 
     await syncOptionalProviderAccess([
       'qwen-cn',
@@ -302,19 +420,12 @@ describe('optional provider access', () => {
 
   it('does not duplicate already registered access', async () => {
     chrome.permissions.contains.mockResolvedValue(true);
-    chrome.scripting.getRegisteredContentScripts.mockResolvedValue([
-      { id: 'qwen-cn-scripts' },
-      { id: 'qwen-global-scripts' },
-      { id: 'chatglm-scripts' },
-      { id: 'zai-global-scripts' },
-      { id: 'yuanbao-scripts' },
-    ]);
-    chrome.declarativeNetRequest.getDynamicRules.mockResolvedValue([
-      { id: 1001 },
-      { id: 1002 },
-      { id: 1003 },
-      { id: 1004 },
-    ]);
+    chrome.scripting.getRegisteredContentScripts.mockResolvedValue(currentScripts([
+      'qwen-cn', 'qwen-global', 'chatglm', 'zai-global', 'yuanbao',
+    ]));
+    chrome.declarativeNetRequest.getDynamicRules.mockResolvedValue(currentFrameRules([
+      'qwen-cn', 'qwen-global', 'chatglm', 'zai-global',
+    ]));
 
     await syncOptionalProviderAccess([
       'qwen-cn',
@@ -325,6 +436,7 @@ describe('optional provider access', () => {
     ]);
 
     expect(chrome.scripting.registerContentScripts).not.toHaveBeenCalled();
+    expect(chrome.scripting.updateContentScripts).not.toHaveBeenCalled();
     expect(chrome.scripting.unregisterContentScripts).not.toHaveBeenCalled();
     expect(chrome.declarativeNetRequest.updateDynamicRules).not.toHaveBeenCalled();
   });

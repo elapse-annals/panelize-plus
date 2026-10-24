@@ -86,6 +86,12 @@
   "descEnabledProviders": {
     "message": "選擇在 Panelize 中顯示哪些 AI 提供者"
   },
+  "labelOpenOnStartup": {
+    "message": "啟動時開啟"
+  },
+  "descStartupProviders": {
+    "message": "勾選「啟動時開啟」以選擇 Panelize 啟動時預設開啟的面板。未勾選任何項目時，依順序開啟目前版面可容納的已啟用提供者。"
+  },
   "sectionKeyboardShortcuts": {
     "message": "鍵盤快速鍵"
   },
@@ -141,7 +147,7 @@
     "message": "自訂在 AI 提供者輸入欄位中輸入時 Enter 鍵和修飾鍵的工作方式。"
   },
   "descEnterBehavior2": {
-    "message": "<strong>適用於:</strong> ChatGPT、Claude、Gemini、Grok、DeepSeek、Kimi、Doubao、Qwen (China)、Qwen (Global)、Zhipu (China)、Z.ai (Global)、Yuanbao 和 Google(AI 模式)。"
+    "message": "<strong>適用於:</strong> ChatGPT、Claude、Gemini、Grok、DeepSeek、Kimi、Doubao、Qwen (China)、Qwen (Global)、Zhipu (China)、Z.ai (Global)、Yuanbao、MiMo、Meta AI 和 Google(AI 模式)。"
   },
   "labelEnableEnterCustomization": {
     "message": "啟用 Enter 鍵自訂"
@@ -292,11 +298,19 @@
   },
   "msgProviderPermissionRequired": {
     "message": "需要網站存取權限才能啟用 $PROVIDER$。",
-    "placeholders": { "provider": { "content": "$1" } }
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
   },
   "msgProviderPermissionRequestFailed": {
     "message": "無法為 $PROVIDER$ 請求網站存取權限。",
-    "placeholders": { "provider": { "content": "$1" } }
+    "placeholders": {
+      "provider": {
+        "content": "$1"
+      }
+    }
   },
   "msgShortcutEnabled": {
     "message": "鍵盤快速鍵已啟用"
@@ -1030,5 +1044,185 @@
   },
   "answerStatsStatus_cancelled": {
     "message": "已取消"
+  },
+  "answerStatsColumnEngaged": {
+    "message": "互動時長"
+  },
+  "answerStatsColumnScore": {
+    "message": "得分"
+  },
+  "answerStatsScoreNote": {
+    "message": "得分：被採納的回答得 5 分。使用回答最多再得 3 分：在面板中點擊或捲動得 1 分，放大面板得 1 分，每 30 秒互動時長得 1 分。互動時長累計相隔不超過 15 秒的點擊和捲動之間的時間，以及面板保持放大的時間。"
+  },
+  "labelProviderSortMode": {
+    "message": "AI 平台排序"
+  },
+  "descProviderSortMode": {
+    "message": "可手動排序，或依本機統計的使用資料排序。"
+  },
+  "optionProviderSortManual": {
+    "message": "手動"
+  },
+  "optionProviderSortFrequent": {
+    "message": "常用優先"
+  },
+  "composerNewChat": {
+    "message": "新對話"
+  },
+  "composerTierLabel": {
+    "message": "AI 推理檔位"
+  },
+  "composerTierFast": {
+    "message": "快速"
+  },
+  "composerTierBalanced": {
+    "message": "均衡"
+  },
+  "composerTierDeep": {
+    "message": "深度"
+  },
+  "composerTierDetails": {
+    "message": "AI 檔位對應"
+  },
+  "composerTierHelp": {
+    "message": "檔位會切換各個已開啟 AI 可用的模型或推理強度。聯網、研究和 Agent 設定保持獨立。"
+  },
+  "composerProvider": {
+    "message": "AI 平台"
+  },
+  "composerActualMode": {
+    "message": "實際模式"
+  },
+  "composerResult": {
+    "message": "結果"
+  },
+  "composerRefresh": {
+    "message": "重新整理狀態"
+  },
+  "composerRetryFailed": {
+    "message": "重試未成功項"
+  },
+  "composerShortcuts": {
+    "message": "快捷鍵"
+  },
+  "composerShortcutsEnabled": {
+    "message": "在 Panelize 和 AI 面板內啟用快捷鍵"
+  },
+  "composerShortcutsHelp": {
+    "message": "選取快捷鍵輸入框後按下組合鍵，按退格鍵清除。瀏覽器保留快捷鍵不可使用。"
+  },
+  "composerShortcutsReset": {
+    "message": "恢復預設快捷鍵"
+  },
+  "composerShortcutsSave": {
+    "message": "儲存"
+  },
+  "composerSend": {
+    "message": "傳送給全部 AI"
+  },
+  "composerFill": {
+    "message": "填入輸入框"
+  },
+  "composerFocusInput": {
+    "message": "聚焦輸入框"
+  },
+  "composerPromptLibrary": {
+    "message": "提示詞庫"
+  },
+  "composerLayout": {
+    "message": "版面配置"
+  },
+  "composerNotChecked": {
+    "message": "尚未檢查"
+  },
+  "composerSwitched": {
+    "message": "已確認"
+  },
+  "composerUnsupported": {
+    "message": "暫不支援"
+  },
+  "composerUnavailable": {
+    "message": "目前帳號或頁面無法使用"
+  },
+  "composerTimeout": {
+    "message": "未能確認"
+  },
+  "composerNotConfirmed": {
+    "message": "未能確認"
+  },
+  "composerSwitching": {
+    "message": "正在切換…"
+  },
+  "composerTierApplied": {
+    "message": "$1 個 AI 已切換"
+  },
+  "composerTierMixed": {
+    "message": "已切換 $1/$2 · 混合狀態"
+  },
+  "composerSortUpdated": {
+    "message": "排序已套用至 AI 清單和下次啟動排列。"
+  },
+  "composerUnassigned": {
+    "message": "未設定"
+  },
+  "composerShortcutInvalid": {
+    "message": "此組合鍵已由瀏覽器保留或由其他操作使用。"
+  },
+  "composerActionBusy": {
+    "message": "請等待目前操作完成。"
+  },
+  "composerStartingChats": {
+    "message": "正在批次建立新對話…"
+  },
+  "composerNewChatsPartial": {
+    "message": "$1 個已確認；未確認：$2"
+  },
+  "composerNewChatsDone": {
+    "message": "$1 個新對話已就緒"
+  },
+  "blindModeTitle": {
+    "message": "盲評模式：隱藏 AI 名稱並統一頁面樣式"
+  },
+  "blindModeOn": {
+    "message": "盲評模式已開啟：AI 名稱已隱藏"
+  },
+  "blindModeOff": {
+    "message": "盲評模式已關閉：已顯示 AI 名稱"
+  },
+  "blindModeStatsHidden": {
+    "message": "關閉盲評模式後可查看回答統計"
+  },
+  "blindPanelLabel": {
+    "message": "模型 $1"
+  },
+  "wideContentTitle": {
+    "message": "快速寬螢幕：回答鋪滿面板寬度"
+  },
+  "sectionTierRecipes": {
+    "message": "檔位對應"
+  },
+  "labelTierRecipes": {
+    "message": "快速 / 均衡 / 深度 在各網站選擇的選項"
+  },
+  "descTierRecipes": {
+    "message": "依網站上顯示的文字填寫模型與思考選項。多個候選用 | 分隔，例如 快速|Fast。兩項都留空則該檔位不切換。"
+  },
+  "btnResetTierRecipes": {
+    "message": "恢復預設"
+  },
+  "labelTierProvider": {
+    "message": "AI"
+  },
+  "labelTierModel": {
+    "message": "模型"
+  },
+  "labelTierThinking": {
+    "message": "思考"
+  },
+  "toastTierRecipesSaved": {
+    "message": "檔位對應已儲存"
+  },
+  "toastTierRecipesReset": {
+    "message": "檔位對應已恢復預設"
   }
 }

@@ -5,6 +5,14 @@ const DEFAULT_SETTINGS = {
   enabledProviders: DEFAULT_PROVIDER_IDS,
   googleProviderMode: DEFAULT_GOOGLE_PROVIDER_MODE,
   providerOrder: null,
+  providerSortMode: 'manual',
+  pageShortcutsEnabled: true,
+  keyboardShortcutBindings: {},
+  selectedProviderTier: null,
+  providerTierRecipes: null,  // User overrides of DEFAULT_TIER_RECIPES, keyed by provider then tier; null uses the built-in mapping
+  blindModeEnabled: false,  // Panels show anonymous labels and provider pages share one neutral style
+  wideContentEnabled: false,  // Provider pages drop the max-width of their conversation column
+  startupProviders: null,  // Provider IDs opened when Multi-Panel starts; null opens the first ones that fit the layout
   defaultProvider: 'chatgpt',
   lastSelectedProvider: 'chatgpt',
   rememberLastProvider: true,  // When true, Panelize opens last selected provider; when false, always opens default provider

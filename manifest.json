@@ -37,7 +37,11 @@
     "https://auth.qwen.ai/*",
     "https://chatglm.cn/*",
     "https://chat.z.ai/*",
-    "https://yuanbao.tencent.com/*"
+    "https://yuanbao.tencent.com/*",
+    "https://aistudio.xiaomimimo.com/*",
+    "https://xiaomimimo.com/*",
+    "https://account.xiaomi.com/*",
+    "https://www.meta.ai/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js",
@@ -86,6 +90,9 @@
         "content-scripts/enter-behavior-utils.js",
         "content-scripts/enter-behavior-chatgpt.js",
         "content-scripts/text-injection-all-providers.js",
+        "content-scripts/keyboard-shortcuts.js",
+        "content-scripts/provider-tiers.js",
+        "content-scripts/page-style.js",
         "content-scripts/focus-toggle.js"
       ],
       "run_at": "document_end",
@@ -99,6 +106,9 @@
         "content-scripts/enter-behavior-utils.js",
         "content-scripts/enter-behavior-claude.js",
         "content-scripts/text-injection-all-providers.js",
+        "content-scripts/keyboard-shortcuts.js",
+        "content-scripts/provider-tiers.js",
+        "content-scripts/page-style.js",
         "content-scripts/focus-toggle.js"
       ],
       "run_at": "document_end",
@@ -112,6 +122,9 @@
         "content-scripts/enter-behavior-utils.js",
         "content-scripts/enter-behavior-gemini.js",
         "content-scripts/text-injection-all-providers.js",
+        "content-scripts/keyboard-shortcuts.js",
+        "content-scripts/provider-tiers.js",
+        "content-scripts/page-style.js",
         "content-scripts/focus-toggle.js"
       ],
       "run_at": "document_start",
@@ -137,6 +150,9 @@
         "content-scripts/enter-behavior-utils.js",
         "content-scripts/enter-behavior-grok.js",
         "content-scripts/text-injection-all-providers.js",
+        "content-scripts/keyboard-shortcuts.js",
+        "content-scripts/provider-tiers.js",
+        "content-scripts/page-style.js",
         "content-scripts/focus-toggle.js"
       ],
       "run_at": "document_start",
@@ -151,6 +167,9 @@
         "content-scripts/enter-behavior-utils.js",
         "content-scripts/enter-behavior-deepseek.js",
         "content-scripts/text-injection-all-providers.js",
+        "content-scripts/keyboard-shortcuts.js",
+        "content-scripts/provider-tiers.js",
+        "content-scripts/page-style.js",
         "content-scripts/focus-toggle.js"
       ],
       "run_at": "document_start",
@@ -166,6 +185,9 @@
         "content-scripts/enter-behavior-utils.js",
         "content-scripts/enter-behavior-kimi.js",
         "content-scripts/text-injection-all-providers.js",
+        "content-scripts/keyboard-shortcuts.js",
+        "content-scripts/provider-tiers.js",
+        "content-scripts/page-style.js",
         "content-scripts/focus-toggle.js"
       ],
       "run_at": "document_start",
@@ -181,6 +203,9 @@
         "content-scripts/enter-behavior-utils.js",
         "content-scripts/enter-behavior-doubao.js",
         "content-scripts/text-injection-all-providers.js",
+        "content-scripts/keyboard-shortcuts.js",
+        "content-scripts/provider-tiers.js",
+        "content-scripts/page-style.js",
         "content-scripts/focus-toggle.js"
       ],
       "run_at": "document_start",
@@ -196,6 +221,9 @@
         "content-scripts/enter-behavior-utils.js",
         "content-scripts/enter-behavior-google.js",
         "content-scripts/text-injection-all-providers.js",
+        "content-scripts/keyboard-shortcuts.js",
+        "content-scripts/provider-tiers.js",
+        "content-scripts/page-style.js",
         "content-scripts/focus-toggle.js"
       ],
       "run_at": "document_end",

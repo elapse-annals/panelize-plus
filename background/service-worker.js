@@ -7,6 +7,11 @@ import {
   reconcileOptionalProviderAccess
 } from '../modules/optional-provider-access.js';
 import {
+  MIMO_SESSION_COOKIE_SYNC_ACTION,
+  isMimoSourceCookieChange,
+  reconcileMimoSessionCookies
+} from '../modules/mimo-session-cookies.js';
+import {
   GROK_WEBSOCKET_COOKIE_SYNC_ACTION,
   createGrokWebSocketCookieReconcileScheduler,
   handleGrokTabNavigationComplete,
@@ -128,6 +133,18 @@ async function migrateProviderSettingsForUpdate(details) {
 
 let optionalProviderReconcileQueue = Promise.resolve();
 
+// The Grok scheduler is provider-agnostic: it serializes runs and coalesces
+// bursts of cookie events into one queued reconcile.
+const scheduleMimoSessionReconcile = createGrokWebSocketCookieReconcileScheduler(
+  async () => {
+    const result = await reconcileMimoSessionCookies();
+    if (!result?.success) throw new Error('MiMo session synchronization failed');
+  },
+  () => {
+    console.warn('[Background] Failed to synchronize MiMo panel session');
+  }
+);
+
 function scheduleOptionalProviderReconcile() {
   optionalProviderReconcileQueue = optionalProviderReconcileQueue
     .then(() => reconcileOptionalProviderAccess())
@@ -151,6 +168,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     await removeDeprecatedClaudeModelMode();
   }
   await scheduleOptionalProviderReconcile();
+  await scheduleMimoSessionReconcile();
   await scheduleGrokWebSocketCookieReconcile();
   await createContextMenus();
   await loadShortcutSetting();
@@ -159,6 +177,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 chrome.runtime.onStartup.addListener(async () => {
   await scheduleOptionalProviderReconcile();
+  await scheduleMimoSessionReconcile();
   await scheduleGrokWebSocketCookieReconcile();
   await loadShortcutSetting();
   await loadOpenModeSetting();
@@ -193,12 +212,16 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 
   if (namespace === 'sync' && changes.enabledProviders) {
     scheduleOptionalProviderReconcile();
+    scheduleMimoSessionReconcile();
     scheduleGrokWebSocketCookieReconcile();
   }
 });
 
 if (chrome.cookies?.onChanged) {
   chrome.cookies.onChanged.addListener((changeInfo) => {
+    if (isMimoSourceCookieChange(changeInfo)) {
+      scheduleMimoSessionReconcile();
+    }
     if (isGrokWebSocketCookieChange(changeInfo)) {
       scheduleGrokWebSocketCookieReconcile();
     }
@@ -235,12 +258,14 @@ if (chrome.tabs?.onRemoved) {
 if (chrome.permissions?.onAdded) {
   chrome.permissions.onAdded.addListener(() => {
     scheduleOptionalProviderReconcile();
+    scheduleMimoSessionReconcile();
   });
 }
 
 if (chrome.permissions?.onRemoved) {
   chrome.permissions.onRemoved.addListener(() => {
     scheduleOptionalProviderReconcile();
+    scheduleMimoSessionReconcile();
   });
 }
 
@@ -373,6 +398,15 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 
 // Listen for version check requests
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === MIMO_SESSION_COOKIE_SYNC_ACTION) {
+    if (!isMultiPanelTopFrameSender(sender)) {
+      sendResponse({ success: false, error: 'MiMo session sync is only available to the Multi-Panel page' });
+      return false;
+    }
+    scheduleMimoSessionReconcile().then(sendResponse);
+    return true;
+  }
+
   if (message.action === 'fetchLatestCommit') {
     // Handle version check request from options page
     handleFetchLatestCommit().then(sendResponse);

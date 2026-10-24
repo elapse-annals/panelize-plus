@@ -20,7 +20,7 @@ async function appendAnswer(page, origin, html) {
   }, html);
 }
 
-test('Answer stats time each answer and record the adopted one', async ({}, testInfo) => {
+test('Answer stats time each answer, record the adopted one and score engagement', async ({}, testInfo) => {
   test.setTimeout(60000);
   const extension = await launchExtension({ viewport: { width: 1280, height: 800 } });
   try {
@@ -47,6 +47,14 @@ test('Answer stats time each answer and record the adopted one', async ({}, test
     await expect(adoptButtons.nth(1)).toHaveAttribute('aria-pressed', 'true');
     await expect(adoptButtons.nth(0)).toHaveAttribute('aria-pressed', 'false');
 
+    // Clicking in the ChatGPT panel and enlarging it count towards its score.
+    await findFrame(page, 'https://chatgpt.com/').locator('body').click({ position: { x: 5, y: 5 } });
+    const chatgptFocusButton = page.locator('.focus-panel-btn').nth(0);
+    await chatgptFocusButton.click();
+    await expect(chatgptFocusButton).toHaveAttribute('aria-pressed', 'true');
+    await chatgptFocusButton.click();
+    await expect(chatgptFocusButton).toHaveAttribute('aria-pressed', 'false');
+
     await page.locator('#answer-stats-btn').click();
     const rows = page.locator('#answer-stats-table tbody tr');
     await expect(rows).toHaveCount(2);
@@ -55,6 +63,9 @@ test('Answer stats time each answer and record the adopted one', async ({}, test
     await expect(deepseekRow.locator('td').nth(5)).toHaveText('1');
     await expect(deepseekRow.locator('td').nth(6)).toHaveText('100%');
     await expect(chatgptRow.locator('td').nth(6)).toHaveText('0%');
+    await expect(deepseekRow.locator('td').nth(8)).toHaveText('5');
+    await expect(chatgptRow.locator('td').nth(8)).toHaveText('2');
+    await expect(chatgptRow.locator('td').nth(7)).not.toHaveText('—');
 
     // Both answers finish once their text settles (DeepSeek waits 5s).
     await expect(chatgptRow.locator('td').nth(3)).not.toHaveText('—', { timeout: 15000 });

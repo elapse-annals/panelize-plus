@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 const LOCALES_DIR = resolve(process.cwd(), '_locales');
 
 // Strings added for the store rating prompt, the share snapshot, panel focus,
-// the panel resize handles and the answer stats.
+// the panel resize handles, the answer stats, blind mode, wide content and
+// the reasoning level mapping.
 const FEATURE_KEYS = [
   'ratingPromptMessage',
   'ratingPromptRate',
@@ -75,7 +76,25 @@ const FEATURE_KEYS = [
   'answerStatsAdopted',
   'answerStatsStatus_pending',
   'answerStatsStatus_timeout',
-  'answerStatsStatus_cancelled'
+  'answerStatsStatus_cancelled',
+  'answerStatsColumnEngaged',
+  'answerStatsColumnScore',
+  'blindModeTitle',
+  'blindModeOn',
+  'blindModeOff',
+  'blindModeStatsHidden',
+  'blindPanelLabel',
+  'wideContentTitle',
+  'sectionTierRecipes',
+  'labelTierRecipes',
+  'descTierRecipes',
+  'btnResetTierRecipes',
+  'labelTierProvider',
+  'labelTierModel',
+  'labelTierThinking',
+  'toastTierRecipesSaved',
+  'toastTierRecipesReset',
+  'answerStatsScoreNote'
 ];
 
 const locales = readdirSync(LOCALES_DIR);
