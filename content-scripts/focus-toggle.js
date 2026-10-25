@@ -76,6 +76,11 @@ function findProviderInput() {
            document.querySelector('[data-slot="logged-out-composer-input"] input[type="text"]');
   }
 
+  // StepFun
+  if (host === 'studio.stepfun.com') {
+    return document.querySelector('textarea[data-slot="textarea"]');
+  }
+
   // Generic fallback: find any visible textarea or contenteditable
   const textarea = document.querySelector('textarea:not([hidden])');
   if (textarea && textarea.offsetParent !== null) return textarea;

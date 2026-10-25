@@ -95,8 +95,8 @@
   const BRAND_NAME_PATTERN = new RegExp([
     '\\b(?:ChatGPT|GPT(?:-[\\w.]+|\\d[\\w.]*)?|OpenAI|Claude|Anthropic|Gemini|Bard|Google|DeepMind|Grok|xAI',
     'DeepSeek|Kimi|Moonshot|Doubao|ByteDance|Qwen|Tongyi|Alibaba|ChatGLM|GLM(?:-[\\w.]+|\\d[\\w.]*)?|Zhipu|Z\\.ai',
-    'Yuanbao|Hunyuan|Tencent|MiMo|Xiaomi|Meta AI|Llama)\\b',
-    '深度求索|月之暗面|豆包|字节跳动|通义|千问|阿里巴巴|阿里云|智谱|元宝|混元|腾讯|小米'
+    'Yuanbao|Hunyuan|Tencent|MiMo|Xiaomi|Meta AI|Llama|StepFun|Agnes)\\b',
+    '深度求索|月之暗面|豆包|字节跳动|通义|千问|阿里巴巴|阿里云|智谱|元宝|混元|腾讯|小米|阶跃星辰|阶跃'
   ].join('|'), 'gi');
   const BRAND_MASK = '███';
   // Model pickers are already transparent; their real labels are kept so tier
@@ -118,7 +118,9 @@
     ['zai-global', ['chat.z.ai']],
     ['yuanbao', ['yuanbao.tencent.com']],
     ['mimo', ['aistudio.xiaomimimo.com']],
-    ['meta-ai', ['meta.ai']]
+    ['meta-ai', ['meta.ai']],
+    ['stepfun', ['studio.stepfun.com']],
+    ['agnes', ['app.agnes-ai.com']]
   ];
   const hostname = String(window.location?.hostname || '').toLowerCase();
   const provider = PROVIDER_HOSTS.find(([, domains]) => domains.some(domain =>

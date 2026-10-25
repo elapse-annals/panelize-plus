@@ -166,7 +166,8 @@
   ].join(', ');
   const MULTI_PANEL_EXTENSION_ORIGIN = getExtensionOrigin();
   const SLOW_COMPOSER_PROVIDERS = new Set([
-    'deepseek', 'kimi', 'doubao', 'chatglm', 'zai-global', 'yuanbao', 'mimo', 'meta-ai'
+    'deepseek', 'kimi', 'doubao', 'chatglm', 'zai-global', 'yuanbao', 'mimo', 'meta-ai',
+    'stepfun', 'agnes'
   ]);
   const IMAGE_INJECTION_REASONS = Object.freeze({
     CONTROL_NOT_FOUND: 'control-not-found',
@@ -260,6 +261,11 @@
       // Signed out, Meta AI shows a plain one-line input instead.
       '[data-slot="logged-out-composer-input"] input[type="text"]'
     ],
+    stepfun: ['textarea[data-slot="textarea"]'],
+    agnes: [
+      'textarea[placeholder="分配一个任务或提问任何问题"]',
+      'textarea[rows="1"]'
+    ],
     google: [
       'textarea.ITIRGe',
       'textarea[aria-label="Ask anything"]',
@@ -296,6 +302,7 @@
     yuanbao: true,
     mimo: true,
     'meta-ai': true,
+    stepfun: true,
     google: true  // Google AI Mode supports images
   };
 
@@ -315,6 +322,7 @@
     yuanbao: ['input[type="file"][multiple][accept*="image"]'],
     mimo: ['input[type="file"][multiple][accept*="image"]'],
     'meta-ai': ['input[type="file"]'],
+    stepfun: ['input[type="file"][multiple][accept*="image"]'],
     google: ['input[type="file"]']
   };
 
@@ -431,6 +439,14 @@
       '[data-slot="logged-out-composer-controls"] button[data-slot="button"][aria-label="发送"]',
       '[data-slot="logged-out-composer-controls"] button[data-slot="button"][aria-label="發送"]'
     ],
+    stepfun: [
+      'button[data-slot="button"][aria-label="发送"]',
+      'button[data-slot="button"][aria-label="Send"]'
+    ],
+    agnes: [
+      'button[aria-label="Send"]',
+      'button[aria-label="发送"]'
+    ],
     google: [
       'button[data-xid="input-plate-send-button"]',
       'button[aria-label="Send"]',
@@ -543,6 +559,9 @@
     yuanbao: 'https://yuanbao.tencent.com/chat/naQivTmsDa',
     mimo: 'https://aistudio.xiaomimimo.com/#/c',
     'meta-ai': 'https://www.meta.ai/',
+    // StepFun's New Chat control has no stable selector; the root opens a new chat.
+    stepfun: 'https://studio.stepfun.com/',
+    agnes: 'https://app.agnes-ai.com/',
     google: 'https://www.google.com/search?udm=50'
   };
 
@@ -598,6 +617,10 @@
       return 'mimo';
     } else if (hostname === 'www.meta.ai') {
       return 'meta-ai';
+    } else if (hostname === 'studio.stepfun.com') {
+      return 'stepfun';
+    } else if (hostname === 'app.agnes-ai.com') {
+      return 'agnes';
     } else if (hostname.includes('google.com') || hostname.includes('google.') || hostname === 'www.google.com') {
       // Google Search / AI Mode
       // Always return 'google' for any google.com page

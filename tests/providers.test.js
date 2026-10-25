@@ -14,7 +14,7 @@ describe('providers module', () => {
 
   describe('PROVIDERS constant', () => {
     it('should contain all expected providers', () => {
-      expect(PROVIDERS).toHaveLength(15);
+      expect(PROVIDERS).toHaveLength(17);
       const providerIds = PROVIDERS.map((p) => p.id);
       expect(providerIds).toEqual([
         'chatgpt',
@@ -32,6 +32,8 @@ describe('providers module', () => {
         'yuanbao',
         'mimo',
         'meta-ai',
+        'stepfun',
+        'agnes',
       ]);
     });
 
@@ -79,6 +81,20 @@ describe('providers module', () => {
         icon: '/icons/providers/meta-ai.png',
         iconDark: '/icons/providers/dark/meta-ai.png',
         optionalOrigins: ['https://www.meta.ai/*'],
+      });
+      expect(getProviderById('stepfun')).toMatchObject({
+        name: 'StepFun',
+        url: 'https://studio.stepfun.com/',
+        icon: '/icons/providers/stepfun.png',
+        iconDark: '/icons/providers/dark/stepfun.png',
+        optionalOrigins: ['https://studio.stepfun.com/*'],
+      });
+      expect(getProviderById('agnes')).toMatchObject({
+        name: 'Agnes',
+        url: 'https://app.agnes-ai.com/',
+        icon: '/icons/providers/agnes.png',
+        iconDark: '/icons/providers/dark/agnes.png',
+        optionalOrigins: ['https://app.agnes-ai.com/*'],
       });
     });
 

@@ -176,6 +176,24 @@ export const OPTIONAL_PROVIDER_CONFIGS = Object.freeze({
       'content-scripts/enter-behavior-meta-ai.js'
     )),
     frameRule: Object.freeze(createFrameRule(1006, 'https://www.meta.ai/*'))
+  }),
+  stepfun: Object.freeze({
+    origins: Object.freeze(['https://studio.stepfun.com/*']),
+    contentScript: Object.freeze(createContentScript(
+      'stepfun-scripts',
+      ['https://studio.stepfun.com/*'],
+      'content-scripts/enter-behavior-stepfun.js'
+    )),
+    frameRule: Object.freeze(createFrameRule(1007, 'https://studio.stepfun.com/*'))
+  }),
+  agnes: Object.freeze({
+    origins: Object.freeze(['https://app.agnes-ai.com/*']),
+    contentScript: Object.freeze(createContentScript(
+      'agnes-scripts',
+      ['https://app.agnes-ai.com/*'],
+      'content-scripts/enter-behavior-agnes.js'
+    )),
+    frameRule: Object.freeze(createFrameRule(1008, 'https://app.agnes-ai.com/*'))
   })
 });
 

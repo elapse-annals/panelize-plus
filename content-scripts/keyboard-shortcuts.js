@@ -68,6 +68,8 @@
     if (host === 'yuanbao.tencent.com') return 'yuanbao';
     if (host === 'aistudio.xiaomimimo.com') return 'mimo';
     if (host === 'meta.ai' || host === 'www.meta.ai') return 'meta-ai';
+    if (host === 'studio.stepfun.com') return 'stepfun';
+    if (host === 'app.agnes-ai.com') return 'agnes';
     return null;
   }
 

@@ -84,7 +84,9 @@
     'meta-ai': { strategy: 'recipe' },
     grok: { strategy: 'unsupported' },
     doubao: { ...DISCOVERY_CONFIG },
-    mimo: { ...DISCOVERY_CONFIG }
+    mimo: { ...DISCOVERY_CONFIG },
+    stepfun: { ...DISCOVERY_CONFIG },
+    agnes: { ...DISCOVERY_CONFIG }
   };
 
   const hostname = String(window.location?.hostname || '').toLowerCase();
@@ -103,7 +105,9 @@
     ['zai-global', ['chat.z.ai']],
     ['yuanbao', ['yuanbao.tencent.com']],
     ['mimo', ['aistudio.xiaomimimo.com']],
-    ['meta-ai', ['meta.ai']]
+    ['meta-ai', ['meta.ai']],
+    ['stepfun', ['studio.stepfun.com']],
+    ['agnes', ['app.agnes-ai.com']]
   ];
 
   function hostMatches(host, domain) {

@@ -154,6 +154,26 @@ export const PROVIDERS = [
     iconDark: '/icons/providers/dark/meta-ai.png',
     enabled: true,
     optionalOrigins: OPTIONAL_PROVIDER_CONFIGS['meta-ai'].origins
+  },
+  {
+    id: 'stepfun',
+    name: 'StepFun',
+    url: 'https://studio.stepfun.com/',
+    topLevelUrl: 'https://studio.stepfun.com/',
+    icon: '/icons/providers/stepfun.png',
+    iconDark: '/icons/providers/dark/stepfun.png',
+    enabled: true,
+    optionalOrigins: OPTIONAL_PROVIDER_CONFIGS.stepfun.origins
+  },
+  {
+    id: 'agnes',
+    name: 'Agnes',
+    url: 'https://app.agnes-ai.com/',
+    topLevelUrl: 'https://app.agnes-ai.com/',
+    icon: '/icons/providers/agnes.png',
+    iconDark: '/icons/providers/dark/agnes.png',
+    enabled: true,
+    optionalOrigins: OPTIONAL_PROVIDER_CONFIGS.agnes.origins
   }
 ];
 

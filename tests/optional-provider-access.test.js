@@ -103,6 +103,28 @@ describe('optional provider access', () => {
         condition: { urlFilter: 'https://www.meta.ai/*', resourceTypes: ['sub_frame'] },
       },
     });
+    expect(OPTIONAL_PROVIDER_CONFIGS.stepfun).toMatchObject({
+      origins: ['https://studio.stepfun.com/*'],
+      contentScript: {
+        id: 'stepfun-scripts',
+        matches: ['https://studio.stepfun.com/*'],
+      },
+      frameRule: {
+        id: 1007,
+        condition: { urlFilter: 'https://studio.stepfun.com/*', resourceTypes: ['sub_frame'] },
+      },
+    });
+    expect(OPTIONAL_PROVIDER_CONFIGS.agnes).toMatchObject({
+      origins: ['https://app.agnes-ai.com/*'],
+      contentScript: {
+        id: 'agnes-scripts',
+        matches: ['https://app.agnes-ai.com/*'],
+      },
+      frameRule: {
+        id: 1008,
+        condition: { urlFilter: 'https://app.agnes-ai.com/*', resourceTypes: ['sub_frame'] },
+      },
+    });
   });
 
   it('lets the MiMo panel frame its Xiaomi Account sign-in page', () => {
@@ -358,6 +380,8 @@ describe('optional provider access', () => {
       { id: 'yuanbao-scripts' },
       { id: 'mimo-scripts' },
       { id: 'meta-ai-scripts' },
+      { id: 'stepfun-scripts' },
+      { id: 'agnes-scripts' },
       { id: 'unrelated-script' },
     ]);
     chrome.declarativeNetRequest.getDynamicRules.mockResolvedValue([
@@ -367,6 +391,8 @@ describe('optional provider access', () => {
       { id: 1004 },
       { id: 1005 },
       { id: 1006 },
+      { id: 1007 },
+      { id: 1008 },
       { id: 9999 },
     ]);
 
@@ -381,10 +407,12 @@ describe('optional provider access', () => {
         'yuanbao-scripts',
         'mimo-scripts',
         'meta-ai-scripts',
+        'stepfun-scripts',
+        'agnes-scripts',
       ],
     });
     expect(chrome.declarativeNetRequest.updateDynamicRules).toHaveBeenCalledWith({
-      removeRuleIds: [1001, 1002, 1003, 1004, 1005, 1006],
+      removeRuleIds: [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008],
       addRules: [],
     });
   });

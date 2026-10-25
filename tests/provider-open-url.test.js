@@ -60,6 +60,11 @@ describe('provider open URL helpers', () => {
     expect(isProviderCurrentUrl('mimo', 'https://account.xiaomi.com/#/chat/abc123')).toBe(false);
     expect(isProviderCurrentUrl('meta-ai', 'https://www.meta.ai/')).toBe(false);
     expect(isProviderCurrentUrl('meta-ai', 'https://meta.ai/prompt/abc123')).toBe(false);
+    expect(isProviderCurrentUrl('stepfun', 'https://studio.stepfun.com/chat/abc123')).toBe(false);
+    expect(isProviderCurrentUrl('agnes', 'https://app.agnes-ai.com/chat/abc123')).toBe(false);
+    expect(isProviderAllowedUrl('stepfun', 'https://studio.stepfun.com/')).toBe(true);
+    expect(isProviderAllowedUrl('agnes', 'https://app.agnes-ai.com/')).toBe(true);
+    expect(isProviderAllowedUrl('agnes', 'https://evil.example/')).toBe(false);
   });
 
   it('opens the reported current URL when it is valid', () => {

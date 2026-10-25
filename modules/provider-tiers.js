@@ -180,7 +180,9 @@ export const PROVIDER_TIER_CONFIG = Object.freeze({
   'zai-global': { strategy: 'recipe', evidence: 'live-ui-probe-2026-10-24-model-menu-effort-submenu', source: 'https://chat.z.ai/' },
   yuanbao: { strategy: 'recipe', evidence: 'live-ui-probe-2026-10-25-model-menu-deep-think-toggle', source: 'https://yuanbao.tencent.com/' },
   mimo: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://aistudio.xiaomimimo.com/' },
-  'meta-ai': { strategy: 'recipe', evidence: 'user-mapping-needs-logged-in-dom-confirmation', source: 'https://www.meta.ai/' }
+  'meta-ai': { strategy: 'recipe', evidence: 'user-mapping-needs-logged-in-dom-confirmation', source: 'https://www.meta.ai/' },
+  stepfun: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://studio.stepfun.com/' },
+  agnes: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://app.agnes-ai.com/' }
 });
 
 const MENU_EFFORT_LEVELS = Object.freeze({ fast: 'Low', balanced: 'Medium', deep: 'High' });

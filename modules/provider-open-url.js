@@ -15,7 +15,9 @@ const PROVIDER_ALLOWED_HOSTS = {
   'zai-global': new Set(['chat.z.ai']),
   yuanbao: new Set(['yuanbao.tencent.com']),
   mimo: new Set(['aistudio.xiaomimimo.com']),
-  'meta-ai': new Set(['www.meta.ai'])
+  'meta-ai': new Set(['www.meta.ai']),
+  stepfun: new Set(['studio.stepfun.com']),
+  agnes: new Set(['app.agnes-ai.com'])
 };
 
 const QWEN_GLOBAL_NON_CONVERSATION_IDS = new Set(['new-chat', 'new-branch', 'guest']);
@@ -106,6 +108,10 @@ export function isProviderCurrentUrl(providerId, rawUrl) {
       return /^#\/chat\/[^/]+\/?$/.test(url.hash);
     case 'meta-ai':
       return /^\/prompt\/[^/]+\/?$/.test(url.pathname);
+    case 'stepfun':
+    case 'agnes':
+      // No verified stable conversation URL yet.
+      return false;
     default:
       return false;
   }

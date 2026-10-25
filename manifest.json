@@ -41,7 +41,9 @@
     "https://aistudio.xiaomimimo.com/*",
     "https://xiaomimimo.com/*",
     "https://account.xiaomi.com/*",
-    "https://www.meta.ai/*"
+    "https://www.meta.ai/*",
+    "https://studio.stepfun.com/*",
+    "https://app.agnes-ai.com/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js",

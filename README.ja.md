@@ -54,7 +54,7 @@ Panelize は、1つのプロンプトを ChatGPT、Claude、Gemini、Grok、Deep
 
 ### 1回の入力で同時送信
 
-統一入力欄から ChatGPT / Claude / Gemini / Grok / Doubao / DeepSeek / Kimi / Qwen / Zhipu (China) / Z.ai (Global) / Yuanbao / MiMo / Meta AI / Google へ同時に送信できます。
+統一入力欄から ChatGPT / Claude / Gemini / Grok / Doubao / DeepSeek / Kimi / Qwen / Zhipu (China) / Z.ai (Global) / Yuanbao / MiMo / Meta AI / StepFun / Agnes / Google へ同時に送信できます。
 
 ### 柔軟なレイアウト
 
@@ -97,6 +97,8 @@ API キー不要。通常どおり各 AI サービスにログインしていれ
 - Yuanbao
 - MiMo
 - Meta AI
+- StepFun
+- Agnes
 - Google
 
 <p align="center">
