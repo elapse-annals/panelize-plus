@@ -4,6 +4,14 @@
 const AGNES_SEND_BUTTON_SELECTORS = [
   {
     type: 'css',
+    value: 'button[title="Send"]'
+  },
+  {
+    type: 'css',
+    value: 'button[title="发送"]'
+  },
+  {
+    type: 'css',
     value: 'button[aria-label="Send"]'
   },
   {
@@ -12,20 +20,44 @@ const AGNES_SEND_BUTTON_SELECTORS = [
   }
 ];
 
+function isAgnesLexicalInput(element) {
+  return Boolean(
+    element &&
+    element.isContentEditable &&
+    element.getAttribute('data-lexical-editor') === 'true'
+  );
+}
+
 function isAgnesInput(element) {
   return Boolean(
     element &&
-    element.tagName === 'TEXTAREA' &&
-    // Agnes renders a single composer textarea with a localized placeholder.
+    // Signed in, Agnes uses a Lexical editor; signed out, a single textarea
+    // with a localized placeholder.
+    (element.tagName === 'TEXTAREA' || isAgnesLexicalInput(element)) &&
     element.offsetParent !== null
   );
 }
 
-function insertAgnesNewline(textarea) {
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  textarea.setRangeText('\n', start, end, 'end');
-  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+function insertAgnesNewline(input) {
+  if (input.tagName === 'TEXTAREA') {
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    input.setRangeText('\n', start, end, 'end');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return;
+  }
+
+  // Let the Lexical editor handle native line breaks.
+  input.focus();
+  for (const command of ['insertLineBreak', 'insertParagraph']) {
+    try {
+      if (document.execCommand(command, false)) {
+        return;
+      }
+    } catch (error) {
+      // Try the other native editing command.
+    }
+  }
 }
 
 function handleEnterSwap(event) {

@@ -263,6 +263,8 @@
     ],
     stepfun: ['textarea[data-slot="textarea"]'],
     agnes: [
+      // Signed in, Agnes uses a Lexical editor; the textareas are its signed-out page.
+      'div[contenteditable="true"][data-lexical-editor="true"]',
       'textarea[placeholder="分配一个任务或提问任何问题"]',
       'textarea[rows="1"]'
     ],
@@ -444,6 +446,8 @@
       'button[data-slot="button"][aria-label="Send"]'
     ],
     agnes: [
+      'button[title="Send"]',
+      'button[title="发送"]',
       'button[aria-label="Send"]',
       'button[aria-label="发送"]'
     ],
