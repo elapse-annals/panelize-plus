@@ -137,10 +137,10 @@ describe('chatgpt content script provider status', () => {
   });
 
   it('does not report idle when the stop button briefly reappears', async () => {
-    let notifyMutation;
+    const observers = [];
     vi.stubGlobal('MutationObserver', class {
-      constructor(callback) { notifyMutation = callback; }
-      observe() {}
+      constructor(callback) { this.callback = callback; observers.push(this); }
+      observe(target, options) { this.target = target; this.options = options; }
       disconnect() {}
     });
     vi.useFakeTimers();
@@ -150,6 +150,11 @@ describe('chatgpt content script provider status', () => {
         includeSendButton: true,
         includeStopButton: false,
       });
+      const busyObserver = () => observers.find(observer => (
+        observer.target === document.body
+        && observer.options?.attributeFilter?.includes('data-testid')
+      ));
+      const notifyMutation = record => busyObserver()?.callback([record]);
 
       dispatchMultiPanelMessage({
         type: 'TRIGGER_SEND',
@@ -158,24 +163,100 @@ describe('chatgpt content script provider status', () => {
       });
 
       composer.insertAdjacentHTML('beforeend', '<button type="button" data-testid="stop-button" aria-label="Stop streaming">Stop</button>');
-      notifyMutation();
+      notifyMutation({
+        type: 'childList', target: composer,
+        addedNodes: [getStopButton()], removedNodes: []
+      });
       expect(getProviderStatusCalls(postMessageSpy, 'PANELIZE_PROVIDER_BUSY')).toHaveLength(1);
-      getStopButton()?.remove();
-      notifyMutation();
+      const firstStopButton = getStopButton();
+      firstStopButton?.remove();
+      notifyMutation({
+        type: 'childList', target: composer,
+        addedNodes: [], removedNodes: [firstStopButton]
+      });
       await vi.advanceTimersByTimeAsync(300);
       composer.insertAdjacentHTML('beforeend', '<button type="button" data-testid="stop-button" aria-label="Stop streaming">Stop</button>');
-      notifyMutation();
+      notifyMutation({
+        type: 'childList', target: composer,
+        addedNodes: [getStopButton()], removedNodes: []
+      });
       await vi.advanceTimersByTimeAsync(650);
 
       expect(getProviderStatusCalls(postMessageSpy, 'PANELIZE_PROVIDER_IDLE')).toHaveLength(0);
 
-      getStopButton()?.remove();
-      notifyMutation();
+      const finalStopButton = getStopButton();
+      finalStopButton?.remove();
+      notifyMutation({
+        type: 'childList', target: composer,
+        addedNodes: [], removedNodes: [finalStopButton]
+      });
       await vi.advanceTimersByTimeAsync(800);
 
       expect(getProviderStatusCalls(postMessageSpy, 'PANELIZE_PROVIDER_IDLE')).toHaveLength(1);
     } finally {
       vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('checks stop-button mutations outside the composer but ignores answer text updates', () => {
+    const observers = [];
+    vi.stubGlobal('MutationObserver', class {
+      constructor(callback) { this.callback = callback; observers.push(this); }
+      observe(target, options) { this.target = target; this.options = options; }
+      disconnect() {}
+    });
+    try {
+      const postMessageSpy = window.parent.postMessage;
+      createChatgptComposerDom({ includeSendButton: true, includeStopButton: false });
+      dispatchMultiPanelMessage({
+        type: 'TRIGGER_SEND',
+        requestId: 'req-outside-form',
+        context: 'multi-panel',
+      });
+
+      const busyObserver = observers.find(observer => (
+        observer.target === document.body
+        && observer.options?.attributeFilter?.includes('data-testid')
+      ));
+      expect(busyObserver).toBeDefined();
+
+      const busyQuery = vi.spyOn(document, 'querySelector');
+      const queryCount = () => busyQuery.mock.calls.filter(
+        ([selector]) => selector === 'button[data-testid="stop-button"]'
+      ).length;
+      const initialQueryCount = queryCount();
+      const answer = document.createElement('article');
+      answer.textContent = 'streaming token';
+      busyObserver.callback([{
+        type: 'childList', target: document.body,
+        addedNodes: [answer], removedNodes: []
+      }]);
+      expect(queryCount()).toBe(initialQueryCount);
+
+      const wrapper = document.createElement('div');
+      const nested = document.createElement('div');
+      const stopButton = document.createElement('button');
+      stopButton.dataset.testid = 'stop-button';
+      nested.append(stopButton);
+      wrapper.append(nested);
+      document.body.append(wrapper);
+      busyObserver.callback([{
+        type: 'childList', target: document.body,
+        addedNodes: [wrapper], removedNodes: []
+      }]);
+
+      expect(getProviderStatusCalls(postMessageSpy, 'PANELIZE_PROVIDER_BUSY')).toHaveLength(1);
+
+      const replacement = document.createElement('button');
+      replacement.dataset.testid = 'stop-button';
+      stopButton.replaceWith(replacement);
+      busyObserver.callback([{
+        type: 'childList', target: nested,
+        addedNodes: [replacement], removedNodes: [stopButton]
+      }]);
+      expect(getProviderStatusCalls(postMessageSpy, 'PANELIZE_PROVIDER_BUSY')).toHaveLength(1);
+    } finally {
       vi.unstubAllGlobals();
     }
   });

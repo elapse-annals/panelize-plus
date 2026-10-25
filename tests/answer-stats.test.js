@@ -7,7 +7,8 @@ import {
   getEngagementPoints,
   createRound,
   summarizePromptText,
-  toggleRoundAdoption
+  toggleRoundAdoption,
+  toggleRoundRejection
 } from '../modules/answer-stats.js';
 
 const PANELS = [
@@ -90,6 +91,38 @@ describe('toggleRoundAdoption', () => {
     expect(switched).toMatchObject({ adoptedPanelId: 'p1', adoptedProviderId: 'chatgpt' });
 
     expect(toggleRoundAdoption(switched, 'p1')).toMatchObject({ adoptedPanelId: null, adoptedProviderId: null });
+  });
+});
+
+describe('toggleRoundRejection', () => {
+  it('rejects an answer, clears it on a second click and ignores unknown panels', () => {
+    const round = newRound();
+    const rejected = toggleRoundRejection(round, 'p1');
+    expect(rejected.answers.p1.rejected).toBe(true);
+    expect(rejected.answers.p2.rejected).toBeUndefined();
+
+    const cleared = toggleRoundRejection(rejected, 'p1');
+    expect(cleared.answers.p1.rejected).not.toBe(true);
+    expect(toggleRoundRejection(cleared, 'missing')).toBe(cleared);
+  });
+
+  it('clears the same answer rejection or adoption when switching feedback', () => {
+    const adopted = toggleRoundAdoption(newRound(), 'p1');
+    const rejected = toggleRoundRejection(adopted, 'p1');
+    expect(rejected).toMatchObject({ adoptedPanelId: null, adoptedProviderId: null });
+    expect(rejected.answers.p1.rejected).toBe(true);
+
+    const readopted = toggleRoundAdoption(rejected, 'p1');
+    expect(readopted).toMatchObject({ adoptedPanelId: 'p1', adoptedProviderId: 'chatgpt' });
+    expect(readopted.answers.p1.rejected).not.toBe(true);
+  });
+
+  it('keeps another panel adopted when a different answer is rejected', () => {
+    const adopted = toggleRoundAdoption(newRound(), 'p1');
+    const rejected = toggleRoundRejection(adopted, 'p2');
+
+    expect(rejected).toMatchObject({ adoptedPanelId: 'p1', adoptedProviderId: 'chatgpt' });
+    expect(rejected.answers.p2.rejected).toBe(true);
   });
 });
 
@@ -213,6 +246,37 @@ describe('aggregateAnswerStats', () => {
 
     const [entry] = aggregateAnswerStats([round]);
     expect(entry).toMatchObject({ rounds: 1, medianFirstOutputMs: 900, medianCompleteMs: 4000 });
+  });
+
+  it('subtracts at most five points per provider per round and accepts older rounds without rejection data', () => {
+    let duplicateProviderRound = createRound({
+      id: 'duplicate-provider',
+      createdAt: 0,
+      text: 'Q',
+      panels: [
+        { id: 'a', providerId: 'chatgpt' },
+        { id: 'b', providerId: 'chatgpt' },
+        { id: 'c', providerId: 'gemini' }
+      ]
+    });
+    duplicateProviderRound = toggleRoundRejection(duplicateProviderRound, 'a');
+    duplicateProviderRound = toggleRoundRejection(duplicateProviderRound, 'b');
+
+    const oldRound = {
+      id: 'old',
+      createdAt: 0,
+      adoptedPanelId: null,
+      adoptedProviderId: null,
+      answers: {
+        p1: { providerId: 'chatgpt' },
+        p2: { providerId: 'gemini' }
+      }
+    };
+    const stats = aggregateAnswerStats([duplicateProviderRound, oldRound]);
+    const byProvider = Object.fromEntries(stats.map(entry => [entry.providerId, entry]));
+
+    expect(byProvider.chatgpt.score).toBe(-5);
+    expect(byProvider.gemini.score).toBe(0);
   });
 
   it('scores adoption and engagement and sorts by score, then adoptions', () => {

@@ -1,12 +1,15 @@
-// Ensure OneTrust cookie consent choices (OptanonAlertBoxClosed, OptanonConsent)
-// written via document.cookie inside an embedded Grok iframe use SameSite=None; Secure
-// so Chromium's cross-site script cookie check accepts and persists them.
+// Ensure cookie consent choices written via document.cookie inside an embedded
+// provider iframe use SameSite=None; Secure so Chromium's cross-site script
+// cookie check accepts and persists them. Without this the consent banner
+// reappears on every load:
+// - Grok: OneTrust (OptanonAlertBoxClosed, OptanonConsent)
+// - DeepSeek: ds_cookie_preference
 (() => {
   if (window.top === window.self) {
     return;
   }
 
-  // Only rewrite inside extension pages such as the Multi-Panel page. Grok
+  // Only rewrite inside extension pages such as the Multi-Panel page. Provider
   // frames embedded by ordinary websites (or by a website framing the
   // web-accessible Multi-Panel page) keep the browser's default behavior.
   const ancestorOrigins = location.ancestorOrigins;
@@ -15,10 +18,17 @@
     return;
   }
 
-  const OPTANON_COOKIE_PATTERN = /^\s*Optanon(?:AlertBoxClosed|Consent)=/;
+  const CONSENT_COOKIE_PATTERNS = {
+    'grok.com': /^\s*Optanon(?:AlertBoxClosed|Consent)=/,
+    'chat.deepseek.com': /^\s*ds_cookie_preference=/
+  };
+  const consentCookiePattern = CONSENT_COOKIE_PATTERNS[location.hostname];
+  if (!consentCookiePattern) {
+    return;
+  }
 
-  function rewriteGrokConsentCookieString(cookieString) {
-    if (typeof cookieString !== 'string' || !OPTANON_COOKIE_PATTERN.test(cookieString)) {
+  function rewriteConsentCookieString(cookieString) {
+    if (typeof cookieString !== 'string' || !consentCookiePattern.test(cookieString)) {
       return cookieString;
     }
 
@@ -54,7 +64,7 @@
       return descriptor.get.call(this);
     },
     set(value) {
-      return descriptor.set.call(this, rewriteGrokConsentCookieString(value));
+      return descriptor.set.call(this, rewriteConsentCookieString(value));
     }
   });
 })();

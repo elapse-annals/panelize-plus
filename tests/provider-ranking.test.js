@@ -46,6 +46,18 @@ describe('provider ranking', () => {
     )).toEqual(['gemini', 'chatgpt', 'claude']);
   });
 
+  it('orders negative scores from least negative to most negative', () => {
+    expect(rankProviderIds(
+      ['chatgpt', 'claude', 'gemini'],
+      ['chatgpt', 'claude', 'gemini'],
+      [
+        { providerId: 'chatgpt', score: -5, adoptedCount: 0, rounds: 1 },
+        { providerId: 'claude', score: -10, adoptedCount: 0, rounds: 1 },
+        { providerId: 'gemini', score: -2, adoptedCount: 0, rounds: 1 }
+      ]
+    )).toEqual(['gemini', 'chatgpt', 'claude']);
+  });
+
   it('normalizes invalid sort modes to manual', () => {
     expect(normalizeProviderSortMode('frequent')).toBe('frequent');
     expect(normalizeProviderSortMode('unexpected')).toBe('manual');

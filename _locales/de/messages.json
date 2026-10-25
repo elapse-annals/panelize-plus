@@ -988,6 +988,12 @@
   "adoptedAnswerTitle": {
     "message": "Übernommen (zum Rückgängigmachen klicken)"
   },
+  "rejectAnswerTitle": {
+    "message": "5 Punkte abziehen"
+  },
+  "rejectedAnswerTitle": {
+    "message": "5 Punkte abgezogen (zum Rückgängigmachen klicken)"
+  },
   "answerStatsButtonTitle": {
     "message": "Antwortstatistik"
   },
@@ -1042,6 +1048,9 @@
   "answerStatsAdopted": {
     "message": "Übernommen"
   },
+  "answerStatsRejected": {
+    "message": "5 Punkte abgezogen"
+  },
   "answerStatsStatus_pending": {
     "message": "Läuft"
   },
@@ -1058,7 +1067,7 @@
     "message": "Punkte"
   },
   "answerStatsScoreNote": {
-    "message": "Punkte: Eine übernommene Antwort bringt 5 Punkte. Die Nutzung einer Antwort bringt bis zu 3 weitere: 1 für Klicken oder Scrollen in ihrem Bereich, 1 für das Vergrößern des Bereichs und 1 je 30 s Nutzungszeit. Die Nutzungszeit summiert die Abstände zwischen Klicks und Scrollen von höchstens 15 s sowie die Zeit, in der der Bereich vergrößert ist."
+    "message": "Punkte: Eine übernommene Antwort bringt 5 Punkte. Die Nutzung einer Antwort bringt bis zu 3 weitere: 1 für Klicken oder Scrollen in ihrem Bereich, 1 für das Vergrößern des Bereichs und 1 je 30 s Nutzungszeit. Die Nutzungszeit summiert die Abstände zwischen Klicks und Scrollen von höchstens 15 s sowie die Zeit, in der der Bereich vergrößert ist. Mit einem Klick auf die Minustaste werden 5 Punkte abgezogen; mit einem weiteren Klick wird dies rückgängig gemacht."
   },
   "labelProviderSortMode": {
     "message": "Provider order"
@@ -1105,6 +1114,30 @@
   "composerActualMode": {
     "message": "Actual mode"
   },
+  "composerTargetMode": {
+    "message": "Zuordnung"
+  },
+  "composerTierMapUnsupported": {
+    "message": "Nicht unterstützt"
+  },
+  "composerTierMapSkipped": {
+    "message": "Wird nicht umgeschaltet"
+  },
+  "composerTierMapDetect": {
+    "message": "Automatisch erkennen"
+  },
+  "composerTierMapEffort": {
+    "message": "Denkaufwand $1"
+  },
+  "composerTierMapToggleOn": {
+    "message": "$1 an"
+  },
+  "composerTierMapToggleOff": {
+    "message": "$1 aus"
+  },
+  "composerTierMapShared": {
+    "message": "geteilt mit $1"
+  },
   "composerResult": {
     "message": "Result"
   },
@@ -1143,6 +1176,9 @@
   },
   "composerLayout": {
     "message": "Layout"
+  },
+  "composerWideContent": {
+    "message": "Breitbildmodus"
   },
   "composerNotChecked": {
     "message": "Not checked"
@@ -1208,7 +1244,7 @@
     "message": "Anonymes Modell"
   },
   "wideContentTitle": {
-    "message": "Breite Ansicht: Antworten nutzen die volle Panelbreite"
+    "message": "Breitbild: Jedes Panel ist 1,5-mal breiter; horizontal scrollen."
   },
   "sectionTierRecipes": {
     "message": "Zuordnung der Denkstufen"

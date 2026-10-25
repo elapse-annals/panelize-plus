@@ -982,6 +982,12 @@
   "adoptedAnswerTitle": {
     "message": "已採納（點擊撤銷）"
   },
+  "rejectAnswerTitle": {
+    "message": "扣 5 分"
+  },
+  "rejectedAnswerTitle": {
+    "message": "已扣 5 分（點擊撤銷）"
+  },
   "answerStatsButtonTitle": {
     "message": "答覆統計"
   },
@@ -1036,6 +1042,9 @@
   "answerStatsAdopted": {
     "message": "已採納"
   },
+  "answerStatsRejected": {
+    "message": "已扣 5 分"
+  },
   "answerStatsStatus_pending": {
     "message": "進行中"
   },
@@ -1052,7 +1061,7 @@
     "message": "得分"
   },
   "answerStatsScoreNote": {
-    "message": "得分：被採納的回答得 5 分。使用回答最多再得 3 分：在面板中點擊或捲動得 1 分，放大面板得 1 分，每 30 秒互動時長得 1 分。互動時長累計相隔不超過 15 秒的點擊和捲動之間的時間，以及面板保持放大的時間。"
+    "message": "得分：被採納的回答得 5 分。使用回答最多再得 3 分：在面板中點擊或捲動得 1 分，放大面板得 1 分，每 30 秒互動時長得 1 分。互動時長累計相隔不超過 15 秒的點擊和捲動之間的時間，以及面板保持放大的時間。點擊減分按鈕扣 5 分，再點撤銷。"
   },
   "labelProviderSortMode": {
     "message": "AI 平台排序"
@@ -1099,6 +1108,30 @@
   "composerActualMode": {
     "message": "實際模式"
   },
+  "composerTargetMode": {
+    "message": "對應檔位"
+  },
+  "composerTierMapUnsupported": {
+    "message": "暫不支援"
+  },
+  "composerTierMapSkipped": {
+    "message": "不切換"
+  },
+  "composerTierMapDetect": {
+    "message": "自動識別"
+  },
+  "composerTierMapEffort": {
+    "message": "推理強度 $1"
+  },
+  "composerTierMapToggleOn": {
+    "message": "$1 開啟"
+  },
+  "composerTierMapToggleOff": {
+    "message": "$1 關閉"
+  },
+  "composerTierMapShared": {
+    "message": "與$1共用"
+  },
   "composerResult": {
     "message": "結果"
   },
@@ -1137,6 +1170,9 @@
   },
   "composerLayout": {
     "message": "版面配置"
+  },
+  "composerWideContent": {
+    "message": "寬螢幕模式"
   },
   "composerNotChecked": {
     "message": "尚未檢查"
@@ -1202,7 +1238,7 @@
     "message": "匿名模型"
   },
   "wideContentTitle": {
-    "message": "快速寬螢幕：回答鋪滿面板寬度"
+    "message": "寬螢幕：每個面板加寬 1.5 倍，橫向捲動查看"
   },
   "sectionTierRecipes": {
     "message": "檔位對應"

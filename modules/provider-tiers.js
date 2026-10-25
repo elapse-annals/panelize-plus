@@ -23,6 +23,11 @@ const deepThink = on => [{ kind: 'toggle', label: '深度思考|思考|DeepThink
  * override any provider's recipes in the options page.
  */
 export const DEFAULT_TIER_RECIPES = Object.freeze({
+  chatgpt: {
+    fast: recipe('GPT-6', 'Instant|即时'),
+    balanced: recipe('GPT-6', 'Medium|中等'),
+    deep: recipe('GPT-6', 'High|高')
+  },
   gemini: {
     fast: recipe('3.5 Flash-Lite', 'High|高'),
     balanced: recipe('3.8 Flash', 'High|高'),
@@ -60,9 +65,9 @@ export const DEFAULT_TIER_RECIPES = Object.freeze({
     deep: recipe('思考|Thinking')
   },
   yuanbao: {
-    fast: recipe('hy3', '快速回答'),
-    balanced: recipe('hy3-preview', '专家模式'),
-    deep: recipe('hy4-preview', '专家模式')
+    fast: [step('model', 'Hy3'), { kind: 'toggle', label: '深度思考', on: false }],
+    balanced: [step('model', 'Hy3'), { kind: 'toggle', label: '深度思考', on: true }],
+    deep: [step('model', 'DeepSeek'), { kind: 'toggle', label: '深度思考', on: true }]
   }
 });
 
@@ -124,15 +129,20 @@ const DISCOVERY_CONFIG = {
 export const PROVIDER_TIER_CONFIG = Object.freeze({
   chatgpt: {
     strategy: 'menu',
+    sliderLabels: pattern('thinking strength', 'thinking level', 'reasoning effort', 'reasoning level', '思考强度', '推理强度'),
+    effortSelectors: ['[data-testid*="reasoning-effort"]', '[data-testid*="thinking-strength"]', 'button[aria-label*="reasoning effort" i]', 'button[aria-label*="思考强度"]'],
     submenuLabels: pattern('^(reasoning effort|thinking level|effort|configure)$'),
-    selectorLabels: pattern('model', 'instant', 'medium', 'high', '模型', '快速', '均衡', '深度'),
+    selectorLabels: pattern('model', 'effort', 'reasoning', 'thinking level', 'instant', 'medium', 'high', '模型', '快速', '均衡', '深度'),
     selectors: ['[data-testid*="model-switcher"]', '[data-testid*="model-picker"]'],
     tiers: {
       fast: pattern('^(instant|fast|low|light|即时|快速|低)$'),
-      balanced: pattern('^(medium|balanced|pro standard|standard|中等|均衡|标准)$'),
+      balanced: pattern('^(medium|balanced|pro standard|standard|中|中等|均衡|标准)$'),
       deep: pattern('^(high|extra high|pro extended|extended|deep|深入|高|极高)$')
     },
-    evidence: 'documented-ui',
+    // Recipes (GPT-6 + Instant/Medium/High) take precedence; the slider and
+    // menu matching above remain for hosts that send no recipes.
+    acceptsRecipes: true,
+    evidence: 'user-mapping-needs-logged-in-dom-confirmation',
     source: 'https://help.openai.com/en/articles/6825453-chatgpt-release-notes'
   },
   claude: {
@@ -168,10 +178,37 @@ export const PROVIDER_TIER_CONFIG = Object.freeze({
   'qwen-global': { strategy: 'recipe', evidence: 'live-ui-probe-2026-10-24-model-and-mode-buttons', source: 'https://chat.qwen.ai/' },
   chatglm: { strategy: 'recipe', evidence: 'live-ui-probe-2026-10-24-think-mode-trigger', source: 'https://chatglm.cn/' },
   'zai-global': { strategy: 'recipe', evidence: 'live-ui-probe-2026-10-24-model-menu-effort-submenu', source: 'https://chat.z.ai/' },
-  yuanbao: { strategy: 'recipe', evidence: 'user-mapping-needs-logged-in-dom-confirmation', source: 'https://yuanbao.tencent.com/' },
+  yuanbao: { strategy: 'recipe', evidence: 'live-ui-probe-2026-10-25-model-menu-deep-think-toggle', source: 'https://yuanbao.tencent.com/' },
   mimo: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://aistudio.xiaomimimo.com/' },
   'meta-ai': { strategy: 'recipe', evidence: 'user-mapping-needs-logged-in-dom-confirmation', source: 'https://www.meta.ai/' }
 });
+
+const MENU_EFFORT_LEVELS = Object.freeze({ fast: 'Low', balanced: 'Medium', deep: 'High' });
+
+/**
+ * What a tier is configured to pick on one provider, for display only:
+ * `recipe` (steps, with the other tiers that share identical steps),
+ * `skipped` (an empty recipe), `effort` (menu providers' reasoning effort),
+ * `detect` (visible-UI discovery) or `unsupported`.
+ * @param {string} providerId
+ * @param {string} tier
+ * @param {Record<string, Record<string, Array<object>>>|null} [overrides]
+ */
+export function describeTierMapping(providerId, tier, overrides = null) {
+  if (!PROVIDER_TIER_IDS.includes(tier)) return null;
+  const recipes = getEffectiveTierRecipes(providerId, overrides);
+  if (recipes) {
+    const steps = recipes[tier];
+    if (!steps.length) return { type: 'skipped', steps, sharedWith: [] };
+    const key = JSON.stringify(steps);
+    const sharedWith = PROVIDER_TIER_IDS.filter(other => other !== tier && JSON.stringify(recipes[other]) === key);
+    return { type: 'recipe', steps, sharedWith };
+  }
+  const strategy = PROVIDER_TIER_CONFIG[providerId]?.strategy;
+  if (strategy === 'menu') return { type: 'effort', level: MENU_EFFORT_LEVELS[tier], steps: [], sharedWith: [] };
+  if (strategy === 'discover') return { type: 'detect', steps: [], sharedWith: [] };
+  return { type: 'unsupported', steps: [], sharedWith: [] };
+}
 
 const REQUEST_TO_RESPONSE = Object.freeze({
   GET_PROVIDER_TIER_STATE: 'PANELIZE_PROVIDER_TIER_STATE',
@@ -377,7 +414,12 @@ export function tierRecipeToFields(steps = []) {
  */
 export function tierRecipeFromFields(providerId, tier, fields = {}) {
   const toggle = DEFAULT_TIER_RECIPES[providerId]?.[tier]?.find(item => item.kind === 'toggle');
-  if (toggle) return [{ kind: 'toggle', label: toggle.label, on: fields.toggleOn === true }];
+  if (toggle) {
+    return normalizeTierRecipe([
+      { kind: 'model', label: fields.model },
+      { kind: 'toggle', label: toggle.label, on: fields.toggleOn === true }
+    ]);
+  }
   return normalizeTierRecipe([
     { kind: 'model', label: fields.model },
     { kind: 'thinking', label: fields.thinking }

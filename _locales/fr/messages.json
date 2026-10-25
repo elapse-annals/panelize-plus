@@ -988,6 +988,12 @@
   "adoptedAnswerTitle": {
     "message": "Adoptée (cliquer pour annuler)"
   },
+  "rejectAnswerTitle": {
+    "message": "Retirer 5 points"
+  },
+  "rejectedAnswerTitle": {
+    "message": "5 points retirés (cliquer pour annuler)"
+  },
   "answerStatsButtonTitle": {
     "message": "Statistiques des réponses"
   },
@@ -1042,6 +1048,9 @@
   "answerStatsAdopted": {
     "message": "Adoptée"
   },
+  "answerStatsRejected": {
+    "message": "5 points retirés"
+  },
   "answerStatsStatus_pending": {
     "message": "En cours"
   },
@@ -1058,7 +1067,7 @@
     "message": "Score"
   },
   "answerStatsScoreNote": {
-    "message": "Score : une réponse adoptée rapporte 5 points. Utiliser une réponse rapporte jusqu’à 3 points de plus : 1 pour un clic ou un défilement dans son panneau, 1 pour l’agrandissement du panneau et 1 par tranche de 30 s d’interaction. Le temps d’interaction additionne les intervalles de 15 s au plus entre clics et défilements, et le temps pendant lequel le panneau reste agrandi."
+    "message": "Score : une réponse adoptée rapporte 5 points. Utiliser une réponse rapporte jusqu’à 3 points de plus : 1 pour un clic ou un défilement dans son panneau, 1 pour l’agrandissement du panneau et 1 par tranche de 30 s d’interaction. Le temps d’interaction additionne les intervalles de 15 s au plus entre clics et défilements, et le temps pendant lequel le panneau reste agrandi. Cliquez sur le bouton moins pour retirer 5 points, puis à nouveau pour annuler."
   },
   "labelProviderSortMode": {
     "message": "Provider order"
@@ -1105,6 +1114,30 @@
   "composerActualMode": {
     "message": "Actual mode"
   },
+  "composerTargetMode": {
+    "message": "Correspond à"
+  },
+  "composerTierMapUnsupported": {
+    "message": "Non pris en charge"
+  },
+  "composerTierMapSkipped": {
+    "message": "Non modifié"
+  },
+  "composerTierMapDetect": {
+    "message": "Détection automatique"
+  },
+  "composerTierMapEffort": {
+    "message": "Effort de raisonnement $1"
+  },
+  "composerTierMapToggleOn": {
+    "message": "$1 activé"
+  },
+  "composerTierMapToggleOff": {
+    "message": "$1 désactivé"
+  },
+  "composerTierMapShared": {
+    "message": "partagé avec $1"
+  },
   "composerResult": {
     "message": "Result"
   },
@@ -1143,6 +1176,9 @@
   },
   "composerLayout": {
     "message": "Layout"
+  },
+  "composerWideContent": {
+    "message": "Mode large"
   },
   "composerNotChecked": {
     "message": "Not checked"
@@ -1208,7 +1244,7 @@
     "message": "Modèle anonyme"
   },
   "wideContentTitle": {
-    "message": "Contenu large : les réponses occupent toute la largeur du panneau"
+    "message": "Mode large : chaque panneau est 1,5 fois plus large ; faites défiler horizontalement."
   },
   "sectionTierRecipes": {
     "message": "Correspondance des niveaux de raisonnement"

@@ -12,6 +12,11 @@ import {
   reconcileMimoSessionCookies
 } from '../modules/mimo-session-cookies.js';
 import {
+  isDeepSeekConsentCookieChange,
+  upgradeDeepSeekConsentCookies
+} from '../modules/consent-cookies.js';
+import { openMultiPanelPage } from '../modules/open-multi-panel.js';
+import {
   GROK_WEBSOCKET_COOKIE_SYNC_ACTION,
   createGrokWebSocketCookieReconcileScheduler,
   handleGrokTabNavigationComplete,
@@ -75,37 +80,8 @@ async function setPendingMultiPanelAction(action, payload = {}) {
   }
 }
 
-// 新增：打开 Multi-Panel 的函数（支持标签页和弹出窗口两种模式）
 async function openMultiPanel() {
-  const multiPanelUrl = chrome.runtime.getURL('multi-panel/multi-panel.html');
-
-  if (openMode === 'popup') {
-    // 弹出窗口模式：查找现有窗口或创建新窗口
-    const windows = await chrome.windows.getAll({ populate: true });
-    for (const win of windows) {
-      for (const tab of win.tabs || []) {
-        if (tab.url === multiPanelUrl) {
-          // 已有窗口，聚焦它
-          await chrome.windows.update(win.id, { focused: true });
-          return;
-        }
-      }
-    }
-
-    // 创建新弹出窗口
-    await chrome.windows.create({
-      url: multiPanelUrl,
-      type: 'popup',
-      width: 1400,
-      height: 900
-    });
-  } else {
-    // 标签页模式：始终创建新标签页
-    await chrome.tabs.create({
-      url: multiPanelUrl,
-      active: true
-    });
-  }
+  await openMultiPanelPage(chrome, openMode);
 }
 
 async function migrateProviderSettingsForUpdate(details) {
@@ -162,6 +138,15 @@ const scheduleGrokWebSocketCookieReconcile = createGrokWebSocketCookieReconcileS
   }
 );
 
+// Failures only mean the DeepSeek panel shows its cookie banner again.
+async function upgradeDeepSeekConsentCookiesSafely() {
+  try {
+    await upgradeDeepSeekConsentCookies();
+  } catch (error) {
+    console.warn('[Background] Failed to update DeepSeek consent cookie:', error);
+  }
+}
+
 chrome.runtime.onInstalled.addListener(async (details) => {
   await migrateProviderSettingsForUpdate(details);
   if (details?.reason === 'update') {
@@ -170,6 +155,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   await scheduleOptionalProviderReconcile();
   await scheduleMimoSessionReconcile();
   await scheduleGrokWebSocketCookieReconcile();
+  await upgradeDeepSeekConsentCookiesSafely();
   await createContextMenus();
   await loadShortcutSetting();
   await loadOpenModeSetting();
@@ -224,6 +210,9 @@ if (chrome.cookies?.onChanged) {
     }
     if (isGrokWebSocketCookieChange(changeInfo)) {
       scheduleGrokWebSocketCookieReconcile();
+    }
+    if (isDeepSeekConsentCookieChange(changeInfo)) {
+      upgradeDeepSeekConsentCookiesSafely();
     }
   });
 }

@@ -1,4 +1,12 @@
 /* T050-T064: Settings Page Styles */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../fonts/material-symbols-outlined.woff2') format('woff2');
+}
+
 * {
   margin: 0;
   padding: 0;

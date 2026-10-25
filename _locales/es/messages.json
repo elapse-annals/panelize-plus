@@ -988,6 +988,12 @@
   "adoptedAnswerTitle": {
     "message": "Adoptada (haz clic para deshacer)"
   },
+  "rejectAnswerTitle": {
+    "message": "Restar 5 puntos"
+  },
+  "rejectedAnswerTitle": {
+    "message": "Se restaron 5 puntos (haz clic para deshacer)"
+  },
   "answerStatsButtonTitle": {
     "message": "Estadísticas de respuestas"
   },
@@ -1042,6 +1048,9 @@
   "answerStatsAdopted": {
     "message": "Adoptada"
   },
+  "answerStatsRejected": {
+    "message": "Se restaron 5 puntos"
+  },
   "answerStatsStatus_pending": {
     "message": "En curso"
   },
@@ -1058,7 +1067,7 @@
     "message": "Puntuación"
   },
   "answerStatsScoreNote": {
-    "message": "Puntuación: una respuesta adoptada suma 5 puntos. Usar una respuesta suma hasta 3 más: 1 por hacer clic o desplazarse en su panel, 1 por ampliar el panel y 1 por cada 30 s de interacción. El tiempo de interacción suma los intervalos de hasta 15 s entre clics y desplazamientos, y el tiempo que el panel permanece ampliado."
+    "message": "Puntuación: una respuesta adoptada suma 5 puntos. Usar una respuesta suma hasta 3 más: 1 por hacer clic o desplazarse en su panel, 1 por ampliar el panel y 1 por cada 30 s de interacción. El tiempo de interacción suma los intervalos de hasta 15 s entre clics y desplazamientos, y el tiempo que el panel permanece ampliado. Haz clic en el botón menos para restar 5 puntos; haz clic de nuevo para deshacerlo."
   },
   "labelProviderSortMode": {
     "message": "Provider order"
@@ -1105,6 +1114,30 @@
   "composerActualMode": {
     "message": "Actual mode"
   },
+  "composerTargetMode": {
+    "message": "Se asigna a"
+  },
+  "composerTierMapUnsupported": {
+    "message": "No compatible"
+  },
+  "composerTierMapSkipped": {
+    "message": "Sin cambio"
+  },
+  "composerTierMapDetect": {
+    "message": "Detección automática"
+  },
+  "composerTierMapEffort": {
+    "message": "Esfuerzo de razonamiento $1"
+  },
+  "composerTierMapToggleOn": {
+    "message": "$1 activado"
+  },
+  "composerTierMapToggleOff": {
+    "message": "$1 desactivado"
+  },
+  "composerTierMapShared": {
+    "message": "compartido con $1"
+  },
   "composerResult": {
     "message": "Result"
   },
@@ -1143,6 +1176,9 @@
   },
   "composerLayout": {
     "message": "Layout"
+  },
+  "composerWideContent": {
+    "message": "Modo ancho"
   },
   "composerNotChecked": {
     "message": "Not checked"
@@ -1208,7 +1244,7 @@
     "message": "Modelo anónimo"
   },
   "wideContentTitle": {
-    "message": "Contenido ancho: las respuestas usan todo el ancho del panel"
+    "message": "Modo ancho: cada panel es 1,5 veces más ancho; desplázate horizontalmente para verlo."
   },
   "sectionTierRecipes": {
     "message": "Asignación de niveles de razonamiento"

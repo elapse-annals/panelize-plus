@@ -33,6 +33,7 @@ import {
 } from '../modules/version-checker.js';
 import { t, translatePage, getCurrentLanguage, initializeLanguage } from '../modules/i18n.js';
 import {
+  DEFAULT_TIER_RECIPES,
   PROVIDER_TIER_IDS,
   TIER_RECIPE_PROVIDERS,
   buildTierRecipeOverrides,
@@ -406,6 +407,10 @@ async function renderTierRecipeEditor() {
         checkbox.dataset.tier = tier;
         checkbox.dataset.field = 'toggleOn';
         label.append(checkbox, document.createTextNode(` ${thinkingLabel}`));
+        // Yuanbao pairs a model pick with its DeepThink toggle.
+        if (DEFAULT_TIER_RECIPES[providerId][tier].some(item => item.kind === 'model')) {
+          cell.append(createRecipeInput(providerId, tier, 'model', fields.model, modelLabel));
+        }
         cell.append(label);
         return;
       }

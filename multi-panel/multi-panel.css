@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../fonts/material-symbols-outlined.woff2') format('woff2');
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -322,8 +330,9 @@ body {
   background: #e0e0e0;
   overflow-x: auto;
   overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
+  /* Keep native horizontal scrolling free to stop anywhere in the grid. */
+  scroll-snap-type: none;
+  scroll-behavior: auto;
   scrollbar-width: thin;
   position: relative;
 }
@@ -459,22 +468,6 @@ body {
   grid-template-rows: 1fr 1fr 1fr 1fr;
 }
 
-/* 所有 1xN 布局的面板添加 scroll-snap */
-.layout-1x1 .panel-item,
-.layout-1x2 .panel-item,
-.layout-1x3 .panel-item,
-.layout-1x4 .panel-item,
-.layout-1x5 .panel-item,
-.layout-1x6 .panel-item,
-.layout-1x7 .panel-item,
-.layout-1x8 .panel-item,
-.layout-1x9 .panel-item,
-.layout-1x10 .panel-item,
-.layout-1x11 .panel-item,
-.layout-1x12 .panel-item {
-  scroll-snap-align: start;
-}
-
 /* Column resize handles (modules/panel-resize.js), centered on the gaps. */
 .panel-resize-handles {
   position: absolute;
@@ -524,10 +517,6 @@ body {
 
 .panel-resizing iframe {
   pointer-events: none;
-}
-
-.panel-resizing #panel-grid {
-  scroll-snap-type: none;
 }
 
 /* Panel Item */
@@ -830,6 +819,11 @@ body {
    one control. Motion is a single short sweep on deliberate interaction. */
 .composer-shell {
   --composer-edge: #d9deeb;
+  --tier-color: #8b91a2;
+  --tier-highlight: #cbd2df;
+  --tier-ink: #555f73;
+  --tier-glow: #8b91a226;
+  --tier-duration: .65s;
   position: relative;
   max-width: 1200px;
   margin: 0 auto;
@@ -850,19 +844,65 @@ body {
   padding: 1px;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(110deg, #8394d8, #c49acb, #91bfc5, #8394d8);
-  background-size: 250% 100%;
+  background: linear-gradient(110deg, var(--tier-color), var(--tier-highlight), var(--tier-color));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   opacity: 0;
 }
-.composer-shell.composer-pulse::before { animation: composer-edge-sweep .85s ease-out 1; }
+.composer-shell.composer-pulse::before { animation: composer-edge-sweep var(--tier-duration) ease-out 1; }
 @keyframes composer-edge-sweep {
-  0% { opacity: 0; background-position: 100% 0; }
-  20% { opacity: .8; }
-  75% { opacity: .5; }
-  100% { opacity: 0; background-position: 0 0; }
+  0%, 100% { opacity: 0; }
+  20% { opacity: 1; }
+  75% { opacity: .6; }
+}
+.composer-shell[data-tier="fast"] {
+  --tier-color: #087f8c;
+  --tier-highlight: #7ee6e4;
+  --tier-ink: #066975;
+  --tier-glow: #16b9c02b;
+  --tier-duration: .4s;
+}
+.composer-shell[data-tier="balanced"] {
+  --tier-color: #346acb;
+  --tier-highlight: #a3c9ff;
+  --tier-ink: #2856a3;
+  --tier-glow: #4d8aee2b;
+  --tier-duration: .65s;
+}
+.composer-shell[data-tier="deep"] {
+  --tier-color: #854ee0;
+  --tier-highlight: #e3b6ff;
+  --tier-ink: #7541bb;
+  --tier-glow: #ac73ef38;
+  --tier-duration: .85s;
+}
+.composer-shell[data-tier]:not([data-tier="default"]) {
+  border-color: color-mix(in srgb, var(--tier-color) 40%, var(--composer-edge));
+  box-shadow: 0 2px 14px var(--tier-glow);
+}
+/* A brief light trail stays inside the composer; it never repaints the AI
+   panels or runs continuously while the horizontal grid is scrolling. */
+.composer-shell::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 5%;
+  width: 30%;
+  height: 2px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, var(--tier-highlight), var(--tier-color), transparent);
+  box-shadow: 0 0 9px var(--tier-glow);
+  pointer-events: none;
+  opacity: 0;
+}
+.composer-shell.composer-pulse:not([data-tier="default"])::after {
+  animation: composer-light-trail var(--tier-duration) ease-out 1;
+}
+@keyframes composer-light-trail {
+  0% { opacity: 0; transform: translateX(0) scaleX(.5); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(200%) scaleX(1); }
 }
 .composer-controls, .composer-controls-left, .composer-controls-right {
   display: flex;
@@ -901,6 +941,7 @@ body {
 .composer-divider { width: 1px; height: 14px; background: #e4e6ee; }
 .tier-controls { display: inline-flex; gap: 2px; background: #f3f4f8; padding: 2px; border-radius: 8px; }
 .tier-option {
+  position: relative;
   padding: 1px 9px;
   min-height: 20px;
   border: none;
@@ -2384,12 +2425,14 @@ html.snapshot-hide-cursor *::after {
 }
 
 /* ===== Answer Stats ===== */
-.panel-header-right .adopt-answer-btn:disabled {
+.panel-header-right .adopt-answer-btn:disabled,
+.panel-header-right .reject-answer-btn:disabled {
   opacity: 0.35;
   cursor: default;
 }
 
-.panel-header-right .adopt-answer-btn:disabled:hover {
+.panel-header-right .adopt-answer-btn:disabled:hover,
+.panel-header-right .reject-answer-btn:disabled:hover {
   background: transparent;
 }
 
@@ -2397,8 +2440,17 @@ html.snapshot-hide-cursor *::after {
   color: #1976d2;
 }
 
-.panel-header-right .adopt-answer-btn.adopted .material-symbols-outlined {
+.panel-header-right .adopt-answer-btn.adopted .material-symbols-outlined,
+.panel-header-right .reject-answer-btn.rejected .material-symbols-outlined {
   font-variation-settings: 'FILL' 1;
+}
+
+.panel-header-right .reject-answer-btn .material-symbols-outlined {
+  transform: rotate(180deg);
+}
+
+.panel-header-right .reject-answer-btn.rejected {
+  color: #d32f2f;
 }
 
 .answer-stats-empty {
@@ -2505,6 +2557,12 @@ html.snapshot-hide-cursor *::after {
   color: #1565c0;
 }
 
+.answer-stats-chip.rejected {
+  border-color: #d32f2f;
+  background: #ffebee;
+  color: #b71c1c;
+}
+
 .answer-stats-clear-btn {
   margin-right: auto;
   color: #d32f2f;
@@ -2517,6 +2575,10 @@ html.snapshot-hide-cursor *::after {
 
 [data-theme="dark"] .panel-header-right .adopt-answer-btn.adopted {
   color: #64b5f6;
+}
+
+[data-theme="dark"] .panel-header-right .reject-answer-btn.rejected {
+  color: #ff6b6b;
 }
 
 [data-theme="dark"] .answer-stats-empty,
@@ -2550,6 +2612,12 @@ html.snapshot-hide-cursor *::after {
   color: #90caf9;
 }
 
+[data-theme="dark"] .answer-stats-chip.rejected {
+  border-color: #ff6b6b;
+  background: #4a2424;
+  color: #ff8a80;
+}
+
 [data-theme="dark"] .answer-stats-clear-btn {
   color: #ff6b6b;
 }
@@ -2564,6 +2632,7 @@ html.snapshot-hide-cursor *::after {
   --composer-accent-ink: #48447a;
   --composer-muted: #647087;
   --composer-line: #e4e6ee;
+  padding: 3px 12px;
 }
 [data-theme="dark"] #input-bar {
   --composer-accent: #7a6bc4;
@@ -2573,13 +2642,15 @@ html.snapshot-hide-cursor *::after {
   --composer-muted: #b4b2c2;
   --composer-line: #42414d;
 }
-#input-bar .input-container { padding: 5px 8px 2px; }
-#input-bar .composer-controls { padding: 0 8px 4px; }
+#input-bar .input-container { padding: 0 8px; }
+#input-bar .composer-controls { padding: 0 8px; }
 #input-bar .input-wrapper.drag-over { background: var(--composer-accent-soft); border-radius: 10px; }
 #input-bar #unified-input {
   border: 0;
   border-radius: 10px;
-  padding: 5px 6px;
+  padding: 1px 12px;
+  font-size: 15px;
+  line-height: 1.5;
   max-height: min(40vh, 360px);
   background: transparent;
   box-shadow: none;
@@ -2587,8 +2658,8 @@ html.snapshot-hide-cursor *::after {
 #input-bar #unified-input:focus { outline: none; border: 0; }
 #input-bar .input-btn,
 #input-bar .clear-btn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -2600,7 +2671,7 @@ html.snapshot-hide-cursor *::after {
 #input-bar .input-actions { gap: 6px; }
 #input-bar .input-actions .composer-divider { height: 18px; background: var(--composer-line); }
 #input-bar .fill-btn {
-  height: 32px;
+  height: 28px;
   padding: 0 12px;
   border: 1px solid var(--composer-line);
   border-radius: 10px;
@@ -2610,7 +2681,7 @@ html.snapshot-hide-cursor *::after {
 #input-bar .fill-btn:hover:not(:disabled) { border-color: var(--composer-accent); background: var(--composer-accent-soft); }
 #input-bar .fill-btn:disabled { background: transparent; color: var(--composer-muted); opacity: .55; }
 #input-bar .send-btn {
-  height: 32px;
+  height: 28px;
   padding: 0 14px;
   border-radius: 10px;
   background: var(--composer-accent);
@@ -2646,13 +2717,48 @@ html.snapshot-hide-cursor *::after {
 }
 #input-bar .tier-option[data-requested="true"]:disabled { opacity: .75; }
 #input-bar .tier-option[aria-checked="true"]:hover { color: #fff; }
+/* Each level keeps a distinct resting appearance after the short switch
+   effect: teal streak, blue halo, then violet starlight. */
+#input-bar .composer-shell[data-tier] .tier-option[data-requested="true"]:not([data-tier="default"]) {
+  position: relative;
+  color: var(--tier-ink);
+  background: color-mix(in srgb, var(--tier-color) 9%, #fff);
+  box-shadow: inset 0 0 0 1px var(--tier-color), 0 0 9px var(--tier-glow);
+}
+#input-bar .composer-shell[data-tier-state="confirmed"] .tier-option[data-requested="true"]:not([data-tier="default"]) {
+  color: #fff;
+  background: var(--tier-color);
+  box-shadow: 0 1px 5px var(--tier-glow);
+}
+#input-bar .composer-shell[data-tier="deep"][data-tier-state="confirmed"] .tier-option[data-requested="true"] {
+  background: radial-gradient(circle at 18% 28%, #fff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 78% 72%, #f4d3ff 0 1px, transparent 1.5px),
+    linear-gradient(110deg, #6945ce, #a756e3);
+}
+.composer-shell[data-tier-state="switching"] .tier-option[data-requested="true"]::after {
+  content: '';
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--tier-color);
+}
+[data-theme="dark"] .composer-shell[data-tier="fast"] { --tier-ink: #89e4e0; }
+[data-theme="dark"] .composer-shell[data-tier="balanced"] { --tier-ink: #accbff; }
+[data-theme="dark"] .composer-shell[data-tier="deep"] { --tier-ink: #dfbaff; }
+[data-theme="dark"] #input-bar .composer-shell[data-tier-state]:not([data-tier-state="confirmed"]) .tier-option[data-requested="true"]:not([data-tier="default"]) {
+  color: var(--tier-ink);
+  background: color-mix(in srgb, var(--tier-color) 18%, #26262b);
+}
 #input-bar .composer-status {
   max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* A draft taller than one line overhangs the panels instead of shrinking them;
+/* A draft taller than two lines overhangs the panels instead of shrinking them;
    --composer-overflow is the extra textarea height (see resizeTextarea). */
 #input-bar .composer-shell { margin-top: calc(-1 * var(--composer-overflow, 0px)); }
 #input-bar.composer-expanded .composer-shell { box-shadow: 0 -8px 24px rgba(30, 42, 70, .12); }
@@ -2670,11 +2776,9 @@ html.snapshot-hide-cursor *::after {
 [data-theme="dark"] .composer-table td, [data-theme="dark"] .composer-table th, [data-theme="dark"] .composer-shortcut-field input { border-color: #43414e; }
 @media (max-width: 760px) {
   #input-bar { padding: 6px; }
-  #input-bar .input-container { flex-wrap: wrap; }
-  #input-bar .input-wrapper { flex: 1 1 calc(100% - 82px); }
-  #input-bar .input-actions { width: 100%; justify-content: flex-end; }
-  .composer-controls { gap: 8px 4px; }
-  .composer-controls-right { margin-left: auto; }
+  #input-bar .composer-controls { gap: 4px; }
+  #input-bar .composer-controls-left { flex: 1 1 100%; }
+  #input-bar .composer-controls-right { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
   .composer-shortcut-field input { width: 155px; }
 }
 /* Phone width: actions and secondary controls become icon-only; their
@@ -2686,10 +2790,12 @@ html.snapshot-hide-cursor *::after {
   #provider-sort-label,
   #input-bar .composer-status { display: none; }
   #input-bar .tier-option { padding: 1px 8px; }
+  #input-bar .composer-controls-left { gap: 4px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .composer-shell, .composer-control, .tier-option, #input-bar .tier-option { transition: none; }
   .composer-shell.composer-pulse::before { animation: none; }
+  .composer-shell.composer-pulse:not([data-tier="default"])::after { animation: none; }
 }
 
 /* ===== Blind mode ===== */

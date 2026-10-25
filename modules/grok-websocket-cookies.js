@@ -1,4 +1,5 @@
 import { DEFAULT_PROVIDER_IDS } from './provider-defaults.js';
+import { upgradeConsentCookies } from './consent-cookies.js';
 
 export const GROK_PROVIDER_ID = 'grok';
 export const GROK_COOKIE_URL = 'https://grok.com/';
@@ -343,59 +344,14 @@ export async function syncGrokWebSocketCookies({
 /**
  * Rewrites existing OneTrust consent cookies to SameSite=None; Secure so Grok
  * can read a choice the user already made top-level from inside its embedded
- * panel; Chromium hides SameSite=Lax cookies from document.cookie there.
- * Value, path, domain and expiry are kept. New choices made inside the panel
- * are handled by content-scripts/grok-cookie-consent.js instead.
+ * panel. See upgradeConsentCookies.
  */
-export async function upgradeGrokConsentCookies(cookies) {
-  if (!Array.isArray(cookies) || typeof chrome === 'undefined' || !chrome.cookies?.set) {
-    return cookies;
-  }
-
-  const updatedCookies = [];
-  for (const cookie of cookies) {
-    if (
-      cookie &&
-      GROK_CONSENT_COOKIE_NAMES.includes(cookie.name) &&
-      !cookie.partitionKey &&
-      (cookie.sameSite !== 'no_restriction' || !cookie.secure)
-    ) {
-      const details = {
-        url: GROK_COOKIE_URL,
-        name: cookie.name,
-        value: cookie.value,
-        path: cookie.path || '/',
-        secure: true,
-        httpOnly: Boolean(cookie.httpOnly),
-        sameSite: 'no_restriction'
-      };
-      if (!cookie.hostOnly && cookie.domain) {
-        details.domain = cookie.domain;
-      }
-      if (typeof cookie.expirationDate === 'number') {
-        details.expirationDate = cookie.expirationDate;
-      }
-      if (typeof cookie.storeId === 'string') {
-        details.storeId = cookie.storeId;
-      }
-
-      try {
-        await chrome.cookies.set(details);
-        updatedCookies.push({
-          ...cookie,
-          secure: true,
-          sameSite: 'no_restriction'
-        });
-        continue;
-      } catch (error) {
-        console.warn(`[Grok] Failed to update consent cookie ${cookie.name}:`, error);
-      }
-    }
-
-    updatedCookies.push(cookie);
-  }
-
-  return updatedCookies;
+export function upgradeGrokConsentCookies(cookies) {
+  return upgradeConsentCookies(cookies, {
+    url: GROK_COOKIE_URL,
+    names: GROK_CONSENT_COOKIE_NAMES,
+    label: 'Grok'
+  });
 }
 
 /**

@@ -44,7 +44,8 @@ describe('keyboard shortcut bindings', () => {
       tierDeep: 'Mod+Alt+3',
       togglePromptLibrary: null,
       toggleLayout: null,
-      togglePopularSort: null
+      togglePopularSort: null,
+      toggleWideContent: 'Mod+Alt+W'
     });
     expect(KEYBOARD_SHORTCUT_ACTIONS.SEND).toBe('send');
   });

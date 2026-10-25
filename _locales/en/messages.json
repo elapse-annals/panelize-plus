@@ -1003,6 +1003,12 @@
   "adoptedAnswerTitle": {
     "message": "Adopted (click to undo)"
   },
+  "rejectAnswerTitle": {
+    "message": "Deduct 5 points"
+  },
+  "rejectedAnswerTitle": {
+    "message": "5 points deducted (click to undo)"
+  },
   "answerStatsButtonTitle": {
     "message": "Answer stats"
   },
@@ -1057,6 +1063,9 @@
   "answerStatsAdopted": {
     "message": "Adopted"
   },
+  "answerStatsRejected": {
+    "message": "5 points deducted"
+  },
   "answerStatsStatus_pending": {
     "message": "In progress"
   },
@@ -1073,7 +1082,7 @@
     "message": "Score"
   },
   "answerStatsScoreNote": {
-    "message": "Score: an adopted answer earns 5 points. Using an answer earns up to 3 more: 1 for clicking or scrolling in its panel, 1 for enlarging the panel, and 1 for every 30 s of engaged time. Engaged time adds the gaps between clicks and scrolls up to 15 s apart, and the time the panel stays enlarged."
+    "message": "Score: an adopted answer earns 5 points. Using an answer earns up to 3 more: 1 for clicking or scrolling in its panel, 1 for enlarging the panel, and 1 for every 30 s of engaged time. Engaged time adds the gaps between clicks and scrolls up to 15 s apart, and the time the panel stays enlarged. Click the minus button to deduct 5 points; click again to undo."
   },
   "labelProviderSortMode": {
     "message": "Provider order"
@@ -1120,6 +1129,30 @@
   "composerActualMode": {
     "message": "Actual mode"
   },
+  "composerTargetMode": {
+    "message": "Mapped to"
+  },
+  "composerTierMapUnsupported": {
+    "message": "Not supported"
+  },
+  "composerTierMapSkipped": {
+    "message": "Not switched"
+  },
+  "composerTierMapDetect": {
+    "message": "Auto-detect"
+  },
+  "composerTierMapEffort": {
+    "message": "Reasoning effort $1"
+  },
+  "composerTierMapToggleOn": {
+    "message": "$1 on"
+  },
+  "composerTierMapToggleOff": {
+    "message": "$1 off"
+  },
+  "composerTierMapShared": {
+    "message": "shared with $1"
+  },
   "composerResult": {
     "message": "Result"
   },
@@ -1158,6 +1191,9 @@
   },
   "composerLayout": {
     "message": "Layout"
+  },
+  "composerWideContent": {
+    "message": "Wide mode"
   },
   "composerNotChecked": {
     "message": "Not checked"
@@ -1223,7 +1259,7 @@
     "message": "Anonymous model"
   },
   "wideContentTitle": {
-    "message": "Wide content: let answers use the full panel width"
+    "message": "Wide mode: each panel is 1.5× wider; scroll horizontally to view."
   },
   "sectionTierRecipes": {
     "message": "Reasoning level mapping"

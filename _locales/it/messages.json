@@ -988,6 +988,12 @@
   "adoptedAnswerTitle": {
     "message": "Adottata (clic per annullare)"
   },
+  "rejectAnswerTitle": {
+    "message": "Sottrai 5 punti"
+  },
+  "rejectedAnswerTitle": {
+    "message": "5 punti sottratti (clic per annullare)"
+  },
   "answerStatsButtonTitle": {
     "message": "Statistiche risposte"
   },
@@ -1042,6 +1048,9 @@
   "answerStatsAdopted": {
     "message": "Adottata"
   },
+  "answerStatsRejected": {
+    "message": "5 punti sottratti"
+  },
   "answerStatsStatus_pending": {
     "message": "In corso"
   },
@@ -1058,7 +1067,7 @@
     "message": "Punteggio"
   },
   "answerStatsScoreNote": {
-    "message": "Punteggio: una risposta adottata vale 5 punti. Usare una risposta ne aggiunge fino a 3: 1 per clic o scorrimento nel suo pannello, 1 per l’ingrandimento del pannello e 1 ogni 30 s di interazione. Il tempo di interazione somma gli intervalli fino a 15 s tra clic e scorrimenti e il tempo in cui il pannello resta ingrandito."
+    "message": "Punteggio: una risposta adottata vale 5 punti. Usare una risposta ne aggiunge fino a 3: 1 per clic o scorrimento nel suo pannello, 1 per l’ingrandimento del pannello e 1 ogni 30 s di interazione. Il tempo di interazione somma gli intervalli fino a 15 s tra clic e scorrimenti e il tempo in cui il pannello resta ingrandito. Fai clic sul pulsante meno per sottrarre 5 punti; fai di nuovo clic per annullare."
   },
   "labelProviderSortMode": {
     "message": "Provider order"
@@ -1105,6 +1114,30 @@
   "composerActualMode": {
     "message": "Actual mode"
   },
+  "composerTargetMode": {
+    "message": "Corrisponde a"
+  },
+  "composerTierMapUnsupported": {
+    "message": "Non supportato"
+  },
+  "composerTierMapSkipped": {
+    "message": "Non cambiato"
+  },
+  "composerTierMapDetect": {
+    "message": "Rilevamento automatico"
+  },
+  "composerTierMapEffort": {
+    "message": "Sforzo di ragionamento $1"
+  },
+  "composerTierMapToggleOn": {
+    "message": "$1 attivo"
+  },
+  "composerTierMapToggleOff": {
+    "message": "$1 disattivo"
+  },
+  "composerTierMapShared": {
+    "message": "condiviso con $1"
+  },
   "composerResult": {
     "message": "Result"
   },
@@ -1143,6 +1176,9 @@
   },
   "composerLayout": {
     "message": "Layout"
+  },
+  "composerWideContent": {
+    "message": "Modalità ampia"
   },
   "composerNotChecked": {
     "message": "Not checked"
@@ -1208,7 +1244,7 @@
     "message": "Modello anonimo"
   },
   "wideContentTitle": {
-    "message": "Contenuto largo: le risposte usano tutta la larghezza del pannello"
+    "message": "Modalità ampia: ogni pannello è 1,5 volte più largo; scorri in orizzontale per visualizzarlo."
   },
   "sectionTierRecipes": {
     "message": "Mappatura dei livelli di ragionamento"

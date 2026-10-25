@@ -8,11 +8,18 @@ import {
   compareVersions,
   normalizeZipEntries,
   parseChangelogEntries,
+  PACKAGE_EXCLUDED_PREFIXES,
+  PACKAGE_INCLUDE_PATHS,
   prependChangelogSection,
   readManifestReferencedPaths
 } from '../scripts/release-utils.js';
 
 describe('release utils', () => {
+  it('includes bundled fonts in release packages', () => {
+    expect(PACKAGE_INCLUDE_PATHS).toContain('fonts');
+    expect(PACKAGE_EXCLUDED_PREFIXES.some(path => path === 'fonts/' || path.startsWith('fonts/'))).toBe(false);
+  });
+
   it('compares semver values correctly', () => {
     expect(compareVersions('1.1.0', '1.1.1')).toBe(-1);
     expect(compareVersions('1.1.1', '1.1.1')).toBe(0);

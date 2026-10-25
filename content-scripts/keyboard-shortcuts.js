@@ -12,7 +12,8 @@
     'tierDeep',
     'togglePromptLibrary',
     'toggleLayout',
-    'togglePopularSort'
+    'togglePopularSort',
+    'toggleWideContent'
   ];
   const DEFAULT_BINDINGS = {
     send: 'Mod+Enter',
@@ -24,7 +25,8 @@
     tierDeep: 'Mod+Alt+3',
     togglePromptLibrary: null,
     toggleLayout: null,
-    togglePopularSort: null
+    togglePopularSort: null,
+    toggleWideContent: 'Mod+Alt+W'
   };
   const MODIFIERS = new Map([
     ['ctrl', 'Ctrl'], ['control', 'Ctrl'],

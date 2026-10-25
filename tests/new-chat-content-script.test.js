@@ -187,11 +187,13 @@ describe('new chat content script result protocol', () => {
     })]);
   });
 
-  it('treats repeated Gemini requests on the canonical blank state as ready', async () => {
+  it.each(['/', '/app'])('treats repeated Gemini requests on the canonical blank state %s as ready', async (path) => {
     vi.useFakeTimers();
     const { clicks } = createGeminiDom();
+    window.happyDOM.setURL(`https://gemini.google.com${path}`);
 
-    for (const requestId of ['req-gemini-first', 'req-gemini-repeat']) {
+    const requestIds = [`req-gemini-first-${path}`, `req-gemini-repeat-${path}`];
+    for (const requestId of requestIds) {
       dispatchMultiPanelMessage({
         type: 'NEW_CHAT',
         requestId,
@@ -203,8 +205,8 @@ describe('new chat content script result protocol', () => {
 
     expect(clicks).toHaveBeenCalledTimes(2);
     expect(getNewChatResults().map(result => [result.requestId, result.status])).toEqual([
-      ['req-gemini-first', 'verified'],
-      ['req-gemini-repeat', 'verified']
+      [requestIds[0], 'verified'],
+      [requestIds[1], 'verified']
     ]);
   });
 
@@ -228,6 +230,7 @@ describe('new chat content script result protocol', () => {
   it('verifies a host-driven reload without clicking a new-chat control', async () => {
     vi.useFakeTimers();
     const { clicks } = createChatgptDom({ draft: '', hasConversation: false });
+    window.happyDOM.setURL('https://chatgpt.com/');
 
     dispatchMultiPanelMessage({
       type: 'VERIFY_NEW_CHAT',
@@ -242,6 +245,26 @@ describe('new chat content script result protocol', () => {
       requestId: 'req-host-reload',
       panelId: 'panel-chatgpt',
       status: 'verified'
+    })]);
+  });
+
+  it('does not verify an empty, still-hydrating old thread after a host-driven reload', async () => {
+    vi.useFakeTimers();
+    createChatgptDom({ draft: '', hasConversation: false });
+    window.happyDOM.setURL('https://chatgpt.com/c/old-conversation');
+
+    dispatchMultiPanelMessage({
+      type: 'VERIFY_NEW_CHAT',
+      requestId: 'req-host-reload-old-thread',
+      panelId: 'panel-chatgpt',
+      provider: 'chatgpt'
+    });
+    await vi.advanceTimersByTimeAsync(12500);
+
+    expect(getNewChatResults()).toEqual([expect.objectContaining({
+      requestId: 'req-host-reload-old-thread',
+      status: 'unconfirmed',
+      reason: 'confirmation-timeout'
     })]);
   });
 
@@ -264,6 +287,7 @@ describe('new chat content script result protocol', () => {
   it('recovers the pending request on a fresh document after navigation', async () => {
     vi.useFakeTimers();
     createChatgptDom({ draft: '', hasConversation: false });
+    window.happyDOM.setURL('https://chatgpt.com/');
     const marker = createPendingMarker('req-navigation', 'panel-chatgpt');
     const key = `${STORAGE_PREFIX}${encodeURIComponent(marker.requestId)}:${encodeURIComponent(marker.panelId)}`;
     window.sessionStorage.setItem(key, JSON.stringify(marker));

@@ -25,8 +25,8 @@ import {
 const manifest = JSON.parse(
   readFileSync(resolve(process.cwd(), 'manifest.json'), 'utf8')
 );
-const grokCookieConsentScript = readFileSync(
-  resolve(process.cwd(), 'content-scripts/grok-cookie-consent.js'),
+const consentCookieScript = readFileSync(
+  resolve(process.cwd(), 'content-scripts/embedded-consent-cookies.js'),
   'utf8'
 );
 
@@ -73,7 +73,7 @@ describe('Grok WebSocket cookie synchronization', () => {
     ]));
     expect(manifest.content_scripts).toContainEqual({
       matches: ['https://grok.com/*'],
-      js: ['content-scripts/grok-cookie-consent.js'],
+      js: ['content-scripts/embedded-consent-cookies.js'],
       run_at: 'document_start',
       all_frames: true,
       world: 'MAIN',
@@ -439,7 +439,15 @@ describe('Grok WebSocket cookie synchronization', () => {
     });
   });
 
-  function runConsentScript({ cookieOwner = 'document', ancestorOrigins = ['chrome-extension://test-ext-id'] } = {}) {
+  const GROK_CONSENT_COOKIE = 'OptanonAlertBoxClosed=2026-10-16T13:00:00.000Z; path=/; domain=.grok.com; Samesite=Lax';
+  const DEEPSEEK_CONSENT_COOKIE = 'ds_cookie_preference=%7B%22level%22%3A%22essential%22%7D; expires=Sun, 24 Oct 2027 12:00:00 GMT; domain=deepseek.com';
+
+  function runConsentScript({
+    cookieOwner = 'document',
+    ancestorOrigins = ['chrome-extension://test-ext-id'],
+    hostname = 'grok.com',
+    cookies = [GROK_CONSENT_COOKIE, 'other_cookie=1; path=/; SameSite=Lax'],
+  } = {}) {
     const writtenValues = [];
     const documentProto = {};
     const htmlDocumentProto = Object.create(documentProto);
@@ -455,17 +463,18 @@ describe('Grok WebSocket cookie synchronization', () => {
       },
     });
     const fakeDoc = Object.create(htmlDocumentProto);
-    const fakeLocation = { protocol: 'https:', ancestorOrigins };
+    const fakeLocation = { protocol: 'https:', hostname, ancestorOrigins };
     const fakeWindow = { self: {}, top: {}, location: fakeLocation };
 
-    new Function('window', 'document', 'location', grokCookieConsentScript)(
+    new Function('window', 'document', 'location', consentCookieScript)(
       fakeWindow,
       fakeDoc,
       fakeLocation
     );
 
-    fakeDoc.cookie = 'OptanonAlertBoxClosed=2026-10-16T13:00:00.000Z; path=/; domain=.grok.com; Samesite=Lax';
-    fakeDoc.cookie = 'other_cookie=1; path=/; SameSite=Lax';
+    cookies.forEach((cookie) => {
+      fakeDoc.cookie = cookie;
+    });
     return writtenValues;
   }
 
@@ -490,5 +499,31 @@ describe('Grok WebSocket cookie synchronization', () => {
     expect(runConsentScript({
       ancestorOrigins: ['chrome-extension://test-ext-id', 'https://attacker.test'],
     })[0]).toBe(untouched);
+  });
+
+  it('rewrites the DeepSeek cookie banner choice in DeepSeek frames embedded by an extension page', () => {
+    expect(runConsentScript({
+      hostname: 'chat.deepseek.com',
+      cookies: [DEEPSEEK_CONSENT_COOKIE, GROK_CONSENT_COOKIE],
+    })).toEqual([
+      `${DEEPSEEK_CONSENT_COOKIE}; SameSite=None; Secure`,
+      GROK_CONSENT_COOKIE,
+    ]);
+  });
+
+  it('only rewrites consent cookies that belong to the current provider', () => {
+    expect(runConsentScript({ cookies: [DEEPSEEK_CONSENT_COOKIE] })).toEqual([DEEPSEEK_CONSENT_COOKIE]);
+    expect(runConsentScript({
+      hostname: 'www.kimi.com',
+      cookies: [GROK_CONSENT_COOKIE, DEEPSEEK_CONSENT_COOKIE],
+    })).toEqual([GROK_CONSENT_COOKIE, DEEPSEEK_CONSENT_COOKIE]);
+  });
+
+  it('leaves the DeepSeek cookie banner choice untouched in DeepSeek frames embedded by websites', () => {
+    expect(runConsentScript({
+      hostname: 'chat.deepseek.com',
+      ancestorOrigins: ['https://attacker.test'],
+      cookies: [DEEPSEEK_CONSENT_COOKIE],
+    })).toEqual([DEEPSEEK_CONSENT_COOKIE]);
   });
 });

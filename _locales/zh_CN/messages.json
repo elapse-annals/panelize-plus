@@ -982,6 +982,12 @@
   "adoptedAnswerTitle": {
     "message": "已采纳（点击撤销）"
   },
+  "rejectAnswerTitle": {
+    "message": "减 5 分"
+  },
+  "rejectedAnswerTitle": {
+    "message": "已减 5 分（点击撤销）"
+  },
   "answerStatsButtonTitle": {
     "message": "答复统计"
   },
@@ -1036,6 +1042,9 @@
   "answerStatsAdopted": {
     "message": "已采纳"
   },
+  "answerStatsRejected": {
+    "message": "已减 5 分"
+  },
   "answerStatsStatus_pending": {
     "message": "进行中"
   },
@@ -1052,7 +1061,7 @@
     "message": "得分"
   },
   "answerStatsScoreNote": {
-    "message": "得分：被采纳的回答得 5 分。使用回答最多再得 3 分：在面板中点击或滚动得 1 分，放大面板得 1 分，每 30 秒互动时长得 1 分。互动时长累计相隔不超过 15 秒的点击和滚动之间的时间，以及面板保持放大的时间。"
+    "message": "得分：被采纳的回答得 5 分。使用回答最多再得 3 分：在面板中点击或滚动得 1 分，放大面板得 1 分，每 30 秒互动时长得 1 分。互动时长累计相隔不超过 15 秒的点击和滚动之间的时间，以及面板保持放大的时间。点击减分按钮扣 5 分，再点撤销。"
   },
   "labelProviderSortMode": {
     "message": "AI 平台排序"
@@ -1099,6 +1108,30 @@
   "composerActualMode": {
     "message": "实际模式"
   },
+  "composerTargetMode": {
+    "message": "对应档位"
+  },
+  "composerTierMapUnsupported": {
+    "message": "暂不支持"
+  },
+  "composerTierMapSkipped": {
+    "message": "不切换"
+  },
+  "composerTierMapDetect": {
+    "message": "自动识别"
+  },
+  "composerTierMapEffort": {
+    "message": "推理强度 $1"
+  },
+  "composerTierMapToggleOn": {
+    "message": "$1 开启"
+  },
+  "composerTierMapToggleOff": {
+    "message": "$1 关闭"
+  },
+  "composerTierMapShared": {
+    "message": "与$1共享"
+  },
   "composerResult": {
     "message": "结果"
   },
@@ -1137,6 +1170,9 @@
   },
   "composerLayout": {
     "message": "布局"
+  },
+  "composerWideContent": {
+    "message": "宽屏模式"
   },
   "composerNotChecked": {
     "message": "尚未检查"
@@ -1202,7 +1238,7 @@
     "message": "匿名模型"
   },
   "wideContentTitle": {
-    "message": "快速宽屏：回答铺满面板宽度"
+    "message": "宽屏：每个面板加宽 1.5 倍，横向滚动查看"
   },
   "sectionTierRecipes": {
     "message": "档位映射"

@@ -34,7 +34,8 @@ export async function isMultiPanelTab(tab, runtime = globalThis.chrome?.runtime)
     return false;
   }
   const multiPanelUrl = runtime.getURL(MULTI_PANEL_PAGE_PATH);
-  const url = tab.url || tab.pendingUrl;
+  // A pending navigation wins over the outgoing document URL.
+  const url = tab.pendingUrl || tab.url;
   if (url) {
     return isMultiPanelPageUrl(url, multiPanelUrl);
   }

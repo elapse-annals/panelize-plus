@@ -988,6 +988,12 @@
   "adoptedAnswerTitle": {
     "message": "採用済み（クリックで取り消し）"
   },
+  "rejectAnswerTitle": {
+    "message": "5 点減点"
+  },
+  "rejectedAnswerTitle": {
+    "message": "5 点減点済み（クリックで取り消し）"
+  },
   "answerStatsButtonTitle": {
     "message": "回答の統計"
   },
@@ -1042,6 +1048,9 @@
   "answerStatsAdopted": {
     "message": "採用済み"
   },
+  "answerStatsRejected": {
+    "message": "5 点減点"
+  },
   "answerStatsStatus_pending": {
     "message": "進行中"
   },
@@ -1058,7 +1067,7 @@
     "message": "スコア"
   },
   "answerStatsScoreNote": {
-    "message": "スコア：採用した回答は 5 点です。回答の利用でさらに最大 3 点加算されます。パネル内のクリックやスクロールで 1 点、パネルの拡大で 1 点、操作時間 30 秒ごとに 1 点です。操作時間は 15 秒以内の間隔で続いたクリックとスクロールの間の時間と、パネルを拡大していた時間の合計です。"
+    "message": "スコア：採用した回答は 5 点です。回答の利用でさらに最大 3 点加算されます。パネル内のクリックやスクロールで 1 点、パネルの拡大で 1 点、操作時間 30 秒ごとに 1 点です。操作時間は 15 秒以内の間隔で続いたクリックとスクロールの間の時間と、パネルを拡大していた時間の合計です。マイナスボタンをクリックすると 5 点減点され、もう一度クリックすると取り消されます。"
   },
   "labelProviderSortMode": {
     "message": "Provider order"
@@ -1105,6 +1114,30 @@
   "composerActualMode": {
     "message": "Actual mode"
   },
+  "composerTargetMode": {
+    "message": "対応モード"
+  },
+  "composerTierMapUnsupported": {
+    "message": "未対応"
+  },
+  "composerTierMapSkipped": {
+    "message": "切り替えない"
+  },
+  "composerTierMapDetect": {
+    "message": "自動検出"
+  },
+  "composerTierMapEffort": {
+    "message": "推論強度 $1"
+  },
+  "composerTierMapToggleOn": {
+    "message": "$1 オン"
+  },
+  "composerTierMapToggleOff": {
+    "message": "$1 オフ"
+  },
+  "composerTierMapShared": {
+    "message": "$1 と共通"
+  },
   "composerResult": {
     "message": "Result"
   },
@@ -1143,6 +1176,9 @@
   },
   "composerLayout": {
     "message": "Layout"
+  },
+  "composerWideContent": {
+    "message": "ワイドモード"
   },
   "composerNotChecked": {
     "message": "Not checked"
@@ -1208,7 +1244,7 @@
     "message": "匿名モデル"
   },
   "wideContentTitle": {
-    "message": "ワイド表示：回答をパネル幅いっぱいに表示"
+    "message": "ワイド表示：各パネルが1.5倍の幅になり、横スクロールして表示します。"
   },
   "sectionTierRecipes": {
     "message": "推論レベルの割り当て"

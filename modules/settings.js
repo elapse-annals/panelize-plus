@@ -11,7 +11,7 @@ const DEFAULT_SETTINGS = {
   selectedProviderTier: null,
   providerTierRecipes: null,  // User overrides of DEFAULT_TIER_RECIPES, keyed by provider then tier; null uses the built-in mapping
   blindModeEnabled: false,  // Panels show anonymous labels and provider pages share one neutral style
-  wideContentEnabled: false,  // Provider pages drop the max-width of their conversation column
+  wideContentEnabled: false,  // Provider pages are laid out wider than their panel and scaled to fit
   startupProviders: null,  // Provider IDs opened when Multi-Panel starts; null opens the first ones that fit the layout
   defaultProvider: 'chatgpt',
   lastSelectedProvider: 'chatgpt',

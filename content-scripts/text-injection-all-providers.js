@@ -866,13 +866,21 @@
    * shell is scanned: floating layers (menus, popovers) and content of
    * scrolling boxes (chat lists, code blocks, tables) are left out. It does
    * not depend on the viewport width, so a page laid out at the width it
-   * needs keeps asking for it. Returns 0 when nothing is held open.
+   * needs keeps asking for it. The result also retains layout nodes so later
+   * transcript mutations do not repeatedly measure excluded subtrees.
    */
   function measurePageNeededWidth() {
+    const measurement = {
+      neededWidth: 0,
+      body: document.body,
+      elements: new Set(),
+      resizeTargets: new Set(),
+      minWidthBoxes: new Map()
+    };
     const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
     const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
     if (!document.body || !(viewportWidth > 0)) {
-      return 0;
+      return measurement;
     }
     let needed = 0;
     let visited = 0;
@@ -880,6 +888,7 @@
     for (let index = 0; index < queue.length && visited < PAGE_WIDTH_MAX_ELEMENTS; index += 1) {
       const { element, depth } = queue[index];
       visited += 1;
+      measurement.elements.add(element);
       const style = window.getComputedStyle(element);
       if (style.display === 'none') {
         continue;
@@ -890,19 +899,27 @@
         continue;
       }
       const minWidth = style.minWidth.endsWith('px') ? parseFloat(style.minWidth) : 0;
+      if (shell || minWidth > 0) {
+        measurement.resizeTargets.add(element);
+      }
+      if (minWidth > 0) {
+        measurement.minWidthBoxes.set(element, { left: rect.left, visible: rect.height > 0 });
+      }
       const startsOnScreen = rect.left >= -1 && rect.left < viewportWidth - 1;
       if (minWidth > 0 && rect.height > 0 && startsOnScreen && style.visibility !== 'hidden') {
         needed = Math.max(needed, Math.ceil(rect.left + window.scrollX + minWidth));
       }
       const scrolls = PAGE_WIDTH_SCROLLING_OVERFLOW.test(style.overflowX)
         || PAGE_WIDTH_SCROLLING_OVERFLOW.test(style.overflowY);
+      if (scrolls) measurement.resizeTargets.add(element);
       if (depth < PAGE_WIDTH_MAX_DEPTH && (shell || !scrolls)) {
         for (const child of element.children) {
           queue.push({ element: child, depth: depth + 1 });
         }
       }
     }
-    return needed;
+    measurement.neededWidth = needed;
+    return measurement;
   }
 
   /**
@@ -910,11 +927,77 @@
    * narrower than that can scale the page down to fit instead of cutting it.
    */
   function setupPageWidthReporting() {
-    if (!isMultiPanelFrame() || typeof ResizeObserver !== 'function') {
+    if (!isMultiPanelFrame()) {
       return;
     }
     let lastReported = null;
     let timer = null;
+    let measurement = null;
+    let fullMeasurementNeeded = true;
+    let active = true;
+    let observedElements = new Set();
+    const answerSelector = RESPONSE_TIMING_PROVIDERS[detectProvider()]?.answerSelector;
+    const observedSizes = new WeakMap();
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => {
+      let changed = false;
+      for (const { target, contentRect } of entries) {
+        const previous = observedSizes.get(target);
+        // Growing answers change height on every token. Only width changes,
+        // or an empty min-width box acquiring height, need a new width scan.
+        if (!previous || previous.width !== contentRect.width
+          || (measurement?.minWidthBoxes.has(target) && previous.visible !== (contentRect.height > 0))) {
+          changed = true;
+        }
+        observedSizes.set(target, { width: contentRect.width, visible: contentRect.height > 0 });
+      }
+      if (changed) schedule();
+    }) : null;
+
+    const affectsWidth = (record) => {
+      const target = record.target;
+      if (!measurement || measurement.body !== document.body
+        || target === document.documentElement || target === document.body
+        || document.head?.contains(target)) {
+        return true;
+      }
+      // These subtrees were deliberately excluded from width measurement
+      // (e.g. code blocks and scrollable transcripts). Their ancestors still
+      // trigger measurement when their own layout or visibility changes.
+      if (!measurement.elements.has(target)) {
+        return false;
+      }
+      if (record.type === 'childList' && answerSelector && target.closest?.(answerSelector)
+        && [...record.addedNodes, ...record.removedNodes].every(node => node.nodeType === Node.TEXT_NODE)) {
+        // The pixel min-width is stable, but text can move a sibling box
+        // without resizing it. Check known boxes before deciding to rescan.
+        return 'text';
+      }
+      return true;
+    };
+    const mutationObserver = new MutationObserver((records) => {
+      const textChanges = new Map();
+      for (const record of records) {
+        const relevance = affectsWidth(record);
+        if (relevance === true) {
+          schedule();
+          return;
+        }
+        if (relevance === 'text') {
+          const change = textChanges.get(record.target) || { added: false, removed: false };
+          change.added ||= [...record.addedNodes].some(node => node.nodeValue?.length);
+          change.removed ||= [...record.removedNodes].some(node => node.nodeValue?.length);
+          textChanges.set(record.target, change);
+        }
+      }
+      if (textChanges.size > 0) {
+        // Some DOM implementations split text replacement into removal and
+        // addition records. Combine the batch, but remeasure empty/nonempty
+        // transitions because they can change :empty rules and min-width.
+        schedule([...textChanges].some(([target, change]) => !change.added || !change.removed
+          || !Array.prototype.some.call(target.childNodes, node => node.nodeType === Node.ELEMENT_NODE
+            || (node.nodeType === Node.TEXT_NODE && node.nodeValue?.length))));
+      }
+    });
 
     const report = () => {
       timer = null;
@@ -924,7 +1007,29 @@
         return;
       }
       const provider = detectProvider();
-      const neededWidth = measurePageNeededWidth();
+      if (!fullMeasurementNeeded && measurement) {
+        for (const [element, previous] of measurement.minWidthBoxes) {
+          const rect = element.getBoundingClientRect();
+          if (rect.left !== previous.left || (rect.height > 0) !== previous.visible) {
+            fullMeasurementNeeded = true;
+            break;
+          }
+        }
+      }
+      const measured = fullMeasurementNeeded || !measurement;
+      if (measured) measurement = measurePageNeededWidth();
+      fullMeasurementNeeded = false;
+      if (resizeObserver && measured) {
+        const nextObserved = new Set([document.documentElement, ...measurement.resizeTargets]);
+        for (const element of observedElements) {
+          if (!nextObserved.has(element)) resizeObserver.unobserve(element);
+        }
+        for (const element of nextObserved) {
+          if (!observedElements.has(element)) resizeObserver.observe(element);
+        }
+        observedElements = nextObserved;
+      }
+      const { neededWidth } = measurement;
       if (!provider || neededWidth === lastReported) {
         return;
       }
@@ -937,20 +1042,40 @@
       }, '*');
     };
 
-    function schedule() {
-      if (timer === null) {
+    function schedule(full = true) {
+      if (full !== false) fullMeasurementNeeded = true;
+      if (active && timer === null) {
         timer = setTimeout(report, PAGE_WIDTH_REPORT_THROTTLE_MS);
       }
     }
 
-    new ResizeObserver(schedule).observe(document.documentElement);
-    new MutationObserver(schedule).observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'style']
+    function observe() {
+      active = true;
+      resizeObserver?.observe(document.documentElement);
+      observedElements = new Set([document.documentElement]);
+      mutationObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style']
+      });
+      schedule();
+    }
+
+    window.addEventListener('resize', schedule);
+    window.addEventListener('pagehide', () => {
+      active = false;
+      clearTimeout(timer);
+      timer = null;
+      resizeObserver?.disconnect();
+      mutationObserver.disconnect();
+      observedElements.clear();
+      measurement = null;
     });
-    schedule();
+    window.addEventListener('pageshow', () => {
+      if (!active) observe();
+    });
+    observe();
   }
 
   function rememberUserFocus() {
@@ -1050,6 +1175,30 @@
     return document.querySelector(CHATGPT_STOP_BUTTON_SELECTOR);
   }
 
+  function nodeContainsChatgptBusyButton(node) {
+    if (node?.nodeType !== Node.ELEMENT_NODE) {
+      return false;
+    }
+
+    return node.matches(CHATGPT_STOP_BUTTON_SELECTOR)
+      || Boolean(node.querySelector(CHATGPT_STOP_BUTTON_SELECTOR));
+  }
+
+  function hasChatgptBusyButtonMutation(records) {
+    return records.some(record => {
+      if (record.type === 'attributes') {
+        return record.target.matches(CHATGPT_STOP_BUTTON_SELECTOR)
+          || (record.attributeName === 'data-testid' && record.target.tagName === 'BUTTON');
+      }
+
+      if (record.type !== 'childList') {
+        return false;
+      }
+
+      return [...record.addedNodes, ...record.removedNodes].some(nodeContainsChatgptBusyButton);
+    });
+  }
+
   function stopChatgptSendTracking({ reportIdle = false } = {}) {
     const tracking = chatgptSendTracking;
     if (!tracking) {
@@ -1138,8 +1287,8 @@
 
     const observerTarget = document.body;
     if (observerTarget) {
-      tracking.observer = new MutationObserver(() => {
-        if (chatgptSendTracking !== tracking) {
+      tracking.observer = new MutationObserver((records) => {
+        if (chatgptSendTracking !== tracking || !hasChatgptBusyButtonMutation(records)) {
           return;
         }
 
@@ -1155,7 +1304,7 @@
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ['data-testid', 'aria-label', 'disabled', 'aria-disabled']
+        attributeFilter: ['data-testid']
       });
     }
 
@@ -1177,8 +1326,52 @@
     return {
       count: answers.length,
       answer,
+      nodes: new Set(answers),
       text: answer ? (answer.textContent || '').trim() : ''
     };
+  }
+
+  function observeResponseAnswer(tracking) {
+    if (typeof MutationObserver !== 'function') return;
+    const { answerSelector } = tracking.config;
+    const containsAnswer = (node) => node.nodeType === Node.ELEMENT_NODE && (
+      tracking.state.nodes.has(node) || node.matches(answerSelector)
+      || Boolean(node.querySelector(answerSelector))
+    );
+    tracking.observer = new MutationObserver((records) => {
+      if (responseTiming !== tracking) return;
+      for (const record of records) {
+        const { answer } = tracking.state;
+        if (answer?.contains(record.target)) tracking.textDirty = true;
+        if (record.type === 'attributes') {
+          if (tracking.state.nodes.has(record.target) || record.target.matches(answerSelector)) {
+            tracking.answersDirty = true;
+          }
+        } else if (record.type === 'childList'
+          && [...record.addedNodes, ...record.removedNodes].some(containsAnswer)) {
+          tracking.answersDirty = true;
+        }
+      }
+    });
+    tracking.observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['class', 'data-message-author-role']
+    });
+  }
+
+  function readResponseAnswer(tracking) {
+    if (!tracking.observer || tracking.answersDirty
+      || (tracking.state.answer && !tracking.state.answer.isConnected)) {
+      tracking.state = getResponseAnswerState(tracking.config);
+    } else if (tracking.textDirty) {
+      tracking.state = { ...tracking.state, text: (tracking.state.answer?.textContent || '').trim() };
+    }
+    tracking.answersDirty = false;
+    tracking.textDirty = false;
+    return tracking.state;
   }
 
   function postResponseTiming(tracking, phase, at) {
@@ -1203,6 +1396,7 @@
     }
 
     clearInterval(tracking.intervalId);
+    tracking.observer?.disconnect();
     responseTiming = null;
     if (phase) {
       postResponseTiming(tracking, phase, Date.now());
@@ -1217,7 +1411,7 @@
 
     const now = Date.now();
     const { config, baseline } = tracking;
-    const state = getResponseAnswerState(config);
+    const state = readResponseAnswer(tracking);
     // Re-rendering can replace the previous answer's node, so a new node only
     // counts as the answer once its text differs from the previous answer.
     const isNewAnswer = Boolean(state.text) && (
@@ -1254,8 +1448,7 @@
       // The answer finished when its text last changed, not when the settle
       // time ran out.
       const completedAt = tracking.lastChangeAt;
-      clearInterval(tracking.intervalId);
-      responseTiming = null;
+      stopResponseTiming();
       postResponseTiming(tracking, 'complete', completedAt);
     }
   }
@@ -1269,17 +1462,23 @@
     stopResponseTiming('cancelled');
 
     const baseline = getResponseAnswerState(config);
-    responseTiming = {
+    const tracking = {
       requestId,
       provider,
       config,
       baseline,
+      state: baseline,
+      observer: null,
+      answersDirty: false,
+      textDirty: false,
       startedAt: Date.now(),
       firstOutputAt: null,
       lastChangeAt: null,
       lastText: '',
       intervalId: setInterval(checkResponseTiming, RESPONSE_TIMING_CHECK_INTERVAL_MS)
     };
+    responseTiming = tracking;
+    observeResponseAnswer(tracking);
   }
 
   function startAnswerEngagement(provider, requestId) {
@@ -2242,8 +2441,14 @@
       if (provider === 'google') {
         return normalizeGoogleProviderMode(providerMode) === GOOGLE_PROVIDER_MODE_SEARCH
           ? currentUrl.pathname === '/'
-          : currentUrl.pathname === '/search' && currentUrl.searchParams.get('udm') === '50';
+          : currentUrl.pathname === '/search' && currentUrl.searchParams.get('udm') === '50'
+            && !currentUrl.searchParams.get('q');
       }
+
+      // Both entry URLs represent a fresh Gemini chat. Private Grok chats use
+      // a dedicated entry route and must survive private-mode reactivation.
+      if (provider === 'gemini' && currentUrl.pathname === '/') return true;
+      if (provider === 'grok' && currentUrl.pathname === '/c' && currentUrl.hash === '#private') return true;
 
       const expectedUrl = new URL(NEW_CHAT_URLS[provider]);
       const normalizePath = pathname => pathname.replace(/\/+$/, '') || '/';
@@ -2283,7 +2488,8 @@
     baseline = null,
     timeoutMs = NEW_CHAT_CONFIRMATION_TIMEOUT_MS,
     stableMs = NEW_CHAT_CLICK_STABLE_MS,
-    requireTransition = Boolean(baseline)
+    requireTransition = Boolean(baseline),
+    requireCanonicalFreshUrl = false
   } = {}) {
     const deadline = Date.now() + timeoutMs;
     let stableSince = null;
@@ -2291,7 +2497,8 @@
     while (Date.now() <= deadline) {
       const state = captureNewChatState(provider, providerMode);
       const blankConversation = isBlankConversation(state);
-      const transitioned = !requireTransition || hasNewChatTransition(baseline, state);
+      const transitioned = (!requireTransition || hasNewChatTransition(baseline, state))
+        && (!requireCanonicalFreshUrl || isCanonicalFreshNewChatUrl(provider, providerMode));
 
       if (blankConversation && transitioned) {
         if (stableSince === null) stableSince = Date.now();
@@ -2357,7 +2564,11 @@
       baseline,
       timeoutMs: NEW_CHAT_CONFIRMATION_TIMEOUT_MS,
       stableMs: recovery ? NEW_CHAT_RECOVERY_STABLE_MS : NEW_CHAT_CLICK_STABLE_MS,
-      requireTransition: Boolean(baseline) && !baselineIsAlreadyFresh
+      requireTransition: Boolean(baseline) && !baselineIsAlreadyFresh,
+      // A navigation recovery or host-driven verification has no trusted
+      // before/after DOM snapshot. Require the provider's canonical new-chat
+      // route before a blank, still-hydrating page can count as ready.
+      requireCanonicalFreshUrl: recovery || data.type === 'VERIFY_NEW_CHAT'
     });
 
     return result.verified

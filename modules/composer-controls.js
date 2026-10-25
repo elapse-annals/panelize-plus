@@ -10,6 +10,7 @@ import {
 } from './keyboard-shortcuts.js';
 import {
   PROVIDER_TIER_IDS,
+  describeTierMapping,
   getEffectiveTierRecipes,
   requestProviderTierState,
   runProviderTierBatch
@@ -26,13 +27,15 @@ const ACTION_LABELS = {
   tierDeep: ['composerTierDeep', 'Deep'],
   togglePromptLibrary: ['composerPromptLibrary', 'Prompt library'],
   toggleLayout: ['composerLayout', 'Layout'],
-  togglePopularSort: ['labelProviderSortMode', 'Provider order']
+  togglePopularSort: ['labelProviderSortMode', 'Provider order'],
+  toggleWideContent: ['composerWideContent', 'Wide mode']
 };
 const BUTTON_ACTIONS = {
   'send-all-btn': 'send', 'fill-input-btn': 'fill',
   'new-chat-btn': 'newConversation', 'composer-new-chat-btn': 'newConversation',
   'prompt-library-btn': 'togglePromptLibrary', 'layout-btn': 'toggleLayout',
-  'provider-sort-btn': 'togglePopularSort'
+  'provider-sort-btn': 'togglePopularSort',
+  'wide-content-btn': 'toggleWideContent'
 };
 
 /** UI orchestration stays here; provider operations retain their own verified
@@ -41,7 +44,8 @@ export async function setupComposerControls({
   getPanels, send, fill, newConversation, focusInput, openPromptLibrary,
   openLayout, text, notify = () => {}, isOperationBusy = () => false,
   getPanelName = panel => getProviderById(panel.providerId)?.name || panel.providerId,
-  isBlindMode = () => false
+  isBlindMode = () => false,
+  toggleWideContent = () => {}
 }) {
   const byId = id => document.getElementById(id);
   if (!byId('composer-shell')) return null;
@@ -62,6 +66,7 @@ export async function setupComposerControls({
   const pendingPanelChecks = new Set();
   let restoreFlushTimer;
   let pendingDesiredTier;
+  let pendingTierPersist = false;
   let desiredTierTimer;
   let pulseTimer;
   let returnFocus = null;
@@ -110,26 +115,55 @@ export async function setupComposerControls({
     return tr(...(statuses[result.status] || statuses.error));
   }
 
+  const tierName = tier => label(`tier${tier[0].toUpperCase()}${tier.slice(1)}`);
+
+  // The configured target for the requested tier, so the dialog shows what
+  // each AI should switch to next to what it actually reports.
+  function mappingText(panel, tier) {
+    if (!tier) return '—';
+    const mapping = describeTierMapping(panel.providerId, tier, tierRecipeOverrides);
+    if (!mapping || mapping.type === 'unsupported') return tr('composerTierMapUnsupported', 'Not supported');
+    if (mapping.type === 'skipped') return tr('composerTierMapSkipped', 'Not switched');
+    if (mapping.type === 'detect') return tr('composerTierMapDetect', 'Auto-detect');
+    if (mapping.type === 'effort') return tr('composerTierMapEffort', 'Reasoning effort $1', [mapping.level]);
+    const steps = mapping.steps.map(item => {
+      if (item.kind !== 'toggle') return item.label.split('|').map(part => part.trim()).join(' / ');
+      // Toggle alternatives are synonyms for matching; the first one names it.
+      const name = item.label.split('|')[0].trim();
+      return item.on ? tr('composerTierMapToggleOn', '$1 on', [name]) : tr('composerTierMapToggleOff', '$1 off', [name]);
+    }).join(' + ');
+    return mapping.sharedWith.length
+      ? `${steps} · ${tr('composerTierMapShared', 'shared with $1', [mapping.sharedWith.map(tierName).join(' / ')])}`
+      : steps;
+  }
+
   function renderTierState() {
     const currentPanels = getPanels();
+    const displayedTier = pendingDesiredTier !== undefined ? pendingDesiredTier : selectedTier;
+    const switching = tierBusy || pendingDesiredTier !== undefined;
     const results = currentPanels.map(currentResult);
-    const supported = results.filter(result => result && result.status !== 'unsupported');
-    const allMatched = Boolean(selectedTier && supported.length > 0
-      && supported.every(result => isOnTier(result, selectedTier))
-      && results.every(Boolean));
+    const allMatched = Boolean(!switching && displayedTier && currentPanels.length > 0
+      && results.every(result => isOnTier(result, displayedTier)));
+    const confirmed = results.filter(result => isOnTier(result, displayedTier)).length;
+    const shell = byId('composer-shell');
+    shell.dataset.tier = displayedTier || DEFAULT_TIER;
+    shell.dataset.tierState = switching ? 'switching' : !displayedTier ? 'default'
+      : allMatched ? 'confirmed' : 'mixed';
+    byId('provider-tier-controls').setAttribute('aria-busy', String(switching));
     document.querySelectorAll('.tier-option').forEach(button => {
       // Default leaves every AI on its own setting, so it needs no confirmation.
       const isDefault = button.dataset.tier === DEFAULT_TIER;
-      const requested = isDefault ? !selectedTier : button.dataset.tier === selectedTier;
-      button.setAttribute('aria-checked', String(isDefault ? requested : allMatched && requested));
-      button.disabled = tierBusy;
+      const requested = isDefault ? !displayedTier : button.dataset.tier === displayedTier;
+      button.setAttribute('aria-checked', String(isDefault ? requested && !switching : allMatched && requested));
+      // Keep the controls available while a batch runs. A later choice replaces
+      // the queued one and is applied as soon as the current operation settles.
+      button.disabled = false;
       button.dataset.requested = String(requested);
     });
     const status = byId('tier-status');
-    if (tierBusy) status.textContent = tr('composerSwitching', 'Switching…');
-    else if (!selectedTier) status.textContent = '';
+    if (switching) status.textContent = tr('composerSwitching', 'Switching…');
+    else if (!displayedTier) status.textContent = '';
     else {
-      const confirmed = results.filter(result => isOnTier(result, selectedTier)).length;
       status.textContent = confirmed === currentPanels.length && confirmed > 0
         ? tr('composerTierApplied', '$1 AIs switched', [String(confirmed)])
         : tr('composerTierMixed', '$1/$2 switched · mixed', [String(confirmed), String(currentPanels.length)]);
@@ -139,8 +173,9 @@ export async function setupComposerControls({
     currentPanels.forEach(panel => {
       const result = currentResult(panel);
       const row = document.createElement('tr');
-      // Blind mode hides the actual model label too: it names the provider.
+      // Blind mode hides the target and actual model labels too: they name the provider.
       [getPanelName(panel),
+        isBlindMode() ? '—' : mappingText(panel, displayedTier),
         isBlindMode() ? '—' : result?.actualLabel || '—', resultText(result)].forEach(value => {
         const cell = document.createElement('td');
         cell.textContent = value;
@@ -148,12 +183,12 @@ export async function setupComposerControls({
       });
       body.append(row);
     });
-    byId('retry-tier-btn').disabled = tierBusy || !selectedTier
+    byId('retry-tier-btn').disabled = switching || !selectedTier
       || !currentPanels.some(panel => {
         const result = currentResult(panel);
         return !isOnTier(result, selectedTier);
       });
-    byId('refresh-tier-state-btn').disabled = tierBusy;
+    byId('refresh-tier-state-btn').disabled = switching;
   }
 
   function requestEpochs(targets) {
@@ -202,14 +237,30 @@ export async function setupComposerControls({
   }
 
   /** Stops applying a tier; open AIs keep whatever mode they are on. */
-  async function selectDefaultTier() {
+  async function selectDefaultTier({ persist = true } = {}) {
     if (tierBusy) return;
     pendingDesiredTier = undefined;
     clearTimeout(desiredTierTimer);
     tierGeneration += 1;
     selectedTier = null;
     renderTierState();
-    await saveSetting('selectedProviderTier', null);
+    pulse();
+    if (persist) await saveSetting('selectedProviderTier', null);
+  }
+
+  function requestTier(tier) {
+    if (tier !== null && !PROVIDER_TIER_IDS.includes(tier)) return;
+    if (tierBusy || isOperationBusy()) {
+      pendingDesiredTier = tier;
+      pendingTierPersist = true;
+      renderTierState();
+      pulse();
+      scheduleDesiredTier();
+      return;
+    }
+    pendingDesiredTier = undefined;
+    clearTimeout(desiredTierTimer);
+    return tier === null ? selectDefaultTier() : applyTier(tier);
   }
 
   function scheduleDesiredTier() {
@@ -218,8 +269,10 @@ export async function setupComposerControls({
       if (pendingDesiredTier === undefined) return;
       if (tierBusy || isOperationBusy()) { scheduleDesiredTier(); return; }
       const tier = pendingDesiredTier;
+      const persist = pendingTierPersist;
       pendingDesiredTier = undefined;
-      void applyTier(tier, { persist: false });
+      pendingTierPersist = false;
+      void (tier === null ? selectDefaultTier({ persist }) : applyTier(tier, { persist }));
     }, 300);
   }
 
@@ -246,7 +299,7 @@ export async function setupComposerControls({
 
   async function flushPanelChecks() {
     if (!pendingPanelChecks.size) return;
-    if (tierBusy || isOperationBusy()) {
+    if (tierBusy || isOperationBusy() || pendingDesiredTier !== undefined) {
       restoreFlushTimer = setTimeout(flushPanelChecks, 300);
       return;
     }
@@ -302,8 +355,8 @@ export async function setupComposerControls({
     if (isAnyModalOpen()) return;
     const actions = {
       send, fill, newConversation, focusInput, togglePromptLibrary: openPromptLibrary,
-      toggleLayout: openLayout, togglePopularSort: toggleSort,
-      tierFast: () => applyTier('fast'), tierBalanced: () => applyTier('balanced'), tierDeep: () => applyTier('deep')
+      toggleLayout: openLayout, togglePopularSort: toggleSort, toggleWideContent,
+      tierFast: () => requestTier('fast'), tierBalanced: () => requestTier('balanced'), tierDeep: () => requestTier('deep')
     };
     Promise.resolve(actions[action]?.()).catch(() => notify(tr('composerNotConfirmed', 'Not confirmed')));
   }
@@ -324,7 +377,11 @@ export async function setupComposerControls({
       const shortcut = shortcutsEnabled ? formatShortcutForTooltip(active[action]) : '';
       const globalShortcut = action === 'togglePromptLibrary' ? promptGlobalShortcut : '';
       const base = action === 'togglePopularSort'
-        ? `${label(action)}: ${byId('provider-sort-label').textContent}` : label(action);
+        ? `${label(action)}: ${byId('provider-sort-label').textContent}`
+        : action === 'fill' && button.dataset.retryFailed === 'true'
+          ? tr('composerRetryFailed', 'Retry unsuccessful')
+          : action === 'toggleWideContent'
+            ? tr('wideContentTitle', 'Wide mode: each panel is 1.5× wider; scroll horizontally to view.') : label(action);
       button.title = `${base}${shortcut || globalShortcut ? ` (${shortcut || globalShortcut})` : ''}`;
       button.setAttribute('aria-label', button.title);
     });
@@ -382,8 +439,7 @@ export async function setupComposerControls({
   }
 
   document.querySelectorAll('.tier-option').forEach(button => {
-    button.addEventListener('click', () => (button.dataset.tier === DEFAULT_TIER
-      ? selectDefaultTier() : applyTier(button.dataset.tier)));
+    button.addEventListener('click', () => requestTier(button.dataset.tier === DEFAULT_TIER ? null : button.dataset.tier));
     button.addEventListener('keydown', event => {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
@@ -462,8 +518,10 @@ export async function setupComposerControls({
     if (changes.providerTierRecipes) {
       tierRecipeOverrides = changes.providerTierRecipes.newValue || null;
       // Re-apply with the edited labels when no other tier change is pending.
-      if (selectedTier && !changes.selectedProviderTier) {
+      if (selectedTier && !changes.selectedProviderTier && pendingDesiredTier === undefined) {
         pendingDesiredTier = selectedTier;
+        pendingTierPersist = false;
+        renderTierState();
         scheduleDesiredTier();
       }
     }
@@ -471,12 +529,15 @@ export async function setupComposerControls({
       const next = changes.selectedProviderTier.newValue;
       if (!PROVIDER_TIER_IDS.includes(next)) {
         pendingDesiredTier = undefined;
+        pendingTierPersist = false;
         clearTimeout(desiredTierTimer);
         selectedTier = null;
         tierGeneration += 1;
         renderTierState();
       } else if (next !== selectedTier) {
         pendingDesiredTier = next;
+        pendingTierPersist = false;
+        renderTierState();
         scheduleDesiredTier();
       }
     }
@@ -502,9 +563,14 @@ export async function setupComposerControls({
       for (const id of panelEpochs.keys()) if (!ids.has(id)) { states.delete(id); panelEpochs.delete(id); clearPanelTimers(id); }
       renderTierState();
     },
-    restoreTier(targets = getPanels()) { if (selectedTier) return applyTier(selectedTier, { targets, persist: false, ignoreBusy: true }); },
+    restoreTier(targets = getPanels()) {
+      if (selectedTier && pendingDesiredTier === undefined) {
+        return applyTier(selectedTier, { targets, persist: false, ignoreBusy: true });
+      }
+    },
     refreshStates,
-    isTierBusy: () => tierBusy
+    refreshTooltips: updateTooltips,
+    isTierBusy: () => tierBusy || pendingDesiredTier !== undefined
   };
 }
 

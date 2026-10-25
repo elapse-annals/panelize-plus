@@ -21,8 +21,9 @@ vi.mock('../modules/providers.js', () => ({
   getProviderById: providerId => ({ id: providerId, name: providerId })
 }));
 
-vi.mock('../modules/provider-tiers.js', () => ({
+vi.mock('../modules/provider-tiers.js', async (importOriginal) => ({
   PROVIDER_TIER_IDS: ['fast', 'balanced', 'deep'],
+  describeTierMapping: (await importOriginal()).describeTierMapping,
   getEffectiveTierRecipes: () => null,
   requestProviderTierState: mocks.requestProviderTierState,
   runProviderTierBatch: mocks.runProviderTierBatch
@@ -54,6 +55,7 @@ const MULTI_PANEL_HTML = readFileSync(
 let settingsState;
 let panels;
 let globalListenerRecords;
+let operationBusy;
 
 function mountActualControls() {
   const extractDiv = id => {
@@ -72,7 +74,7 @@ function mountActualControls() {
   const controls = ['composer-shell', 'tier-details-modal', 'keyboard-shortcuts-modal']
     .map(extractDiv)
     .join('');
-  document.body.innerHTML = controls;
+  document.body.innerHTML = `${controls}<button id="wide-content-btn" data-shortcut-action="toggleWideContent">Wide mode</button>`;
 }
 
 function makePanel(id, providerId = 'chatgpt') {
@@ -107,7 +109,7 @@ async function flushMicrotasks() {
   for (let index = 0; index < 8; index += 1) await Promise.resolve();
 }
 
-async function setupControls(initialPanels = panels) {
+async function setupControls(initialPanels = panels, overrides = {}) {
   panels = initialPanels;
   mountActualControls();
   const controls = await setupComposerControls({
@@ -123,7 +125,8 @@ async function setupControls(initialPanels = panels) {
       fallback || key
     ),
     notify: vi.fn(),
-    isOperationBusy: () => false
+    isOperationBusy: () => operationBusy,
+    ...overrides
   });
   await flushMicrotasks();
   return controls;
@@ -158,6 +161,7 @@ beforeEach(() => {
     pageShortcutsEnabled: true
   };
   panels = [];
+  operationBusy = false;
   mocks.getSettings.mockImplementation(() => Promise.resolve({ ...settingsState }));
   mocks.saveSetting.mockImplementation((key, value) => {
     settingsState[key] = value;
@@ -195,6 +199,90 @@ afterEach(() => {
 });
 
 describe('composer control async state', () => {
+  it('applies the latest clicked tier after the running batch and shows it immediately', async () => {
+    const firstBatch = createDeferred();
+    mocks.runProviderTierBatch.mockImplementationOnce(() => firstBatch.promise);
+    await setupControls([makePanel('panel-a')]);
+
+    document.querySelector('[data-tier="fast"].tier-option').click();
+    await flushMicrotasks();
+    document.querySelector('[data-tier="balanced"].tier-option').click();
+    document.querySelector('[data-tier="deep"].tier-option').click();
+
+    const shell = document.getElementById('composer-shell');
+    expect(shell.dataset).toMatchObject({ tier: 'deep', tierState: 'switching' });
+    expect(document.querySelector('[data-tier="deep"].tier-option').disabled).toBe(false);
+    expect(document.querySelector('[data-tier="deep"].tier-option').getAttribute('aria-checked')).toBe('false');
+    expect(mocks.runProviderTierBatch).toHaveBeenCalledOnce();
+
+    firstBatch.resolve(successfulResults(mocks.runProviderTierBatch.mock.calls[0][0]));
+    await flushMicrotasks();
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(mocks.runProviderTierBatch.mock.calls.map(([request]) => request.tier)).toEqual(['fast', 'deep']);
+    expect(settingsState.selectedProviderTier).toBe('deep');
+    expect(shell.dataset).toMatchObject({ tier: 'deep', tierState: 'confirmed' });
+  });
+
+  it('retains a tier chosen while sending and applies it when sending finishes', async () => {
+    const controls = await setupControls([makePanel('panel-a')]);
+    operationBusy = true;
+    document.querySelector('[data-tier="deep"].tier-option').click();
+    await vi.advanceTimersByTimeAsync(600);
+    expect(mocks.runProviderTierBatch).not.toHaveBeenCalled();
+    expect(document.getElementById('composer-shell').dataset.tier).toBe('deep');
+    expect(controls.isTierBusy()).toBe(true);
+
+    operationBusy = false;
+    await vi.advanceTimersByTimeAsync(300);
+    expect(mocks.runProviderTierBatch).toHaveBeenCalledOnce();
+    expect(settingsState.selectedProviderTier).toBe('deep');
+    expect(controls.isTierBusy()).toBe(false);
+  });
+
+  it('lets a queued user choice replace restoring the previous tier after a new chat', async () => {
+    settingsState.selectedProviderTier = 'fast';
+    const controls = await setupControls([makePanel('panel-a')]);
+    operationBusy = true;
+    document.querySelector('[data-tier="deep"].tier-option').click();
+    await controls.restoreTier();
+    expect(mocks.runProviderTierBatch).not.toHaveBeenCalled();
+    operationBusy = false;
+    await vi.advanceTimersByTimeAsync(300);
+    expect(mocks.runProviderTierBatch.mock.calls.map(([request]) => request.tier)).toEqual(['deep']);
+  });
+
+  it('queues Default during a batch and stops restoring tiers after it settles', async () => {
+    const firstBatch = createDeferred();
+    mocks.runProviderTierBatch.mockImplementationOnce(() => firstBatch.promise);
+    await setupControls([makePanel('panel-a')]);
+    document.querySelector('[data-tier="deep"].tier-option').click();
+    await flushMicrotasks();
+    document.querySelector('[data-tier="default"].tier-option').click();
+    expect(document.getElementById('composer-shell').dataset.tier).toBe('default');
+
+    firstBatch.resolve(successfulResults(mocks.runProviderTierBatch.mock.calls[0][0]));
+    await flushMicrotasks();
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(mocks.runProviderTierBatch).toHaveBeenCalledOnce();
+    expect(settingsState.selectedProviderTier).toBe(null);
+    expect(document.querySelector('[data-tier="default"].tier-option').getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('does not show confirmation when one panel cannot switch', async () => {
+    mocks.runProviderTierBatch.mockImplementation(async options => {
+      const results = successfulResults(options);
+      results[1] = { ...results[1], status: 'unsupported', tier: null };
+      return results;
+    });
+    await setupControls([makePanel('panel-a'), makePanel('panel-b', 'claude')]);
+    document.querySelector('[data-tier="deep"].tier-option').click();
+    await flushMicrotasks();
+    expect(document.getElementById('composer-shell').dataset.tierState).toBe('mixed');
+    expect(document.querySelector('[data-tier="deep"].tier-option').getAttribute('aria-checked')).toBe('false');
+    expect(document.getElementById('tier-status').textContent).toContain('1/2');
+  });
+
   it('clears the selected tier and prevents the pending load checks from restoring it', async () => {
     settingsState.selectedProviderTier = 'balanced';
     const panel = makePanel('panel-a');
@@ -211,6 +299,23 @@ describe('composer control async state', () => {
 
     expect(mocks.runProviderTierBatch).not.toHaveBeenCalled();
     expect(controls.isTierBusy()).toBe(false);
+  });
+
+  it('shows each AI\'s configured mapping for the selected tier and hides it in blind mode', async () => {
+    settingsState.selectedProviderTier = 'balanced';
+    let blind = false;
+    await setupControls([makePanel('panel-a', 'claude'), makePanel('panel-b', 'deepseek'), makePanel('panel-c', 'grok')], {
+      isBlindMode: () => blind
+    });
+    const mappingCells = () => [...document.querySelectorAll('#tier-details-body tr')]
+      .map(row => row.children[1].textContent);
+
+    document.getElementById('tier-details-btn').click();
+    expect(mappingCells()).toEqual(['Reasoning effort Medium', '深度思考 on · shared with Deep', 'Not supported']);
+
+    blind = true;
+    document.getElementById('tier-details-btn').click();
+    expect(mappingCells()).toEqual(['—', '—', '—']);
   });
 
   it('starts on Default and never switches the AIs while Default is selected', async () => {
@@ -364,5 +469,97 @@ describe('composer control async state', () => {
       newConversation: DEFAULT_KEYBOARD_SHORTCUT_BINDINGS.newConversation,
       toggleLayout: 'Alt+L'
     });
+  });
+
+  it('lets users assign, clear, reset, and run the wide mode shortcut', async () => {
+    const keyEvent = (key, modifiers = {}) => {
+      const event = new KeyboardEvent('keydown', {
+        key,
+        code: modifiers.code,
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: modifiers.ctrlKey || false,
+        altKey: modifiers.altKey || false,
+        shiftKey: modifiers.shiftKey || false,
+        metaKey: modifiers.metaKey || false
+      });
+      Object.defineProperty(event, 'getModifierState', {
+        value: modifier => modifier === 'AltGraph' && modifiers.altGraph === true
+      });
+      return event;
+    };
+    settingsState.keyboardShortcutBindings = { toggleWideContent: 'Alt+L' };
+    const toggleWideContent = vi.fn();
+    await setupControls([], { toggleWideContent });
+
+    const button = document.getElementById('wide-content-btn');
+    expect(button.title).toContain('Alt+L');
+    const initialShortcut = keyEvent('l', { code: 'KeyL', altKey: true });
+    expect(mocks.keyboardControllers.at(-1).getBindings().toggleWideContent).toBe('Alt+L');
+    window.dispatchEvent(initialShortcut);
+    expect(initialShortcut.defaultPrevented).toBe(true);
+    expect(toggleWideContent).toHaveBeenCalledOnce();
+
+    document.getElementById('keyboard-shortcuts-btn').click();
+    const field = document.querySelector('#keyboard-shortcuts-fields [data-action="toggleWideContent"]');
+    field.dispatchEvent(keyEvent('6', { code: 'Digit6', ctrlKey: true, shiftKey: true }));
+    expect(field.value).toBe(formatShortcutForTooltip('Mod+Shift+6'));
+    document.getElementById('save-keyboard-shortcuts').click();
+    await flushMicrotasks();
+
+    expect(settingsState.keyboardShortcutBindings.toggleWideContent).toBe('Mod+Shift+6');
+    expect(button.title).toContain(formatShortcutForTooltip('Mod+Shift+6'));
+    window.dispatchEvent(keyEvent('6', { code: 'Digit6', ctrlKey: true, shiftKey: true }));
+    expect(toggleWideContent).toHaveBeenCalledTimes(2);
+
+    document.getElementById('keyboard-shortcuts-btn').click();
+    const editedField = document.querySelector('#keyboard-shortcuts-fields [data-action="toggleWideContent"]');
+    editedField.dispatchEvent(keyEvent('Backspace', { code: 'Backspace' }));
+    expect(editedField.value).toBe('');
+    document.getElementById('page-shortcuts-enabled').checked = false;
+    document.getElementById('save-keyboard-shortcuts').click();
+    await flushMicrotasks();
+    expect(settingsState.keyboardShortcutBindings.toggleWideContent).toBeNull();
+    window.dispatchEvent(keyEvent('6', { code: 'Digit6', ctrlKey: true, shiftKey: true }));
+    expect(toggleWideContent).toHaveBeenCalledTimes(2);
+
+    document.getElementById('keyboard-shortcuts-btn').click();
+    document.getElementById('reset-keyboard-shortcuts').click();
+    expect(document.getElementById('page-shortcuts-enabled').checked).toBe(true);
+    expect(document.querySelector('#keyboard-shortcuts-fields [data-action="toggleWideContent"]').value)
+      .toBe(formatShortcutForTooltip(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS.toggleWideContent));
+    document.getElementById('save-keyboard-shortcuts').click();
+    await flushMicrotasks();
+    expect(settingsState.keyboardShortcutBindings.toggleWideContent)
+      .toBe(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS.toggleWideContent);
+    window.dispatchEvent(keyEvent('w', { code: 'KeyW', ctrlKey: true, altKey: true }));
+    expect(toggleWideContent).toHaveBeenCalledTimes(3);
+  });
+
+  it('accepts wide mode shortcuts only from the current provider iframe', async () => {
+    const panel = makePanel('panel-a');
+    const toggleWideContent = vi.fn();
+    await setupControls([panel], { toggleWideContent });
+
+    const dispatchShortcut = (source, origin) => {
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'PANELIZE_SHORTCUT',
+          context: 'multi-panel',
+          provider: 'chatgpt',
+          actionId: 'toggleWideContent'
+        },
+        origin
+      });
+      Object.defineProperty(event, 'source', { value: source });
+      window.dispatchEvent(event);
+    };
+
+    dispatchShortcut({}, 'https://chatgpt.com');
+    dispatchShortcut(panel.iframe.contentWindow, 'https://evil.example');
+    expect(toggleWideContent).not.toHaveBeenCalled();
+
+    dispatchShortcut(panel.iframe.contentWindow, 'https://chatgpt.com');
+    expect(toggleWideContent).toHaveBeenCalledOnce();
   });
 });

@@ -93,8 +93,9 @@ import {
   getPanelFitScale,
   updatePanelFitState
 } from '../modules/panel-fit.js';
-import { setupPanelResize } from '../modules/panel-resize.js';
+import { PANEL_WIDE_SCALE, setupPanelResize } from '../modules/panel-resize.js';
 import { getStartupLayout, resolveStartupProviderIds } from '../modules/startup-providers.js';
+import { clearStartupSnapshot, readStartupSnapshot, writeStartupSnapshot } from '../modules/startup-snapshot.js';
 import {
   ENGAGEMENT_KIND,
   aggregateAnswerStats,
@@ -104,7 +105,8 @@ import {
   createRound,
   getAllAnswerRounds,
   saveAnswerRound,
-  toggleRoundAdoption
+  toggleRoundAdoption,
+  toggleRoundRejection
 } from '../modules/answer-stats.js';
 import { createPointerGuard, createPointerTracker } from '../modules/pointer-guard.js';
 import { setupComposerControls } from '../modules/composer-controls.js';
@@ -116,6 +118,7 @@ import { shuffleOrder, syncDisplayOrder } from '../modules/blind-shuffle.js';
 let currentLayout = '1x3';
 let panels = []; // Array of { id, providerId, iframe, state }
 let focusedPanelId = null;
+let panelResize = null;
 // Re-fits pages when their panel changes width (window, layout or drag).
 const panelFitObserver = typeof ResizeObserver === 'function'
   ? new ResizeObserver((entries) => {
@@ -150,7 +153,7 @@ let tempChatCleanupTimerId = null;
 let tempChatPendingPanelIds = new Set();
 let tempChatButtonRestoreTimerId = null;
 // Recent answer stats rounds by send request id, for timing reports and the
-// adopt buttons. The latest round is the one the adopt buttons act on.
+// feedback buttons. The latest round is the one the feedback buttons act on.
 const answerRounds = new Map();
 let latestAnswerRoundId = null;
 // The answer whose panel is in focus mode, counted as engagement with it.
@@ -262,6 +265,8 @@ const TEMP_CHAT_NORMAL_URLS = {
   yuanbao: getProviderById('yuanbao').url
 };
 let isInitialized = false;
+let hasAuthoritativePanels = false;
+let restoredStartupProviderIds = null;
 
 function normalizeLayout(layout) {
   if (LAYOUT_PANEL_COUNTS[layout]) {
@@ -291,9 +296,10 @@ async function init() {
     setupPanelResize({
       grid: document.getElementById('panel-grid'),
       getLayout: () => currentLayout,
+      getWideScale: () => isWideContentEnabled ? PANEL_WIDE_SCALE : 1,
       storage: chrome.storage.local,
       label: t('panelResizeHandle')
-    }),
+    }).then(controller => { panelResize = controller; }),
     initializePanels()
   ]);
 
@@ -310,6 +316,7 @@ async function init() {
     focusInput: () => focusUnifiedInput({ force: true }),
     openPromptLibrary: openPromptModal,
     openLayout: openLayoutModal,
+    toggleWideContent: () => setPageStyleModes({ wide: !isWideContentEnabled }),
     isOperationBusy: () => isNewChatBusy || broadcastGate.isActive(),
     text: getLocalizedText,
     notify: showToast,
@@ -400,6 +407,29 @@ const PROVIDER_SESSION_SYNC = {
   grok: requestGrokWebSocketCookieSync,
   mimo: requestMimoSessionCookieSync
 };
+
+function createPanelsFromStartupSnapshot() {
+  const snapshot = readStartupSnapshot();
+  if (!snapshot) return;
+
+  currentLayout = snapshot.layout;
+  document.getElementById('panel-grid').className = `layout-${currentLayout}`;
+  for (const providerId of snapshot.startupProviderIds) {
+    // Session work and optional host grants must be checked before navigation.
+    // A cached grant cannot prove permission is still present on this device.
+    if (Object.hasOwn(PROVIDER_SESSION_SYNC, providerId) || getProviderById(providerId).optionalOrigins) continue;
+    createPanel(providerId, { frameUrl: snapshot.frameUrls[providerId] });
+  }
+}
+
+function saveStartupSnapshot() {
+  if (!hasAuthoritativePanels) return;
+  writeStartupSnapshot({
+    layout: currentLayout,
+    startupProviderIds: panels.map(panel => panel.providerId),
+    frameUrls: Object.fromEntries(panels.map(panel => [panel.providerId, getProviderFrameUrl(panel.providerId)]))
+  });
+}
 
 async function syncProviderSession(providerId) {
   await PROVIDER_SESSION_SYNC[providerId]?.();
@@ -526,6 +556,9 @@ function getPanelHeaderRightHtml(providerId) {
     <button class="adopt-answer-btn" title="${getLocalizedText('adoptAnswerTitle', 'Adopt this answer')}" aria-pressed="false" disabled>
       <span class="material-symbols-outlined">thumb_up</span>
     </button>
+    <button class="reject-answer-btn" title="${getLocalizedText('rejectAnswerTitle', 'Deduct 5 points')}" aria-pressed="false" disabled>
+      <span class="material-symbols-outlined" aria-hidden="true">thumb_up</span>
+    </button>
     ${openTopLevelBtn}
     <button class="refresh-panel-btn" title="Refresh">
       <span class="material-symbols-outlined">refresh</span>
@@ -613,7 +646,10 @@ function bindPanelHeaderActions(panelId) {
       adoptPanelAnswer(panelId);
     });
   }
-  updateAdoptButtons();
+  panelEl.querySelector('.reject-answer-btn')?.addEventListener('click', () => {
+    rejectPanelAnswer(panelId);
+  });
+  updateAnswerFeedbackButtons();
 
   const openTopLevelBtn = panelEl.querySelector('.open-provider-top-level-btn');
   if (openTopLevelBtn) {
@@ -665,6 +701,7 @@ async function updateGoogleProviderMode(mode, { persist = false, reloadPanels = 
   const normalizedMode = normalizeGoogleProviderMode(mode);
   const modeChanged = currentGoogleProviderMode !== normalizedMode;
   currentGoogleProviderMode = normalizedMode;
+  saveStartupSnapshot();
   syncGoogleModeControls();
 
   if (reloadPanels && modeChanged) {
@@ -748,6 +785,7 @@ function updateTemporaryChatButtonState() {
 
 function setTemporaryChatModeEnabled(enabled) {
   isTemporaryChatModeEnabled = Boolean(enabled);
+  saveStartupSnapshot();
   updateTemporaryChatButtonState();
 }
 
@@ -1173,6 +1211,7 @@ async function loadSettings() {
     isBlindModeEnabled = settings.blindModeEnabled === true;
     isWideContentEnabled = settings.wideContentEnabled === true;
     document.body.classList.toggle('blind-mode', isBlindModeEnabled);
+    document.body.classList.toggle('wide-content', isWideContentEnabled);
     currentOpenMode = settings.openMode || 'tab';
     currentGoogleProviderMode = normalizeGoogleProviderMode(settings.googleProviderMode);
 
@@ -1291,6 +1330,7 @@ async function restoreStateIfNeeded() {
 
     if (result.preservedState) {
       const state = result.preservedState;
+      const restoredSettings = {};
 
       // 恢复输入文本
       const input = document.getElementById('unified-input');
@@ -1309,6 +1349,7 @@ async function restoreStateIfNeeded() {
       // 恢复布局
       if (state.currentLayout) {
         currentLayout = normalizeLayout(state.currentLayout);
+        restoredSettings.multiPanelLayout = currentLayout;
         const panelGrid = document.getElementById('panel-grid');
         if (panelGrid) {
           panelGrid.className = `layout-${currentLayout}`;
@@ -1316,16 +1357,15 @@ async function restoreStateIfNeeded() {
       }
 
       // 恢复面板配置（保存到 multiPanelProviders）
-      if (state.panels && state.panels.length > 0) {
-        const providerIds = state.panels.map(p => p.providerId);
-        await chrome.storage.sync.set({ multiPanelProviders: providerIds });
+      if (Array.isArray(state.panels) && state.panels.length > 0) {
+        restoredStartupProviderIds = state.panels.map(p => p?.providerId).filter(id => getProviderById(id));
+        restoredSettings.multiPanelProviders = restoredStartupProviderIds;
       }
 
       if (state.googleProviderMode) {
-        await chrome.storage.sync.set({
-          googleProviderMode: normalizeGoogleProviderMode(state.googleProviderMode)
-        });
+        restoredSettings.googleProviderMode = normalizeGoogleProviderMode(state.googleProviderMode);
       }
+      await chrome.storage.sync.set(restoredSettings);
 
       // 清除已恢复的状态
       await chrome.storage.session.remove('preservedState');
@@ -1352,26 +1392,59 @@ async function initializePanels() {
     const providerIds = enabledProviders.map(({ id }) => id);
 
     const panelCount = LAYOUT_PANEL_COUNTS[currentLayout] || 4;
-    const startupProviderIds = resolveStartupProviderIds(
+    const restoredProviderIds = restoredStartupProviderIds?.filter(id => providerIds.includes(id)).slice(0, MAX_PANELS);
+    const startupProviderIds = restoredProviderIds?.length ? restoredProviderIds : resolveStartupProviderIds(
       providerIds,
       settings.startupProviders,
       panelCount,
       MAX_PANELS
     );
 
-    const startupLayout = getStartupLayout(currentLayout, startupProviderIds.length);
+    let startupLayout = getStartupLayout(currentLayout, startupProviderIds.length);
+    // Apply the same growth steps even when all frames came from the snapshot.
+    for (let count = 1; count <= startupProviderIds.length; count += 1) {
+      startupLayout = getAutoAdjustedLayout(startupLayout, count) || startupLayout;
+    }
     if (startupLayout !== currentLayout) {
       currentLayout = startupLayout;
       document.getElementById('panel-grid').className = `layout-${currentLayout}`;
     }
 
-    // Sync provider sessions together, then create all panels at once so their
-    // frames load in parallel. Syncing first keeps it ahead of the frame loads,
-    // which delay extension storage calls.
-    await Promise.all([...new Set(startupProviderIds)].map(syncProviderSession));
-    for (const providerId of startupProviderIds) {
-      createPanel(providerId);
+    // Keep matching early frames in their existing relative order. Moving an
+    // iframe's DOM ancestor would reload it, so reordered entries are recreated
+    // instead, and new panels are inserted around the retained nodes.
+    let previousIndex = -1;
+    const reusablePanels = startupProviderIds.map(providerId => {
+      const expectedUrl = new URL(getProviderFrameUrl(providerId)).href;
+      const index = panels.findIndex((panel, position) => position > previousIndex &&
+        panel.providerId === providerId && panel.iframe.src === expectedUrl);
+      if (index !== -1) {
+        previousIndex = index;
+        return panels[index];
+      }
+      return null;
+    });
+    const retainedPanels = new Set(reusablePanels.filter(Boolean));
+    for (const panel of [...panels]) {
+      if (!retainedPanels.has(panel)) {
+        removePanel(panel.id, { persist: false });
+      }
     }
+
+    // Session synchronization stays ahead of any new Grok/MiMo navigation.
+    await Promise.all([...new Set(startupProviderIds)].map(syncProviderSession));
+    const orderedPanels = startupProviderIds.map((providerId, index) => {
+      const nextPanel = reusablePanels.slice(index + 1).find(Boolean);
+      return reusablePanels[index] || createPanel(providerId, { beforePanelId: nextPanel?.id });
+    }).filter(Boolean);
+    panels = orderedPanels;
+    hasAuthoritativePanels = true;
+    panels.forEach(panel => {
+      bindPanelHeaderActions(panel.id);
+      // Early frames may have finished loading before their style settings.
+      postPageStyleToPanel(panel);
+    });
+    syncGoogleModeControls();
 
     // Not awaited: storage calls are slow while the frames load, and nothing
     // during startup reads it back.
@@ -1380,6 +1453,8 @@ async function initializePanels() {
     // Update panel selectors in toolbar
     updatePanelSelectors();
   } catch (error) {
+    clearStartupSnapshot();
+    for (const panel of [...panels]) removePanel(panel.id, { persist: false });
     console.error('Error initializing panels:', error);
   }
 }
@@ -1444,7 +1519,7 @@ async function addPanel(providerId) {
 
 // Synchronous so concurrent callers cannot both pass the capacity check.
 // Callers sync the provider session first.
-function createPanel(providerId) {
+function createPanel(providerId, { frameUrl = getProviderFrameUrl(providerId), beforePanelId } = {}) {
   if (panels.length >= MAX_PANELS) {
     showToast(`Maximum number of panels reached (${MAX_PANELS})`);
     return null;
@@ -1499,17 +1574,15 @@ function createPanel(providerId) {
         <span class="loading-text">Loading ${provider.name}...</span>
       </div>
       <iframe
-        src="${getProviderFrameUrl(providerId)}"
         sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
         allow="clipboard-read; clipboard-write"
       ></iframe>
     </div>
   `;
 
-  panelGrid.appendChild(panelEl);
-
   // Get iframe reference
   const iframe = panelEl.querySelector('iframe');
+  iframe.src = frameUrl;
   const loadingEl = panelEl.querySelector('.panel-loading');
 
   // Handle iframe load
@@ -1546,16 +1619,17 @@ function createPanel(providerId) {
     pageNeededWidth: 0,
     fit: createPanelFitState()
   };
+  panelGrid.insertBefore(panelEl, beforePanelId ? document.getElementById(beforePanelId) : null);
   panels.push(panel);
   panelFitObserver?.observe(iframe.parentElement);
   resetFillRetryState();
 
-  bindPanelHeaderActions(panelId);
+  if (hasAuthoritativePanels) bindPanelHeaderActions(panelId);
 
   return panel;
 }
 
-function removePanel(panelId) {
+function removePanel(panelId, { persist = true } = {}) {
   const panelIndex = panels.findIndex(p => p.id === panelId);
   if (panelIndex === -1) return;
   failedNewChatPanelIds.delete(panelId);
@@ -1583,7 +1657,7 @@ function removePanel(panelId) {
   resetFillRetryState();
 
   // Auto-shrink layout if applicable
-  const shrunkLayout = getAutoShrunkLayout(currentLayout, panels.length);
+  const shrunkLayout = persist && getAutoShrunkLayout(currentLayout, panels.length);
   if (shrunkLayout) {
     currentLayout = shrunkLayout;
     const panelGrid = document.getElementById('panel-grid');
@@ -1602,7 +1676,7 @@ function removePanel(panelId) {
   updatePanelSelectors();
 
   // Save configuration
-  saveProviderConfiguration();
+  if (persist) saveProviderConfiguration();
 }
 
 async function switchPanelProvider(panelId, newProviderId) {
@@ -1639,6 +1713,8 @@ async function switchPanelProvider(panelId, newProviderId) {
   // Update panel data
   failedNewChatPanelIds.delete(panelId);
   newChatResults.delete(panelId);
+  // Reloading a provider leaves this round's answer, even if it is selected again.
+  panel.clearedAnswerRoundId = latestAnswerRoundId;
   panel.providerId = newProviderId;
   composerControls?.panelsChanged();
   panel.iframe = iframe;
@@ -1771,7 +1847,6 @@ function renderBlindLabels() {
 function postPageStyleToPanel(panel) {
   panel?.iframe?.contentWindow?.postMessage({
     type: PANELIZE_PAGE_STYLE,
-    wide: isWideContentEnabled,
     blind: isBlindModeEnabled,
     context: 'multi-panel'
   }, '*');
@@ -1788,10 +1863,13 @@ function updatePageStyleButtons() {
 
 async function setPageStyleModes({ blind = isBlindModeEnabled, wide = isWideContentEnabled } = {}, { persist = true } = {}) {
   const blindChanged = blind !== isBlindModeEnabled;
-  if (!blindChanged && wide === isWideContentEnabled) return;
+  const wideChanged = wide !== isWideContentEnabled;
+  if (!blindChanged && !wideChanged) return;
   isBlindModeEnabled = blind;
   isWideContentEnabled = wide;
   document.body.classList.toggle('blind-mode', isBlindModeEnabled);
+  document.body.classList.toggle('wide-content', isWideContentEnabled);
+  if (wideChanged) panelResize?.refresh();
   updatePageStyleButtons();
   if (blindChanged) {
     if (isBlindModeEnabled) {
@@ -1817,6 +1895,7 @@ async function setPageStyleModes({ blind = isBlindModeEnabled, wide = isWideCont
 }
 
 async function saveProviderConfiguration() {
+  saveStartupSnapshot();
   const providerIds = panels.map(p => p.providerId);
   try {
     await chrome.storage.sync.set({
@@ -1861,6 +1940,7 @@ function updateFillRetryButton() {
   }
   fillBtn.title = hasFailures ? 'Retry Failed Panels' : 'Fill Input Boxes';
   fillBtn.dataset.retryFailed = hasFailures ? 'true' : 'false';
+  composerControls?.refreshTooltips();
 }
 
 function resetFillRetryState() {
@@ -3112,7 +3192,7 @@ async function newChatAllProviders({ retryFailed = false } = {}) {
         const panel = findCurrentPanel(target);
         if (panel) panel.clearedAnswerRoundId = latestAnswerRoundId;
       });
-      updateAdoptButtons();
+      updateAnswerFeedbackButtons();
       await composerControls?.restoreTier(successful);
     }
   } catch (error) {
@@ -3276,7 +3356,7 @@ function startAnswerRound(requestId, text, sentAt, roundPanels) {
   while (answerRounds.size > MAX_IN_MEMORY_ANSWER_ROUNDS) {
     answerRounds.delete(answerRounds.keys().next().value);
   }
-  updateAdoptButtons();
+  updateAnswerFeedbackButtons();
 }
 
 function handleAnswerTimingMessage(panel, data) {
@@ -3334,10 +3414,21 @@ function adoptPanelAnswer(panelId) {
   }
 
   persistAnswerRound(toggleRoundAdoption(round, panelId));
-  updateAdoptButtons();
+  updateAnswerFeedbackButtons();
 }
 
-function updateAdoptButtons() {
+function rejectPanelAnswer(panelId) {
+  const round = getLatestAnswerRound();
+  const panel = panels.find(candidate => candidate.id === panelId);
+  if (!isPanelInAnswerRound(round, panel)) {
+    return;
+  }
+
+  persistAnswerRound(toggleRoundRejection(round, panelId));
+  updateAnswerFeedbackButtons();
+}
+
+function updateAnswerFeedbackButtons() {
   const round = getLatestAnswerRound();
   panels.forEach(panel => {
     const button = document.getElementById(panel.id)?.querySelector('.adopt-answer-btn');
@@ -3354,6 +3445,18 @@ function updateAdoptButtons() {
       : getLocalizedText('adoptAnswerTitle', 'Adopt this answer');
     button.setAttribute('aria-label', button.title);
     button.setAttribute('aria-pressed', String(isAdopted));
+
+    const rejectButton = document.getElementById(panel.id)?.querySelector('.reject-answer-btn');
+    if (rejectButton) {
+      const isRejected = canAdopt && Boolean(round.answers[panel.id].rejected);
+      rejectButton.disabled = !canAdopt;
+      rejectButton.classList.toggle('rejected', isRejected);
+      rejectButton.title = isRejected
+        ? getLocalizedText('rejectedAnswerTitle', '5 points deducted (click to undo)')
+        : getLocalizedText('rejectAnswerTitle', 'Deduct 5 points');
+      rejectButton.setAttribute('aria-label', rejectButton.title);
+      rejectButton.setAttribute('aria-pressed', String(isRejected));
+    }
   });
 }
 
@@ -3475,10 +3578,12 @@ function renderAnswerStatsRecent(rounds) {
       const chip = createCell(
         'span',
         timing ? `${getProviderDisplayName(answer.providerId)} · ${timing}` : getProviderDisplayName(answer.providerId),
-        `answer-stats-chip${isAdopted ? ' adopted' : ''}`
+        `answer-stats-chip${isAdopted ? ' adopted' : ''}${answer.rejected ? ' rejected' : ''}`
       );
       if (isAdopted) {
         chip.title = getLocalizedText('answerStatsAdopted', 'Adopted');
+      } else if (answer.rejected) {
+        chip.title = getLocalizedText('answerStatsRejected', '5 points deducted');
       }
       answers.appendChild(chip);
     });
@@ -3542,7 +3647,7 @@ async function clearAnswerStats() {
   answerRounds.clear();
   latestAnswerRoundId = null;
   zoomedAnswer = null;
-  updateAdoptButtons();
+  updateAnswerFeedbackButtons();
   await renderAnswerStats();
 }
 
@@ -4087,7 +4192,6 @@ function setupEventListeners() {
   document.addEventListener('click', cancelSendFocusRestoreOnUserIntent, true);
   document.addEventListener('focusin', cancelSendFocusRestoreOnUserIntent, true);
   document.addEventListener('keydown', cancelSendFocusRestoreOnUserIntent, true);
-  window.addEventListener('message', handleProviderStatusMessage);
 
   // Layout modal outside click
   document.getElementById('layout-modal').addEventListener('click', (e) => {
@@ -4130,12 +4234,12 @@ function resizeTextarea() {
   const inputBar = document.getElementById('input-bar');
   textarea.style.height = 'auto';
   const restHeight = textarea.offsetHeight;
-  // Collapse to one line once focus leaves the composer so the overhang never
+  // Collapse to two lines once focus leaves the composer so the overhang never
   // covers panel content the user is reading.
   const expanded = Boolean(inputBar?.contains(document.activeElement));
   const height = expanded ? Math.max(restHeight, Math.min(textarea.scrollHeight, getComposerMaxHeight())) : restHeight;
   textarea.style.height = height + 'px';
-  // The bar keeps its one-line height; extra lines overhang the panels so
+  // The bar keeps its resting height; extra lines overhang the panels so
   // typing never resizes (and re-lays out) the provider iframes.
   const overflow = Math.max(0, height - restHeight);
   inputBar?.style.setProperty('--composer-overflow', `${overflow}px`);
@@ -4470,4 +4574,7 @@ async function deletePromptFromEditor() {
 }
 
 // Initialize on load
+// Location and width reports can arrive before async UI/settings setup.
+window.addEventListener('message', handleProviderStatusMessage);
+createPanelsFromStartupSnapshot();
 init();

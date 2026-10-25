@@ -988,6 +988,12 @@
   "adoptedAnswerTitle": {
     "message": "채택됨(클릭하여 취소)"
   },
+  "rejectAnswerTitle": {
+    "message": "5점 감점"
+  },
+  "rejectedAnswerTitle": {
+    "message": "5점 감점됨(클릭하여 취소)"
+  },
   "answerStatsButtonTitle": {
     "message": "답변 통계"
   },
@@ -1042,6 +1048,9 @@
   "answerStatsAdopted": {
     "message": "채택됨"
   },
+  "answerStatsRejected": {
+    "message": "5점 감점"
+  },
   "answerStatsStatus_pending": {
     "message": "진행 중"
   },
@@ -1058,7 +1067,7 @@
     "message": "점수"
   },
   "answerStatsScoreNote": {
-    "message": "점수: 채택한 답변은 5점입니다. 답변을 사용하면 최대 3점이 더해집니다. 패널에서 클릭하거나 스크롤하면 1점, 패널을 확대하면 1점, 사용 시간 30초마다 1점입니다. 사용 시간은 15초 이내 간격으로 이어진 클릭과 스크롤 사이의 시간과 패널을 확대한 시간을 더한 값입니다."
+    "message": "점수: 채택한 답변은 5점입니다. 답변을 사용하면 최대 3점이 더해집니다. 패널에서 클릭하거나 스크롤하면 1점, 패널을 확대하면 1점, 사용 시간 30초마다 1점입니다. 사용 시간은 15초 이내 간격으로 이어진 클릭과 스크롤 사이의 시간과 패널을 확대한 시간을 더한 값입니다. 빼기 버튼을 클릭하면 5점이 차감되며, 다시 클릭하면 취소됩니다."
   },
   "labelProviderSortMode": {
     "message": "Provider order"
@@ -1105,6 +1114,30 @@
   "composerActualMode": {
     "message": "Actual mode"
   },
+  "composerTargetMode": {
+    "message": "대응 모드"
+  },
+  "composerTierMapUnsupported": {
+    "message": "지원되지 않음"
+  },
+  "composerTierMapSkipped": {
+    "message": "전환 안 함"
+  },
+  "composerTierMapDetect": {
+    "message": "자동 감지"
+  },
+  "composerTierMapEffort": {
+    "message": "추론 강도 $1"
+  },
+  "composerTierMapToggleOn": {
+    "message": "$1 켜짐"
+  },
+  "composerTierMapToggleOff": {
+    "message": "$1 꺼짐"
+  },
+  "composerTierMapShared": {
+    "message": "$1와(과) 공유"
+  },
   "composerResult": {
     "message": "Result"
   },
@@ -1143,6 +1176,9 @@
   },
   "composerLayout": {
     "message": "Layout"
+  },
+  "composerWideContent": {
+    "message": "와이드 모드"
   },
   "composerNotChecked": {
     "message": "Not checked"
@@ -1208,7 +1244,7 @@
     "message": "익명 모델"
   },
   "wideContentTitle": {
-    "message": "와이드 보기: 답변이 패널 너비 전체를 사용"
+    "message": "와이드 모드: 각 패널이 1.5배 넓어지며, 가로로 스크롤해 볼 수 있습니다."
   },
   "sectionTierRecipes": {
     "message": "추론 단계 매핑"

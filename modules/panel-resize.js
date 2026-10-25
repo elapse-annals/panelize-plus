@@ -2,12 +2,15 @@
  * Drag handles between panel columns.
  *
  * Column widths are stored per layout as weights: each column becomes
- * minmax(minWidth * weight, weight fr). When the window fits the columns they
- * share it in proportion; when it does not (1xN layouts scroll sideways) each
- * column is minWidth * weight wide.
+ * minmax(minWidth * weight, weight fr). In wide mode, the same weights produce
+ * fixed pixel columns with a wider base and a minimum reading width.
  */
 
 export const PANEL_COLUMN_WEIGHTS_KEY = 'panelColumnWeights';
+/** Wide mode scales each panel's actual grid width by this amount. */
+export const PANEL_WIDE_SCALE = 1.5;
+/** Minimum base width in CSS pixels; custom column weights still apply. */
+export const PANEL_WIDE_MIN_WIDTH = 672;
 /** Columns are not dragged narrower than this (or than they already are). */
 export const PANEL_RESIZE_MIN_WIDTH = 200;
 /** Arrow keys move a focused handle this far. */
@@ -38,6 +41,21 @@ export function getColumnTemplate(weights, minWidth) {
   return weights
     .map((weight) => `minmax(${round(minWidth * weight, 2)}px, ${weight}fr)`)
     .join(' ');
+}
+
+/**
+ * @param {number[]} weights
+ * @param {number} available - Grid width left for columns (no padding or gaps).
+ * @param {number} minWidth
+ * @param {number} scale
+ * @returns {string} Fixed pixel widths for wide mode.
+ */
+export function getWideColumnTemplate(weights, available, minWidth, scale = PANEL_WIDE_SCALE) {
+  if (weights.length < 2 || !(scale > 1)) {
+    return '';
+  }
+  const base = Math.max(PANEL_WIDE_MIN_WIDTH, Math.max(minWidth, available / weights.length) * scale);
+  return weights.map((weight) => `${Math.round(base * weight)}px`).join(' ');
 }
 
 /**
@@ -95,12 +113,13 @@ function readGrid(grid) {
  * @param {{
  *   grid: HTMLElement,
  *   getLayout: () => string,
+ *   getWideScale?: () => number,
  *   storage: {get: Function, set: Function},
  *   label: string
  * }} options - Does nothing without a grid.
- * @returns {Promise<void>}
+ * @returns {Promise<{refresh: () => void} | undefined>}
  */
-export async function setupPanelResize({ grid, getLayout, storage, label }) {
+export async function setupPanelResize({ grid, getLayout, getWideScale = () => 1, storage, label }) {
   if (!grid) {
     return;
   }
@@ -148,23 +167,33 @@ export async function setupPanelResize({ grid, getLayout, storage, label }) {
     });
   };
 
-  const applyWeights = (weights, minWidth) => {
-    grid.style.gridTemplateColumns = weights ? getColumnTemplate(weights, minWidth) : '';
+  const applyWeights = (weights, minWidth, count, available) => {
+    const scale = getWideScale();
+    if (scale > 1 && count > 1) {
+      const columnWeights = weights || Array(count).fill(1);
+      grid.style.gridTemplateColumns = getWideColumnTemplate(columnWeights, available, minWidth, scale);
+    } else {
+      grid.style.gridTemplateColumns = weights ? getColumnTemplate(weights, minWidth) : '';
+    }
     renderHandles();
   };
 
   const applyLayout = () => {
     grid.style.gridTemplateColumns = '';
-    const { widths, minWidth } = readGrid(grid);
+    const { widths, minWidth, available } = readGrid(grid);
     const weights = weightsByLayout[getLayout()];
-    applyWeights(isValidColumnWeights(weights, widths.length) && widths.length > 1 ? weights : null, minWidth);
+    const hasCustomWeights = isValidColumnWeights(weights, widths.length) && widths.length > 1;
+    applyWeights(hasCustomWeights ? weights : null, minWidth, widths.length, available);
   };
 
   const moveEdge = (state, delta) => {
     const widths = resizeColumns(state.widths, state.index, delta, state);
-    const weights = getColumnWeights(widths, state.available, state.minWidth);
+    const scale = getWideScale();
+    const minWidth = scale > 1 ? Math.max(state.minWidth, PANEL_WIDE_MIN_WIDTH / scale) : state.minWidth;
+    const weights = getColumnWeights(widths, state.available, minWidth).map((weight) =>
+      round(weight / (scale > 1 ? scale : 1), 4));
     weightsByLayout[getLayout()] = weights;
-    applyWeights(weights, state.minWidth);
+    applyWeights(weights, state.minWidth, widths.length, state.available);
   };
 
   const startState = (handle) => ({ ...readGrid(grid), index: Number(handle.dataset.index) });
@@ -221,6 +250,13 @@ export async function setupPanelResize({ grid, getLayout, storage, label }) {
   });
 
   new MutationObserver(applyLayout).observe(grid, { attributes: true, attributeFilter: ['class'] });
-  new ResizeObserver(renderHandles).observe(grid);
+  new ResizeObserver(() => {
+    if (getWideScale() > 1) {
+      applyLayout();
+    } else {
+      renderHandles();
+    }
+  }).observe(grid);
   applyLayout();
+  return { refresh: applyLayout };
 }

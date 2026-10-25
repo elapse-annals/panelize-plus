@@ -124,6 +124,10 @@ test.describe('Composer controls browser fixtures', () => {
 
       const page = await openConfiguredMultiPanel(extension, { providers: ['chatgpt'], enabledProviders: MANUAL_ORDER, layout: '1x1' });
       await expect(page.locator('#composer-new-chat-btn')).toBeVisible();
+      // Editing the draft updates the Fill/Retry button. It must keep showing
+      // the actual shortcut after that state update, not only at startup.
+      await page.locator('#unified-input').fill('Keep the shortcut visible');
+      await expect(page.locator('#fill-input-btn')).toHaveAttribute('title', /Enter|↵/);
       await expect(page.locator('.tier-option')).toHaveCount(4);
       await expect(page.locator('.tier-option[data-tier="default"]')).toHaveAttribute('aria-checked', 'true');
       await expect(page.locator('#provider-sort-btn')).toBeVisible();
@@ -254,10 +258,13 @@ test.describe('Composer controls browser fixtures', () => {
       await expect(details).toBeVisible();
       const rows = details.locator('#tier-details-body tr');
       await expect(rows).toHaveCount(4);
-      await expect(rows.filter({ hasText: 'ChatGPT' }).locator('td').nth(2)).toContainText(/Confirmed|Switched/);
-      await expect(rows.filter({ hasText: 'DeepSeek' }).locator('td').nth(2)).toContainText(/Confirmed|Switched/);
-      await expect(rows.filter({ hasText: 'Grok' }).locator('td').nth(2)).toContainText(/Not supported|Unsupported/);
-      await expect(rows.filter({ hasText: 'Claude' }).locator('td').nth(2)).toContainText(/Unavailable/);
+      await expect(rows.filter({ hasText: 'Claude' }).locator('td').nth(1)).toHaveText('Reasoning effort High');
+      await expect(rows.filter({ hasText: 'DeepSeek' }).locator('td').nth(1)).toHaveText('深度思考 on · shared with Balanced');
+      await expect(rows.filter({ hasText: 'Grok' }).locator('td').nth(1)).toHaveText('Not supported');
+      await expect(rows.filter({ hasText: 'ChatGPT' }).locator('td').nth(3)).toContainText(/Confirmed|Switched/);
+      await expect(rows.filter({ hasText: 'DeepSeek' }).locator('td').nth(3)).toContainText(/Confirmed|Switched/);
+      await expect(rows.filter({ hasText: 'Grok' }).locator('td').nth(3)).toContainText(/Not supported|Unsupported/);
+      await expect(rows.filter({ hasText: 'Claude' }).locator('td').nth(3)).toContainText(/Unavailable/);
       await page.screenshot({ path: testInfo.outputPath('composer-tier-details-mixed.png'), fullPage: true });
       await details.locator('#close-tier-details').click();
 
@@ -300,6 +307,16 @@ test.describe('Composer controls browser fixtures', () => {
       const page = await openConfiguredMultiPanel(extension, { providers: ['chatgpt'], layout: '1x1' });
       await expect(page.locator('#composer-shell')).toBeVisible();
       await page.locator('#input-bar').screenshot({ path: testInfo.outputPath('composer-light.png') });
+      const levelColors = [];
+      for (const tier of ['fast', 'balanced', 'deep']) {
+        await page.locator(`.tier-option[data-tier="${tier}"]`).click();
+        await expect(page.locator('#composer-shell')).toHaveAttribute('data-tier', tier);
+        await expect(page.locator('#composer-shell')).toHaveAttribute('data-tier-state', 'confirmed');
+        levelColors.push(await page.locator('#composer-shell').evaluate(shell =>
+          getComputedStyle(shell).getPropertyValue('--tier-color').trim()));
+        await page.locator('#input-bar').screenshot({ path: testInfo.outputPath(`composer-light-${tier}.png`), animations: 'disabled' });
+      }
+      expect(new Set(levelColors).size).toBe(3);
 
       await extension.serviceWorker.evaluate(async () => chrome.storage.sync.set({ theme: 'dark' }));
       await page.reload();
@@ -307,6 +324,11 @@ test.describe('Composer controls browser fixtures', () => {
       await page.waitForFunction(() => document.querySelectorAll('#panel-grid iframe').length === 1);
       await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
       await page.locator('#input-bar').screenshot({ path: testInfo.outputPath('composer-dark.png') });
+      for (const tier of ['fast', 'balanced', 'deep']) {
+        await page.locator(`.tier-option[data-tier="${tier}"]`).click();
+        await expect(page.locator('#composer-shell')).toHaveAttribute('data-tier-state', 'confirmed');
+        await page.locator('#input-bar').screenshot({ path: testInfo.outputPath(`composer-dark-${tier}.png`), animations: 'disabled' });
+      }
 
       await page.setViewportSize({ width: 390, height: 844 });
       await expect(page.locator('#composer-new-chat-btn')).toBeVisible();
@@ -314,9 +336,20 @@ test.describe('Composer controls browser fixtures', () => {
       await page.locator('#input-bar').screenshot({ path: testInfo.outputPath('composer-narrow.png') });
 
       await page.emulateMedia({ reducedMotion: 'reduce' });
+      // Also cover a media preference change while a pulse is already active.
+      await page.locator('#composer-shell').evaluate(shell => shell.classList.add('composer-pulse'));
+      expect(await page.locator('#composer-shell').evaluate(shell =>
+        [getComputedStyle(shell, '::before').animationName, getComputedStyle(shell, '::after').animationName]
+      )).toEqual(['none', 'none']);
+      await page.locator('#composer-shell').evaluate(shell => shell.classList.remove('composer-pulse'));
       await page.locator('#unified-input').evaluate(input => input.blur());
       await page.locator('#unified-input').focus();
       await expect(page.locator('#composer-shell')).not.toHaveClass(/composer-pulse/);
+      await page.locator('.tier-option[data-tier="fast"]').click();
+      await expect(page.locator('#composer-shell')).toHaveAttribute('data-tier-state', 'confirmed');
+      expect(await page.locator('#composer-shell').evaluate(shell =>
+        [getComputedStyle(shell, '::before').animationName, getComputedStyle(shell, '::after').animationName]
+      )).toEqual(['none', 'none']);
       await page.locator('#input-bar').screenshot({ path: testInfo.outputPath('composer-reduced-motion.png') });
     } finally {
       await extension.close();

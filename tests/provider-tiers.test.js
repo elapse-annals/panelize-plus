@@ -8,6 +8,7 @@ import {
   PROVIDER_TIER_STATUSES,
   TIER_RECIPE_PROVIDERS,
   buildTierRecipeOverrides,
+  describeTierMapping,
   getEffectiveTierRecipes,
   isProviderTierResponse,
   normalizeTierRecipe,
@@ -57,15 +58,36 @@ describe('provider tier contract', () => {
   });
 
   it('gives every recipe provider the recipe strategy and three tiers of steps', () => {
-    expect(TIER_RECIPE_PROVIDERS).toEqual(expect.arrayContaining(['gemini', 'deepseek', 'kimi', 'qwen-cn', 'qwen-global', 'chatglm', 'zai-global', 'meta-ai', 'yuanbao']));
+    expect(TIER_RECIPE_PROVIDERS).toEqual(expect.arrayContaining(['chatgpt', 'gemini', 'deepseek', 'kimi', 'qwen-cn', 'qwen-global', 'chatglm', 'zai-global', 'meta-ai', 'yuanbao']));
     for (const provider of TIER_RECIPE_PROVIDERS) {
-      expect(PROVIDER_TIER_CONFIG[provider].strategy).toBe('recipe');
+      const config = PROVIDER_TIER_CONFIG[provider];
+      expect(config.strategy === 'recipe' || config.acceptsRecipes === true).toBe(true);
       expect(Object.keys(DEFAULT_TIER_RECIPES[provider])).toEqual(PROVIDER_TIER_IDS);
     }
     expect(DEFAULT_TIER_RECIPES['qwen-cn'].deep).toEqual([
       { kind: 'model', label: 'Qwen3.7-Max' },
       { kind: 'thinking', label: '快速' }
     ]);
+    expect(DEFAULT_TIER_RECIPES.gemini).toEqual({
+      fast: [{ kind: 'model', label: '3.5 Flash-Lite' }, { kind: 'thinking', label: 'High|高' }],
+      balanced: [{ kind: 'model', label: '3.8 Flash' }, { kind: 'thinking', label: 'High|高' }],
+      deep: [{ kind: 'model', label: '4 Argon' }, { kind: 'thinking', label: 'High|高' }]
+    });
+    expect(DEFAULT_TIER_RECIPES.kimi).toEqual({
+      fast: [{ kind: 'model', label: '快速|Fast' }, { kind: 'thinking', label: '进阶|Advanced' }],
+      balanced: [{ kind: 'model', label: 'K2.8' }, { kind: 'thinking', label: '进阶|Advanced' }],
+      deep: [{ kind: 'model', label: 'K3.1' }, { kind: 'thinking', label: '进阶|Advanced' }]
+    });
+    expect(DEFAULT_TIER_RECIPES.yuanbao).toEqual({
+      fast: [{ kind: 'model', label: 'Hy3' }, { kind: 'toggle', label: '深度思考', on: false }],
+      balanced: [{ kind: 'model', label: 'Hy3' }, { kind: 'toggle', label: '深度思考', on: true }],
+      deep: [{ kind: 'model', label: 'DeepSeek' }, { kind: 'toggle', label: '深度思考', on: true }]
+    });
+    expect(DEFAULT_TIER_RECIPES.chatgpt).toEqual({
+      fast: [{ kind: 'model', label: 'GPT-6' }, { kind: 'thinking', label: 'Instant|即时' }],
+      balanced: [{ kind: 'model', label: 'GPT-6' }, { kind: 'thinking', label: 'Medium|中等' }],
+      deep: [{ kind: 'model', label: 'GPT-6' }, { kind: 'thinking', label: 'High|高' }]
+    });
     expect(DEFAULT_TIER_RECIPES.deepseek.fast[0]).toMatchObject({ kind: 'toggle', on: false });
   });
 
@@ -81,16 +103,34 @@ describe('provider tier contract', () => {
     expect(recipes.fast).toEqual([{ kind: 'model', label: 'K2.9' }]);
     expect(recipes.balanced).toEqual(DEFAULT_TIER_RECIPES.kimi.balanced);
     expect(recipes.deep).toEqual([]);
-    expect(getEffectiveTierRecipes('chatgpt', overrides)).toBeNull();
+    expect(getEffectiveTierRecipes('claude', overrides)).toBeNull();
     expect(normalizeTierRecipe([{ kind: 'toggle', label: 'DeepThink', on: 'yes' }])).toEqual([{ kind: 'toggle', label: 'DeepThink', on: false }]);
     expect(normalizeTierRecipe(new Array(9).fill({ kind: 'model', label: 'm' }))).toHaveLength(4);
   });
 
+  it('describes what each tier maps to, including shared and skipped recipes', () => {
+    expect(describeTierMapping('kimi', 'balanced')).toEqual({ type: 'recipe', steps: DEFAULT_TIER_RECIPES.kimi.balanced, sharedWith: [] });
+    expect(describeTierMapping('meta-ai', 'fast').sharedWith).toEqual(['balanced']);
+    expect(describeTierMapping('deepseek', 'deep').sharedWith).toEqual(['balanced']);
+    expect(describeTierMapping('kimi', 'deep', { kimi: { deep: [] } }).type).toBe('skipped');
+    expect(describeTierMapping('claude', 'deep')).toMatchObject({ type: 'effort', level: 'High' });
+    expect(describeTierMapping('claude', 'fast')).toMatchObject({ type: 'effort', level: 'Low' });
+    expect(describeTierMapping('chatgpt', 'fast')).toEqual({ type: 'recipe', steps: DEFAULT_TIER_RECIPES.chatgpt.fast, sharedWith: [] });
+    expect(describeTierMapping('doubao', 'fast').type).toBe('detect');
+    expect(describeTierMapping('grok', 'fast').type).toBe('unsupported');
+    expect(describeTierMapping('unknown', 'fast').type).toBe('unsupported');
+    expect(describeTierMapping('kimi', 'default')).toBeNull();
+  });
+
   it('round-trips options page fields and stores only tiers that differ from the defaults', () => {
-    expect(tierRecipeToFields(DEFAULT_TIER_RECIPES.yuanbao.balanced)).toEqual({ model: 'hy3-preview', thinking: '专家模式', toggleOn: null });
+    expect(tierRecipeToFields(DEFAULT_TIER_RECIPES.yuanbao.balanced)).toEqual({ model: 'Hy3', thinking: '', toggleOn: true });
     expect(tierRecipeToFields(DEFAULT_TIER_RECIPES.deepseek.fast)).toEqual({ model: '', thinking: '', toggleOn: false });
     expect(tierRecipeFromFields('deepseek', 'fast', { toggleOn: true })).toEqual([
       { kind: 'toggle', label: DEFAULT_TIER_RECIPES.deepseek.fast[0].label, on: true }
+    ]);
+    expect(tierRecipeFromFields('yuanbao', 'deep', { model: 'DeepSeek', toggleOn: false })).toEqual([
+      { kind: 'model', label: 'DeepSeek' },
+      { kind: 'toggle', label: '深度思考', on: false }
     ]);
     expect(tierRecipeFromFields('kimi', 'fast', { model: 'K2.9', thinking: '' })).toEqual([{ kind: 'model', label: 'K2.9' }]);
 
@@ -99,7 +139,7 @@ describe('provider tier contract', () => {
     const overrides = buildTierRecipeOverrides({
       ...edited,
       kimi: { ...edited.kimi, deep: [{ kind: 'model', label: 'K3.2' }] },
-      chatgpt: { fast: [{ kind: 'model', label: 'ignored' }] }
+      claude: { fast: [{ kind: 'model', label: 'ignored' }] }
     });
     expect(overrides).toEqual({ kimi: { deep: [{ kind: 'model', label: 'K3.2' }] } });
   });

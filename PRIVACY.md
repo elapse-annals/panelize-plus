@@ -96,7 +96,7 @@ Panelize can check for updates by requesting version information from GitHub (ap
 
 ### UI Assets
 
-Panelize loads the Material Symbols font from Google Fonts for UI icons. This request is made directly to Google Fonts.
+Panelize bundles a subset of the Material Symbols font with the extension for UI icons. Opening Panelize does not contact Google Fonts to load its icons.
 
 ---
 

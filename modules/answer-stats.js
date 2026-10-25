@@ -36,10 +36,12 @@ export const ENGAGEMENT_KIND = Object.freeze({
 export const ENGAGEMENT_ACTIVE_GAP_MS = 15 * 1000;
 export const ENGAGEMENT_ZOOM_MAX_GAP_MS = 5 * 60 * 1000;
 
-// Score: an adopted answer earns ADOPTED_ANSWER_POINTS. Engagement earns up to
+// Score: an adopted answer earns ADOPTED_ANSWER_POINTS; a rejected answer
+// loses REJECTED_ANSWER_POINTS. Engagement earns up to
 // MAX_ENGAGEMENT_POINTS more: one for clicking or scrolling, one for enlarging
 // the panel and one per ENGAGEMENT_POINT_ACTIVE_MS of active time.
 export const ADOPTED_ANSWER_POINTS = 5;
+export const REJECTED_ANSWER_POINTS = 5;
 export const MAX_ENGAGEMENT_POINTS = 3;
 export const ENGAGEMENT_POINT_ACTIVE_MS = 30 * 1000;
 
@@ -132,7 +134,33 @@ export function toggleRoundAdoption(round, panelId) {
   if (!answer || round.adoptedPanelId === panelId) {
     return { ...round, adoptedPanelId: null, adoptedProviderId: null };
   }
-  return { ...round, adoptedPanelId: panelId, adoptedProviderId: answer.providerId };
+  return {
+    ...round,
+    adoptedPanelId: panelId,
+    adoptedProviderId: answer.providerId,
+    ...(answer.rejected ? { answers: { ...round.answers, [panelId]: { ...answer, rejected: false } } } : {})
+  };
+}
+
+/**
+ * Toggles a panel's score deduction. Rejecting an adopted answer also clears
+ * its adoption; other panels keep their feedback. Older answers have no
+ * rejected field and are treated as not rejected.
+ */
+export function toggleRoundRejection(round, panelId) {
+  const answer = round?.answers?.[panelId];
+  if (!answer) {
+    return round;
+  }
+
+  const rejected = !answer.rejected;
+  return {
+    ...round,
+    ...(rejected && round.adoptedPanelId === panelId
+      ? { adoptedPanelId: null, adoptedProviderId: null }
+      : {}),
+    answers: { ...round.answers, [panelId]: { ...answer, rejected } }
+  };
 }
 
 function createEngagement() {
@@ -223,7 +251,8 @@ function median(values) {
  * Per-provider totals. A provider shown in two panels of one round counts
  * once for that round; its fastest answer counts for timing.
  * Adoption rate only counts rounds where some answer was adopted. Score adds
- * the adoption points and the best engagement points of each round.
+ * the adoption points and the best engagement points of each round, minus
+ * one deduction per provider per round if any of its answers was rejected.
  */
 export function aggregateAnswerStats(rounds) {
   const byProvider = new Map();
@@ -267,6 +296,9 @@ export function aggregateAnswerStats(rounds) {
           entry.adoptedCount += 1;
           entry.score += ADOPTED_ANSWER_POINTS;
         }
+      }
+      if (answers.some(answer => answer.rejected)) {
+        entry.score -= REJECTED_ANSWER_POINTS;
       }
 
       const engagements = answers.map(answer => answer.engagement).filter(Boolean);

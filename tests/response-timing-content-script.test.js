@@ -67,7 +67,65 @@ describe('response timing content script', () => {
   });
 
   afterEach(() => {
+    // Release the previous request's observer as well as its polling timer.
+    dispatchMultiPanelMessage({ type: 'NEW_CHAT', context: 'multi-panel' });
+    vi.restoreAllMocks();
     vi.useRealTimers();
+  });
+
+  it('does not rescan answers or reread unchanged text while waiting or generating', async () => {
+    window.happyDOM.setURL('https://chat.deepseek.com/a/chat/s/test');
+    document.body.innerHTML = '<div id="thread"></div>';
+    const queries = vi.spyOn(document, 'querySelectorAll');
+    const answerQueries = () => queries.mock.calls.filter(([selector]) => selector === '.ds-markdown').length;
+    startSend('req-cached');
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(answerQueries()).toBe(1);
+
+    document.getElementById('thread').innerHTML = '<div class="ds-markdown">First output</div>';
+    const answer = document.querySelector('.ds-markdown');
+    const textReads = vi.spyOn(answer, 'textContent', 'get');
+    await vi.advanceTimersByTimeAsync(250);
+    expect(getPhases('req-cached')).toEqual(['first-output']);
+    expect(answerQueries()).toBe(2);
+    expect(textReads).toHaveBeenCalledOnce();
+
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(answerQueries()).toBe(2);
+    expect(textReads).toHaveBeenCalledOnce();
+    answer.firstChild.data = 'Updated output';
+    await vi.advanceTimersByTimeAsync(250);
+    expect(textReads).toHaveBeenCalledTimes(2);
+    expect(answerQueries()).toBe(2);
+  });
+
+  it('reconnects to a replaced answer and retains the last text-change timestamp', async () => {
+    window.happyDOM.setURL('https://chat.deepseek.com/a/chat/s/test');
+    document.body.innerHTML = '<div id="thread"></div>';
+    startSend('req-replaced-answer');
+    document.getElementById('thread').innerHTML = '<div class="ds-markdown">First output</div>';
+    await vi.advanceTimersByTimeAsync(250);
+    await vi.advanceTimersByTimeAsync(1000);
+    document.querySelector('.ds-markdown').outerHTML = '<div class="ds-markdown">Replacement output</div>';
+    await vi.advanceTimersByTimeAsync(250);
+    const changedAt = Date.now();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(getTimingCalls('req-replaced-answer')).toEqual([
+      expect.objectContaining({ phase: 'first-output' }),
+      expect.objectContaining({ phase: 'complete', at: changedAt })
+    ]);
+  });
+
+  it('keeps the baseline text immutable when an earlier answer changes', async () => {
+    window.happyDOM.setURL('https://gemini.google.com/app/test');
+    document.body.innerHTML = '<div id="thread"><model-response>Earlier answer</model-response></div>';
+    startSend('req-baseline');
+    document.querySelector('model-response').textContent = 'Updated earlier answer';
+    await vi.advanceTimersByTimeAsync(250);
+    expect(getPhases('req-baseline')).toEqual([]);
+    document.querySelector('model-response').outerHTML = '<model-response>Updated earlier answer</model-response>';
+    await vi.advanceTimersByTimeAsync(250);
+    expect(getPhases('req-baseline')).toEqual(['first-output']);
   });
 
   it('times a ChatGPT answer from first text until the stop button is gone and the text settles', async () => {

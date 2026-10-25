@@ -155,8 +155,11 @@ That's it. No accounts to create, no API keys to configure.
 |--------|----------|
 | Open Panelize | `Cmd/Ctrl + Shift + E` |
 | Open Prompt Library | `Cmd/Ctrl + Shift + L` |
+| Toggle wide mode | `Cmd/Ctrl + Alt + W` |
 
 Customize shortcuts at `chrome://extensions/shortcuts`
+
+Customize or clear the wide mode shortcut with the keyboard button in the bottom bar. It also works inside AI panels. On macOS, `Alt` is `Option`.
 
 ---
 

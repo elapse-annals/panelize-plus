@@ -157,12 +157,20 @@
 
   /** Yuanbao uses the same control for Send and Stop Answering. */
   window.ButtonFinderUtils.isYuanbaoSendControl = function(button) {
-    const label = button?.getAttribute('aria-label');
-    const className = String(button?.className || '');
+    if (!button || button.getAttribute('aria-disabled') === 'true') {
+      return false;
+    }
+    const label = button.getAttribute('aria-label');
+    const className = String(button.className || '');
+    if (/(disabled|sendNot|loading|sending|sendStop)/i.test(className)) {
+      return false;
+    }
+    // Current UI: <a id="yuanbao-send-btn"> with an iconfont "icon-send" glyph.
+    if (button.querySelector('.iconfont')?.classList?.contains('icon-send') === true) {
+      return true;
+    }
     return Boolean(
       (label === 'Send' || label === '发送' || label === '發送') &&
-      button.getAttribute('aria-disabled') !== 'true' &&
-      !/(disabled|sendNot|loading|sending|sendStop)/i.test(className) &&
       button.querySelector('svg')?.getAttribute('viewBox') === '0 0 48 48'
     );
   };

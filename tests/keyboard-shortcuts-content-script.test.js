@@ -131,6 +131,44 @@ describe('provider keyboard shortcut forwarding content script', () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
+  it('forwards the default wide mode shortcut from a provider frame', () => {
+    const controller = evaluateContentScript();
+    const event = dispatchKey(
+      document.getElementById('composer'),
+      keydown('w', modModifiers({ altKey: true }))
+    );
+
+    expect(parent.postMessage).toHaveBeenCalledTimes(1);
+    expect(parent.postMessage.mock.calls[0][0]).toMatchObject({ actionId: 'toggleWideContent', provider: 'chatgpt' });
+    expect(event.defaultPrevented).toBe(true);
+    expect(controller.getBindings().toggleWideContent).toBe('Mod+Alt+W');
+  });
+
+  it('applies a custom wide mode shortcut, clears it and resolves conflicts', () => {
+    const controller = evaluateContentScript();
+    storageListener({
+      keyboardShortcutBindings: {
+        newValue: { toggleWideContent: 'Alt+Shift+W' }
+      }
+    }, 'sync');
+
+    dispatchKey(document.body, keydown('w', modModifiers({ altKey: true })));
+    expect(parent.postMessage).not.toHaveBeenCalled();
+    dispatchKey(document.body, keydown('w', { altKey: true, shiftKey: true }));
+    expect(parent.postMessage.mock.calls[0]?.[0]).toMatchObject({ actionId: 'toggleWideContent' });
+    expect(controller.getBindings().toggleWideContent).toBe('Alt+Shift+W');
+
+    storageListener({
+      keyboardShortcutBindings: {
+        newValue: { toggleLayout: 'Alt+Shift+W', toggleWideContent: 'Alt+Shift+W' }
+      }
+    }, 'sync');
+    expect(controller.getBindings()).toMatchObject({ toggleLayout: 'Alt+Shift+W', toggleWideContent: null });
+
+    storageListener({ keyboardShortcutBindings: { newValue: { toggleWideContent: null } } }, 'sync');
+    expect(controller.getBindings().toggleWideContent).toBeNull();
+  });
+
   it('updates custom bindings and the page-only enabled setting from sync storage', () => {
     const controller = evaluateContentScript();
     storageListener({ pageShortcutsEnabled: { newValue: false } }, 'sync');

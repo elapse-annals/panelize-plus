@@ -25,6 +25,7 @@ export const PACKAGE_INCLUDE_PATHS = [
   'background',
   'content-scripts',
   'data',
+  'fonts',
   'icons',
   'libs',
   'modules',

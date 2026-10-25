@@ -135,7 +135,7 @@
         "https://grok.com/*"
       ],
       "js": [
-        "content-scripts/grok-cookie-consent.js"
+        "content-scripts/embedded-consent-cookies.js"
       ],
       "run_at": "document_start",
       "all_frames": true,
@@ -157,6 +157,17 @@
       ],
       "run_at": "document_start",
       "all_frames": true
+    },
+    {
+      "matches": [
+        "https://chat.deepseek.com/*"
+      ],
+      "js": [
+        "content-scripts/embedded-consent-cookies.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
     },
     {
       "matches": [

@@ -4,14 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panelize - AI Comparison</title>
+  <link rel="preload" href="../fonts/material-symbols-outlined.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="multi-panel.css">
-
-  <!-- Material Symbols font; axes limited to the font-variation-settings in multi-panel.css -->
-  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
-  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,-25..0&display=block" rel="stylesheet">
 
   <!-- DNS prefetch and preconnect for faster loading -->
   <link rel="dns-prefetch" href="https://chatgpt.com">
@@ -61,7 +55,7 @@
             <path d="M17.06 13c-1.86 0-3.42 1.33-3.82 3.1c-.95-.41-1.82-.3-2.48-.01C10.35 14.31 8.79 13 6.94 13C4.77 13 3 14.79 3 17s1.77 4 3.94 4c2.06 0 3.74-1.62 3.9-3.68c.34-.24 1.23-.69 2.32.02c.18 2.05 1.84 3.66 3.9 3.66c2.17 0 3.94-1.79 3.94-4s-1.77-4-3.94-4M6.94 19.86c-1.56 0-2.81-1.28-2.81-2.86s1.26-2.86 2.81-2.86c1.56 0 2.81 1.28 2.81 2.86s-1.25 2.86-2.81 2.86m10.12 0c-1.56 0-2.81-1.28-2.81-2.86s1.25-2.86 2.81-2.86s2.82 1.28 2.82 2.86s-1.27 2.86-2.82 2.86M22 10.5H2V12h20zm-6.47-7.87c-.22-.49-.78-.75-1.31-.58L12 2.79l-2.23-.74l-.05-.01c-.53-.15-1.09.13-1.29.64L6 9h12l-2.44-6.32z" />
           </svg>
         </button>
-        <button id="wide-content-btn" class="toolbar-btn" data-i18n-title="wideContentTitle" data-i18n-aria="wideContentTitle" title="Wide content: let answers use the full panel width" aria-label="Wide content: let answers use the full panel width" aria-pressed="false">
+        <button id="wide-content-btn" class="toolbar-btn" data-shortcut-action="toggleWideContent" data-i18n-title="wideContentTitle" data-i18n-aria="wideContentTitle" title="Wide mode: each panel is 1.5× wider; scroll horizontally to view" aria-label="Wide mode: each panel is 1.5× wider; scroll horizontally to view" aria-pressed="false">
           <span class="material-symbols-outlined" aria-hidden="true">fit_width</span>
         </button>
         <button id="blind-mode-btn" class="toolbar-btn" data-i18n-title="blindModeTitle" data-i18n-aria="blindModeTitle" title="Blind mode: hide AI names and unify page styles" aria-label="Blind mode: hide AI names and unify page styles" aria-pressed="false">
@@ -113,38 +107,20 @@
     <footer id="input-bar">
       <div class="composer-shell" id="composer-shell">
       <div class="input-container">
-        <button id="prompt-library-btn" class="input-btn" title="Prompt Library">
-          <span class="material-symbols-outlined">auto_awesome</span>
-        </button>
-        <button id="image-upload-btn" class="input-btn" title="Upload Images">
-          <span class="material-symbols-outlined">add_photo_alternate</span>
-        </button>
-        <input type="file" id="image-file-input" accept="image/*" multiple style="display: none;">
         <div class="input-wrapper">
           <div id="image-preview-container" class="image-preview-container"></div>
-          <textarea id="unified-input" placeholder="Enter your question to send to all AI providers..." rows="1"></textarea>
-        </div>
-        <div class="input-actions">
-          <span id="send-status" class="send-status"></span>
-          <!-- Clear All Inputs Button -->
-          <button id="clear-all-btn" class="clear-btn" title="Clear All Inputs">
-            <span class="material-symbols-outlined">backspace</span>
-          </button>
-          <span class="composer-divider" aria-hidden="true"></span>
-          <!-- Fill Input Boxes Button (no auto-send) -->
-          <button id="fill-input-btn" class="fill-btn" title="Fill Input Boxes">
-            <span class="material-symbols-outlined">input</span>
-            <span class="btn-text">Fill</span>
-          </button>
-          <!-- Send All Button (fill + auto-send) -->
-          <button id="send-all-btn" class="send-btn" title="Send to All">
-            <span class="material-symbols-outlined">send</span>
-            <span class="btn-text">Send All</span>
-          </button>
+          <textarea id="unified-input" placeholder="Enter your question to send to all AI providers..." rows="2"></textarea>
         </div>
       </div>
       <div class="composer-controls">
         <div class="composer-controls-left">
+          <button id="prompt-library-btn" class="input-btn" title="Prompt Library">
+            <span class="material-symbols-outlined">auto_awesome</span>
+          </button>
+          <button id="image-upload-btn" class="input-btn" title="Upload Images">
+            <span class="material-symbols-outlined">add_photo_alternate</span>
+          </button>
+          <input type="file" id="image-file-input" accept="image/*" multiple style="display: none;">
           <button id="composer-new-chat-btn" class="composer-control" data-shortcut-action="newConversation" data-i18n-title="composerNewChat" title="New conversation">
             <span class="material-symbols-outlined" aria-hidden="true">add_comment</span>
             <span data-i18n="composerNewChat">New conversation</span>
@@ -169,6 +145,24 @@
           <button id="keyboard-shortcuts-btn" class="composer-control" data-i18n-title="composerShortcuts" title="Keyboard shortcuts">
             <span class="material-symbols-outlined" aria-hidden="true">keyboard</span>
           </button>
+          <div class="input-actions">
+            <span id="send-status" class="send-status"></span>
+            <!-- Clear All Inputs Button -->
+            <button id="clear-all-btn" class="clear-btn" title="Clear All Inputs">
+              <span class="material-symbols-outlined">backspace</span>
+            </button>
+            <span class="composer-divider" aria-hidden="true"></span>
+            <!-- Fill Input Boxes Button (no auto-send) -->
+            <button id="fill-input-btn" class="fill-btn" title="Fill Input Boxes">
+              <span class="material-symbols-outlined">input</span>
+              <span class="btn-text">Fill</span>
+            </button>
+            <!-- Send All Button (fill + auto-send) -->
+            <button id="send-all-btn" class="send-btn" title="Send to All">
+              <span class="material-symbols-outlined">send</span>
+              <span class="btn-text">Send All</span>
+            </button>
+          </div>
         </div>
       </div>
       <div id="new-chat-status-row" class="composer-result-row" hidden>
@@ -192,7 +186,7 @@
         </div>
         <div class="modal-body">
           <p class="composer-help" data-i18n="composerTierHelp">Levels switch the available model or reasoning setting in each open AI. Search, research and agent settings stay independent.</p>
-          <div class="composer-table-scroll"><table class="composer-table"><thead><tr><th data-i18n="composerProvider">AI</th><th data-i18n="composerActualMode">Actual mode</th><th data-i18n="composerResult">Result</th></tr></thead><tbody id="tier-details-body"></tbody></table></div>
+          <div class="composer-table-scroll"><table class="composer-table"><thead><tr><th data-i18n="composerProvider">AI</th><th data-i18n="composerTargetMode">Mapped to</th><th data-i18n="composerActualMode">Actual mode</th><th data-i18n="composerResult">Result</th></tr></thead><tbody id="tier-details-body"></tbody></table></div>
         </div>
         <div class="modal-footer">
           <button id="refresh-tier-state-btn" class="btn-secondary" data-i18n="composerRefresh">Refresh</button>
@@ -494,7 +488,7 @@
               </table>
             </div>
             <p class="answer-stats-note" data-i18n="answerStatsNote">Times run from Send to the first text and to the finished answer: median, with the average in brackets. Only ChatGPT, Gemini and DeepSeek are timed. Adoption rate counts the questions where an answer was adopted.</p>
-            <p class="answer-stats-note" data-i18n="answerStatsScoreNote">Score: an adopted answer earns 5 points. Using an answer earns up to 3 more: 1 for clicking or scrolling in its panel, 1 for enlarging the panel, and 1 for every 30 s of engaged time. Engaged time adds the gaps between clicks and scrolls up to 15 s apart, and the time the panel stays enlarged.</p>
+            <p class="answer-stats-note" data-i18n="answerStatsScoreNote">Score: an adopted answer earns 5 points. The deduction button subtracts 5 points; click again to undo. Using an answer earns up to 3 more: 1 for clicking or scrolling in its panel, 1 for enlarging the panel, and 1 for every 30 s of engaged time. Engaged time adds the gaps between clicks and scrolls up to 15 s apart, and the time the panel stays enlarged.</p>
             <h4 class="answer-stats-section-title" data-i18n="answerStatsRecentTitle">Recent questions</h4>
             <ul id="answer-stats-recent" class="answer-stats-recent"></ul>
           </div>

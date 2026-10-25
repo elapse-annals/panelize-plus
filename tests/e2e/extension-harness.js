@@ -141,6 +141,14 @@ export async function launchExtension({
  * @returns {Promise<import('@playwright/test').Page>}
  */
 export async function openMultiPanel(extension, { providers, layout = '1x1', enabledProviders = providers }) {
+  // This helper changes settings outside the Multi-Panel page. Drop the old
+  // startup hint so the page reflects those settings instead of briefly
+  // requesting providers from the previous test.
+  await extension.context.addInitScript(() => {
+    if (location.protocol === 'chrome-extension:') {
+      localStorage.removeItem('panelize.startupSnapshot');
+    }
+  });
   await extension.serviceWorker.evaluate(async (settings) => {
     await chrome.storage.sync.set(settings);
   }, {
@@ -152,6 +160,8 @@ export async function openMultiPanel(extension, { providers, layout = '1x1', ena
 
   const page = await extension.context.newPage();
   await page.goto(extension.extensionUrl('multi-panel/multi-panel.html'));
+  // Snapshot frames can have the right count before settings reconciliation.
+  await page.waitForFunction(() => document.documentElement.dataset.panelizeReady === 'true');
   await page.waitForFunction(
     (count) => document.querySelectorAll('#panel-grid iframe').length === count,
     providers.length

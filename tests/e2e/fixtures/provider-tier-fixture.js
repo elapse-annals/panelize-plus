@@ -7,6 +7,7 @@ export function renderProviderTierFixture(provider, {
   newChatFailOnClicks = [],
   newChatResetMode = null,
   loggedOut = false,
+  chatgptControl = 'menu',
 } = {}) {
   if (loggedOut) {
     return `<!doctype html><html><head><meta charset="utf-8"><title>${provider} login fixture</title></head>
@@ -14,8 +15,16 @@ export function renderProviderTierFixture(provider, {
   }
 
   const isChatgpt = provider === 'chatgpt';
-  const modelMarkup = isChatgpt ? `
-    <button type="button" data-testid="model-switcher" aria-label="Medium" aria-expanded="false">Medium</button>
+  // ChatGPT shows GPT-6 in its model switcher and the tier in a separate
+  // reasoning-effort control (a menu, or a strength slider).
+  const gptModelMarkup = '<button type="button" data-testid="model-switcher" aria-label="GPT-6">GPT-6</button>';
+  const modelMarkup = isChatgpt && chatgptControl === 'slider' ? `${gptModelMarkup}
+    <button type="button" id="thinking-strength-button" data-testid="thinking-strength" aria-expanded="false">Thinking strength Medium</button>
+    <div id="thinking-strength-popover" hidden>
+      <label for="thinking-strength-slider">Thinking strength</label>
+      <input id="thinking-strength-slider" type="range" min="0" max="2" step="1" value="1">
+    </div>` : isChatgpt ? `${gptModelMarkup}
+    <button type="button" data-testid="reasoning-effort" aria-label="Medium" aria-expanded="false">Medium</button>
     <div id="model-menu" role="menu" data-state="closed" style="display:none">
       <button type="button" role="option" data-tier-option="fast" aria-selected="false">Instant</button>
       <button type="button" role="option" data-tier-option="balanced" aria-selected="true">Medium</button>
@@ -45,8 +54,11 @@ export function renderProviderTierFixture(provider, {
         const editor = provider === 'chatgpt'
           ? document.querySelector('[data-composer-markdown]')
           : document.querySelector('textarea');
-        const modelButton = document.querySelector('[data-testid="model-switcher"]');
+        const modelButton = document.querySelector('[data-testid="reasoning-effort"]');
         const modelMenu = document.getElementById('model-menu');
+        const strengthButton = document.getElementById('thinking-strength-button');
+        const strengthPopover = document.getElementById('thinking-strength-popover');
+        let strengthSlider = document.getElementById('thinking-strength-slider');
         const deepThink = document.getElementById('deep-think');
         window.__fixture = { provider, newChats: 0, modelChanges: 0, deepThinkChanges: 0 };
 
@@ -73,6 +85,41 @@ export function renderProviderTierFixture(provider, {
           modelMenu.dataset.state = 'closed';
           modelMenu.style.display = 'none';
         }));
+        function updateStrengthLabel(value) {
+          const label = ['Low', 'Medium', 'High'][Number(value)];
+          strengthButton.textContent = 'Thinking strength ' + label;
+          window.__fixture.model = label;
+        }
+        function setStrength(value) {
+          strengthSlider.value = String(value);
+          updateStrengthLabel(value);
+        }
+        function handleStrengthInput(event) {
+          const changedSlider = event.currentTarget;
+          const value = changedSlider.value;
+          setTimeout(() => {
+            if (!changedSlider.isConnected) return;
+            const replacement = changedSlider.cloneNode(true);
+            replacement.value = value;
+            replacement.addEventListener('input', handleStrengthInput);
+            changedSlider.replaceWith(replacement);
+            strengthSlider = replacement;
+            updateStrengthLabel(value);
+            window.__fixture.modelChanges += 1;
+          }, 40);
+        }
+        strengthButton?.addEventListener('click', () => {
+          strengthPopover.hidden = !strengthPopover.hidden;
+          strengthButton.setAttribute('aria-expanded', String(!strengthPopover.hidden));
+        });
+        strengthSlider?.addEventListener('input', handleStrengthInput);
+        if (strengthSlider) setStrength(strengthSlider.value);
+        document.addEventListener('keydown', event => {
+          if (event.key === 'Escape' && strengthPopover && !strengthPopover.hidden) {
+            strengthPopover.hidden = true;
+            strengthButton.setAttribute('aria-expanded', 'false');
+          }
+        });
         deepThink?.addEventListener('click', () => {
           deepThink.setAttribute('aria-pressed', String(deepThink.getAttribute('aria-pressed') !== 'true'));
           window.__fixture.deepThinkChanges += 1;
@@ -91,6 +138,10 @@ export function renderProviderTierFixture(provider, {
           }
           if (modelButton && config.newChatResetMode) {
             setModel(config.newChatResetMode);
+            window.__fixture.modelChanges += 1;
+          }
+          if (strengthSlider && config.newChatResetMode) {
+            setStrength(config.newChatResetMode === 'fast' ? 0 : config.newChatResetMode === 'deep' ? 2 : 1);
             window.__fixture.modelChanges += 1;
           }
         });

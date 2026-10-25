@@ -988,6 +988,12 @@
   "adoptedAnswerTitle": {
     "message": "Принят (нажмите, чтобы отменить)"
   },
+  "rejectAnswerTitle": {
+    "message": "Снять 5 баллов"
+  },
+  "rejectedAnswerTitle": {
+    "message": "Снято 5 баллов (нажмите, чтобы отменить)"
+  },
   "answerStatsButtonTitle": {
     "message": "Статистика ответов"
   },
@@ -1042,6 +1048,9 @@
   "answerStatsAdopted": {
     "message": "Принят"
   },
+  "answerStatsRejected": {
+    "message": "Снято 5 баллов"
+  },
   "answerStatsStatus_pending": {
     "message": "Выполняется"
   },
@@ -1058,7 +1067,7 @@
     "message": "Баллы"
   },
   "answerStatsScoreNote": {
-    "message": "Баллы: принятый ответ даёт 5 баллов. Работа с ответом даёт ещё до 3: 1 за щелчок или прокрутку в его панели, 1 за увеличение панели и 1 за каждые 30 с работы. Время работы складывается из промежутков не длиннее 15 с между щелчками и прокрутками и времени, пока панель увеличена."
+    "message": "Баллы: принятый ответ даёт 5 баллов. Работа с ответом даёт ещё до 3: 1 за щелчок или прокрутку в его панели, 1 за увеличение панели и 1 за каждые 30 с работы. Время работы складывается из промежутков не длиннее 15 с между щелчками и прокрутками и времени, пока панель увеличена. Нажмите кнопку с минусом, чтобы снять 5 баллов; нажмите ещё раз, чтобы отменить."
   },
   "labelProviderSortMode": {
     "message": "Provider order"
@@ -1105,6 +1114,30 @@
   "composerActualMode": {
     "message": "Actual mode"
   },
+  "composerTargetMode": {
+    "message": "Соответствие"
+  },
+  "composerTierMapUnsupported": {
+    "message": "Не поддерживается"
+  },
+  "composerTierMapSkipped": {
+    "message": "Не переключается"
+  },
+  "composerTierMapDetect": {
+    "message": "Автоопределение"
+  },
+  "composerTierMapEffort": {
+    "message": "Уровень рассуждений $1"
+  },
+  "composerTierMapToggleOn": {
+    "message": "$1 вкл."
+  },
+  "composerTierMapToggleOff": {
+    "message": "$1 выкл."
+  },
+  "composerTierMapShared": {
+    "message": "общий с $1"
+  },
   "composerResult": {
     "message": "Result"
   },
@@ -1143,6 +1176,9 @@
   },
   "composerLayout": {
     "message": "Layout"
+  },
+  "composerWideContent": {
+    "message": "Широкий режим"
   },
   "composerNotChecked": {
     "message": "Not checked"
@@ -1208,7 +1244,7 @@
     "message": "Анонимная модель"
   },
   "wideContentTitle": {
-    "message": "Широкий режим: ответы занимают всю ширину панели"
+    "message": "Широкий режим: каждая панель в 1,5 раза шире; прокручивайте по горизонтали."
   },
   "sectionTierRecipes": {
     "message": "Сопоставление уровней рассуждения"

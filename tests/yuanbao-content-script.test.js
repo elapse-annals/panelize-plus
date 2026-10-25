@@ -110,6 +110,21 @@ function createYuanbaoDom({ previewDelayMs = 0 } = {}) {
   return { editor, newChatButton, sendButton, uploadedNames };
 }
 
+// Current Yuanbao UI: an <a> send control with an iconfont glyph and no aria-label.
+function createYuanbaoIconfontDom() {
+  const dom = createYuanbaoDom();
+  const sendButton = document.createElement('a');
+  sendButton.id = 'yuanbao-send-btn';
+  sendButton.className = 'style__send-btn___test style__send-btn--disabled___test';
+  sendButton.innerHTML = '<span class="hyc-common-icon iconfont icon-send"></span>';
+  dom.sendButton.replaceWith(sendButton);
+  markVisible(sendButton);
+  dom.editor.addEventListener('input', () => {
+    sendButton.className = 'style__send-btn___test';
+  });
+  return { ...dom, sendButton };
+}
+
 function getActionResultCalls() {
   return window.parent.postMessage.mock.calls
     .map(([payload]) => payload)
@@ -146,6 +161,7 @@ describe('Yuanbao content script integration', () => {
 
   it.each([
     ['Yuanbao', 'https://yuanbao.tencent.com/chat/naQivTmsDa', createYuanbaoDom],
+    ['Yuanbao iconfont', 'https://yuanbao.tencent.com/chat/naQivTmsDa', createYuanbaoIconfontDom],
   ])('appends text and uses the verified send control for %s', (_name, url, createDom) => {
     window.happyDOM.setURL(url);
     const { editor, sendButton } = createDom();

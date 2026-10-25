@@ -33,17 +33,25 @@
     chatgpt: {
       strategy: 'menu',
       selectors: ['[data-testid*="model-switcher"]', '[data-testid*="model-picker"]'],
-      triggerLabels: rx('model', 'instant', 'medium', 'high', '模型', '快速', '均衡', '深度'),
+      sliderLabels: rx('thinking strength', 'thinking level', 'reasoning effort', 'reasoning level', '思考强度', '推理强度'),
+      effortSelectors: ['[data-testid*="reasoning-effort"]', '[data-testid*="thinking-strength"]', 'button[aria-label*="reasoning effort" i]', 'button[aria-label*="思考强度"]'],
+      triggerLabels: rx('model', 'effort', 'reasoning', 'thinking level', 'instant', 'medium', 'high', '模型', '快速', '均衡', '深度'),
       submenuLabels: rx('^(reasoning effort|thinking level|effort|configure)$'),
+      // Recipes from the host (GPT-6 + Instant/Medium/High) take precedence;
+      // the strength slider still serves their thinking steps.
+      acceptsRecipes: true,
+      modelSelectors: ['[data-testid*="model-switcher"]', '[data-testid*="model-picker"]'],
+      thinkingSelectors: ['[data-testid*="reasoning-effort"]', '[data-testid*="thinking-strength"]', 'button[aria-label*="reasoning effort" i]', 'button[aria-label*="思考强度"]'],
       tiers: {
         fast: rx('instant|fast|low|light|即时|快速|低'),
-        balanced: rx('medium|balanced|pro standard|standard|中等|均衡|标准'),
+        balanced: rx('medium|balanced|pro standard|standard|中|中等|均衡|标准'),
         deep: rx('extra high|pro extended|extended|deep|high|深入|高|极高')
       }
     },
     claude: {
       strategy: 'menu',
       selectors: ['[data-testid*="model-selector"]', '[data-testid*="model-picker"]'],
+      effortSelectors: ['[data-testid*="effort-selector"]', 'button[aria-label*="effort" i]', '[data-testid*="thinking-level"]'],
       triggerLabels: rx('model|haiku|sonnet|opus|模型'),
       submenuLabels: rx('^(effort|reasoning effort|thinking level)$'),
       tiers: { fast: rx('low|haiku'), balanced: rx('medium|sonnet'), deep: rx('high|extra high|xhigh|max|opus') },
@@ -51,7 +59,8 @@
     },
     gemini: {
       strategy: 'recipe',
-      modelSelectors: ['button[aria-label*="模式选择器"]', 'button[aria-label*="mode picker" i]', '[data-test-id="bard-mode-menu-button"]']
+      modelSelectors: ['button[aria-label*="模式选择器"]', 'button[aria-label*="mode picker" i]', '[data-test-id="bard-mode-menu-button"]'],
+      effortSelectors: ['[data-testid*="thinking-level"]', 'button[aria-label*="thinking level" i]', 'button[aria-label*="思考等级"]']
     },
     deepseek: { strategy: 'recipe' },
     kimi: { strategy: 'recipe', modelSelectors: ['[data-testid="model-select-trigger"]'] },
@@ -63,7 +72,15 @@
     },
     chatglm: { strategy: 'recipe', modelSelectors: ['.think-mode-trigger'], thinkingSelectors: ['.think-mode-trigger'] },
     'zai-global': { strategy: 'recipe', modelSelectors: ['.modelSelectorButton', '[aria-label="选择一个模型"]'] },
-    yuanbao: { strategy: 'recipe' },
+    yuanbao: {
+      strategy: 'recipe',
+      modelSelectors: ['.ybc-model-select-button'],
+      // The trigger always reads "元宝"; only its tracking id names the model.
+      modelAttribute: { name: 'dt-model-id', labels: [[/deep_?seek/i, 'DeepSeek'], [/hunyuan/i, 'Hy3']] },
+      // Clicks on the dropdown <li> are ignored; the inner item takes them.
+      optionClickSelector: '.ybc-model-select-dropdown-item',
+      toggleSelectors: ['[dt-button-id="deep_think"]']
+    },
     'meta-ai': { strategy: 'recipe' },
     grok: { strategy: 'unsupported' },
     doubao: { ...DISCOVERY_CONFIG },
@@ -185,23 +202,32 @@
     return element.tabIndex >= 0;
   }
 
+  function getTriggerSelectors() {
+    const models = config?.selectors || [];
+    const efforts = config?.effortSelectors || [];
+    // ChatGPT may expose a model picker alongside an independent strength
+    // menu. Changing strength must keep using that menu after slider probing.
+    return provider === 'chatgpt' ? [...efforts, ...models] : [...models, ...efforts];
+  }
+
   function getTriggerCandidates() {
     if (!config) return [];
-    const selectorMatches = config.selectors.flatMap(selector => allVisible(selector));
+    const selectors = getTriggerSelectors();
+    const selectorMatches = selectors.flatMap(selector => allVisible(selector));
     const genericMatches = allVisible('button, [role="button"], [role="combobox"], [aria-haspopup], [tabindex]');
     const unique = [...new Set([...selectorMatches, ...genericMatches])];
     return unique
       .map(element => ({ element, label: elementLabel(element) }))
       .filter(({ element, label }) => label && !isForbidden(element, label)
         && isInteractive(element)
-        && (matchesAny(label, config.triggerLabels) || config.selectors.some(selector => element.matches(selector))));
+        && (matchesAny(label, config.triggerLabels) || selectors.some(selector => element.matches(selector))));
   }
 
   function findTrigger() {
     const candidates = getTriggerCandidates();
     const currentSelected = candidates.find(({ element }) => element.getAttribute('aria-expanded') === 'true');
     if (currentSelected) return currentSelected;
-    for (const selector of config?.selectors || []) {
+    for (const selector of getTriggerSelectors()) {
       const match = candidates.find(candidate => candidate.element.matches(selector));
       if (match) return match;
     }
@@ -333,10 +359,17 @@
     const options = getMenuOptions();
     const selected = currentMenuSelection(options) || null;
     const triggerLabel = trigger?.label || '';
-    const currentLabel = selected?.label || triggerLabel;
-    const currentTiers = tierMatchesForLabel(currentLabel);
-    const modelFallback = ['claude', 'gemini'].includes(provider)
-      && !TIER_IDS.some(tier => matchesAny(currentLabel, config?.preferredTiers?.[tier]));
+    const effortLabel = getCurrentEffortLabel(trigger, options);
+    const currentLabel = effortLabel || selected?.label || triggerLabel;
+    const currentTiers = effortLabel
+      ? TIER_IDS.filter(tier => matchesAny(effortLabel, config?.preferredTiers?.[tier]))
+      : tierMatchesForLabel(currentLabel);
+    // For Claude and Gemini, a model name is not evidence of the active
+    // reasoning level. Only a separately readable effort setting can confirm
+    // a current tier. The model fallback is available only immediately after
+    // this adapter itself selected and verified that model.
+    const requiresEffortEvidence = ['claude', 'gemini'].includes(provider);
+    const modelFallback = requiresEffortEvidence && !effortLabel;
     const menuSupport = getMenuSupport(options).supportedTiers;
     const supportedTiers = menuSupport.length ? menuSupport : currentTiers;
     if (!trigger && !selected) {
@@ -347,10 +380,13 @@
     if (trigger && !isEnabled(trigger.element)) {
       return { status: 'unavailable', reason: 'selector_disabled', tier: currentTiers[0] || null, actualLabel: currentLabel || null, supportedTiers: [], matchedTiers: [] };
     }
-    const remembered = lastVerifiedSelection?.provider === provider && lastVerifiedSelection.rawLabel === currentLabel
+    const remembered = modelFallback && lastVerifiedSelection?.mappingPath === 'model'
+      && lastVerifiedSelection?.provider === provider && lastVerifiedSelection.rawLabel === currentLabel
       ? lastVerifiedSelection
       : null;
-    const currentTier = remembered?.tier || currentTiers[0] || null;
+    const currentTier = effortLabel
+      ? currentTiers[0] || null
+      : remembered?.tier || (modelFallback ? null : currentTiers[0] || null);
     if (!currentTier) {
       return {
         status: 'unavailable',
@@ -370,6 +406,306 @@
       matchedTiers: remembered?.matchedTiers || matchesForCurrentLabel(currentLabel, options)
     };
   }
+
+  function isThinkingSlider(element) {
+    if (!element || !(element.matches('input[type="range"], [role="slider"]'))) return false;
+    const labelledBy = normalize(element.getAttribute('aria-labelledby')).split(' ').filter(Boolean)
+      .map(id => elementLabel(document.getElementById(id)))
+      .join(' ');
+    const directLabel = normalize(element.getAttribute('aria-label') || element.getAttribute('title') || labelledBy);
+    if (matchesAny(directLabel, config?.sliderLabels)) return true;
+    for (let ancestor = element.parentElement, depth = 0; ancestor && ancestor !== document.body && depth < 6; ancestor = ancestor.parentElement, depth++) {
+      const label = normalize(ancestor.innerText || ancestor.textContent);
+      if (label.length <= 180 && matchesAny(label, config?.sliderLabels)) return true;
+    }
+    return false;
+  }
+
+  function findThinkingSlider() {
+    if (!config?.sliderLabels?.length) return null;
+    const visibleSliders = allVisible('input[type="range"], [role="slider"]');
+    return visibleSliders.find(isThinkingSlider) || null;
+  }
+
+  function findThinkingSliderTrigger() {
+    if (!config?.sliderLabels?.length) return null;
+    const selectors = config.effortSelectors || [];
+    const elements = [...new Set([
+      ...selectors.flatMap(selector => allVisible(selector)),
+      ...allVisible('button, [role="button"], [aria-haspopup], [aria-expanded]')
+    ])];
+    return elements.map(element => ({ element, label: elementLabel(element) }))
+      .find(({ element, label }) => label && !isForbidden(element, label)
+        && isInteractive(element) && matchesAny(label, config.sliderLabels)) || null;
+  }
+
+  function sliderBounds(slider) {
+    if (!slider) return null;
+    const nativeRange = slider instanceof HTMLInputElement && slider.type === 'range';
+    const parse = (attribute, fallback) => {
+      const value = slider.getAttribute(attribute);
+      return value !== null && value.trim() ? Number(value) : fallback;
+    };
+    const min = parse('aria-valuemin', parse('min', nativeRange ? 0 : null));
+    const max = parse('aria-valuemax', parse('max', nativeRange ? 100 : null));
+    const value = parse('aria-valuenow', nativeRange ? Number(slider.value) : null);
+    const step = parse('aria-valuestep', parse('step', 1));
+    if (![min, max, value, step].every(Number.isFinite) || max <= min || step <= 0) return null;
+    const intervals = Math.round((max - min) / step);
+    if (intervals < 1) return null;
+    const levels = intervals + 1;
+    if (levels < 3) {
+      return { min, max, value, step, levels, stops: [{ tier: 'fast', value: min }, { tier: 'deep', value: max }] };
+    }
+    const middleIndex = Math.round(intervals / 2);
+    const stops = [
+      { tier: 'fast', value: min },
+      { tier: 'balanced', value: min + middleIndex * step },
+      { tier: 'deep', value: min + intervals * step }
+    ];
+    return { min, max, value, step, levels, stops };
+  }
+
+  function sliderTier(slider) {
+    if (!slider) return null;
+    const labelledTier = sliderLabelTier(slider);
+    const bounds = sliderBounds(slider);
+    const tolerance = bounds ? Math.max(bounds.step / 2, (bounds.max - bounds.min) * 0.01) : 0;
+    const numericTier = bounds
+      ? bounds.stops.find(stop => Math.abs(stop.value - bounds.value) <= tolerance)?.tier || null
+      : null;
+    if (labelledTier && numericTier && labelledTier !== numericTier) return null;
+    return labelledTier || numericTier;
+  }
+
+  function sliderLabelTier(slider) {
+    if (!slider) return null;
+    const valueText = normalize(slider.getAttribute('aria-valuetext') || slider.getAttribute('data-value-label'));
+    const valueTier = TIER_IDS.find(tier => matchesAny(valueText, config?.tiers?.[tier]));
+    if (valueTier) return valueTier;
+    const trigger = findThinkingSliderTrigger();
+    return trigger ? TIER_IDS.find(tier => matchesTier(trigger.label, tier)) || null : null;
+  }
+
+  function sliderState(slider) {
+    if (!slider) return null;
+    const bounds = sliderBounds(slider);
+    const tier = sliderTier(slider);
+    if (!bounds) return { status: 'unavailable', reason: 'slider_range_not_readable', tier: null, actualLabel: null, supportedTiers: [], matchedTiers: [] };
+    const supportedTiers = bounds.stops.map(stop => stop.tier);
+    const actualLabel = normalize(slider.getAttribute('aria-valuetext')) || findThinkingSliderTrigger()?.label || `思考强度 ${bounds.value}`;
+    if (!tier) return { status: 'unavailable', reason: 'current_tier_unknown', tier: null, actualLabel, supportedTiers, matchedTiers: [] };
+    return { status: 'success', reason: null, tier, actualLabel, supportedTiers, matchedTiers: [tier] };
+  }
+
+  async function readThinkingSliderState({ openIfNeeded = false } = {}) {
+    let slider = findThinkingSlider();
+    const trigger = findThinkingSliderTrigger();
+    let openedByUs = false;
+    try {
+      if (!slider && trigger && openIfNeeded && isEnabled(trigger.element)) {
+        trigger.element.click();
+        openedByUs = true;
+        slider = await waitFor(findThinkingSlider, 700, 35);
+      }
+      if (slider) return sliderState(slider);
+      if (trigger) {
+        return {
+          status: 'unavailable',
+          reason: isEnabled(trigger.element) ? 'slider_not_visible' : 'slider_disabled',
+          tier: null,
+          actualLabel: trigger.label || null,
+          supportedTiers: [],
+          matchedTiers: []
+        };
+      }
+      return null;
+    } finally {
+      if (openedByUs) closeMenuIfOpened(true);
+    }
+  }
+
+  function dispatchRangeInput(slider, value) {
+    const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(slider), 'value')?.set;
+    if (setter) setter.call(slider, String(value));
+    else slider.value = String(value);
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+    slider.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  async function setAccessibleSliderValue(slider, target, bounds) {
+    const deadline = Date.now() + 3000;
+    const tolerance = Math.max(bounds.step / 2, (bounds.max - bounds.min) * 0.01);
+    if (Math.abs(bounds.value - target.value) <= tolerance) return slider;
+    const originalActiveElement = document.activeElement;
+    const dispatchKey = (element, key) => {
+      element.focus();
+      element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      element.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true, cancelable: true }));
+    };
+    let current = slider;
+    let currentBounds = bounds;
+    try {
+      const endpointKey = target.value === bounds.min ? 'Home' : target.value === bounds.max ? 'End' : null;
+      if (endpointKey) {
+        dispatchKey(current, endpointKey);
+        const updated = await waitFor(() => {
+          const candidate = findThinkingSlider();
+          const value = sliderBounds(candidate)?.value;
+          return candidate && value !== currentBounds.value ? candidate : null;
+        }, Math.min(100, Math.max(0, deadline - Date.now())), 10);
+        if (updated) {
+          current = updated;
+          currentBounds = sliderBounds(current);
+          if (!currentBounds) return null;
+        }
+      }
+
+      const delta = Math.round((target.value - currentBounds.value) / currentBounds.step);
+      if (delta === 0) return current;
+      if (Math.abs(delta) > 128) return null;
+      const key = delta > 0 ? 'ArrowRight' : 'ArrowLeft';
+      for (let index = 0; index < Math.abs(delta); index++) {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) return null;
+        const previous = currentBounds.value;
+        dispatchKey(current, key);
+        const updated = await waitFor(() => {
+          const candidate = findThinkingSlider();
+          const value = sliderBounds(candidate)?.value;
+          return candidate && value !== previous ? candidate : null;
+        }, Math.min(100, remaining), 10);
+        if (!updated) return null;
+        current = updated;
+        currentBounds = sliderBounds(current);
+        if (!currentBounds) return null;
+      }
+      return Math.abs(currentBounds.value - target.value) <= tolerance ? current : null;
+    } finally {
+      const activeElement = document.activeElement;
+      if (activeElement === current && current?.isConnected && current.matches('[role="slider"]')
+        && originalActiveElement?.isConnected && originalActiveElement !== document.body
+        && typeof originalActiveElement.focus === 'function') {
+        originalActiveElement.focus();
+      }
+    }
+  }
+
+  async function setThinkingSliderTier(tier) {
+    let slider = findThinkingSlider();
+    const trigger = findThinkingSliderTrigger();
+    let openedByUs = false;
+    try {
+      if (!slider && trigger && isEnabled(trigger.element)) {
+        trigger.element.click();
+        openedByUs = true;
+        slider = await waitFor(findThinkingSlider, 700, 35);
+      }
+      if (!slider) {
+        return {
+          status: trigger && !isEnabled(trigger.element) ? 'unavailable' : 'unsupported',
+          reason: trigger && !isEnabled(trigger.element) ? 'selector_disabled' : 'slider_not_visible',
+          tier: null, requestedTier: tier, actualLabel: trigger?.label || null,
+          supportedTiers: [], matchedTiers: []
+        };
+      }
+
+      const bounds = sliderBounds(slider);
+      if (!bounds) return { status: 'unavailable', reason: 'slider_range_not_readable', tier: null, requestedTier: tier, actualLabel: null, supportedTiers: [], matchedTiers: [] };
+      const target = bounds.stops.find(stop => stop.tier === tier);
+      const supportedTiers = bounds.stops.map(stop => stop.tier);
+      if (!isEnabled(slider)) {
+        return { status: 'unavailable', reason: 'slider_disabled', tier: null, requestedTier: tier, actualLabel: slider.getAttribute('aria-valuetext') || null, supportedTiers, matchedTiers: [] };
+      }
+      if (!target) {
+        return { status: 'unsupported', reason: 'tier_unavailable', tier: null, requestedTier: tier, actualLabel: null, supportedTiers, matchedTiers: [] };
+      }
+      const tolerance = Math.max(bounds.step / 2, (bounds.max - bounds.min) * 0.01);
+      let sliderToVerify = slider;
+      if (Math.abs(bounds.value - target.value) > tolerance) {
+        if (slider instanceof HTMLInputElement && slider.type === 'range') {
+          dispatchRangeInput(slider, target.value);
+        } else if (slider.matches('[role="slider"]')) {
+          sliderToVerify = await setAccessibleSliderValue(slider, target, bounds);
+        }
+        if (!sliderToVerify) {
+          return { status: 'unavailable', reason: 'slider_not_writable', tier: null, requestedTier: tier, actualLabel: null, supportedTiers, matchedTiers: [] };
+        }
+      }
+      // Let React or another UI framework process its input event and replace
+      // the slider before reading back the value. Checking the mutated input
+      // immediately can mistake a DOM-only change for an applied setting.
+      await new Promise(resolve => setTimeout(resolve, 90));
+      const verified = await waitFor(() => {
+        const current = findThinkingSlider();
+        const value = sliderBounds(current)?.value;
+        const labelTier = sliderLabelTier(current);
+        return current && Math.abs(value - target.value) <= tolerance
+          && sliderTier(current) === tier && (!labelTier || labelTier === tier) ? current : null;
+      }, 1100, 50);
+      if (!verified) return { status: 'error', reason: 'verification_failed', tier: null, requestedTier: tier, actualLabel: null, supportedTiers, matchedTiers: [] };
+      const state = sliderState(verified);
+      return { ...state, requestedTier: tier };
+    } finally {
+      if (openedByUs) closeMenuIfOpened(true);
+    }
+  }
+
+  function getCurrentEffortLabel(modelTrigger, menuOptions) {
+    if (!['claude', 'gemini'].includes(provider)) return null;
+
+    for (const selector of config?.effortSelectors || []) {
+      const indicator = allVisible(selector).find(element => !isForbidden(element, elementLabel(element)));
+      const accessible = normalize(indicator?.getAttribute('aria-label') || indicator?.getAttribute('title'));
+      const label = accessible && /(effort|thinking level|reasoning level|思考强度|推理强度)/i.test(accessible)
+        ? accessible
+        : elementLabel(indicator);
+      if (label && TIER_IDS.some(tier => matchesAny(label, config?.preferredTiers?.[tier]))) {
+        return label;
+      }
+    }
+
+    // A checked Low/Medium/High item counts only inside a menu rooted at the
+    // visible Effort/Thinking control. A checked model option with a similar
+    // label never stands in for reasoning strength.
+    const roots = getOpenMenus();
+    const effortControls = menuOptions.filter(({ label }) => matchesAny(label, config?.submenuLabels));
+    const selectedEffort = menuOptions.find(({ element, label }) => isSelected(element)
+      && TIER_IDS.some(tier => matchesAny(label, config?.preferredTiers?.[tier])));
+    if (selectedEffort) {
+      const selectedRoot = roots.find(root => root === selectedEffort.element || root.contains(selectedEffort.element));
+      if (selectedRoot && effortControls.some(({ element }) => relatedMenuRoots(element, roots).includes(selectedRoot))) {
+        return selectedEffort.label;
+      }
+
+      const labelledBy = (selectedRoot?.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+      if (labelledBy.some(id => {
+        const labelElement = document.getElementById(id);
+        return labelElement && matchesAny(elementLabel(labelElement), config?.submenuLabels);
+      })) {
+        return selectedEffort.label;
+      }
+    }
+
+    // Some pages expose the active model and effort in one accessible picker
+    // label. Require an explicit effort word along with the selected level.
+    const triggerLabel = modelTrigger?.label || '';
+    if (/(effort|thinking level|reasoning level|思考强度|推理强度)/i.test(triggerLabel)
+      && TIER_IDS.some(tier => matchesAny(triggerLabel, config?.preferredTiers?.[tier]))) {
+      return triggerLabel;
+    }
+    return null;
+  }
+
+  // A model-only fallback is verified by this script, but it cannot observe
+  // an external effort change on the same model. Drop that cache as soon as
+  // the user interacts with the provider page.
+  function invalidateModelFallback() {
+    if (lastVerifiedSelection?.mappingPath === 'model') lastVerifiedSelection = null;
+  }
+
+  document.addEventListener('click', invalidateModelFallback, true);
+  document.addEventListener('change', invalidateModelFallback, true);
 
   function hasLoginGate() {
     if (document.querySelector('[contenteditable="true"], [role="textbox"], textarea')) return false;
@@ -635,6 +971,7 @@
     lastVerifiedSelection = {
       provider,
       rawLabel: option.label,
+      mappingPath: option.mappingPath,
       tier: actualTier,
       actualLabel: actualLabelWithMapping,
       supportedTiers: support,
@@ -766,7 +1103,7 @@
     const selectors = kind === 'model' ? config.modelSelectors : config.thinkingSelectors;
     for (const selector of selectors || []) {
       const element = allVisible(selector).find(candidate => !isInsideOpenMenu(candidate));
-      if (element) return { element, label: elementLabel(element) };
+      if (element) return { element, label: stepTriggerLabel(kind, element) };
     }
     // Without a known selector, only popup buttons showing one of the
     // recipe's labels qualify, so no ordinary page button is ever clicked.
@@ -779,17 +1116,27 @@
         && labels.some(candidate => labelScore(label, candidate) > 0)) || null;
   }
 
+  function stepTriggerLabel(kind, element) {
+    const attribute = kind === 'model' ? config.modelAttribute : null;
+    const value = attribute ? element.getAttribute(attribute.name) || '' : '';
+    return attribute?.labels.find(([pattern]) => pattern.test(value))?.[1] || elementLabel(element);
+  }
+
   function thinkingTrigger(recipes) {
     return findStepTrigger('thinking', recipes) || findStepTrigger('model', recipes);
   }
 
+  function isKnownToggle(element) {
+    return (config.toggleSelectors || []).some(selector => element.matches(selector));
+  }
+
   function findRecipeToggle(step) {
-    const candidates = [...new Set(['button', '[role="button"]', '[role="switch"]', '[role="checkbox"]', 'input[type="checkbox"]', 'label']
+    const candidates = [...new Set([...(config.toggleSelectors || []), 'button', '[role="button"]', '[role="switch"]', '[role="checkbox"]', 'input[type="checkbox"]', 'label']
       .flatMap(selector => allVisible(selector)))];
     for (const candidate of candidates) {
       const control = candidate.tagName === 'LABEL' ? candidate.control : candidate;
       const label = elementLabel(candidate);
-      if (!control || !isInteractive(control) || !label || label.length > 40 || isRecipeForbidden(candidate, label)) continue;
+      if (!control || !(isKnownToggle(control) || isInteractive(control)) || !label || label.length > 40 || isRecipeForbidden(candidate, label)) continue;
       if (labelScore(label, step.label) > 0) return { element: control, label };
     }
     return null;
@@ -799,8 +1146,8 @@
     const state = readToggle(toggle);
     if (state) return state.enabled;
     const classes = Array.from(toggle.element.classList || []);
-    if (classes.some(name => /--(selected|active|checked|on)$|^(selected|active|checked|is-active|is-selected)$/i.test(name))) return true;
-    if (classes.some(name => /toggle|switch/i.test(name))) return false;
+    if (classes.some(name => /--(selected|active|checked|on)$|^(selected|active|checked|is-active|is-selected)$|_(selected|active|checked)__/i.test(name))) return true;
+    if (isKnownToggle(toggle.element) || classes.some(name => /toggle|switch/i.test(name))) return false;
     return null;
   }
 
@@ -823,16 +1170,62 @@
     return best;
   }
 
-  async function openSubmenu(row, previousOptions) {
+  async function openSubmenu(row, previousOptions, previousRoots) {
     const previous = new Map(previousOptions.map(option => [option.element, option.label]));
+    const initialRoots = new Set(previousRoots);
     const before = new Set(visibleOptionCandidates());
     row.element.click();
-    return waitFor(() => {
-      const fromMenus = getMenuOptions().filter(option => !previous.has(option.element));
-      if (fromMenus.length) return fromMenus;
-      const added = outermost(visibleOptionCandidates().filter(element => !before.has(element)));
-      return added.length ? added.map(element => ({ element, label: elementLabel(element) })).filter(({ label }) => label) : null;
+
+    const roots = await waitFor(() => {
+      const visibleRoots = getOpenMenus();
+      const controlled = relatedMenuRoots(row.element, visibleRoots)
+        .filter(root => !previousRoots.includes(root));
+      if (controlled.length === 1) return controlled;
+
+      const added = visibleRoots.filter(root => !initialRoots.has(root));
+      if (added.length === 1) return added;
+      if (added.length > 1 && row.element.id) {
+        const labelled = added.filter(root => (root.getAttribute('aria-labelledby') || '')
+          .split(/\s+/).includes(row.element.id));
+        if (labelled.length === 1) return labelled;
+      }
+      return null;
     }, 900);
+
+    if (roots?.length === 1) {
+      const options = getMenuOptions(roots);
+      const newlyAdded = options.filter(option => !previous.has(option.element)
+        || previous.get(option.element) !== option.label);
+      return newlyAdded.length ? newlyAdded : options;
+    }
+
+    // A framework may reuse the containing menu node for a nested picker.
+    // Read only options newly rendered inside that same associated root.
+    const containingRoot = previousRoots.find(root => root.contains(row.element));
+    if (containingRoot) {
+      const options = getMenuOptions([containingRoot]);
+      const newlyAdded = options.filter(option => !previous.has(option.element)
+        || previous.get(option.element) !== option.label);
+      if (newlyAdded.length) return newlyAdded;
+    }
+
+    // Roleless nested popovers are accepted only when their new options share
+    // one identifiable menu/list container. If unrelated menus appear at the
+    // same time, the selection is ambiguous and the step fails closed.
+    const addedCandidates = visibleOptionCandidates().filter(element => !before.has(element));
+    const addedContainers = [...new Set(addedCandidates.map(element => {
+      let current = element.parentElement;
+      while (current && current !== document.body) {
+        if (current.matches('ul, [data-menu-root], [data-popover], [class*="menu" i], [class*="popover" i], [class*="dropdown" i]')) return current;
+        current = current.parentElement;
+      }
+      return null;
+    }).filter(Boolean))];
+    if (addedContainers.length !== 1) return null;
+    return visibleOptionCandidates()
+      .filter(element => addedContainers[0].contains(element))
+      .map(element => ({ element, label: elementLabel(element) }))
+      .filter(option => option.label);
   }
 
   async function readStepFromMenu(step, recipes) {
@@ -881,7 +1274,7 @@
     let option = pickOption(opened.options, step.label);
     const row = step.kind === 'thinking' && !option ? opened.options.find(candidate => SUBMENU_LABEL.test(candidate.label)) : null;
     if (row) {
-      const submenuOptions = await openSubmenu(row, opened.options);
+      const submenuOptions = await openSubmenu(row, opened.options, opened.roots || []);
       option = submenuOptions ? pickOption(submenuOptions, step.label, { excludeSubmenus: false }) : null;
     }
     if (!option) {
@@ -892,11 +1285,33 @@
       closeOpenedMenus(opened);
       return { error: 'option_locked', locked: true, label: option.label };
     }
-    if (!isChosen(option.element)) option.element.click();
+    if (!isChosen(option.element)) {
+      const target = (config.optionClickSelector && option.element.querySelector(config.optionClickSelector)) || option.element;
+      target.click();
+    }
     let label = await waitFor(() => readStepFromTriggers(step, recipes), 1300, 70);
     if (getOpenMenus().length && opened.openedByUs) closeOpenedMenus(opened);
     if (!label) label = await readStepFromMenu(step, recipes);
     return label ? { label } : { error: 'verification_failed' };
+  }
+
+  /**
+   * A thinking step on a page with a strength slider (ChatGPT) moves the
+   * slider to the stop of the tier its label names. Returns null when no
+   * slider is shown, so the step falls back to picking a menu option.
+   */
+  async function runSliderStep(step) {
+    if (!findThinkingSlider() && !findThinkingSliderTrigger()) return null;
+    const tier = stepTier(step);
+    if (!tier) return null;
+    const result = await setThinkingSliderTier(tier);
+    if (result.reason === 'slider_not_visible') return null;
+    if (result.status === 'success') return { label: result.actualLabel };
+    return { error: result.reason || 'verification_failed', locked: result.status === 'unavailable', label: result.actualLabel };
+  }
+
+  function stepTier(step) {
+    return TIER_IDS.find(tier => labelAlternatives(step.label).some(label => matchesTier(label, tier))) || null;
   }
 
   function recipeKey(steps) {
@@ -916,9 +1331,15 @@
     const thinking = findStepTrigger('thinking', recipes);
     const toggleSteps = TIER_IDS.flatMap(tier => recipes[tier] || []).filter(item => item.kind === 'toggle');
     const toggle = toggleSteps.length ? findRecipeToggle(toggleSteps[0]) : null;
+    const thinkingLabels = kindLabels(recipes, 'thinking');
+    const thinkingLabel = thinking && thinkingLabels.some(label => labelScore(thinking.label, label) > 0)
+      ? thinking.label
+      : model && thinkingLabels.some(label => labelScore(model.label, label) > 0)
+        ? model.label
+        : null;
     return {
       model: model?.label || null,
-      thinking: thinking?.label || model?.label || null,
+      thinking: thinkingLabel,
       toggle: toggle ? readRecipeToggle(toggle) : null,
       toggleLabel: toggle?.label || null
     };
@@ -933,6 +1354,12 @@
   function stepMatchesReadings(step, readings, recipes) {
     if (step.kind === 'toggle') return readings.toggle === null ? null : readings.toggle === step.on;
     const text = step.kind === 'model' ? readings.model : readings.thinking;
+    // A strength slider names its own stops ("Thinking strength Low"), so
+    // compare tiers instead of the recipe's labels.
+    if (step.kind === 'thinking' && text && matchesAny(text, config.sliderLabels)) {
+      const tier = stepTier(step);
+      return Boolean(tier) && TIER_IDS.every(candidate => matchesTier(text, candidate) === (candidate === tier));
+    }
     return text ? stepShownIn(text, step, recipes) : null;
   }
 
@@ -946,7 +1373,7 @@
     }
     const matchedTiers = supportedTiers.filter(tier => {
       const results = recipes[tier].map(item => stepMatchesReadings(item, readings, recipes));
-      return results.includes(true) && !results.includes(false);
+      return results.every(result => result === true);
     });
     const remembered = lastVerifiedSelection?.provider === provider && lastVerifiedSelection.rawLabel === actualLabel
       && matchedTiers.includes(lastVerifiedSelection.tier) ? lastVerifiedSelection : null;
@@ -973,7 +1400,8 @@
     if (!steps.length) return failure('unsupported', 'tier_not_mapped');
     const confirmed = [];
     for (const item of steps) {
-      const result = item.kind === 'toggle' ? await runToggleStep(item) : await runMenuStep(item, recipes);
+      const result = item.kind === 'toggle' ? await runToggleStep(item)
+        : (item.kind === 'thinking' && await runSliderStep(item)) || await runMenuStep(item, recipes);
       if (result.error) {
         const partial = [...confirmed, '?'].join(' · ');
         if (result.error === 'selector_not_visible' && hasLoginGate()) return failure('unavailable', 'not_logged_in');
@@ -984,12 +1412,17 @@
       }
       confirmed.push(result.label);
     }
+    const finalReadings = currentReadings(recipes);
+    const finalResults = steps.map(item => stepMatchesReadings(item, finalReadings, recipes));
+    if (finalResults.some(result => result === false)) {
+      return failure('error', 'verification_failed', readingsLabel(finalReadings));
+    }
     const matchedTiers = tiersSharing(recipes, tier);
     const label = [...new Set(confirmed)].join(' · ');
     const actualLabel = matchedTiers.length > 1 ? `${label} (shared mapping: ${matchedTiers.join('/')})` : label;
     lastVerifiedSelection = {
       provider,
-      rawLabel: readingsLabel(currentReadings(recipes)),
+      rawLabel: readingsLabel(finalReadings),
       tier,
       actualLabel,
       supportedTiers,
@@ -1011,7 +1444,20 @@
     if (!provider || !config || config.strategy === 'unsupported') {
       return { status: 'unsupported', reason: 'provider_not_supported', tier: null, requestedTier: data.tier || null, actualLabel: null, supportedTiers: [] };
     }
-    if (config.strategy === 'recipe') return processRecipeRequest(data);
+    if (config.strategy === 'recipe' || (config.acceptsRecipes && data.recipes)) return processRecipeRequest(data);
+    if (provider === 'chatgpt') {
+      const slider = findThinkingSlider();
+      const sliderTrigger = findThinkingSliderTrigger();
+      if (data.type === 'GET_PROVIDER_TIER_STATE') {
+        const state = await readThinkingSliderState({ openIfNeeded: true });
+        if (state?.reason === 'slider_not_visible') return readCurrentState();
+        if (state) return state;
+      } else if (slider || sliderTrigger) {
+        const result = await setThinkingSliderTier(data.tier);
+        if (result.reason !== 'slider_not_visible') return result;
+        return setMenuTier(data.tier);
+      }
+    }
     if (data.type === 'SET_PROVIDER_TIER' && getToggle()) return setToggleTier(data.tier);
     if (data.type === 'GET_PROVIDER_TIER_STATE') return readCurrentState();
     return setMenuTier(data.tier);

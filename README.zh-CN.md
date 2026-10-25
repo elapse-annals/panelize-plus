@@ -142,8 +142,17 @@ Panelize 是一个免费、开源的 Chrome / Edge 扩展：一次输入，同�
 |------|--------|
 | 打开 Panelize | `Cmd/Ctrl + Shift + E` |
 | 打开 Prompt Library | `Cmd/Ctrl + Shift + L` |
+| 发送给全部 AI | `Enter` 或 `Cmd/Ctrl + Enter` |
+| 换行 | `Shift + Enter` |
+| 仅填充输入框 | `Cmd/Ctrl + Shift + Enter` |
+| 批量新对话 | `Cmd/Ctrl + Alt + N` |
+| 聚焦统一输入框 | `Cmd/Ctrl + Alt + K` |
+| 快速／均衡／深度档位 | `Cmd/Ctrl + Alt + 1 / 2 / 3` |
+| 切换宽屏模式 | `Cmd/Ctrl + Alt + W` |
 
-可在 `chrome://extensions/shortcuts` 自定义。
+底栏键盘按钮可修改页面快捷键，悬浮按钮可查看实际绑定；这些快捷键在 AI 面板输入框内也能使用。macOS 的 `Alt` 对应 `Option`。打开扩展和提示词库的浏览器级快捷键可在 `chrome://extensions/shortcuts` 自定义。
+
+底栏可切换“手动／常用优先”排序；常用优先按本机回答统计分数排列 AI，保留原手动顺序。档位按钮会批量切换当前已打开的 AI，“默认”保留各平台自己的设置。点击档位旁的设置按钮查看实际模式与逐面板结果，未成功项可单独重试。各平台的模式、默认匹配与账号限制见 [AI 档位匹配表](PROVIDER_MODES.md)。
 
 ---
 
