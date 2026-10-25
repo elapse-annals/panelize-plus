@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ANSWER_STATUS,
+  RECENT_SCORE_WINDOW_MS,
   aggregateAnswerStats,
   applyEngagementEvent,
   applyTimingEvent,
@@ -16,6 +17,9 @@ const PANELS = [
   { id: 'p2', providerId: 'gemini' },
   { id: 'p3', providerId: 'claude' }
 ];
+
+// Every test round counts as recent unless a test says otherwise.
+const NOW = 1000000;
 
 function newRound(id = 'r1', createdAt = 1000) {
   return createRound({ id, createdAt, text: 'Question', panels: PANELS });
@@ -203,7 +207,7 @@ describe('aggregateAnswerStats', () => {
     // No answer adopted: counts as a question, not for the adoption rate.
     const third = finish(newRound('r3', 90000), 'p1', 2000, 6000);
 
-    const stats = aggregateAnswerStats([first, second, third]);
+    const stats = aggregateAnswerStats([first, second, third], NOW);
     const byProvider = Object.fromEntries(stats.map(entry => [entry.providerId, entry]));
 
     expect(byProvider.chatgpt).toMatchObject({
@@ -244,7 +248,7 @@ describe('aggregateAnswerStats', () => {
     round = finish(round, 'a', 900, 8000);
     round = finish(round, 'b', 1200, 4000);
 
-    const [entry] = aggregateAnswerStats([round]);
+    const [entry] = aggregateAnswerStats([round], NOW);
     expect(entry).toMatchObject({ rounds: 1, medianFirstOutputMs: 900, medianCompleteMs: 4000 });
   });
 
@@ -272,7 +276,7 @@ describe('aggregateAnswerStats', () => {
         p2: { providerId: 'gemini' }
       }
     };
-    const stats = aggregateAnswerStats([duplicateProviderRound, oldRound]);
+    const stats = aggregateAnswerStats([duplicateProviderRound, oldRound], NOW);
     const byProvider = Object.fromEntries(stats.map(entry => [entry.providerId, entry]));
 
     expect(byProvider.chatgpt.score).toBe(-5);
@@ -286,7 +290,7 @@ describe('aggregateAnswerStats', () => {
     let second = engage(newRound('r2', 100000), 'p3', [['zoom-in', 1000], ['zoom-out', 61000]]);
     second = engage(second, 'p2', [['scroll', 2000]]);
 
-    const stats = aggregateAnswerStats([first, second]);
+    const stats = aggregateAnswerStats([first, second], NOW);
     // Claude and ChatGPT tie on score; adoptions decide.
     expect(stats.map(entry => entry.providerId)).toEqual(['chatgpt', 'claude', 'gemini']);
     const byProvider = Object.fromEntries(stats.map(entry => [entry.providerId, entry]));
@@ -305,7 +309,7 @@ describe('aggregateAnswerStats', () => {
     round = engage(round, 'a', [['click', 1000]]);
     round = engage(round, 'b', [['zoom-in', 1000], ['click', 2000]]);
 
-    const [entry] = aggregateAnswerStats([round]);
+    const [entry] = aggregateAnswerStats([round], NOW);
     expect(entry).toMatchObject({ score: 2, engagedRounds: 1, activeMs: 1000 });
   });
 
@@ -317,7 +321,7 @@ describe('aggregateAnswerStats', () => {
     round = engage(round, 'p2', [['click', 4000]]);
     round = applyTimingEvent(round, 'p2', 'timeout', 901000);
 
-    const byProvider = Object.fromEntries(aggregateAnswerStats([round]).map(entry => [entry.providerId, entry]));
+    const byProvider = Object.fromEntries(aggregateAnswerStats([round], NOW).map(entry => [entry.providerId, entry]));
     expect(byProvider.chatgpt).toMatchObject({ score: -5, timeoutCount: 1, engagedRounds: 1 });
     expect(byProvider.gemini).toMatchObject({ score: 1, timeoutCount: 1 });
   });
@@ -328,12 +332,26 @@ describe('aggregateAnswerStats', () => {
     failed = applyTimingEvent(failed, 'p2', 'cancelled', 2000);
     const pending = engage(newRound('r2', 0), 'p1', [['click', 1000]]);
 
-    const byProvider = Object.fromEntries(aggregateAnswerStats([failed, pending]).map(entry => [entry.providerId, entry]));
+    const byProvider = Object.fromEntries(aggregateAnswerStats([failed, pending], NOW).map(entry => [entry.providerId, entry]));
     expect(byProvider.chatgpt.score).toBe(-5 + 1);
     expect(byProvider.gemini.score).toBe(0);
   });
 
+  it('weighs points from the last 30 days in full and older points at 30%', () => {
+    const now = RECENT_SCORE_WINDOW_MS + 100000;
+    const old = toggleRoundAdoption(newRound('old', 99999), 'p1');
+    const oldRejected = toggleRoundRejection(newRound('old-rejected', 0), 'p2');
+    let recent = toggleRoundAdoption(newRound('recent', 100000), 'p1');
+    recent = engage(recent, 'p2', [['click', 1000]]);
+
+    const byProvider = Object.fromEntries(
+      aggregateAnswerStats([old, oldRejected, recent], now).map(entry => [entry.providerId, entry])
+    );
+    expect(byProvider.chatgpt).toMatchObject({ recentScore: 5, olderScore: 5, score: 6.5, adoptedCount: 2 });
+    expect(byProvider.gemini).toMatchObject({ recentScore: 1, olderScore: -5, score: -0.5 });
+  });
+
   it('returns nothing without rounds', () => {
-    expect(aggregateAnswerStats([])).toEqual([]);
+    expect(aggregateAnswerStats([], NOW)).toEqual([]);
   });
 });

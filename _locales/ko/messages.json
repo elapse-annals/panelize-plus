@@ -1028,7 +1028,7 @@
     "message": "보내기부터 첫 텍스트까지, 그리고 답변 완료까지의 시간입니다. 중앙값이며 괄호 안은 평균입니다. ChatGPT, Gemini, DeepSeek, Kimi, Qwen (China), Yuanbao만 측정합니다. 채택률은 답변이 채택된 질문만 계산합니다."
   },
   "answerStatsRecentTitle": {
-    "message": "최근 질문"
+    "message": "최근 30일 질문"
   },
   "answerStatsClear": {
     "message": "통계 지우기"
@@ -1068,6 +1068,18 @@
   },
   "answerStatsScoreNote": {
     "message": "점수: 채택한 답변은 5점입니다. 답변을 사용하면 최대 3점이 더해집니다. 패널에서 클릭하거나 스크롤하면 1점, 패널을 확대하면 1점, 사용 시간 30초마다 1점입니다. 사용 시간은 15초 이내 간격으로 이어진 클릭과 스크롤 사이의 시간과 패널을 확대한 시간을 더한 값입니다. 빼기 버튼을 클릭하면 5점이 차감되며, 다시 클릭하면 취소됩니다. 측정 대상 답변이 텍스트 없이 시간 초과되면 역시 5점이 차감되고 사용 점수도 받지 않습니다."
+  },
+  "answerStatsColumnRecentScore": {
+    "message": "최근 30일"
+  },
+  "answerStatsColumnOlderScore": {
+    "message": "이전 ($1)"
+  },
+  "answerStatsShowMore": {
+    "message": "더 보기 ($1)"
+  },
+  "answerStatsWeightNote": {
+    "message": "점수 = 최근 30일 점수 전액 + 이전 점수 × 30%로, 최근 답변의 비중이 더 큽니다."
   },
   "labelProviderSortMode": {
     "message": "Provider order"

@@ -1028,7 +1028,7 @@
     "message": "送信から最初のテキストが出るまでと回答が完了するまでの時間です。中央値を示し、括弧内は平均値です。計測対象は ChatGPT、Gemini、DeepSeek、Kimi、Qwen (China)、Yuanbao のみです。採用率は回答が採用された質問だけを数えます。"
   },
   "answerStatsRecentTitle": {
-    "message": "最近の質問"
+    "message": "過去 30 日間の質問"
   },
   "answerStatsClear": {
     "message": "統計を消去"
@@ -1068,6 +1068,18 @@
   },
   "answerStatsScoreNote": {
     "message": "スコア：採用した回答は 5 点です。回答の利用でさらに最大 3 点加算されます。パネル内のクリックやスクロールで 1 点、パネルの拡大で 1 点、操作時間 30 秒ごとに 1 点です。操作時間は 15 秒以内の間隔で続いたクリックとスクロールの間の時間と、パネルを拡大していた時間の合計です。マイナスボタンをクリックすると 5 点減点され、もう一度クリックすると取り消されます。計測対象の回答がテキストを出さずにタイムアウトした場合も 5 点減点され、利用による加点はありません。"
+  },
+  "answerStatsColumnRecentScore": {
+    "message": "過去 30 日"
+  },
+  "answerStatsColumnOlderScore": {
+    "message": "それ以前（$1）"
+  },
+  "answerStatsShowMore": {
+    "message": "さらに表示（$1）"
+  },
+  "answerStatsWeightNote": {
+    "message": "スコア = 過去 30 日間の点数（全額）+ それ以前の点数 × 30%。最近の回答ほど重視されます。"
   },
   "labelProviderSortMode": {
     "message": "Provider order"

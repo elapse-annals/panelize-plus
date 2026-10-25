@@ -47,6 +47,11 @@ export const REJECTED_ANSWER_POINTS = 5;
 export const MAX_ENGAGEMENT_POINTS = 3;
 export const ENGAGEMENT_POINT_ACTIVE_MS = 30 * 1000;
 
+// The total score weighs points from the last RECENT_SCORE_WINDOW_MS in full
+// and compresses older points to OLDER_SCORE_WEIGHT.
+export const RECENT_SCORE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+export const OLDER_SCORE_WEIGHT = 0.3;
+
 let db = null;
 
 export function isAnswerTimingProvider(providerId) {
@@ -262,10 +267,13 @@ function hasTimedOutWithoutOutput(answers) {
  * Adoption rate only counts rounds where some answer was adopted. Score adds
  * the adoption points and the best engagement points of each round, minus
  * one deduction per provider per round if any of its answers was rejected or
- * none of them showed output before timing out.
+ * none of them showed output before timing out. Rounds older than
+ * RECENT_SCORE_WINDOW_MS before `now` count towards olderScore, which the
+ * total score weighs by OLDER_SCORE_WEIGHT.
  */
-export function aggregateAnswerStats(rounds) {
+export function aggregateAnswerStats(rounds, now = Date.now()) {
   const byProvider = new Map();
+  const recentSince = now - RECENT_SCORE_WINDOW_MS;
 
   const getEntry = (providerId) => {
     if (!byProvider.has(providerId)) {
@@ -280,6 +288,8 @@ export function aggregateAnswerStats(rounds) {
         engagedRounds: 0,
         activeMs: 0,
         score: 0,
+        recentScore: 0,
+        olderScore: 0,
         firstOutputValues: [],
         completeValues: []
       });
@@ -297,19 +307,21 @@ export function aggregateAnswerStats(rounds) {
       answersByProvider.get(answer.providerId).push(answer);
     });
 
+    const isRecent = round.createdAt >= recentSince;
     answersByProvider.forEach((answers, providerId) => {
       const entry = getEntry(providerId);
+      let roundScore = 0;
       entry.rounds += 1;
       if (round.adoptedProviderId) {
         entry.decidedRounds += 1;
         if (round.adoptedProviderId === providerId) {
           entry.adoptedCount += 1;
-          entry.score += ADOPTED_ANSWER_POINTS;
+          roundScore += ADOPTED_ANSWER_POINTS;
         }
       }
       const timedOutWithoutOutput = hasTimedOutWithoutOutput(answers);
       if (timedOutWithoutOutput || answers.some(answer => answer.rejected)) {
-        entry.score -= REJECTED_ANSWER_POINTS;
+        roundScore -= REJECTED_ANSWER_POINTS;
       }
 
       const engagements = answers.map(answer => answer.engagement).filter(Boolean);
@@ -318,7 +330,12 @@ export function aggregateAnswerStats(rounds) {
       }
       entry.activeMs += engagements.reduce((sum, engagement) => sum + (engagement.activeMs || 0), 0);
       if (!timedOutWithoutOutput) {
-        entry.score += Math.max(0, ...engagements.map(getEngagementPoints));
+        roundScore += Math.max(0, ...engagements.map(getEngagementPoints));
+      }
+      if (isRecent) {
+        entry.recentScore += roundScore;
+      } else {
+        entry.olderScore += roundScore;
       }
 
       const completed = answers.filter(answer => answer.status === ANSWER_STATUS.COMPLETE);
@@ -340,6 +357,7 @@ export function aggregateAnswerStats(rounds) {
   return [...byProvider.values()]
     .map(({ firstOutputValues, completeValues, ...entry }) => ({
       ...entry,
+      score: Math.round((entry.recentScore + entry.olderScore * OLDER_SCORE_WEIGHT) * 10) / 10,
       avgFirstOutputMs: average(firstOutputValues),
       medianFirstOutputMs: median(firstOutputValues),
       avgCompleteMs: average(completeValues),

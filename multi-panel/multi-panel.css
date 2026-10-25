@@ -2453,6 +2453,10 @@ html.snapshot-hide-cursor *::after {
   color: #d32f2f;
 }
 
+#answer-stats-modal .modal-content.modal-large {
+  max-width: 1040px;
+}
+
 .answer-stats-empty {
   margin: 0;
   color: #666;
@@ -2482,6 +2486,9 @@ html.snapshot-hide-cursor *::after {
 .answer-stats-table th {
   font-weight: 600;
   color: #666;
+  /* Two-word headers wrap so every column fits without scrolling. */
+  white-space: normal;
+  vertical-align: bottom;
 }
 
 .answer-stats-table .numeric {
@@ -2512,6 +2519,26 @@ html.snapshot-hide-cursor *::after {
 .answer-stats-recent li {
   padding: 8px 0;
   border-bottom: 1px solid #f0f0f0;
+}
+
+.answer-stats-recent .answer-stats-recent-day {
+  padding: 12px 0 4px;
+  color: #999;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.answer-stats-recent-more {
+  display: block;
+  margin: 12px auto 0;
+}
+
+.answer-stats-recent-more[hidden] {
+  display: none;
+}
+
+.answer-stats-table .answer-stats-score {
+  font-weight: 600;
 }
 
 .answer-stats-recent-header {
@@ -2599,6 +2626,10 @@ html.snapshot-hide-cursor *::after {
 
 [data-theme="dark"] .answer-stats-recent li {
   border-bottom-color: #3a3a3a;
+}
+
+[data-theme="dark"] .answer-stats-recent .answer-stats-recent-day {
+  color: #888;
 }
 
 [data-theme="dark"] .answer-stats-chip {

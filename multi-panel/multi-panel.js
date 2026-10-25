@@ -102,6 +102,8 @@ import { getStartupLayout, resolveStartupProviderIds } from '../modules/startup-
 import { clearStartupSnapshot, readStartupSnapshot, writeStartupSnapshot } from '../modules/startup-snapshot.js';
 import {
   ENGAGEMENT_KIND,
+  OLDER_SCORE_WEIGHT,
+  RECENT_SCORE_WINDOW_MS,
   aggregateAnswerStats,
   applyEngagementEvent,
   applyTimingEvent,
@@ -162,6 +164,8 @@ const answerRounds = new Map();
 let latestAnswerRoundId = null;
 // The answer whose panel is in focus mode, counted as engagement with it.
 let zoomedAnswer = null;
+// Questions shown in the answer stats history; reset when the dialog opens.
+let answerStatsHistoryLimit = 0;
 // Text of the last Fill, used as the question when Send then submits it.
 let pendingFilledPromptText = '';
 let isTemporaryChatModeEnabled = false;
@@ -3490,6 +3494,7 @@ function openAnswerStatsModal() {
     return;
   }
   document.getElementById('answer-stats-modal').style.display = 'flex';
+  answerStatsHistoryLimit = ANSWER_STATS_RECENT_LIMIT;
   void renderAnswerStats();
 }
 
@@ -3538,6 +3543,9 @@ function renderAnswerStatsTable(stats) {
   const table = document.getElementById('answer-stats-table');
   const body = table.querySelector('tbody');
   body.replaceChildren();
+  document.getElementById('answer-stats-older-score-header').textContent = getLocalizedText(
+    'answerStatsColumnOlderScore', 'Older ($1)', [`${Math.round(OLDER_SCORE_WEIGHT * 100)}%`]
+  );
 
   stats.forEach(entry => {
     const row = document.createElement('tr');
@@ -3564,24 +3572,45 @@ function renderAnswerStatsTable(stats) {
         ? '—'
         : `${Math.round(entry.adoptionRate * 100)}%`, 'numeric'),
       createCell('td', formatEngagedDuration(entry.activeMs), 'numeric'),
-      createCell('td', String(entry.score), 'numeric')
+      createCell('td', String(entry.recentScore), 'numeric'),
+      createCell('td', String(entry.olderScore), 'numeric'),
+      createCell('td', formatAnswerScore(entry.score), 'numeric answer-stats-score')
     );
     body.appendChild(row);
   });
 }
 
-function renderAnswerStatsRecent(rounds) {
+function formatAnswerScore(score) {
+  return Number.isInteger(score) ? String(score) : score.toFixed(1);
+}
+
+// Questions from the last RECENT_SCORE_WINDOW_MS, newest first, grouped by day.
+function renderAnswerStatsRecent(rounds, now) {
   const list = document.getElementById('answer-stats-recent');
   list.replaceChildren();
   const locale = getTranslationLocale();
+  const recentRounds = rounds.filter(round => round.createdAt >= now - RECENT_SCORE_WINDOW_MS);
+  const shownRounds = recentRounds.slice(0, answerStatsHistoryLimit);
+  let lastDay = null;
 
-  rounds.slice(0, ANSWER_STATS_RECENT_LIMIT).forEach(round => {
+  document.getElementById('answer-stats-recent-count').textContent = String(recentRounds.length);
+  const moreButton = document.getElementById('answer-stats-recent-more');
+  const remaining = recentRounds.length - shownRounds.length;
+  moreButton.hidden = remaining <= 0;
+  moreButton.textContent = getLocalizedText('answerStatsShowMore', 'Show more ($1)', [String(remaining)]);
+
+  shownRounds.forEach(round => {
+    const day = new Date(round.createdAt).toLocaleDateString(locale);
+    if (day !== lastDay) {
+      lastDay = day;
+      list.appendChild(createCell('li', day, 'answer-stats-recent-day'));
+    }
     const item = document.createElement('li');
     const header = document.createElement('div');
     header.className = 'answer-stats-recent-header';
     header.append(
       createCell('span', round.promptSummary || getLocalizedText('answerStatsNoPrompt', '(no text)'), 'answer-stats-recent-prompt'),
-      createCell('span', new Date(round.createdAt).toLocaleString(locale), 'answer-stats-recent-time')
+      createCell('span', new Date(round.createdAt).toLocaleTimeString(locale), 'answer-stats-recent-time')
     );
 
     const answers = document.createElement('div');
@@ -3631,8 +3660,14 @@ async function renderAnswerStats() {
     return;
   }
 
-  renderAnswerStatsTable(aggregateAnswerStats(rounds));
-  renderAnswerStatsRecent(rounds);
+  const now = Date.now();
+  renderAnswerStatsTable(aggregateAnswerStats(rounds, now));
+  renderAnswerStatsRecent(rounds, now);
+}
+
+function showMoreAnswerStatsHistory() {
+  answerStatsHistoryLimit += ANSWER_STATS_RECENT_LIMIT;
+  void renderAnswerStats();
 }
 
 async function exportAnswerStats() {
@@ -3675,6 +3710,7 @@ function setupAnswerStats() {
   document.getElementById('close-answer-stats-modal')?.addEventListener('click', closeAnswerStatsModal);
   document.getElementById('answer-stats-export-btn')?.addEventListener('click', exportAnswerStats);
   document.getElementById('answer-stats-clear-btn')?.addEventListener('click', clearAnswerStats);
+  document.getElementById('answer-stats-recent-more')?.addEventListener('click', showMoreAnswerStatsHistory);
   document.getElementById('answer-stats-modal')?.addEventListener('click', (event) => {
     if (event.target.id === 'answer-stats-modal') {
       closeAnswerStatsModal();

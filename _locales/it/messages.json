@@ -1028,7 +1028,7 @@
     "message": "Tempi dall’invio al primo testo e alla risposta completata: mediana, con la media tra parentesi. Vengono misurati solo ChatGPT, Gemini, DeepSeek, Kimi, Qwen (China) e Yuanbao. Il tasso di adozione conta solo le domande in cui è stata adottata una risposta."
   },
   "answerStatsRecentTitle": {
-    "message": "Domande recenti"
+    "message": "Domande degli ultimi 30 giorni"
   },
   "answerStatsClear": {
     "message": "Cancella statistiche"
@@ -1068,6 +1068,18 @@
   },
   "answerStatsScoreNote": {
     "message": "Punteggio: una risposta adottata vale 5 punti. Usare una risposta ne aggiunge fino a 3: 1 per clic o scorrimento nel suo pannello, 1 per l’ingrandimento del pannello e 1 ogni 30 s di interazione. Il tempo di interazione somma gli intervalli fino a 15 s tra clic e scorrimenti e il tempo in cui il pannello resta ingrandito. Fai clic sul pulsante meno per sottrarre 5 punti; fai di nuovo clic per annullare. Una risposta misurata che scade senza testo perde anch’essa 5 punti e non ne guadagna per l’uso."
+  },
+  "answerStatsColumnRecentScore": {
+    "message": "Ultimi 30 giorni"
+  },
+  "answerStatsColumnOlderScore": {
+    "message": "Precedenti ($1)"
+  },
+  "answerStatsShowMore": {
+    "message": "Mostra altro ($1)"
+  },
+  "answerStatsWeightNote": {
+    "message": "Punteggio = punti degli ultimi 30 giorni per intero + punti precedenti al 30%, così le risposte recenti contano di più."
   },
   "labelProviderSortMode": {
     "message": "Provider order"

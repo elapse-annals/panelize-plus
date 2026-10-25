@@ -79,15 +79,15 @@ test('Answer stats time each answer, record the adopted one and score engagement
     await expect(deepseekRow.locator('td').nth(5)).toHaveText('1');
     await expect(deepseekRow.locator('td').nth(6)).toHaveText('100%');
     await expect(chatgptRow.locator('td').nth(6)).toHaveText('0%');
-    await expect(deepseekRow.locator('td').nth(8)).toHaveText('5');
-    await expect(chatgptRow.locator('td').nth(8)).toHaveText('-3');
+    await expect(deepseekRow.locator('td').nth(10)).toHaveText('5');
+    await expect(chatgptRow.locator('td').nth(10)).toHaveText('-3');
     await expect(chatgptRow.locator('td').nth(7)).not.toHaveText('—');
 
     // Both answers finish once their text settles (DeepSeek waits 5s).
     await expect(chatgptRow.locator('td').nth(3)).not.toHaveText('—', { timeout: 15000 });
     await expect(deepseekRow.locator('td').nth(3)).not.toHaveText('—', { timeout: 15000 });
     await expect(deepseekRow.locator('td').nth(2)).toHaveText(/\d+(\.\d)? m?s \(/);
-    await expect(page.locator('#answer-stats-recent li')).toHaveCount(1);
+    await expect(page.locator('#answer-stats-recent li:not(.answer-stats-recent-day)')).toHaveCount(1);
     await expect(page.locator('.answer-stats-recent-prompt')).toHaveText('Which answer is best?');
     await expect(page.locator('.answer-stats-chip.adopted')).toContainText('DeepSeek');
     await expect(page.locator('.answer-stats-chip.rejected')).toContainText('ChatGPT');
@@ -101,7 +101,7 @@ test('Answer stats time each answer, record the adopted one and score engagement
     await page.locator('#answer-stats-btn').click();
     await expect(page.locator('#answer-stats-table tbody tr')).toHaveCount(2);
     const persistedChatgptRow = page.locator('#answer-stats-table tbody tr').filter({ hasText: 'ChatGPT' });
-    await expect(persistedChatgptRow.locator('td').nth(8)).toHaveText('-3');
+    await expect(persistedChatgptRow.locator('td').nth(10)).toHaveText('-3');
     await expect(page.locator('.answer-stats-chip.rejected')).toContainText('ChatGPT');
 
     // A new round starts with fresh, unselected feedback controls.
