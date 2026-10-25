@@ -1205,7 +1205,7 @@
     "message": "Désactivez le mode aveugle pour voir les statistiques des réponses"
   },
   "blindPanelLabel": {
-    "message": "Modèle $1"
+    "message": "Modèle anonyme"
   },
   "wideContentTitle": {
     "message": "Contenu large : les réponses occupent toute la largeur du panneau"

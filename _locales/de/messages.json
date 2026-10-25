@@ -1205,7 +1205,7 @@
     "message": "Blindmodus ausschalten, um die Antwortstatistik zu sehen"
   },
   "blindPanelLabel": {
-    "message": "Modell $1"
+    "message": "Anonymes Modell"
   },
   "wideContentTitle": {
     "message": "Breite Ansicht: Antworten nutzen die volle Panelbreite"

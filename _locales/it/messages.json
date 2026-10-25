@@ -1205,7 +1205,7 @@
     "message": "Disattiva la modalità alla cieca per vedere le statistiche delle risposte"
   },
   "blindPanelLabel": {
-    "message": "Modello $1"
+    "message": "Modello anonimo"
   },
   "wideContentTitle": {
     "message": "Contenuto largo: le risposte usano tutta la larghezza del pannello"

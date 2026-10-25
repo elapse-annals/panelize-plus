@@ -1205,7 +1205,7 @@
     "message": "Desactiva el modo ciego para ver las estadísticas de respuestas"
   },
   "blindPanelLabel": {
-    "message": "Modelo $1"
+    "message": "Modelo anónimo"
   },
   "wideContentTitle": {
     "message": "Contenido ancho: las respuestas usan todo el ancho del panel"

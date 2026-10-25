@@ -1205,7 +1205,7 @@
     "message": "답변 통계를 보려면 블라인드 모드를 끄세요"
   },
   "blindPanelLabel": {
-    "message": "모델 $1"
+    "message": "익명 모델"
   },
   "wideContentTitle": {
     "message": "와이드 보기: 답변이 패널 너비 전체를 사용"

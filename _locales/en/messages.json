@@ -1220,7 +1220,7 @@
     "message": "Turn off blind mode to see answer stats"
   },
   "blindPanelLabel": {
-    "message": "Model $1"
+    "message": "Anonymous model"
   },
   "wideContentTitle": {
     "message": "Wide content: let answers use the full panel width"

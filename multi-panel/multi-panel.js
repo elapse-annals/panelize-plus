@@ -109,7 +109,7 @@ import {
 import { createPointerGuard, createPointerTracker } from '../modules/pointer-guard.js';
 import { setupComposerControls } from '../modules/composer-controls.js';
 import { runNewChatBatch } from '../modules/new-chat-actions.js';
-import { assignBlindLabels } from '../modules/blind-labels.js';
+import { shuffleOrder, syncDisplayOrder } from '../modules/blind-shuffle.js';
 
 
 // ===== State Management =====
@@ -161,7 +161,9 @@ let isTemporaryChatModeEnabled = false;
 let composerControls = null;
 let isBlindModeEnabled = false;
 let isWideContentEnabled = false;
-let blindLabels = new Map(); // panel id -> letter, stable while blind mode stays on
+// Panel ids in display order once blind mode has shuffled them; null keeps
+// the saved order. Only CSS order changes, so frames never reload.
+let panelDisplayOrder = null;
 let isNewChatBusy = false;
 let failedNewChatPanelIds = new Set();
 const newChatResults = new Map();
@@ -301,7 +303,7 @@ async function init() {
   setupShareSnapshot();
   setupAnswerStats();
   composerControls = await setupComposerControls({
-    getPanels: () => panels,
+    getPanels: () => getDisplayedPanels(),
     send: () => broadcastMessage(document.getElementById('unified-input').value, true),
     fill: () => broadcastMessage(document.getElementById('unified-input').value, false),
     newConversation: () => newChatAllProviders(),
@@ -1397,7 +1399,7 @@ function setFocusedPanel(panelId) {
   const columnCount = focusedPanelId && !wasFocusActive
     ? window.getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length
     : 0;
-  panels.forEach((panel, index) => {
+  getDisplayedPanels().forEach((panel, index) => {
     const panelEl = document.getElementById(panel.id);
     const isFocused = panel.id === focusedPanelId;
     panelEl.classList.toggle('panel-focused', isFocused);
@@ -1697,14 +1699,67 @@ function updatePanelSelectors() {
 // ===== Blind mode & wide content =====
 
 function getPanelDisplayName(panel) {
-  if (isBlindModeEnabled && blindLabels.has(panel.id)) {
-    return getLocalizedText('blindPanelLabel', 'Model $1', [blindLabels.get(panel.id)]);
+  if (isBlindModeEnabled) {
+    return getLocalizedText('blindPanelLabel', 'Anonymous model');
   }
   return getProviderById(panel.providerId)?.name || panel.providerId;
 }
 
+function getDisplayedPanels() {
+  if (!panelDisplayOrder) return panels;
+  return [...panels].sort((a, b) => panelDisplayOrder.indexOf(a.id) - panelDisplayOrder.indexOf(b.id));
+}
+
+function applyPanelDisplayOrder() {
+  const panelIds = panels.map(panel => panel.id);
+  if (isBlindModeEnabled) {
+    panelDisplayOrder = syncDisplayOrder(panelDisplayOrder, panelIds);
+  } else if (panelDisplayOrder) {
+    // Revealed in place: panels added after blind mode go to the end.
+    panelDisplayOrder = syncDisplayOrder(panelDisplayOrder, panelIds, () => 1);
+  }
+  panels.forEach(panel => {
+    const order = panelDisplayOrder ? String(panelDisplayOrder.indexOf(panel.id)) : '';
+    document.querySelectorAll(`#${CSS.escape(panel.id)}, .panel-selector[data-panel-id="${panel.id}"]`)
+      .forEach(element => { element.style.order = order; });
+  });
+}
+
+// FLIP animation: every panel and selector chip gathers toward the middle,
+// tilts like a card in a deck, then is dealt out to its new place.
+function playShuffleAnimation(applyOrder) {
+  const elements = [...document.querySelectorAll('#panel-grid > .panel-item, #panel-selectors > .panel-selector')];
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion || focusedPanelId || elements.length < 2 || typeof Element.prototype.animate !== 'function') {
+    applyOrder();
+    return;
+  }
+  const firstRects = new Map(elements.map(element => [element, element.getBoundingClientRect()]));
+  applyOrder();
+  document.body.classList.add('panel-shuffling');
+  const animations = elements.map((element, index) => {
+    const from = firstRects.get(element);
+    const to = element.getBoundingClientRect();
+    const box = element.parentElement.getBoundingClientRect();
+    const stackX = (box.left + box.width / 2 - (to.left + to.width / 2)) * 0.6;
+    const stackY = (box.top + box.height / 2 - (to.top + to.height / 2)) * 0.6;
+    const tilt = (Math.random() * 6 - 3).toFixed(2);
+    return element.animate([
+      { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px)` },
+      { transform: `translate(${stackX}px, ${stackY}px) rotate(${tilt}deg) scale(0.92)`, offset: 0.45 },
+      { transform: 'none' }
+    ], { duration: 650, delay: index * 45, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'backwards' });
+  });
+  // Hidden or throttled pages may not advance the animation clock; end the
+  // shuffle on a timer so panels never stay offset or unclickable.
+  setTimeout(() => {
+    animations.forEach(animation => animation.finish());
+    document.body.classList.remove('panel-shuffling');
+  }, 650 + elements.length * 45 + 100);
+}
+
 function renderBlindLabels() {
-  blindLabels = isBlindModeEnabled ? assignBlindLabels(panels.map(panel => panel.id), blindLabels) : new Map();
+  applyPanelDisplayOrder();
   panels.forEach(panel => {
     const text = isBlindModeEnabled ? getPanelDisplayName(panel) : '';
     document.querySelectorAll(`#${CSS.escape(panel.id)} .blind-label, .panel-selector[data-panel-id="${panel.id}"] .blind-label`)
@@ -1739,7 +1794,16 @@ async function setPageStyleModes({ blind = isBlindModeEnabled, wide = isWideCont
   document.body.classList.toggle('blind-mode', isBlindModeEnabled);
   updatePageStyleButtons();
   if (blindChanged) {
-    renderBlindLabels();
+    if (isBlindModeEnabled) {
+      // Each time blind mode turns on, deal the panels into a new order.
+      const shuffled = shuffleOrder(getDisplayedPanels().map(panel => panel.id));
+      playShuffleAnimation(() => {
+        panelDisplayOrder = shuffled;
+        renderBlindLabels();
+      });
+    } else {
+      renderBlindLabels();
+    }
     // Answer stats name providers, so they stay closed while identities are hidden.
     if (isBlindModeEnabled) closeAnswerStatsModal();
     showToast(isBlindModeEnabled

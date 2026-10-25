@@ -1205,7 +1205,7 @@
     "message": "回答統計を見るにはブラインドモードをオフにしてください"
   },
   "blindPanelLabel": {
-    "message": "モデル $1"
+    "message": "匿名モデル"
   },
   "wideContentTitle": {
     "message": "ワイド表示：回答をパネル幅いっぱいに表示"

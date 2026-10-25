@@ -1199,7 +1199,7 @@
     "message": "關閉盲評模式後可查看回答統計"
   },
   "blindPanelLabel": {
-    "message": "模型 $1"
+    "message": "匿名模型"
   },
   "wideContentTitle": {
     "message": "快速寬螢幕：回答鋪滿面板寬度"

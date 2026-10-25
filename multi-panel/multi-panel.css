@@ -2701,10 +2701,10 @@ body.blind-mode .blind-label {
   align-items: center;
   padding: 1px 8px;
   border-radius: 10px;
-  background: #ece9f6;
-  color: #574681;
+  background: rgba(0, 0, 0, 0.04);
+  color: #8b8794;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
 }
 body.blind-mode .panel-header-left .provider-icon,
@@ -2721,4 +2721,6 @@ body.blind-mode #answer-stats-btn {
 @container (max-width: 300px) {
   body.blind-mode .panel-header-left .blind-label { display: inline-flex; }
 }
-[data-theme="dark"] body.blind-mode .blind-label { background: #393344; color: #d2c5f4; }
+[data-theme="dark"] body.blind-mode .blind-label { background: rgba(255, 255, 255, 0.06); color: #9d98a8; }
+/* Panels are being dealt into a new order; clicks wait for the animation. */
+body.panel-shuffling #panel-grid, body.panel-shuffling #panel-selectors { pointer-events: none; }
