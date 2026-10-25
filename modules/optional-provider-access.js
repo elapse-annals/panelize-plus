@@ -156,9 +156,12 @@ export const OPTIONAL_PROVIDER_CONFIGS = Object.freeze({
   mimo: Object.freeze({
     // MiMo signs in through Xiaomi Account, which refuses to be framed by default.
     // Its parent-domain session cookies also require access to xiaomimimo.com.
+    // They are not marked Secure, and Chrome only shows insecure cookies to
+    // extensions with http:// access to the cookie's domain.
     origins: Object.freeze([
       'https://aistudio.xiaomimimo.com/*',
       'https://xiaomimimo.com/*',
+      'http://xiaomimimo.com/*',
       'https://account.xiaomi.com/*'
     ]),
     contentScript: Object.freeze(createContentScript(

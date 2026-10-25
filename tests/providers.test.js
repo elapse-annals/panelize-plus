@@ -73,7 +73,7 @@ describe('providers module', () => {
         url: 'https://aistudio.xiaomimimo.com/#/c',
         icon: '/icons/providers/mimo.png',
         iconDark: '/icons/providers/dark/mimo.png',
-        optionalOrigins: ['https://aistudio.xiaomimimo.com/*', 'https://xiaomimimo.com/*', 'https://account.xiaomi.com/*'],
+        optionalOrigins: ['https://aistudio.xiaomimimo.com/*', 'https://xiaomimimo.com/*', 'http://xiaomimimo.com/*', 'https://account.xiaomi.com/*'],
       });
       expect(getProviderById('meta-ai')).toMatchObject({
         name: 'Meta AI',

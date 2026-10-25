@@ -85,7 +85,7 @@ describe('optional provider access', () => {
     });
     expect(OPTIONAL_PROVIDER_CONFIGS.yuanbao.frameRule).toBeUndefined();
     expect(OPTIONAL_PROVIDER_CONFIGS.mimo).toMatchObject({
-      origins: ['https://aistudio.xiaomimimo.com/*', 'https://xiaomimimo.com/*', 'https://account.xiaomi.com/*'],
+      origins: ['https://aistudio.xiaomimimo.com/*', 'https://xiaomimimo.com/*', 'http://xiaomimimo.com/*', 'https://account.xiaomi.com/*'],
       contentScript: {
         id: 'mimo-scripts',
         matches: ['https://aistudio.xiaomimimo.com/*'],
