@@ -80,7 +80,9 @@ export async function prepareLiveExtension() {
 
 /**
  * Enables `providerIds` and opens `firstProviderId` as the single panel, then
- * waits until the service worker has registered optional provider scripts.
+ * waits briefly for the service worker to register optional provider scripts.
+ * The wait is best effort: the persistent live profile can keep running an
+ * older service worker, and the multi-panel page registers them itself.
  * @param {import('@playwright/test').Worker} serviceWorker
  * @param {string[]} providerIds
  * @param {object} [options]
@@ -117,7 +119,6 @@ export async function configureLiveProviders(serviceWorker, providerIds, {
     }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
-  throw new Error(`Optional provider content scripts were not registered: ${optionalScriptIds.join(', ')}`);
 }
 
 const TEXT_INJECTION_SOURCE = readFileSync(

@@ -8,7 +8,11 @@
 import { PROVIDERS, getProviderById, getEnabledProviders, getProviderIcon } from '../modules/providers.js';
 import { DEFAULT_PROVIDER_IDS } from '../modules/provider-defaults.js';
 import { GROK_WEBSOCKET_COOKIE_SYNC_ACTION } from '../modules/grok-websocket-cookies.js';
-import { MIMO_SESSION_COOKIE_SYNC_ACTION } from '../modules/mimo-session-cookies.js';
+import {
+  MIMO_SESSION_COOKIE_SYNC_ACTION,
+  reconcileMimoSessionCookies
+} from '../modules/mimo-session-cookies.js';
+import { reconcileOptionalProviderAccess } from '../modules/optional-provider-access.js';
 import {
   DEFAULT_GOOGLE_PROVIDER_MODE,
   GOOGLE_PROVIDER_MODE_AI,
@@ -401,6 +405,12 @@ async function requestMimoSessionCookieSync() {
   } catch {
     console.warn('[Multi-Panel] MiMo session synchronization failed');
   }
+  // Repeat with this page's current code (see initializePanels); when the
+  // service worker is up to date this finds nothing left to change.
+  const result = await reconcileMimoSessionCookies();
+  if (!result?.success) {
+    console.warn('[Multi-Panel] MiMo session synchronization failed');
+  }
 }
 
 const PROVIDER_SESSION_SYNC = {
@@ -723,6 +733,11 @@ function registerStorageChangeListener() {
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== 'sync' && areaName !== 'local') {
       return;
+    }
+
+    if (areaName === 'sync' && changes.enabledProviders) {
+      // See initializePanels: providers enabled later need current-code access too.
+      void reconcileOptionalProviderAccess();
     }
 
     if (changes.blindModeEnabled || changes.wideContentEnabled) {
@@ -1387,7 +1402,11 @@ async function initializePanels() {
         multiPanelProviders: DEFAULT_PROVIDERS,
         startupProviders: null
       }),
-      getEnabledProviders()
+      getEnabledProviders(),
+      // This page always runs the extension's current code, while the service
+      // worker can keep running an older copy after an update and then never
+      // registers scripts for providers it does not know yet.
+      reconcileOptionalProviderAccess()
     ]);
     const providerIds = enabledProviders.map(({ id }) => id);
 

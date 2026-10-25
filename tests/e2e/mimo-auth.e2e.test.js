@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import https from 'node:https';
 import os from 'node:os';
 import path from 'node:path';
@@ -501,6 +501,118 @@ test('keeps MiMo logged in across panel reload and clears mirrored cookies on lo
       { kind: 'session', sessionCookiePresent: false, phCookiePresent: false },
       { kind: 'chat', sessionCookiePresent: false, phCookiePresent: false, phQuery: '' },
     ]);
+  } finally {
+    await extension?.close();
+    await extensionCopy?.cleanup();
+    await fixture.close();
+    await fixture.cleanup();
+  }
+});
+
+test('logs MiMo in from the Multi-Panel page when the service worker runs outdated code', async () => {
+  test.setTimeout(60000);
+  const sessionName = 'mimo_session';
+  const sessionValue = 'fixture-session';
+  const phValue = 'fixture-ph';
+  const requests = [];
+  let fixture;
+  try {
+    fixture = await startMimoHttpsFixture(requests);
+  } catch (error) {
+    if (error.code === 'ENOENT') test.skip(true, 'OpenSSL is required to create a temporary HTTPS fixture certificate');
+    throw error;
+  }
+
+  let extensionCopy;
+  let extension;
+  try {
+    extensionCopy = await createPatchedExtensionCopy(manifest => {
+      manifest.host_permissions.push(...OPTIONAL_PROVIDER_CONFIGS.mimo.origins);
+    });
+    // Chrome keeps running an unpacked extension's cached service worker until
+    // the extension is reloaded. Stand in for one that never mirrors the MiMo
+    // session or registers optional provider access.
+    const workerPath = path.join(extensionCopy.extensionPath, 'background/service-worker.js');
+    const worker = await readFile(workerPath, 'utf8');
+    const outdatedWorker = worker
+      .replace('const result = await reconcileMimoSessionCookies();', 'const result = { success: true };')
+      .replace('.then(() => reconcileOptionalProviderAccess())', '.then(() => {})');
+    expect(outdatedWorker).not.toBe(worker);
+    expect(outdatedWorker).not.toContain('await reconcileMimoSessionCookies()');
+    expect(outdatedWorker).not.toContain('reconcileOptionalProviderAccess())');
+    await writeFile(workerPath, outdatedWorker);
+
+    extension = await launchExtension({
+      extensionPath: extensionCopy.extensionPath,
+      args: [
+        '--no-proxy-server',
+        '--ignore-certificate-errors',
+        '--host-resolver-rules=MAP aistudio.xiaomimimo.com 127.0.0.1',
+      ],
+    });
+
+    await extension.serviceWorker.evaluate(async () => {
+      await chrome.storage.sync.set({ enabledProviders: ['mimo'], providerOrder: ['mimo'] });
+    });
+    const seeded = await extension.serviceWorker.evaluate(async ({ url, domain, phName, phValue, sessionName, sessionValue, sourcePartitionKey }) => {
+      const ph = await chrome.cookies.set({
+        url, domain: `.${domain}`, name: phName, value: phValue, path: '/',
+        secure: true, httpOnly: false, sameSite: 'lax',
+      });
+      const session = await chrome.cookies.set({
+        url, domain: `.${domain}`, name: sessionName, value: sessionValue, path: '/',
+        secure: true, httpOnly: true, sameSite: 'no_restriction',
+        partitionKey: sourcePartitionKey,
+      });
+      return Boolean(ph && session);
+    }, {
+      url: MIMO_STUDIO_COOKIE_URL,
+      domain: MIMO_STUDIO_COOKIE_DOMAIN,
+      phName: MIMO_AUTH_COOKIE_NAME,
+      phValue,
+      sessionName,
+      sessionValue,
+      sourcePartitionKey: MIMO_FIRST_PARTY_PARTITION_KEY,
+    });
+    expect(seeded).toBe(true);
+    const registeredBeforePage = await extension.serviceWorker.evaluate(async () => (
+      (await chrome.scripting.getRegisteredContentScripts()).map(({ id }) => id)
+    ));
+    expect(registeredBeforePage).not.toContain('mimo-scripts');
+
+    await extension.context.route('**/*', route => {
+      if (new URL(route.request().url()).protocol === 'chrome-extension:') {
+        return route.continue();
+      }
+      return route.abort();
+    });
+    await extension.context.route(url => {
+      const requestUrl = new URL(url);
+      return requestUrl.protocol === 'https:' && requestUrl.hostname === 'aistudio.xiaomimimo.com';
+    }, route => {
+      const requestUrl = new URL(route.request().url());
+      if (requestUrl.port) return route.continue();
+      return route.fulfill({
+        status: 302,
+        headers: {
+          Location: `https://aistudio.xiaomimimo.com:${fixture.port}${requestUrl.pathname}${requestUrl.search}`,
+        },
+      });
+    });
+
+    const panel = await openMultiPanel(extension, { providers: ['mimo'] });
+    const studioPanel = panel.frameLocator('#panel-grid iframe');
+    await expect(studioPanel.locator('#auth-state')).toHaveText('Logged in');
+    await expect(studioPanel.locator('#cookie-state')).toHaveText(phValue);
+    await expect.poll(() => requests.find(({ kind }) => kind === 'session')).toEqual({
+      kind: 'session', sessionCookiePresent: true, phCookiePresent: true,
+    });
+    const access = await extension.serviceWorker.evaluate(async () => ({
+      scripts: (await chrome.scripting.getRegisteredContentScripts()).map(({ id }) => id),
+      rules: (await chrome.declarativeNetRequest.getDynamicRules()).map(({ id }) => id),
+    }));
+    expect(access.scripts).toContain('mimo-scripts');
+    expect(access.rules).toContain(OPTIONAL_PROVIDER_CONFIGS.mimo.frameRule.id);
   } finally {
     await extension?.close();
     await extensionCopy?.cleanup();
