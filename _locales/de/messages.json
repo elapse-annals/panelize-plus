@@ -1025,7 +1025,7 @@
     "message": "Übernahmequote"
   },
   "answerStatsNote": {
-    "message": "Zeiten ab dem Senden bis zum ersten Text und bis zur fertigen Antwort: Median, in Klammern der Durchschnitt. Gemessen werden nur ChatGPT, Gemini und DeepSeek. Die Übernahmequote zählt nur Fragen, bei denen eine Antwort übernommen wurde."
+    "message": "Zeiten ab dem Senden bis zum ersten Text und bis zur fertigen Antwort: Median, in Klammern der Durchschnitt. Gemessen werden nur ChatGPT, Gemini, DeepSeek, Kimi, Qwen (China) und Yuanbao. Die Übernahmequote zählt nur Fragen, bei denen eine Antwort übernommen wurde."
   },
   "answerStatsRecentTitle": {
     "message": "Letzte Fragen"
@@ -1067,7 +1067,7 @@
     "message": "Punkte"
   },
   "answerStatsScoreNote": {
-    "message": "Punkte: Eine übernommene Antwort bringt 5 Punkte. Die Nutzung einer Antwort bringt bis zu 3 weitere: 1 für Klicken oder Scrollen in ihrem Bereich, 1 für das Vergrößern des Bereichs und 1 je 30 s Nutzungszeit. Die Nutzungszeit summiert die Abstände zwischen Klicks und Scrollen von höchstens 15 s sowie die Zeit, in der der Bereich vergrößert ist. Mit einem Klick auf die Minustaste werden 5 Punkte abgezogen; mit einem weiteren Klick wird dies rückgängig gemacht."
+    "message": "Punkte: Eine übernommene Antwort bringt 5 Punkte. Die Nutzung einer Antwort bringt bis zu 3 weitere: 1 für Klicken oder Scrollen in ihrem Bereich, 1 für das Vergrößern des Bereichs und 1 je 30 s Nutzungszeit. Die Nutzungszeit summiert die Abstände zwischen Klicks und Scrollen von höchstens 15 s sowie die Zeit, in der der Bereich vergrößert ist. Mit einem Klick auf die Minustaste werden 5 Punkte abgezogen; mit einem weiteren Klick wird dies rückgängig gemacht. Eine gemessene Antwort, die ohne Text abläuft, verliert ebenfalls 5 Punkte und erhält keine Punkte für die Nutzung."
   },
   "labelProviderSortMode": {
     "message": "Provider order"

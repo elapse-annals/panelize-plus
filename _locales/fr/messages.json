@@ -1025,7 +1025,7 @@
     "message": "Taux d’adoption"
   },
   "answerStatsNote": {
-    "message": "Durées depuis l’envoi jusqu’au premier texte et jusqu’à la réponse terminée : médiane, avec la moyenne entre parenthèses. Seuls ChatGPT, Gemini et DeepSeek sont chronométrés. Le taux d’adoption ne compte que les questions dont une réponse a été adoptée."
+    "message": "Durées depuis l’envoi jusqu’au premier texte et jusqu’à la réponse terminée : médiane, avec la moyenne entre parenthèses. Seuls ChatGPT, Gemini, DeepSeek, Kimi, Qwen (China) et Yuanbao sont chronométrés. Le taux d’adoption ne compte que les questions dont une réponse a été adoptée."
   },
   "answerStatsRecentTitle": {
     "message": "Questions récentes"
@@ -1067,7 +1067,7 @@
     "message": "Score"
   },
   "answerStatsScoreNote": {
-    "message": "Score : une réponse adoptée rapporte 5 points. Utiliser une réponse rapporte jusqu’à 3 points de plus : 1 pour un clic ou un défilement dans son panneau, 1 pour l’agrandissement du panneau et 1 par tranche de 30 s d’interaction. Le temps d’interaction additionne les intervalles de 15 s au plus entre clics et défilements, et le temps pendant lequel le panneau reste agrandi. Cliquez sur le bouton moins pour retirer 5 points, puis à nouveau pour annuler."
+    "message": "Score : une réponse adoptée rapporte 5 points. Utiliser une réponse rapporte jusqu’à 3 points de plus : 1 pour un clic ou un défilement dans son panneau, 1 pour l’agrandissement du panneau et 1 par tranche de 30 s d’interaction. Le temps d’interaction additionne les intervalles de 15 s au plus entre clics et défilements, et le temps pendant lequel le panneau reste agrandi. Cliquez sur le bouton moins pour retirer 5 points, puis à nouveau pour annuler. Une réponse chronométrée qui expire sans aucun texte perd aussi 5 points et ne rapporte rien pour son utilisation."
   },
   "labelProviderSortMode": {
     "message": "Provider order"

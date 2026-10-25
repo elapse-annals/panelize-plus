@@ -195,6 +195,57 @@ describe('response timing content script', () => {
     ]);
   });
 
+  it('times every provider the answer stats module times', () => {
+    const source = readFileSync(resolve(process.cwd(), 'modules/answer-stats.js'), 'utf8');
+    const ids = source.match(/ANSWER_TIMING_PROVIDER_IDS = Object\.freeze\(\[([^\]]*)\]/)[1]
+      .match(/'([^']+)'/g).map(id => id.slice(1, -1));
+    const timed = contentScriptSource.match(/const RESPONSE_TIMING_PROVIDERS = \{([\s\S]*?)\n  \};/)[1]
+      .match(/^    '?([\w-]+)'?: \{/gm).map(line => line.trim().replace(/'?: \{$/, '').replace(/^'/, ''));
+    expect(timed).toEqual(ids);
+  });
+
+  it.each([
+    ['kimi', 'https://www.kimi.com/chat/test',
+      '<div class="chat-content-item chat-content-item-assistant"><div class="markdown">Hi</div></div>',
+      '<div class="send-button-container disabled stop"></div>', '.send-button-container'],
+    ['qwen-cn', 'https://www.qianwen.com/chat/test',
+      '<div class="answer-common-card answer-receiving-card"><div class="qk-markdown">Hi</div></div>',
+      '', '.answer-common-card'],
+  ])('completes a %s answer once its stop state is gone', async (provider, url, answerHtml, busyHtml, busyQuery) => {
+    window.happyDOM.setURL(url);
+    document.body.innerHTML = '<div id="thread"></div>';
+    const thread = document.getElementById('thread');
+    const requestId = `req-${provider}`;
+
+    startSend(requestId);
+    await vi.advanceTimersByTimeAsync(500);
+    thread.insertAdjacentHTML('beforeend', answerHtml + busyHtml);
+    await vi.advanceTimersByTimeAsync(250);
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(getTimingCalls(requestId)).toEqual([
+      expect.objectContaining({ phase: 'first-output', provider }),
+    ]);
+
+    const busy = thread.querySelector(busyQuery);
+    busy.classList.remove('stop', 'answer-receiving-card');
+    await vi.advanceTimersByTimeAsync(250);
+    expect(getPhases(requestId)).toEqual(['first-output', 'complete']);
+  });
+
+  it('completes a Yuanbao answer after its settle time', async () => {
+    window.happyDOM.setURL('https://yuanbao.tencent.com/chat/test');
+    document.body.innerHTML = '<div id="thread"></div>';
+    const thread = document.getElementById('thread');
+
+    startSend('req-yuanbao');
+    await vi.advanceTimersByTimeAsync(500);
+    thread.insertAdjacentHTML('beforeend', '<div class="agent-chat__bubble agent-chat__bubble--ai"><div class="agent-chat__speech-text">Hi</div></div>');
+    await vi.advanceTimersByTimeAsync(4750);
+    expect(getPhases('req-yuanbao')).toEqual(['first-output']);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(getPhases('req-yuanbao')).toEqual(['first-output', 'complete']);
+  });
+
   it('does not count a re-rendered previous answer as new output', async () => {
     window.happyDOM.setURL('https://gemini.google.com/app/test');
     document.body.innerHTML = '<div id="thread"><model-response>Earlier answer</model-response></div>';
@@ -269,12 +320,13 @@ describe('response timing content script', () => {
   });
 
   it('does not time providers without timing support', async () => {
-    window.happyDOM.setURL('https://www.kimi.com/chat/test');
-    document.body.innerHTML = '<div class="markdown">Answer</div>';
+    window.happyDOM.setURL('https://chatglm.cn/main/alltoolsdetail');
+    document.body.innerHTML = '<div id="thread"></div>';
 
-    startSend('req-kimi');
+    startSend('req-chatglm');
+    document.getElementById('thread').innerHTML = '<div class="markdown">Answer</div>';
     await vi.advanceTimersByTimeAsync(10000);
 
-    expect(getPhases('req-kimi')).toEqual([]);
+    expect(getPhases('req-chatglm')).toEqual([]);
   });
 });

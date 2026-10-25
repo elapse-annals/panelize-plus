@@ -7,7 +7,7 @@ const DB_VERSION = 1;
 const ROUNDS_STORE = 'rounds';
 
 // Providers whose content script reports response timing.
-export const ANSWER_TIMING_PROVIDER_IDS = Object.freeze(['chatgpt', 'gemini', 'deepseek']);
+export const ANSWER_TIMING_PROVIDER_IDS = Object.freeze(['chatgpt', 'gemini', 'deepseek', 'kimi', 'qwen-cn', 'yuanbao']);
 export const PROMPT_SUMMARY_MAX_LENGTH = 100;
 export const MAX_STORED_ROUNDS = 1000;
 
@@ -36,8 +36,10 @@ export const ENGAGEMENT_KIND = Object.freeze({
 export const ENGAGEMENT_ACTIVE_GAP_MS = 15 * 1000;
 export const ENGAGEMENT_ZOOM_MAX_GAP_MS = 5 * 60 * 1000;
 
-// Score: an adopted answer earns ADOPTED_ANSWER_POINTS; a rejected answer
-// loses REJECTED_ANSWER_POINTS. Engagement earns up to
+// Score: an adopted answer earns ADOPTED_ANSWER_POINTS; a rejected answer,
+// or a timed answer that timed out without any output, loses
+// REJECTED_ANSWER_POINTS. Engagement with an answer that never showed output
+// earns nothing; otherwise it earns up to
 // MAX_ENGAGEMENT_POINTS more: one for clicking or scrolling, one for enlarging
 // the panel and one per ENGAGEMENT_POINT_ACTIVE_MS of active time.
 export const ADOPTED_ANSWER_POINTS = 5;
@@ -247,12 +249,20 @@ function median(values) {
     : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
 }
 
+// A provider's answers in one round failed when one timed out and none of
+// them showed any output.
+function hasTimedOutWithoutOutput(answers) {
+  return answers.some(answer => answer.timed && answer.status === ANSWER_STATUS.TIMEOUT)
+    && !answers.some(answer => answer.status === ANSWER_STATUS.COMPLETE || Number.isFinite(answer.firstOutputMs));
+}
+
 /**
  * Per-provider totals. A provider shown in two panels of one round counts
  * once for that round; its fastest answer counts for timing.
  * Adoption rate only counts rounds where some answer was adopted. Score adds
  * the adoption points and the best engagement points of each round, minus
- * one deduction per provider per round if any of its answers was rejected.
+ * one deduction per provider per round if any of its answers was rejected or
+ * none of them showed output before timing out.
  */
 export function aggregateAnswerStats(rounds) {
   const byProvider = new Map();
@@ -297,7 +307,8 @@ export function aggregateAnswerStats(rounds) {
           entry.score += ADOPTED_ANSWER_POINTS;
         }
       }
-      if (answers.some(answer => answer.rejected)) {
+      const timedOutWithoutOutput = hasTimedOutWithoutOutput(answers);
+      if (timedOutWithoutOutput || answers.some(answer => answer.rejected)) {
         entry.score -= REJECTED_ANSWER_POINTS;
       }
 
@@ -306,7 +317,9 @@ export function aggregateAnswerStats(rounds) {
         entry.engagedRounds += 1;
       }
       entry.activeMs += engagements.reduce((sum, engagement) => sum + (engagement.activeMs || 0), 0);
-      entry.score += Math.max(0, ...engagements.map(getEngagementPoints));
+      if (!timedOutWithoutOutput) {
+        entry.score += Math.max(0, ...engagements.map(getEngagementPoints));
+      }
 
       const completed = answers.filter(answer => answer.status === ANSWER_STATUS.COMPLETE);
       if (completed.length > 0) {

@@ -115,6 +115,22 @@
       busySelector: null,
       // Reasoning can pause between the thinking and the answer.
       settleMs: 5000
+    },
+    kimi: {
+      // Both the thinking and the answer render as .markdown.
+      answerSelector: '.chat-content-item-assistant .markdown',
+      busySelector: '.send-button-container.stop',
+      settleMs: 3000
+    },
+    'qwen-cn': {
+      answerSelector: '.answer-common-card .qk-markdown',
+      busySelector: '.answer-receiving-card',
+      settleMs: 3000
+    },
+    yuanbao: {
+      answerSelector: '.agent-chat__bubble--ai .agent-chat__speech-text',
+      busySelector: null,
+      settleMs: 5000
     }
   };
   const RESPONSE_TIMING_CHECK_INTERVAL_MS = 250;

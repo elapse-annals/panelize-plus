@@ -14,7 +14,7 @@ import {
 const PANELS = [
   { id: 'p1', providerId: 'chatgpt' },
   { id: 'p2', providerId: 'gemini' },
-  { id: 'p3', providerId: 'kimi' }
+  { id: 'p3', providerId: 'claude' }
 ];
 
 function newRound(id = 'r1', createdAt = 1000) {
@@ -41,7 +41,7 @@ describe('createRound', () => {
     const round = newRound();
     expect(round.promptSummary).toBe('Question');
     expect(round.answers.p1).toMatchObject({ providerId: 'chatgpt', timed: true, status: ANSWER_STATUS.PENDING });
-    expect(round.answers.p3).toMatchObject({ providerId: 'kimi', timed: false, status: null });
+    expect(round.answers.p3).toMatchObject({ providerId: 'claude', timed: false, status: null });
   });
 
   it('marks rounds sent in blind mode and leaves other rounds unchanged', () => {
@@ -85,7 +85,7 @@ describe('applyTimingEvent', () => {
 describe('toggleRoundAdoption', () => {
   it('adopts one answer and clears it on a second click', () => {
     const adopted = toggleRoundAdoption(newRound(), 'p3');
-    expect(adopted).toMatchObject({ adoptedPanelId: 'p3', adoptedProviderId: 'kimi' });
+    expect(adopted).toMatchObject({ adoptedPanelId: 'p3', adoptedProviderId: 'claude' });
 
     const switched = toggleRoundAdoption(adopted, 'p1');
     expect(switched).toMatchObject({ adoptedPanelId: 'p1', adoptedProviderId: 'chatgpt' });
@@ -225,7 +225,7 @@ describe('aggregateAnswerStats', () => {
       timeoutCount: 1,
       medianCompleteMs: 3000
     });
-    expect(byProvider.kimi).toMatchObject({
+    expect(byProvider.claude).toMatchObject({
       timed: false,
       rounds: 3,
       adoptedCount: 0,
@@ -280,17 +280,17 @@ describe('aggregateAnswerStats', () => {
   });
 
   it('scores adoption and engagement and sorts by score, then adoptions', () => {
-    // Kimi is used but not adopted; ChatGPT is adopted without being used.
+    // Claude is used but not adopted; ChatGPT is adopted without being used.
     let first = engage(newRound('r1', 0), 'p3', [['click', 1000], ['scroll', 11000], ['scroll', 21000], ['scroll', 31000]]);
     first = toggleRoundAdoption(first, 'p1');
     let second = engage(newRound('r2', 100000), 'p3', [['zoom-in', 1000], ['zoom-out', 61000]]);
     second = engage(second, 'p2', [['scroll', 2000]]);
 
     const stats = aggregateAnswerStats([first, second]);
-    // Kimi and ChatGPT tie on score; adoptions decide.
-    expect(stats.map(entry => entry.providerId)).toEqual(['chatgpt', 'kimi', 'gemini']);
+    // Claude and ChatGPT tie on score; adoptions decide.
+    expect(stats.map(entry => entry.providerId)).toEqual(['chatgpt', 'claude', 'gemini']);
     const byProvider = Object.fromEntries(stats.map(entry => [entry.providerId, entry]));
-    expect(byProvider.kimi).toMatchObject({ score: 2 + 3, engagedRounds: 2, activeMs: 90000, adoptedCount: 0 });
+    expect(byProvider.claude).toMatchObject({ score: 2 + 3, engagedRounds: 2, activeMs: 90000, adoptedCount: 0 });
     expect(byProvider.chatgpt).toMatchObject({ score: 5, engagedRounds: 0, activeMs: 0 });
     expect(byProvider.gemini).toMatchObject({ score: 1, engagedRounds: 1, activeMs: 0 });
   });
@@ -307,6 +307,30 @@ describe('aggregateAnswerStats', () => {
 
     const [entry] = aggregateAnswerStats([round]);
     expect(entry).toMatchObject({ score: 2, engagedRounds: 1, activeMs: 1000 });
+  });
+
+  it('deducts five points from a timed answer that times out without output and ignores its engagement', () => {
+    let round = engage(newRound(), 'p1', [['click', 1000], ['zoom-in', 2000], ['zoom-out', 62000]]);
+    round = applyTimingEvent(round, 'p1', 'timeout', 301000);
+    // Output before the timeout is not a failure.
+    round = applyTimingEvent(round, 'p2', 'first-output', 3000);
+    round = engage(round, 'p2', [['click', 4000]]);
+    round = applyTimingEvent(round, 'p2', 'timeout', 901000);
+
+    const byProvider = Object.fromEntries(aggregateAnswerStats([round]).map(entry => [entry.providerId, entry]));
+    expect(byProvider.chatgpt).toMatchObject({ score: -5, timeoutCount: 1, engagedRounds: 1 });
+    expect(byProvider.gemini).toMatchObject({ score: 1, timeoutCount: 1 });
+  });
+
+  it('deducts once for a rejected answer without output and not for pending or cancelled answers', () => {
+    let failed = applyTimingEvent(newRound('r1', 0), 'p1', 'timeout', 300000);
+    failed = toggleRoundRejection(failed, 'p1');
+    failed = applyTimingEvent(failed, 'p2', 'cancelled', 2000);
+    const pending = engage(newRound('r2', 0), 'p1', [['click', 1000]]);
+
+    const byProvider = Object.fromEntries(aggregateAnswerStats([failed, pending]).map(entry => [entry.providerId, entry]));
+    expect(byProvider.chatgpt.score).toBe(-5 + 1);
+    expect(byProvider.gemini.score).toBe(0);
   });
 
   it('returns nothing without rounds', () => {

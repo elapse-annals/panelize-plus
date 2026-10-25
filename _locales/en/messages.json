@@ -1040,7 +1040,7 @@
     "message": "Adoption rate"
   },
   "answerStatsNote": {
-    "message": "Times run from Send to the first text and to the finished answer: median, with the average in brackets. Only ChatGPT, Gemini and DeepSeek are timed. Adoption rate counts the questions where an answer was adopted."
+    "message": "Times run from Send to the first text and to the finished answer: median, with the average in brackets. Only ChatGPT, Gemini, DeepSeek, Kimi, Qwen (China) and Yuanbao are timed. Adoption rate counts the questions where an answer was adopted."
   },
   "answerStatsRecentTitle": {
     "message": "Recent questions"
@@ -1082,7 +1082,7 @@
     "message": "Score"
   },
   "answerStatsScoreNote": {
-    "message": "Score: an adopted answer earns 5 points. Using an answer earns up to 3 more: 1 for clicking or scrolling in its panel, 1 for enlarging the panel, and 1 for every 30 s of engaged time. Engaged time adds the gaps between clicks and scrolls up to 15 s apart, and the time the panel stays enlarged. Click the minus button to deduct 5 points; click again to undo."
+    "message": "Score: an adopted answer earns 5 points. Using an answer earns up to 3 more: 1 for clicking or scrolling in its panel, 1 for enlarging the panel, and 1 for every 30 s of engaged time. Engaged time adds the gaps between clicks and scrolls up to 15 s apart, and the time the panel stays enlarged. Click the minus button to deduct 5 points; click again to undo. A timed answer that times out without any text also loses 5 points and earns nothing for use."
   },
   "labelProviderSortMode": {
     "message": "Provider order"
