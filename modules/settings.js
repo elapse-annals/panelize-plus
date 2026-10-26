@@ -6,6 +6,7 @@ const DEFAULT_SETTINGS = {
   googleProviderMode: DEFAULT_GOOGLE_PROVIDER_MODE,
   providerOrder: null,
   providerSortMode: 'manual',
+  providerBillingTypes: null,  // Account billing marker overrides; null uses the built-in defaults
   pageShortcutsEnabled: true,
   keyboardShortcutBindings: {},
   selectedProviderTier: null,

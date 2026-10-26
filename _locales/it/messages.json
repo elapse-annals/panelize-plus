@@ -1284,5 +1284,29 @@
   },
   "toastTierRecipesReset": {
     "message": "Mappatura dei livelli ripristinata"
+  },
+  "labelProviderBilling": {
+    "message": "Indicatore di fatturazione"
+  },
+  "descProviderBilling": {
+    "message": "Imposta un indicatore di fatturazione per ogni provider in base al piano del tuo account."
+  },
+  "billingUnmarked": {
+    "message": "Non contrassegnato"
+  },
+  "billingFree": {
+    "message": "Gratis"
+  },
+  "billingPaid": {
+    "message": "A pagamento"
+  },
+  "billingQuota": {
+    "message": "Usa la quota"
+  },
+  "billingCredits": {
+    "message": "Usa crediti"
+  },
+  "msgProviderBillingUpdated": {
+    "message": "Indicatore di fatturazione salvato"
   }
 }

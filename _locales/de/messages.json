@@ -1284,5 +1284,29 @@
   },
   "toastTierRecipesReset": {
     "message": "Zuordnung der Denkstufen auf Standard zurückgesetzt"
+  },
+  "labelProviderBilling": {
+    "message": "Abrechnungskennzeichnung"
+  },
+  "descProviderBilling": {
+    "message": "Lege anhand deines Kontotarifs eine Abrechnungskennzeichnung für jeden Anbieter fest."
+  },
+  "billingUnmarked": {
+    "message": "Nicht markiert"
+  },
+  "billingFree": {
+    "message": "Kostenlos"
+  },
+  "billingPaid": {
+    "message": "Kostenpflichtig"
+  },
+  "billingQuota": {
+    "message": "Verbraucht Kontingent"
+  },
+  "billingCredits": {
+    "message": "Verbraucht Credits"
+  },
+  "msgProviderBillingUpdated": {
+    "message": "Abrechnungskennzeichnung gespeichert"
   }
 }

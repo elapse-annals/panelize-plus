@@ -1284,5 +1284,29 @@
   },
   "toastTierRecipesReset": {
     "message": "추론 단계 매핑을 기본값으로 복원했습니다"
+  },
+  "labelProviderBilling": {
+    "message": "요금 표시"
+  },
+  "descProviderBilling": {
+    "message": "계정 요금제에 따라 각 제공자의 요금 표시를 설정하세요."
+  },
+  "billingUnmarked": {
+    "message": "미표시"
+  },
+  "billingFree": {
+    "message": "무료"
+  },
+  "billingPaid": {
+    "message": "유료"
+  },
+  "billingQuota": {
+    "message": "할당량 사용"
+  },
+  "billingCredits": {
+    "message": "크레딧 사용"
+  },
+  "msgProviderBillingUpdated": {
+    "message": "요금 표시를 저장했습니다"
   }
 }

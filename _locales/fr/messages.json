@@ -1284,5 +1284,29 @@
   },
   "toastTierRecipesReset": {
     "message": "Correspondance des niveaux rétablie par défaut"
+  },
+  "labelProviderBilling": {
+    "message": "Indicateur de facturation"
+  },
+  "descProviderBilling": {
+    "message": "Définissez un indicateur de facturation pour chaque fournisseur selon votre forfait."
+  },
+  "billingUnmarked": {
+    "message": "Non indiqué"
+  },
+  "billingFree": {
+    "message": "Gratuit"
+  },
+  "billingPaid": {
+    "message": "Payant"
+  },
+  "billingQuota": {
+    "message": "Utilise le quota"
+  },
+  "billingCredits": {
+    "message": "Utilise des crédits"
+  },
+  "msgProviderBillingUpdated": {
+    "message": "Indicateur de facturation enregistré"
   }
 }

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import {
+  MAX_PANELS,
   LAYOUT_PANEL_COUNTS,
   getAutoAdjustedLayout,
   getAutoShrunkLayout
@@ -21,6 +22,13 @@ describe('LAYOUT_PANEL_COUNTS', () => {
       const [rows, cols] = layout.split('x').map(Number);
       expect(count, layout).toBe(rows * cols);
     }
+  });
+
+  it('supports up to 30 panels without offering layouts above the limit', () => {
+    expect(MAX_PANELS).toBe(30);
+    expect(Math.max(...Object.values(LAYOUT_PANEL_COUNTS))).toBe(MAX_PANELS);
+    expect(LAYOUT_PANEL_COUNTS['1x30']).toBe(30);
+    expect(LAYOUT_PANEL_COUNTS['2x15']).toBe(30);
   });
 });
 
@@ -67,6 +75,12 @@ describe('Layout Auto-Adjust', () => {
         expect(getAutoAdjustedLayout('1x11', 12)).toBe('1x12');
       });
 
+      it.each(Array.from({ length: 18 }, (_, index) => index + 13))(
+        'expands to fit panel %i', count => {
+          expect(getAutoAdjustedLayout(`1x${count - 1}`, count)).toBe(`1x${count}`);
+        }
+      );
+
       it('should NOT upgrade when panel count fits within capacity', () => {
         expect(getAutoAdjustedLayout('1x2', 2)).toBeNull();
         expect(getAutoAdjustedLayout('1x3', 3)).toBeNull();
@@ -85,8 +99,8 @@ describe('Layout Auto-Adjust', () => {
     });
 
     describe('upper limit', () => {
-      it('should return null when already at the 1x12 maximum', () => {
-        expect(getAutoAdjustedLayout('1x12', 13)).toBeNull();
+      it('should return null when already at the 1x30 maximum', () => {
+        expect(getAutoAdjustedLayout('1x30', 31)).toBeNull();
       });
     });
 
@@ -115,7 +129,7 @@ describe('Layout Auto-Adjust', () => {
       it('should return null for invalid layouts', () => {
         expect(getAutoAdjustedLayout('invalid', 3)).toBeNull();
         expect(getAutoAdjustedLayout('', 3)).toBeNull();
-        expect(getAutoAdjustedLayout('1x12', 13)).toBeNull();
+        expect(getAutoAdjustedLayout('1x31', 32)).toBeNull();
       });
     });
   });
@@ -165,6 +179,12 @@ describe('Layout Auto-Adjust', () => {
       it('should shrink from 1x12 to 1x11 when removing panel (11 panels remain)', () => {
         expect(getAutoShrunkLayout('1x12', 11)).toBe('1x11');
       });
+
+      it.each(Array.from({ length: 18 }, (_, index) => index + 13))(
+        'shrinks after removing panel %i', count => {
+          expect(getAutoShrunkLayout(`1x${count}`, count - 1)).toBe(`1x${count - 1}`);
+        }
+      );
 
       it('should shrink from 1x9 to 4x2 when removing panel (8 panels remain)', () => {
         expect(getAutoShrunkLayout('1x9', 8)).toBe('4x2');

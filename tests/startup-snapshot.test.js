@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PROVIDERS } from '../modules/providers.js';
 import {
   STARTUP_SNAPSHOT_KEY,
   clearStartupSnapshot,
@@ -42,13 +43,13 @@ describe('startup snapshot', () => {
   );
 
   it.each([
-    { layout: '1x13' },
+    { layout: '1x31' },
     { layout: '__proto__' },
     { startupProviderIds: 'chatgpt' },
     { startupProviderIds: ['unknown'] },
     { startupProviderIds: ['__proto__'] },
     { startupProviderIds: ['chatgpt', 'chatgpt'] },
-    { startupProviderIds: Array(13).fill('chatgpt') },
+    { startupProviderIds: Array(31).fill('chatgpt') },
     { frameUrls: null },
     { frameUrls: { chatgpt: 'http://chatgpt.com/', google: configuration.frameUrls.google } },
     { frameUrls: { chatgpt: 'https://evil.example/', google: configuration.frameUrls.google } },
@@ -73,6 +74,17 @@ describe('startup snapshot', () => {
       startupProviderIds: configuration.startupProviderIds,
       frameUrls: { chatgpt: 'https://chatgpt.com/', google: configuration.frameUrls.google }
     });
+  });
+
+  it.each(['1x30', '2x15'])('stores more than twelve providers in the %s layout', layout => {
+    const expanded = {
+      layout,
+      startupProviderIds: PROVIDERS.map(({ id }) => id),
+      frameUrls: Object.fromEntries(PROVIDERS.map(({ id, url }) => [id, new URL(url).href]))
+    };
+    expect(expanded.startupProviderIds.length).toBeGreaterThan(12);
+    expect(writeStartupSnapshot(expanded)).toBe(true);
+    expect(readStartupSnapshot()).toEqual({ ...expanded, version: 1 });
   });
 
   it('tolerates disabled storage and clears stale data when a write fails', () => {

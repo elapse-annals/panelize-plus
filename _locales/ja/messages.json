@@ -1284,5 +1284,29 @@
   },
   "toastTierRecipesReset": {
     "message": "推論レベルの割り当てを既定に戻しました"
+  },
+  "labelProviderBilling": {
+    "message": "課金マーク"
+  },
+  "descProviderBilling": {
+    "message": "アカウントのプランに応じて、各プロバイダーの課金マークを設定します。"
+  },
+  "billingUnmarked": {
+    "message": "未設定"
+  },
+  "billingFree": {
+    "message": "無料"
+  },
+  "billingPaid": {
+    "message": "有料"
+  },
+  "billingQuota": {
+    "message": "利用枠を消費"
+  },
+  "billingCredits": {
+    "message": "クレジットを消費"
+  },
+  "msgProviderBillingUpdated": {
+    "message": "課金マークを保存しました"
   }
 }

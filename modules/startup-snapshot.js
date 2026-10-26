@@ -1,10 +1,9 @@
-import { LAYOUT_PANEL_COUNTS } from './layout-auto-adjust.js';
+import { MAX_PANELS, LAYOUT_PANEL_COUNTS } from './layout-auto-adjust.js';
 import { getProviderById } from './providers.js';
 import { isProviderAllowedUrl } from './provider-open-url.js';
 
 export const STARTUP_SNAPSHOT_KEY = 'panelize.startupSnapshot';
 const SNAPSHOT_VERSION = 1;
-const MAX_PANELS = 12;
 
 // This is a disposable hint for extension UI startup, never authoritative
 // settings or a cache of provider documents/conversation URLs.

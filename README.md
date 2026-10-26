@@ -58,7 +58,7 @@ Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, De
 
 ### 📐 Flexible Layouts
 
-Choose from 22 different layouts to fit your workflow. Need a quick 2-way comparison? Use 1×2. Deep research across 12 models? Try 1×12 or 2×6. The choice is yours.
+Choose from 49 different layouts to fit your workflow, with capacity for up to 30 panels. Use 1×2 for a quick comparison, or 1×30 and 2×15 for larger sets. The number of panels you can open depends on the enabled providers.
 
 <p align="center">
   <img src="assets/screenshots/select-layout.png" alt="Layout Selection" width="600">

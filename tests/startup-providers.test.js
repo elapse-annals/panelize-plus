@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
+import { MAX_PANELS } from '../modules/layout-auto-adjust.js';
 import {
   getStartupLayout,
   normalizeStartupProviders,
@@ -44,6 +45,12 @@ describe('resolveStartupProviderIds', () => {
   it('caps the selection at the maximum panel count', () => {
     expect(resolveStartupProviderIds(ORDERED, ORDERED, 3, 2)).toEqual(['chatgpt', 'claude']);
   });
+
+  it('opens up to thirty enabled providers on startup', () => {
+    const ids = Array.from({ length: 31 }, (_, index) => `provider-${index}`);
+    expect(resolveStartupProviderIds(ids, null, 30, MAX_PANELS)).toEqual(ids.slice(0, 30));
+    expect(resolveStartupProviderIds(ids, ids, 3, MAX_PANELS)).toEqual(ids.slice(0, 30));
+  });
 });
 
 describe('getStartupLayout', () => {
@@ -60,6 +67,8 @@ describe('getStartupLayout', () => {
   it('switches other layouts that are too small to a single row', () => {
     expect(getStartupLayout('2x2', 5)).toBe('1x5');
     expect(getStartupLayout('3x1', 4)).toBe('1x4');
+    expect(getStartupLayout('2x6', 30)).toBe('1x30');
+    expect(getStartupLayout('2x15', 30)).toBe('2x15');
   });
 });
 

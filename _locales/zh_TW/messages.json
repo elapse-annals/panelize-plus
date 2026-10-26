@@ -1278,5 +1278,29 @@
   },
   "toastTierRecipesReset": {
     "message": "檔位對應已恢復預設"
+  },
+  "labelProviderBilling": {
+    "message": "計費標記"
+  },
+  "descProviderBilling": {
+    "message": "依據你的帳戶方案設定各平台的計費標記。"
+  },
+  "billingUnmarked": {
+    "message": "未標記"
+  },
+  "billingFree": {
+    "message": "免費"
+  },
+  "billingPaid": {
+    "message": "付費"
+  },
+  "billingQuota": {
+    "message": "扣額度"
+  },
+  "billingCredits": {
+    "message": "扣積分"
+  },
+  "msgProviderBillingUpdated": {
+    "message": "計費標記已儲存"
   }
 }

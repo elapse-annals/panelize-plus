@@ -2,11 +2,12 @@ import { test, expect } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import http from 'node:http';
 import {
-  createPatchedExtensionCopy,
   launchExtension,
   openMultiPanel,
 } from './extension-harness.js';
 import { PROVIDERS } from '../../modules/providers.js';
+import { MAX_PANELS } from '../../modules/layout-auto-adjust.js';
+import { createPanelCapacityExtensionCopy, syntheticProviderIds } from './panel-capacity-fixture.js';
 
 const WEBSOCKET_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const GROK_WEBSOCKET_COOKIE_RULE_ID = 2001;
@@ -151,21 +152,24 @@ function grokSessionCookies(ssoValue) {
   ];
 }
 
-async function launchGrokFixture({ grantOptionalProviders = false } = {}) {
+async function launchGrokFixture({ grantOptionalProviders = false, syntheticProviderCount = 0 } = {}) {
   const server = await startGrokWebSocketFixtureServer();
-  const extensionCopy = await createPatchedExtensionCopy((manifest) => {
-    if (grantOptionalProviders) {
-      // Optional providers need a user gesture to grant; grant them up front.
-      manifest.host_permissions.push(...manifest.optional_host_permissions);
-    }
-    // Map the wss:// permission to ws:// for the loopback fixture server.
-    manifest.host_permissions.push('ws://grok.com/*');
-    // Run the Grok content scripts on the plain-http fixture as well.
-    for (const contentScript of manifest.content_scripts) {
-      if (contentScript.matches.includes('https://grok.com/*')) {
-        contentScript.matches.push('http://grok.com/*');
+  const extensionCopy = await createPanelCapacityExtensionCopy({
+    syntheticProviderCount,
+    patchManifest: (manifest) => {
+      if (grantOptionalProviders) {
+        // Optional providers need a user gesture to grant; grant them up front.
+        manifest.host_permissions.push(...manifest.optional_host_permissions);
       }
-    }
+      // Map the wss:// permission to ws:// for the loopback fixture server.
+      manifest.host_permissions.push('ws://grok.com/*');
+      // Run the Grok content scripts on the plain-http fixture as well.
+      for (const contentScript of manifest.content_scripts) {
+        if (contentScript.matches.includes('https://grok.com/*')) {
+          contentScript.matches.push('http://grok.com/*');
+        }
+      }
+    },
   });
   const extension = await launchExtension({
     extensionPath: extensionCopy.extensionPath,
@@ -363,19 +367,24 @@ for (const legacy of [false, true]) {
 }
 
 test('adding Grok twice at once never exceeds the panel limit', async () => {
-  test.setTimeout(90000);
-  const fixture = await launchGrokFixture({ grantOptionalProviders: true });
+  test.setTimeout(120000);
+  const fixture = await launchGrokFixture({
+    grantOptionalProviders: true,
+    syntheticProviderCount: MAX_PANELS + 1,
+  });
   const { extension } = fixture;
-  const MAX_PANELS = 12;
-  const otherProviderIds = PROVIDERS.map(({ id }) => id).filter((id) => id !== 'grok').slice(0, MAX_PANELS - 1);
+  const otherProviderIds = [
+    ...PROVIDERS.map(({ id }) => id).filter((id) => id !== 'grok'),
+    ...syntheticProviderIds(MAX_PANELS + 1),
+  ].slice(0, MAX_PANELS - 1);
   expect(otherProviderIds).toHaveLength(MAX_PANELS - 1);
 
   try {
     // Multi-Panel opens min(enabled providers, layout capacity) panels, so
-    // start with exactly 11 enabled and enable Grok only for the add menu.
+    // start with 29 enabled and enable Grok only for the add menu.
     const page = await openMultiPanel(extension, {
       providers: otherProviderIds,
-      layout: '1x12',
+      layout: `1x${MAX_PANELS}`,
     });
     await extension.serviceWorker.evaluate(async (enabledProviders) => {
       await chrome.storage.sync.set({ enabledProviders, providerOrder: enabledProviders });
@@ -391,11 +400,18 @@ test('adding Grok twice at once never exceeds the panel limit', async () => {
     });
 
     await expect(page.locator('#panel-grid iframe')).toHaveCount(MAX_PANELS);
+    await expect(page.locator('#panel-grid .panel-header img[data-provider-id="grok"]')).toHaveCount(1);
     await expect.poll(() => extension.serviceWorker.evaluate(async () => (
       (await chrome.storage.sync.get('multiPanelProviders')).multiPanelProviders.length
     ))).toBe(MAX_PANELS);
     await page.waitForTimeout(500);
     await expect(page.locator('#panel-grid iframe')).toHaveCount(MAX_PANELS);
+
+    const limitToast = page.locator('.panelize-toast').filter({
+      hasText: `Maximum number of panels reached (${MAX_PANELS})`,
+    });
+    await expect(limitToast).toHaveCount(1);
+    await expect(limitToast).toBeVisible();
   } finally {
     await fixture.close();
   }

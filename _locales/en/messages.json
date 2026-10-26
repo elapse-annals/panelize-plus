@@ -1299,5 +1299,29 @@
   },
   "toastTierRecipesReset": {
     "message": "Reasoning level mapping restored to defaults"
+  },
+  "labelProviderBilling": {
+    "message": "Billing marker"
+  },
+  "descProviderBilling": {
+    "message": "Set a billing marker for each provider based on your account plan."
+  },
+  "billingUnmarked": {
+    "message": "Unmarked"
+  },
+  "billingFree": {
+    "message": "Free"
+  },
+  "billingPaid": {
+    "message": "Paid"
+  },
+  "billingQuota": {
+    "message": "Uses quota"
+  },
+  "billingCredits": {
+    "message": "Uses credits"
+  },
+  "msgProviderBillingUpdated": {
+    "message": "Billing marker saved"
   }
 }

@@ -27,6 +27,7 @@ import {
 } from '../modules/provider-open-url.js';
 import { getSetting, saveSetting } from '../modules/settings.js';
 import {
+  MAX_PANELS,
   LAYOUT_PANEL_COUNTS,
   getAutoAdjustedLayout,
   getAutoShrunkLayout
@@ -239,7 +240,6 @@ let isPopupWindow = false;   // 当前窗口是否为弹出窗口
 
 // Default panel configuration
 const DEFAULT_PROVIDERS = DEFAULT_PROVIDER_IDS;
-const MAX_PANELS = 12;
 const PENDING_MULTI_PANEL_ACTION_KEY = 'pendingMultiPanelAction';
 const SEND_FOCUS_RESTORE_DELAYS = [0, 80, 200, 400, 800, 1500, 2500, 4000, 6000, 8000, 10000, 12000];
 const SEND_FOCUS_NO_BUSY_TIMEOUT_MS = 2000;

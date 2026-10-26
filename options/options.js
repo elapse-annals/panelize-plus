@@ -8,6 +8,7 @@ import {
   PROVIDER_SORT_MODE_FREQUENT
 } from '../modules/provider-ranking.js';
 import { normalizeStartupProviders } from '../modules/startup-providers.js';
+import { getProviderBillingType, PROVIDER_BILLING_TYPES } from '../modules/provider-billing.js';
 import {
   hasOptionalProviderPermission,
   requestOptionalProviderPermission
@@ -468,6 +469,7 @@ async function renderProviderList() {
     const hasAccess = providerAccess.get(provider.id) !== false;
     const isEnabled = isEnabledPreference && hasAccess;
     const isDraggable = isEnabled && sortMode !== PROVIDER_SORT_MODE_FREQUENT;
+    const billingType = getProviderBillingType(provider.id, settings.providerBillingTypes);
     const googleModeControl = provider.id === 'google'
       ? renderGoogleModeSelectMarkup(googleProviderMode, isEnabled)
       : '';
@@ -493,7 +495,16 @@ async function renderProviderList() {
             <img src="${getProviderIcon(provider)}" alt="${provider.name}" width="24" height="24"
                  onerror="this.style.display='none'" />
           </div>
-          <span class="provider-name">${provider.name}</span>
+          <div class="provider-details">
+            <span class="provider-name">${provider.name}</span>
+            <select class="provider-billing-select" data-billing-provider-id="${provider.id}"
+                    aria-label="${provider.name}: ${t('labelProviderBilling')}"
+                    title="${t('labelProviderBilling')}">
+              ${Object.entries(PROVIDER_BILLING_TYPES).map(([value, key]) => `
+                <option value="${value}" ${billingType === value ? 'selected' : ''}>${t(key)}</option>
+              `).join('')}
+            </select>
+          </div>
         </div>
         <div class="provider-controls">
           ${googleModeControl}
@@ -560,6 +571,22 @@ async function renderProviderList() {
     });
   });
 
+  listContainer.querySelectorAll('[data-billing-provider-id]').forEach(select => {
+    ['mousedown', 'click'].forEach(eventName => {
+      select.addEventListener(eventName, event => event.stopPropagation());
+    });
+    select.addEventListener('change', async (event) => {
+      const providerId = event.target.dataset.billingProviderId;
+      const currentSettings = await getSettings();
+      await saveSetting('providerBillingTypes', {
+        ...currentSettings.providerBillingTypes,
+        [providerId]: getProviderBillingType(providerId, { [providerId]: event.target.value })
+      });
+      fitSelectWidth(event.target);
+      showStatus('success', t('msgProviderBillingUpdated'));
+    });
+  });
+
   listContainer.querySelectorAll('.startup-provider-toggle').forEach(label => {
     label.addEventListener('mousedown', (event) => {
       event.stopPropagation();
@@ -587,9 +614,9 @@ function setupStorageChangeListener() {
       return;
     }
 
-    if (changes.googleProviderMode) {
+    if (changes.googleProviderMode || changes.providerBillingTypes) {
       renderProviderList().catch((error) => {
-        console.error('Error syncing Google mode control:', error);
+        console.error('Error syncing provider controls:', error);
       });
     }
 
@@ -822,6 +849,7 @@ function setupEventListeners() {
 
     // Re-translate the entire page
     translatePage();
+    await renderProviderList();
 
     // Show success message (now in the new language)
     showStatus('success', t('msgLanguageUpdated'));

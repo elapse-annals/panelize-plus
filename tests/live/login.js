@@ -4,10 +4,11 @@
  * provider logins can be completed by hand. Usage: npm run test:live:login
  *
  * Each selected provider opens in its own tab, plus the multi-panel page to
- * confirm the panels show the logged-in state. More than 12 providers open in
+ * confirm the panels show the logged-in state. More than 30 providers open in
  * batches; quit the browser to move to the next one.
  */
 import { spawn } from 'node:child_process';
+import { MAX_PANELS } from '../../modules/layout-auto-adjust.js';
 import { launchExtension } from '../e2e/extension-harness.js';
 import { getChromiumExecutablePath } from '../e2e/browser-launch-options.js';
 import {
@@ -18,8 +19,6 @@ import {
   getSelectedProviders,
   prepareLiveExtension,
 } from './live-harness.js';
-
-const MAX_PANELS = 12;
 
 const providers = getSelectedProviders();
 const extensionPath = await prepareLiveExtension();

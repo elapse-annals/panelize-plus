@@ -58,7 +58,7 @@ Panelize は、1つのプロンプトを ChatGPT、Claude、Gemini、Grok、Deep
 
 ### 柔軟なレイアウト
 
-22種類のレイアウトを用意。素早い2モデル比較には1×2、最大12モデルの比較には1×12または2×6が使えます。
+49種類のレイアウトを用意し、最大30パネルに対応。素早い2モデル比較には1×2、多数のパネルには1×30または2×15が使えます。実際に開けるパネル数は、有効なプロバイダー数によって異なります。
 
 <p align="center">
   <img src="assets/screenshots/select-layout.png" alt="Layout Selection" width="600">

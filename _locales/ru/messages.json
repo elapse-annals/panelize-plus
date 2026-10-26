@@ -1284,5 +1284,29 @@
   },
   "toastTierRecipesReset": {
     "message": "Сопоставление уровней сброшено"
+  },
+  "labelProviderBilling": {
+    "message": "Метка оплаты"
+  },
+  "descProviderBilling": {
+    "message": "Укажите метку оплаты для каждого сервиса в соответствии с тарифом аккаунта."
+  },
+  "billingUnmarked": {
+    "message": "Не указано"
+  },
+  "billingFree": {
+    "message": "Бесплатно"
+  },
+  "billingPaid": {
+    "message": "Платно"
+  },
+  "billingQuota": {
+    "message": "Расходует лимит"
+  },
+  "billingCredits": {
+    "message": "Расходует кредиты"
+  },
+  "msgProviderBillingUpdated": {
+    "message": "Метка оплаты сохранена"
   }
 }
