@@ -1,6 +1,6 @@
 {
   "extensionName": {
-    "message": "Panelize - Compare AI Chatbots Side by Side"
+    "message": "Panelize Plus - Compare AI Chatbots Side by Side"
   },
   "extensionDescription": {
     "message": "Ask multiple AI chatbots at once and compare their answers side by side. Uses your own accounts. Free, no API keys."
@@ -663,7 +663,7 @@
     "message": "Loading..."
   },
   "optionsPageTitle": {
-    "message": "Panelize - Settings"
+    "message": "Panelize Plus - Settings"
   },
   "headerSettingsTitle": {
     "message": "Settings: Panelize"

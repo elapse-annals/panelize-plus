@@ -1,6 +1,6 @@
 {
   "extensionName": {
-    "message": "Panelize - Comparez les chatbots IA côte à côte"
+    "message": "Panelize Plus - Comparez les chatbots IA côte à côte"
   },
   "extensionDescription": {
     "message": "Interrogez plusieurs chatbots IA à la fois et comparez leurs réponses côte à côte. Avec vos propres comptes. Gratuit, sans clé API."
@@ -607,7 +607,7 @@
     "message": "Chargement..."
   },
   "optionsPageTitle": {
-    "message": "Panelize - Paramètres"
+    "message": "Panelize Plus - Paramètres"
   },
   "headerSettingsTitle": {
     "message": "Paramètres : Panelize"
