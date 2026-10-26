@@ -101,8 +101,12 @@
   // known stop control, the settle time alone decides.
   const RESPONSE_TIMING_PROVIDERS = {
     chatgpt: {
-      answerSelector: '[data-message-author-role="assistant"]',
-      busySelector: CHATGPT_STOP_BUTTON_SELECTOR,
+      // Current layout: the answer's markdown inside the assistant turn, whose
+      // own text starts with a hidden speaker label. The turn carries
+      // data-message-streaming while it generates. The author-role turn is the
+      // legacy layout.
+      answerSelector: '[data-message-role="assistant"] [data-assistant-markdown-root], [data-message-author-role="assistant"]',
+      busySelector: `${CHATGPT_STOP_BUTTON_SELECTOR}, [data-message-role="assistant"][data-message-streaming]`,
       settleMs: 3000
     },
     gemini: {

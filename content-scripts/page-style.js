@@ -10,6 +10,8 @@
   const MESSAGE_TYPE = 'PANELIZE_PAGE_STYLE';
   const STYLE_ID = 'panelize-page-style';
   const SWIPE_GUARD_ID = 'panelize-swipe-guard';
+  const PANEL_WHEEL_TYPE = 'PANELIZE_PANEL_WHEEL';
+  const WHEEL_GESTURE_GAP_MS = 150;
   const MASK_DELAY_MS = 200;
   const COMPOSER_SELECTORS = 'textarea, [contenteditable="true"]';
   const SEND_CONTROL_SELECTORS = [
@@ -70,6 +72,21 @@
     }
     :where(${MESSAGE_SELECTORS}) :where(pre) :where(*) { background: transparent !important; }
     [data-panelize-composer] {
+      background: transparent !important; border-color: transparent !important; box-shadow: none !important;
+      color: transparent !important; caret-color: transparent !important;
+    }
+    /* Every composer looks like the same empty box. Its own controls stay in
+       place and usable, only invisible, so text fill, Send and tiers work. */
+    [data-panelize-composer] > * { opacity: 0 !important; }
+    [data-panelize-composer]::after {
+      content: "" !important; display: block !important; position: absolute !important;
+      left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important; height: 56px !important;
+      box-sizing: border-box !important; background: #fff !important; border: 1px solid #d9d9de !important;
+      border-radius: 20px !important; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important; pointer-events: none !important;
+    }
+    /* A bare text field as the composer has no ::after, so it is the box. */
+    [data-panelize-composer]:is(textarea, input) {
+      height: 56px !important; max-height: 56px !important; box-sizing: border-box !important; resize: none !important;
       background: #fff !important; border: 1px solid #d9d9de !important; border-radius: 20px !important;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
     }
@@ -87,7 +104,7 @@
     }
     [data-panelize-composer] {
       position: fixed !important; left: 12px !important; right: 12px !important; bottom: 12px !important;
-      top: auto !important; max-width: 760px !important; margin: 0 auto !important;
+      top: auto !important; width: auto !important; min-height: 56px !important; max-width: 760px !important; margin: 0 auto !important;
       transform: none !important; z-index: 20 !important;
     }
     [data-panelize-scroller] { padding-bottom: var(--panelize-composer-space, 160px) !important; }
@@ -149,6 +166,7 @@
   let observedComposer = null;
   let maskTimer = null;
   let isolationPending = false;
+  const wheelGesture = { lastAt: -Infinity, forward: false };
   const pendingMaskNodes = new Set();
   let visibleRoots = new Set();
   // Text node -> { original, masked }, so turning blind mode off restores
@@ -609,11 +627,45 @@
     (document.head || document.documentElement).appendChild(style);
   }
 
+  function canScrollHorizontally(target, deltaX) {
+    const scroller = document.scrollingElement || document.documentElement;
+    for (let current = target?.nodeType === 1 ? target : target?.parentElement; current; current = current.parentElement) {
+      if (current.scrollWidth <= current.clientWidth + 1) continue;
+      if (current !== scroller && !/(auto|scroll|overlay)/.test(window.getComputedStyle(current).overflowX)) continue;
+      const maxScroll = current.scrollWidth - current.clientWidth;
+      if (deltaX > 0 ? current.scrollLeft < maxScroll - 1 : current.scrollLeft > 1) return true;
+    }
+    return false;
+  }
+
+  // The swipe guard also keeps horizontal swipes from reaching the panel row,
+  // so they are handed to the host to scroll it. Like the browser, the target
+  // is chosen once per gesture: wide code blocks and tables keep their own
+  // horizontal scroll, and momentum keeps going where the gesture started.
+  function forwardHorizontalWheel(event) {
+    const deltaX = event.deltaX * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerWidth : 1);
+    if (event.timeStamp - wheelGesture.lastAt > WHEEL_GESTURE_GAP_MS) {
+      wheelGesture.forward = !event.ctrlKey && Math.abs(event.deltaX) > Math.abs(event.deltaY)
+        && !canScrollHorizontally(event.target, deltaX);
+    }
+    wheelGesture.lastAt = event.timeStamp;
+    if (!wheelGesture.forward || !deltaX) return;
+    try {
+      window.parent.postMessage({ type: PANEL_WHEEL_TYPE, context: 'multi-panel', deltaX }, extensionOrigin);
+    } catch {
+      // The host may have navigated away; scrolling should not break the page.
+    }
+  }
+
   if (isUnderExtensionPage()) {
     for (const type of ['mousedown', 'mouseup', 'auxclick']) {
       window.addEventListener(type, blockHistoryButton, true);
     }
     blockSwipeNavigation();
+    // Only a direct child of the host can reach it with the host's origin.
+    if (window.location.ancestorOrigins?.length === 1) {
+      window.addEventListener('wheel', forwardHorizontalWheel, { capture: true, passive: true });
+    }
   }
 
   window.addEventListener('message', onMessage);

@@ -97,6 +97,14 @@ test.describe('Blind mode, wide content and composer overhang', () => {
         await expect(frame.locator('.markdown')).not.toContainText(/ChatGPT|DeepSeek/);
         const composer = frame.locator('[data-panelize-composer]');
         await expect(composer).toHaveCSS('position', 'fixed');
+        // Every provider shows the same empty box; its own controls are invisible.
+        expect(await composer.evaluate(element => {
+          const isField = element.matches('textarea, input');
+          const box = getComputedStyle(element, isField ? null : '::after');
+          const height = isField ? `${element.getBoundingClientRect().height}px` : box.height;
+          const hidden = [...element.children].every(child => getComputedStyle(child).opacity === '0');
+          return [height, box.borderRadius, box.backgroundColor, getComputedStyle(element).color, hidden];
+        })).toEqual(['56px', '20px', 'rgb(255, 255, 255)', 'rgba(0, 0, 0, 0)', true]);
         await expect.poll(() => composer.evaluate(element =>
           Math.abs(element.getBoundingClientRect().bottom - (window.innerHeight - 12))
         )).toBeLessThanOrEqual(1);
@@ -166,6 +174,29 @@ test.describe('Blind mode, wide content and composer overhang', () => {
         expect(await frame.evaluate(() => document.documentElement.style.getPropertyValue('--panelize-composer-space'))).toBe('');
         await expect(frame.locator('form, textarea').first()).toHaveCSS('position', 'absolute');
       }
+    } finally {
+      await extension.close();
+    }
+  });
+
+  test('a horizontal swipe over a panel scrolls the panel row without navigating the panel', async () => {
+    const extension = await launchExtension({ viewport: { width: 700, height: 700 } });
+    try {
+      await routeProviderFixtures(extension);
+      const page = await openPanels(extension);
+      await expect.poll(() => page.frames().filter(frame => /chatgpt|deepseek/.test(frame.url())).length).toBe(2);
+      const grid = page.locator('#panel-grid');
+      await expect.poll(() => grid.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+      const frameUrls = page.frames().map(frame => frame.url()).sort();
+      const box = await grid.boundingBox();
+      const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, point)).toBe('IFRAME');
+      await page.mouse.move(point.x, point.y);
+      await page.mouse.wheel(120, 0);
+      await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBeGreaterThan(60);
+      await page.mouse.wheel(-400, 0);
+      await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBe(0);
+      expect(page.frames().map(frame => frame.url()).sort()).toEqual(frameUrls);
     } finally {
       await extension.close();
     }

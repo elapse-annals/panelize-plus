@@ -1081,7 +1081,7 @@
     "message": "Punkte"
   },
   "answerStatsScoreNote": {
-    "message": "Punkte: Eine übernommene Antwort bringt 5 Punkte. Die Nutzung einer Antwort bringt bis zu 3 weitere: 1 für Klicken oder Scrollen in ihrem Bereich, 1 für das Vergrößern des Bereichs und 1 je 30 s Nutzungszeit. Die Nutzungszeit summiert die Abstände zwischen Klicks und Scrollen von höchstens 15 s sowie die Zeit, in der der Bereich vergrößert ist. Mit einem Klick auf die Minustaste werden 5 Punkte abgezogen; mit einem weiteren Klick wird dies rückgängig gemacht. Eine gemessene Antwort, die ohne Text abläuft, verliert ebenfalls 5 Punkte und erhält keine Punkte für die Nutzung."
+    "message": "Punkte: Eine übernommene Antwort bringt 5 Punkte. Die Nutzung einer Antwort bringt bis zu 3 weitere: 1 für Klicken oder Scrollen in ihrem Bereich, 1 für das Vergrößern des Bereichs und 1 je 30 s Nutzungszeit. Die Nutzungszeit summiert die Abstände zwischen Klicks und Scrollen von höchstens 15 s sowie die Zeit, in der der Bereich vergrößert ist. Mit einem Klick auf die Minustaste werden 5 Punkte abgezogen; mit einem weiteren Klick wird dies rückgängig gemacht. Eine gemessene Antwort, die ohne Text abläuft, verliert ebenfalls 5 Punkte und erhält keine Punkte für die Nutzung, sofern sie weder übernommen noch darin geklickt oder gescrollt wurde."
   },
   "answerStatsColumnRecentScore": {
     "message": "Letzte 30 Tage"

@@ -314,7 +314,7 @@ describe('aggregateAnswerStats', () => {
   });
 
   it('deducts five points from a timed answer that times out without output and ignores its engagement', () => {
-    let round = engage(newRound(), 'p1', [['click', 1000], ['zoom-in', 2000], ['zoom-out', 62000]]);
+    let round = engage(newRound(), 'p1', [['zoom-in', 2000], ['zoom-out', 62000]]);
     round = applyTimingEvent(round, 'p1', 'timeout', 301000);
     // Output before the timeout is not a failure.
     round = applyTimingEvent(round, 'p2', 'first-output', 3000);
@@ -324,6 +324,21 @@ describe('aggregateAnswerStats', () => {
     const byProvider = Object.fromEntries(aggregateAnswerStats([round], NOW).map(entry => [entry.providerId, entry]));
     expect(byProvider.chatgpt).toMatchObject({ score: -5, timeoutCount: 1, engagedRounds: 1 });
     expect(byProvider.gemini).toMatchObject({ score: 1, timeoutCount: 1 });
+  });
+
+  it('does not deduct for a timeout when the answer was adopted or clicked or scrolled in', () => {
+    let clicked = engage(newRound('r1'), 'p1', [['click', 1000], ['zoom-in', 2000], ['zoom-out', 62000]]);
+    clicked = applyTimingEvent(clicked, 'p1', 'timeout', 301000);
+    let scrolled = engage(newRound('r2'), 'p1', [['scroll', 1000]]);
+    scrolled = applyTimingEvent(scrolled, 'p1', 'timeout', 301000);
+    let adopted = applyTimingEvent(newRound('r3'), 'p1', 'timeout', 301000);
+    adopted = toggleRoundAdoption(adopted, 'p1');
+    const untouched = applyTimingEvent(newRound('r4'), 'p1', 'timeout', 301000);
+
+    const [chatgpt] = aggregateAnswerStats([clicked, scrolled, adopted, untouched], NOW)
+      .filter(entry => entry.providerId === 'chatgpt');
+    // 3 + 1 engagement points, 5 for the adoption, -5 for the untouched timeout.
+    expect(chatgpt).toMatchObject({ score: 4, timeoutCount: 4, adoptedCount: 1 });
   });
 
   it('deducts once for a rejected answer without output and not for pending or cancelled answers', () => {

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.12.1 - 2026-10-27
+- Answer log now lists questions when the extension language has a region (for example Simplified Chinese); before, it stayed empty.
+- ChatGPT answer timing works with ChatGPT's current page, so its answers no longer all time out in Answer stats.
+- A timed answer that times out without detected text no longer loses 5 points when you adopted it or clicked or scrolled in it, since it clearly had output. Existing stats are recalculated with this rule.
+
+## 2.12.0 - 2026-10-27
+- A horizontal trackpad swipe over a panel scrolls the panel row again, while still never going back or forward inside the panel. Wide code blocks and tables in a panel keep their own horizontal scroll.
+- The New conversation button below the composer is hidden; use New Chat in the toolbar or its shortcut.
+- In blind mode every panel's composer is now the same empty box, so its buttons and size no longer hint at the provider.
+
 ## 2.11.0 - 2026-10-27
 - The question history moves out of Answer stats into its own Answer log dialog (toolbar button next to Answer stats), with search and filters by AI and by feedback.
 - Answer stats keeps the table; its explanations fold into "How these are calculated", and the header row and AI column stay visible while the table scrolls.

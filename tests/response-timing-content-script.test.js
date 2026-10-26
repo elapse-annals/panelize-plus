@@ -169,6 +169,46 @@ describe('response timing content script', () => {
     ]);
   });
 
+  it('times a current-layout ChatGPT answer from its markdown, not the hidden speaker label, until streaming ends', async () => {
+    window.happyDOM.setURL('https://chatgpt.com/c/test');
+    document.body.innerHTML = `
+      <ol id="thread" data-conversation-transcript>
+        <li data-message-role="assistant" data-message-complete>
+          <h4>ChatGPT said:</h4><div data-assistant-markdown-root><p>Earlier answer</p></div>
+        </li>
+      </ol>
+    `;
+    const thread = document.getElementById('thread');
+
+    startSend('req-chatgpt-current');
+    thread.insertAdjacentHTML('beforeend', '<li data-message-role="assistant" data-message-streaming id="turn"><h4>ChatGPT said:</h4></li>');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(getPhases('req-chatgpt-current')).toEqual([]);
+
+    const turn = document.getElementById('turn');
+    turn.insertAdjacentHTML('beforeend', '<div data-assistant-markdown-root><p id="answer">Hel</p></div>');
+    await vi.advanceTimersByTimeAsync(250);
+    expect(getTimingCalls('req-chatgpt-current')).toEqual([
+      expect.objectContaining({ phase: 'first-output', provider: 'chatgpt', at: START + 1250 }),
+    ]);
+
+    document.getElementById('answer').textContent = 'Hello world';
+    await vi.advanceTimersByTimeAsync(250);
+    const lastChangeAt = Date.now();
+
+    // Still streaming while the turn is marked as streaming.
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(getPhases('req-chatgpt-current')).toEqual(['first-output']);
+
+    turn.removeAttribute('data-message-streaming');
+    turn.setAttribute('data-message-complete', '');
+    await vi.advanceTimersByTimeAsync(250);
+    expect(getTimingCalls('req-chatgpt-current')).toEqual([
+      expect.objectContaining({ phase: 'first-output' }),
+      expect.objectContaining({ phase: 'complete', at: lastChangeAt }),
+    ]);
+  });
+
   it('completes a DeepSeek answer once its text has not changed for the settle time', async () => {
     window.happyDOM.setURL('https://chat.deepseek.com/a/chat/s/test');
     document.body.innerHTML = '<div id="thread"></div>';

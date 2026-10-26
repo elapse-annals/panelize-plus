@@ -1081,7 +1081,7 @@
     "message": "Puntuación"
   },
   "answerStatsScoreNote": {
-    "message": "Puntuación: una respuesta adoptada suma 5 puntos. Usar una respuesta suma hasta 3 más: 1 por hacer clic o desplazarse en su panel, 1 por ampliar el panel y 1 por cada 30 s de interacción. El tiempo de interacción suma los intervalos de hasta 15 s entre clics y desplazamientos, y el tiempo que el panel permanece ampliado. Haz clic en el botón menos para restar 5 puntos; haz clic de nuevo para deshacerlo. Una respuesta medida que agota el tiempo sin texto también resta 5 puntos y no suma por su uso."
+    "message": "Puntuación: una respuesta adoptada suma 5 puntos. Usar una respuesta suma hasta 3 más: 1 por hacer clic o desplazarse en su panel, 1 por ampliar el panel y 1 por cada 30 s de interacción. El tiempo de interacción suma los intervalos de hasta 15 s entre clics y desplazamientos, y el tiempo que el panel permanece ampliado. Haz clic en el botón menos para restar 5 puntos; haz clic de nuevo para deshacerlo. Una respuesta medida que agota el tiempo sin texto también resta 5 puntos y no suma por su uso, salvo que la hayas adoptado o hayas hecho clic o te hayas desplazado en ella."
   },
   "answerStatsColumnRecentScore": {
     "message": "Últimos 30 días"

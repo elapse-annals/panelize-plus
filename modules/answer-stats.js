@@ -38,7 +38,9 @@ export const ENGAGEMENT_ZOOM_MAX_GAP_MS = 5 * 60 * 1000;
 
 // Score: an adopted answer earns ADOPTED_ANSWER_POINTS; a rejected answer,
 // or a timed answer that timed out without any output, loses
-// REJECTED_ANSWER_POINTS. Engagement with an answer that never showed output
+// REJECTED_ANSWER_POINTS. An answer the user adopted, clicked or scrolled in
+// had output even when timing missed it, so it does not count as timed out
+// without output. Engagement with an answer that never showed output
 // earns nothing; otherwise it earns up to
 // MAX_ENGAGEMENT_POINTS more: one for clicking or scrolling, one for enlarging
 // the panel and one per ENGAGEMENT_POINT_ACTIVE_MS of active time.
@@ -255,10 +257,13 @@ function median(values) {
 }
 
 // A provider's answers in one round failed when one timed out and none of
-// them showed any output.
-function hasTimedOutWithoutOutput(answers) {
-  return answers.some(answer => answer.timed && answer.status === ANSWER_STATUS.TIMEOUT)
-    && !answers.some(answer => answer.status === ANSWER_STATUS.COMPLETE || Number.isFinite(answer.firstOutputMs));
+// them showed any output, was adopted, or was clicked or scrolled in.
+function hasTimedOutWithoutOutput(answers, adopted) {
+  return !adopted
+    && answers.some(answer => answer.timed && answer.status === ANSWER_STATUS.TIMEOUT)
+    && !answers.some(answer => answer.status === ANSWER_STATUS.COMPLETE
+      || Number.isFinite(answer.firstOutputMs)
+      || (answer.engagement?.clicks || 0) + (answer.engagement?.scrolls || 0) > 0);
 }
 
 /**
@@ -267,9 +272,9 @@ function hasTimedOutWithoutOutput(answers) {
  * Adoption rate only counts rounds where some answer was adopted. Score adds
  * the adoption points and the best engagement points of each round, minus
  * one deduction per provider per round if any of its answers was rejected or
- * none of them showed output before timing out. Rounds older than
- * RECENT_SCORE_WINDOW_MS before `now` count towards olderScore, which the
- * total score weighs by OLDER_SCORE_WEIGHT.
+ * none of them showed output before timing out (see hasTimedOutWithoutOutput).
+ * Rounds older than RECENT_SCORE_WINDOW_MS before `now` count towards
+ * olderScore, which the total score weighs by OLDER_SCORE_WEIGHT.
  */
 export function aggregateAnswerStats(rounds, now = Date.now()) {
   const byProvider = new Map();
@@ -319,7 +324,7 @@ export function aggregateAnswerStats(rounds, now = Date.now()) {
           roundScore += ADOPTED_ANSWER_POINTS;
         }
       }
-      const timedOutWithoutOutput = hasTimedOutWithoutOutput(answers);
+      const timedOutWithoutOutput = hasTimedOutWithoutOutput(answers, round.adoptedProviderId === providerId);
       if (timedOutWithoutOutput || answers.some(answer => answer.rejected)) {
         roundScore -= REJECTED_ANSWER_POINTS;
       }

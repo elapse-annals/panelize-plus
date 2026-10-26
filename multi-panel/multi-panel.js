@@ -1961,6 +1961,15 @@ function setupPanelEdgeNavigation() {
     });
   };
   grid.addEventListener('scroll', scheduleUpdate, { passive: true });
+  // Panels keep horizontal swipes from navigating their page and hand them
+  // here (see page-style.js) so the panel row still scrolls under a swipe.
+  window.addEventListener('message', (event) => {
+    const data = event.data;
+    if (data?.type !== 'PANELIZE_PANEL_WHEEL' || data.context !== 'multi-panel' || !Number.isFinite(data.deltaX)) return;
+    if (!panels.some(panel => panel.iframe?.contentWindow === event.source)) return;
+    if (document.getElementById('main-content')?.classList.contains('panel-focus-active')) return;
+    grid.scrollLeft += data.deltaX;
+  });
   new ResizeObserver(scheduleUpdate).observe(grid);
   // Panel count, layout and wide mode change the scroll width without resizing the grid.
   new MutationObserver(scheduleUpdate).observe(grid, { childList: true, attributes: true, attributeFilter: ['class', 'style'] });
@@ -3919,7 +3928,7 @@ function renderAnswerLogView() {
   });
   const { total, shown } = renderAnswerLog(document.getElementById('answer-log-list'), filteredRounds, {
     limit: answerLogLimit,
-    locale: getTranslationLocale(),
+    locale: getSnapshotLocale(),
     ...getAnswerViewOptions()
   });
 

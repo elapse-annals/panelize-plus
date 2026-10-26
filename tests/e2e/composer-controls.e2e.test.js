@@ -123,7 +123,7 @@ test.describe('Composer controls browser fixtures', () => {
       }), MANUAL_ORDER);
 
       const page = await openConfiguredMultiPanel(extension, { providers: ['chatgpt'], enabledProviders: MANUAL_ORDER, layout: '1x1' });
-      await expect(page.locator('#composer-new-chat-btn')).toBeVisible();
+      await expect(page.locator('#composer-new-chat-btn')).toBeHidden();
       // Editing the draft updates the Fill/Retry button. It must keep showing
       // the actual shortcut after that state update, not only at startup.
       await page.locator('#unified-input').fill('Keep the shortcut visible');
@@ -276,7 +276,7 @@ test.describe('Composer controls browser fixtures', () => {
       await expect(pageWithBothSupported.locator('.tier-option[data-tier="deep"]')).toHaveAttribute('aria-checked', 'true');
       await pageWithBothSupported.locator('#unified-input').fill('Retain my draft after new chat');
       await uploadPixel(pageWithBothSupported);
-      await pageWithBothSupported.locator('#composer-new-chat-btn').click();
+      await pageWithBothSupported.locator('#new-chat-btn').click();
 
       await expect.poll(async () => (await readFixture(pageWithBothSupported, 'https://chatgpt.com/'))?.newChats).toBe(1);
       await expect.poll(async () => (await readFixture(pageWithBothSupported, 'https://chat.deepseek.com/'))?.newChats).toBe(1);
@@ -331,7 +331,7 @@ test.describe('Composer controls browser fixtures', () => {
       }
 
       await page.setViewportSize({ width: 390, height: 844 });
-      await expect(page.locator('#composer-new-chat-btn')).toBeVisible();
+      await expect(page.locator('#composer-new-chat-btn')).toBeHidden();
       await expect(page.locator('.tier-option[data-tier="deep"]')).toBeVisible();
       await page.locator('#input-bar').screenshot({ path: testInfo.outputPath('composer-narrow.png') });
 

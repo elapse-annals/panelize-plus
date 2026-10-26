@@ -1081,7 +1081,7 @@
     "message": "Score"
   },
   "answerStatsScoreNote": {
-    "message": "Score : une réponse adoptée rapporte 5 points. Utiliser une réponse rapporte jusqu’à 3 points de plus : 1 pour un clic ou un défilement dans son panneau, 1 pour l’agrandissement du panneau et 1 par tranche de 30 s d’interaction. Le temps d’interaction additionne les intervalles de 15 s au plus entre clics et défilements, et le temps pendant lequel le panneau reste agrandi. Cliquez sur le bouton moins pour retirer 5 points, puis à nouveau pour annuler. Une réponse chronométrée qui expire sans aucun texte perd aussi 5 points et ne rapporte rien pour son utilisation."
+    "message": "Score : une réponse adoptée rapporte 5 points. Utiliser une réponse rapporte jusqu’à 3 points de plus : 1 pour un clic ou un défilement dans son panneau, 1 pour l’agrandissement du panneau et 1 par tranche de 30 s d’interaction. Le temps d’interaction additionne les intervalles de 15 s au plus entre clics et défilements, et le temps pendant lequel le panneau reste agrandi. Cliquez sur le bouton moins pour retirer 5 points, puis à nouveau pour annuler. Une réponse chronométrée qui expire sans aucun texte perd aussi 5 points et ne rapporte rien pour son utilisation, sauf si vous l’avez adoptée ou y avez cliqué ou défilé."
   },
   "answerStatsColumnRecentScore": {
     "message": "30 derniers jours"

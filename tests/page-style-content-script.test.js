@@ -76,7 +76,73 @@ function pressMouseButton(frame, button) {
   return event.defaultPrevented;
 }
 
+function wheel(frame, { deltaX = 0, deltaY = 0, deltaMode = 0, ctrlKey = false, timeStamp = 0, target } = {}) {
+  const event = new frame.win.WheelEvent('wheel', { deltaX, deltaY, deltaMode, ctrlKey, bubbles: true });
+  Object.defineProperty(event, 'timeStamp', { value: timeStamp });
+  Object.defineProperty(event, 'ctrlKey', { value: ctrlKey });
+  (target || frame.win.document.body).dispatchEvent(event);
+}
+
+function recordPosts(frame) {
+  const posts = [];
+  frame.parent.postMessage = (message, origin) => posts.push({ message, origin });
+  return posts;
+}
+
 describe('page style content script', () => {
+  it('hands horizontal swipes to the extension page so the panel row scrolls', () => {
+    const panel = createFrame({ ancestorOrigins: [extensionOrigin] });
+    const posts = recordPosts(panel);
+    wheel(panel, { deltaX: 30, deltaY: 2, timeStamp: 1000 });
+    // Momentum in the same gesture keeps going to the host.
+    wheel(panel, { deltaX: 8, deltaY: 9, timeStamp: 1050 });
+    expect(posts).toEqual([
+      { message: { type: 'PANELIZE_PANEL_WHEEL', context: 'multi-panel', deltaX: 30 }, origin: extensionOrigin },
+      { message: { type: 'PANELIZE_PANEL_WHEEL', context: 'multi-panel', deltaX: 8 }, origin: extensionOrigin }
+    ]);
+
+    posts.length = 0;
+    wheel(panel, { deltaX: 2, deltaY: 40, timeStamp: 2000 });
+    wheel(panel, { deltaX: 30, deltaY: 0, timeStamp: 2050 });
+    wheel(panel, { deltaX: 30, ctrlKey: true, timeStamp: 3000 });
+    expect(posts).toEqual([]);
+
+    wheel(panel, { deltaX: -2, deltaMode: 1, timeStamp: 4000 });
+    expect(posts.at(-1).message.deltaX).toBe(-32);
+  });
+
+  it('leaves horizontal swipes to an inner element that can still scroll that way', () => {
+    const panel = createFrame({
+      ancestorOrigins: [extensionOrigin],
+      html: '<pre id="code" style="overflow-x: auto"><code id="line">wide line</code></pre>'
+    });
+    const posts = recordPosts(panel);
+    const code = panel.win.document.getElementById('code');
+    Object.defineProperty(code, 'scrollWidth', { configurable: true, value: 800 });
+    Object.defineProperty(code, 'clientWidth', { configurable: true, value: 300 });
+    code.scrollLeft = 0;
+    const target = panel.win.document.getElementById('line');
+
+    wheel(panel, { deltaX: 20, timeStamp: 1000, target });
+    expect(posts).toEqual([]);
+    // At its start edge the block cannot scroll further left, so the row does.
+    wheel(panel, { deltaX: -20, timeStamp: 2000, target });
+    expect(posts).toHaveLength(1);
+  });
+
+  it('only forwards swipes from a direct child frame of the extension page', () => {
+    for (const options of [
+      { ancestorOrigins: ['https://chatgpt.com', extensionOrigin] },
+      { ancestorOrigins: ['https://attacker.test'] },
+      { embedded: false }
+    ]) {
+      const frame = createFrame(options);
+      const posts = recordPosts(frame);
+      wheel(frame, { deltaX: 30, timeStamp: 1000 });
+      expect(posts).toEqual([]);
+    }
+  });
+
   it('blocks mouse back and forward buttons only in frames under the extension page', () => {
     const panel = createFrame({ ancestorOrigins: [extensionOrigin] });
     expect(pressMouseButton(panel, 3)).toBe(true);
@@ -133,7 +199,11 @@ describe('page style content script', () => {
 
     expect(css).toContain('html, body { background: #fff !important; color-scheme: light !important; }');
     expect(css).toContain(':where([data-panelize-keep]):not([data-panelize-composer], [data-panelize-composer] *, table, table *, hr) {');
-    expect(css).toContain('background: #fff !important; border: 1px solid #d9d9de !important; border-radius: 20px !important;');
+    expect(css).toContain('background: transparent !important; border-color: transparent !important; box-shadow: none !important;');
+    expect(css).toContain('[data-panelize-composer] > * { opacity: 0 !important; }');
+    expect(css).toContain('[data-panelize-composer]::after {');
+    expect(css).toContain('height: 56px !important;');
+    expect(css).toContain('background: #fff !important; border: 1px solid #d9d9de !important;');
     expect(css).toContain(':where([data-panelize-composer] *):not(button, [role="button"], button *, [role="button"] *) {');
     expect(css).toContain('background: #f5f5f5 !important; border: none !important; border-radius: 8px !important;');
     // Shared rules come before the model-label rule so its transparent text still wins.

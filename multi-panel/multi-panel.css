@@ -1208,6 +1208,8 @@ body {
   outline-offset: 2px;
 }
 .composer-divider { width: 1px; height: 14px; background: #e4e6ee; }
+/* New Chat lives in the toolbar; the composer copy stays for its shortcut wiring. */
+#composer-new-chat-btn { display: none; }
 .tier-controls { display: inline-flex; gap: 2px; background: #f3f4f8; padding: 2px; border-radius: 8px; }
 .tier-option {
   position: relative;

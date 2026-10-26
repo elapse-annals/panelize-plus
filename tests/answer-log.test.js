@@ -12,6 +12,7 @@ import {
   getAnswerLogProviderIds,
   renderAnswerLog
 } from '../modules/answer-log.js';
+import { toLanguageTag } from '../modules/share-snapshot.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 9, 27, 12);
@@ -106,5 +107,12 @@ describe('renderAnswerLog', () => {
     const list = document.createElement('ul');
     renderAnswerLog(list, [round('empty', NOW, '')], { ...OPTIONS, limit: 20 });
     expect(list.querySelector('.answer-log-prompt').textContent).toBe('(no text)');
+  });
+
+  it('renders with an extension locale converted to a language tag', () => {
+    const list = document.createElement('ul');
+    const result = renderAnswerLog(list, [round('zh', NOW, '你好')], { ...OPTIONS, locale: toLanguageTag('zh_CN'), limit: 20 });
+    expect(result).toEqual({ total: 1, shown: 1 });
+    expect(list.querySelector('.answer-log-day').textContent).toBe(new Date(NOW).toLocaleDateString('zh-CN'));
   });
 });
