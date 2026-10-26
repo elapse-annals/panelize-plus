@@ -543,6 +543,27 @@
     apply(data);
   }
 
+  // Mouse back/forward buttons would navigate the panel away from its chat.
+  // Only frames under the extension page are guarded; top-level provider tabs
+  // keep the browser's default navigation.
+  function isUnderExtensionPage() {
+    if (!extensionOrigin || window.parent === window) return false;
+    const ancestors = window.location.ancestorOrigins;
+    return ancestors?.length > 0 && ancestors[ancestors.length - 1] === extensionOrigin;
+  }
+
+  function blockHistoryButton(event) {
+    if (event.button !== 3 && event.button !== 4) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  if (isUnderExtensionPage()) {
+    for (const type of ['mousedown', 'mouseup', 'auxclick']) {
+      window.addEventListener(type, blockHistoryButton, true);
+    }
+  }
+
   window.addEventListener('message', onMessage);
   window.PanelizePageStyle = { getState: () => ({ ...state }) };
 })();

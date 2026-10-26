@@ -7,8 +7,9 @@ const source = readFileSync(resolve(process.cwd(), 'content-scripts/page-style.j
 const extensionOrigin = 'chrome-extension://panelize-test';
 const windows = new Set();
 
-function createFrame({ url = 'https://chatgpt.com/', html = '', embedded = true, ResizeObserver: ResizeObserverClass } = {}) {
+function createFrame({ url = 'https://chatgpt.com/', html = '', embedded = true, ancestorOrigins, ResizeObserver: ResizeObserverClass } = {}) {
   const win = new Window({ url });
+  if (ancestorOrigins) Object.defineProperty(win.location, 'ancestorOrigins', { configurable: true, value: ancestorOrigins });
   const parent = { postMessage() {} };
   win.chrome = { runtime: { getURL: () => `${extensionOrigin}/` } };
   if (ResizeObserverClass) win.ResizeObserver = ResizeObserverClass;
@@ -69,7 +70,29 @@ afterEach(() => {
   windows.clear();
 });
 
+function pressMouseButton(frame, button) {
+  const event = new frame.win.MouseEvent('mouseup', { button, bubbles: true, cancelable: true });
+  frame.win.document.body.dispatchEvent(event);
+  return event.defaultPrevented;
+}
+
 describe('page style content script', () => {
+  it('blocks mouse back and forward buttons only in frames under the extension page', () => {
+    const panel = createFrame({ ancestorOrigins: [extensionOrigin] });
+    expect(pressMouseButton(panel, 3)).toBe(true);
+    expect(pressMouseButton(panel, 4)).toBe(true);
+    expect(pressMouseButton(panel, 0)).toBe(false);
+
+    const nested = createFrame({ ancestorOrigins: ['https://chatgpt.com', extensionOrigin] });
+    expect(pressMouseButton(nested, 3)).toBe(true);
+
+    const foreign = createFrame({ ancestorOrigins: ['https://attacker.test'] });
+    expect(pressMouseButton(foreign, 3)).toBe(false);
+
+    const topLevel = createFrame({ embedded: false });
+    expect(pressMouseButton(topLevel, 3)).toBe(false);
+  });
+
   it('adds and removes the blind style on request from the extension frame and ignores wide', () => {
     const frame = createFrame();
     send(frame, { wide: true, blind: false });
