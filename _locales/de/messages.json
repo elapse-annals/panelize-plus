@@ -1,6 +1,6 @@
 {
   "extensionName": {
-    "message": "Panelize - KI-Chatbots nebeneinander vergleichen"
+    "message": "Panelize Plus - KI-Chatbots nebeneinander vergleichen"
   },
   "extensionDescription": {
     "message": "Frage mehrere KI-Chatbots zugleich und vergleiche die Antworten nebeneinander. Mit eigenen Konten. Gratis, ohne API-Schlüssel."
@@ -607,7 +607,7 @@
     "message": "Lädt..."
   },
   "optionsPageTitle": {
-    "message": "Panelize - Einstellungen"
+    "message": "Panelize Plus - Einstellungen"
   },
   "headerSettingsTitle": {
     "message": "Einstellungen: Panelize"

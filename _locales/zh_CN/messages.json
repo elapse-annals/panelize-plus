@@ -1,6 +1,6 @@
 {
   "extensionName": {
-    "message": "Panelize - 多个 AI 并排对比"
+    "message": "Panelize Plus - 多个 AI 并排对比"
   },
   "extensionDescription": {
     "message": "一次提问，同时问多个 AI 聊天助手，回答并排对比。直接使用你自己的账号，免费，无需 API Key。"
@@ -601,7 +601,7 @@
     "message": "加载中..."
   },
   "optionsPageTitle": {
-    "message": "Panelize - 设置"
+    "message": "Panelize Plus - 设置"
   },
   "headerSettingsTitle": {
     "message": "设置： Panelize"

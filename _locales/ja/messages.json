@@ -1,6 +1,6 @@
 {
   "extensionName": {
-    "message": "Panelize - 複数の AI チャットを並べて比較"
+    "message": "Panelize Plus - 複数の AI チャットを並べて比較"
   },
   "extensionDescription": {
     "message": "複数の AI チャットに一度に質問して、回答を並べて比較。自分のアカウントでそのまま使えて、無料・API キー不要。"
@@ -607,7 +607,7 @@
     "message": "読み込み中..."
   },
   "optionsPageTitle": {
-    "message": "Panelize - 設定"
+    "message": "Panelize Plus - 設定"
   },
   "headerSettingsTitle": {
     "message": "設定： Panelize"

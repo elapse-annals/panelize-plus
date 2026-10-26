@@ -1,6 +1,6 @@
 {
   "extensionName": {
-    "message": "Panelize - Confronta i chatbot IA fianco a fianco"
+    "message": "Panelize Plus - Confronta i chatbot IA fianco a fianco"
   },
   "extensionDescription": {
     "message": "Chiedi a più chatbot IA in una volta e confronta le risposte fianco a fianco. Usa i tuoi account. Gratis, senza chiavi API."
@@ -607,7 +607,7 @@
     "message": "Caricamento..."
   },
   "optionsPageTitle": {
-    "message": "Panelize - Impostazioni"
+    "message": "Panelize Plus - Impostazioni"
   },
   "headerSettingsTitle": {
     "message": "Impostazioni: Panelize"
