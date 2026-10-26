@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.13.0 - 2026-10-27
+- Answer stats now time Zhipu, Z.ai and MiMo answers (first output, completion and timeouts) instead of showing —.
+
 ## 2.12.1 - 2026-10-27
 - Answer log now lists questions when the extension language has a region (for example Simplified Chinese); before, it stayed empty.
 - ChatGPT answer timing works with ChatGPT's current page, so its answers no longer all time out in Answer stats.

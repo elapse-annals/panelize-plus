@@ -135,6 +135,25 @@
       answerSelector: '.agent-chat__bubble--ai .agent-chat__speech-text',
       busySelector: null,
       settleMs: 5000
+    },
+    chatglm: {
+      // The thinking and the answer each render as .markdown-body inside the
+      // answer row; the answer's is added after the thinking's.
+      answerSelector: '.answer .markdown-body',
+      busySelector: null,
+      settleMs: 5000
+    },
+    'zai-global': {
+      answerSelector: '.chat-assistant #response-content-container',
+      // While answering, the send button turns into a stop button whose
+      // tooltip trigger carries the localized label.
+      busySelector: '[data-tooltip-trigger][aria-label="停止"], [data-tooltip-trigger][aria-label="Stop"]',
+      settleMs: 3000
+    },
+    mimo: {
+      answerSelector: '.markdown-blocks',
+      busySelector: '[data-is-typing="true"]',
+      settleMs: 3000
     }
   };
   const RESPONSE_TIMING_CHECK_INTERVAL_MS = 250;

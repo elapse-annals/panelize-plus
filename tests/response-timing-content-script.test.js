@@ -272,6 +272,62 @@ describe('response timing content script', () => {
     expect(getPhases(requestId)).toEqual(['first-output', 'complete']);
   });
 
+  it.each([
+    ['zai-global', 'https://chat.z.ai/c/test',
+      '<div class="chat-assistant"><div id="response-content-container"><p>Hi</p></div></div>'
+        + '<div data-tooltip-trigger aria-label="停止"><button></button></div>',
+      (thread) => thread.querySelector('[data-tooltip-trigger]').remove()],
+    ['mimo', 'https://aistudio.xiaomimimo.com/#/chat/test',
+      '<div class="markdown-blocks"><div class="markdown-prose" data-is-typing="true"><p>Hi</p></div></div>',
+      (thread) => thread.querySelector('[data-is-typing]').setAttribute('data-is-typing', 'false')],
+  ])('completes a %s answer once it stops typing', async (provider, url, answerHtml, stopTyping) => {
+    window.happyDOM.setURL(url);
+    document.body.innerHTML = '<div id="thread"></div>';
+    const thread = document.getElementById('thread');
+    const requestId = `req-${provider}`;
+
+    startSend(requestId);
+    await vi.advanceTimersByTimeAsync(500);
+    thread.insertAdjacentHTML('beforeend', answerHtml);
+    await vi.advanceTimersByTimeAsync(6250);
+    expect(getTimingCalls(requestId)).toEqual([
+      expect.objectContaining({ phase: 'first-output', provider }),
+    ]);
+
+    stopTyping(thread);
+    await vi.advanceTimersByTimeAsync(250);
+    expect(getPhases(requestId)).toEqual(['first-output', 'complete']);
+  });
+
+  it('times a Zhipu answer from its thinking and completes it after the settle time', async () => {
+    window.happyDOM.setURL('https://chatglm.cn/main/alltoolsdetail?cid=test');
+    document.body.innerHTML = '<div id="thread"></div>';
+    const thread = document.getElementById('thread');
+
+    startSend('req-chatglm');
+    await vi.advanceTimersByTimeAsync(500);
+    const thinking = '<div class="advance-thinking-area"><div class="markdown-body">Thinking</div></div>';
+    // Each update replaces the whole row: happy-dom's element.querySelector
+    // misses matches whose .answer ancestor lies outside the added node.
+    thread.innerHTML = `<div class="item"><div class="answer">${thinking}</div></div>`;
+    await vi.advanceTimersByTimeAsync(250);
+    const firstOutputAt = Date.now();
+
+    await vi.advanceTimersByTimeAsync(2000);
+    thread.innerHTML = `<div class="item"><div class="answer">${thinking}`
+      + '<div class="answer-content-wrap"><div class="markdown-body">Answer</div></div></div></div>';
+    await vi.advanceTimersByTimeAsync(250);
+    const lastChangeAt = Date.now();
+
+    await vi.advanceTimersByTimeAsync(4500);
+    expect(getPhases('req-chatglm')).toEqual(['first-output']);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(getTimingCalls('req-chatglm')).toEqual([
+      expect.objectContaining({ phase: 'first-output', provider: 'chatglm', at: firstOutputAt }),
+      expect.objectContaining({ phase: 'complete', at: lastChangeAt }),
+    ]);
+  });
+
   it('completes a Yuanbao answer after its settle time', async () => {
     window.happyDOM.setURL('https://yuanbao.tencent.com/chat/test');
     document.body.innerHTML = '<div id="thread"></div>';
@@ -360,13 +416,13 @@ describe('response timing content script', () => {
   });
 
   it('does not time providers without timing support', async () => {
-    window.happyDOM.setURL('https://chatglm.cn/main/alltoolsdetail');
+    window.happyDOM.setURL('https://grok.com/');
     document.body.innerHTML = '<div id="thread"></div>';
 
-    startSend('req-chatglm');
+    startSend('req-grok');
     document.getElementById('thread').innerHTML = '<div class="markdown">Answer</div>';
     await vi.advanceTimersByTimeAsync(10000);
 
-    expect(getPhases('req-chatglm')).toEqual([]);
+    expect(getPhases('req-grok')).toEqual([]);
   });
 });

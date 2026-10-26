@@ -7,7 +7,7 @@ const DB_VERSION = 1;
 const ROUNDS_STORE = 'rounds';
 
 // Providers whose content script reports response timing.
-export const ANSWER_TIMING_PROVIDER_IDS = Object.freeze(['chatgpt', 'gemini', 'deepseek', 'kimi', 'qwen-cn', 'yuanbao']);
+export const ANSWER_TIMING_PROVIDER_IDS = Object.freeze(['chatgpt', 'gemini', 'deepseek', 'kimi', 'qwen-cn', 'yuanbao', 'chatglm', 'zai-global', 'mimo']);
 export const PROMPT_SUMMARY_MAX_LENGTH = 100;
 export const MAX_STORED_ROUNDS = 1000;
 
