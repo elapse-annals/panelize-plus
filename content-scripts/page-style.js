@@ -9,6 +9,7 @@
 
   const MESSAGE_TYPE = 'PANELIZE_PAGE_STYLE';
   const STYLE_ID = 'panelize-page-style';
+  const SWIPE_GUARD_ID = 'panelize-swipe-guard';
   const MASK_DELAY_MS = 200;
   const COMPOSER_SELECTORS = 'textarea, [contenteditable="true"]';
   const SEND_CONTROL_SELECTORS = [
@@ -598,10 +599,21 @@
     event.stopPropagation();
   }
 
+  // A horizontal trackpad swipe that overscrolls the frame would also go back
+  // in history (seen in Gemini), so horizontal overscroll stops at the frame.
+  function blockSwipeNavigation() {
+    if (document.getElementById(SWIPE_GUARD_ID)) return;
+    const style = document.createElement('style');
+    style.id = SWIPE_GUARD_ID;
+    style.textContent = 'html, body { overscroll-behavior-x: none !important; }';
+    (document.head || document.documentElement).appendChild(style);
+  }
+
   if (isUnderExtensionPage()) {
     for (const type of ['mousedown', 'mouseup', 'auxclick']) {
       window.addEventListener(type, blockHistoryButton, true);
     }
+    blockSwipeNavigation();
   }
 
   window.addEventListener('message', onMessage);

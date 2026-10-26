@@ -1095,6 +1095,36 @@
   "answerStatsWeightNote": {
     "message": "Punteggio = punti degli ultimi 30 giorni per intero + punti precedenti al 30%, così le risposte recenti contano di più."
   },
+  "answerLogButtonTitle": {
+    "message": "Registro risposte"
+  },
+  "answerLogTitle": {
+    "message": "Registro risposte"
+  },
+  "answerLogSearchPlaceholder": {
+    "message": "Cerca domande"
+  },
+  "answerLogAllProviders": {
+    "message": "Tutte le IA"
+  },
+  "answerLogAllFeedback": {
+    "message": "Tutti i giudizi"
+  },
+  "answerLogFeedbackAdopted": {
+    "message": "Adottate"
+  },
+  "answerLogFeedbackRejected": {
+    "message": "Punti sottratti"
+  },
+  "answerLogFeedbackNone": {
+    "message": "Senza giudizio"
+  },
+  "answerLogNoMatches": {
+    "message": "Nessuna domanda corrisponde a questi filtri."
+  },
+  "answerStatsHowCalculated": {
+    "message": "Come si calcola"
+  },
   "labelProviderSortMode": {
     "message": "Provider order"
   },

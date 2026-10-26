@@ -205,6 +205,32 @@ export function getProviderById(id) {
   return PROVIDERS.find(p => p.id === id);
 }
 
+// Compact labels for the toolbar panel chips.
+const PROVIDER_SHORT_NAMES = {
+  chatgpt: 'GPT',
+  claude: 'Cla',
+  gemini: 'Gem',
+  grok: 'Grok',
+  deepseek: 'DS',
+  kimi: 'Kimi',
+  google: 'Ggl',
+  doubao: 'DB',
+  'qwen-cn': 'QwC',
+  'qwen-global': 'QwG',
+  chatglm: 'GLM',
+  'zai-global': 'Z.ai',
+  yuanbao: 'YB',
+  mimo: 'MiMo',
+  'meta-ai': 'Meta',
+  stepfun: 'Step',
+  agnes: 'Agn',
+  'hy-aistudio': 'Hy'
+};
+
+export function getProviderShortName(provider) {
+  return PROVIDER_SHORT_NAMES[provider?.id] || provider?.name || '';
+}
+
 export async function getProviderByIdWithSettings(id) {
   const provider = PROVIDERS.find(p => p.id === id);
   if (!provider) return null;

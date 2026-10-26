@@ -1095,6 +1095,36 @@
   "answerStatsWeightNote": {
     "message": "Punkte = Punkte der letzten 30 Tage voll + ältere Punkte zu 30 %, damit neuere Antworten stärker zählen."
   },
+  "answerLogButtonTitle": {
+    "message": "Antwortverlauf"
+  },
+  "answerLogTitle": {
+    "message": "Antwortverlauf"
+  },
+  "answerLogSearchPlaceholder": {
+    "message": "Fragen durchsuchen"
+  },
+  "answerLogAllProviders": {
+    "message": "Alle KIs"
+  },
+  "answerLogAllFeedback": {
+    "message": "Alle Bewertungen"
+  },
+  "answerLogFeedbackAdopted": {
+    "message": "Übernommen"
+  },
+  "answerLogFeedbackRejected": {
+    "message": "Punkte abgezogen"
+  },
+  "answerLogFeedbackNone": {
+    "message": "Ohne Bewertung"
+  },
+  "answerLogNoMatches": {
+    "message": "Keine Fragen passen zu diesen Filtern."
+  },
+  "answerStatsHowCalculated": {
+    "message": "So wird gerechnet"
+  },
   "labelProviderSortMode": {
     "message": "Provider order"
   },

@@ -84,6 +84,7 @@ test.describe('Blind mode, wide content and composer overhang', () => {
       await expect(page.locator('.open-provider-top-level-btn').first()).toBeHidden();
       await expect(page.locator('.switch-provider-btn').first()).toBeHidden();
       await expect(page.locator('#answer-stats-btn')).toBeHidden();
+      await expect(page.locator('#answer-log-btn')).toBeHidden();
       await expect(page.locator('.panel-selector .blind-label')).toHaveText([/匿名模型|Anonymous model/, /匿名模型|Anonymous model/]);
       await expect.poll(() => pageStyleIn(page, 'chatgpt.com')).toContain('font-family');
       for (const host of ['chatgpt.com', 'chat.deepseek.com']) {
@@ -255,6 +256,59 @@ test.describe('Blind mode, wide content and composer overhang', () => {
       await expect.poll(() => columnWidths(page)).toEqual(dragged);
       await page.locator('.panel-resize-handle').first().dblclick();
       await expect.poll(() => columnWidths(page)).toEqual(wide);
+    } finally {
+      await extension.close();
+    }
+  });
+
+  test('edge buttons and Option+Arrow jump to the first and last panel', async () => {
+    const extension = await launchExtension({ viewport: { width: 1280, height: 800 } });
+    try {
+      await routeProviderFixtures(extension);
+      const page = await openPanels(extension);
+      const grid = page.locator('#panel-grid');
+      const start = page.locator('#panel-edge-start-btn');
+      const end = page.locator('#panel-edge-end-btn');
+      const wide = page.locator('#wide-content-btn');
+      if (await wide.getAttribute('aria-pressed') === 'true') await wide.click();
+      await expect(wide).toHaveAttribute('aria-pressed', 'false');
+      await expect.poll(() => grid.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
+      await expect(start).toBeHidden();
+      await expect(end).toBeHidden();
+
+      await wide.click();
+      await expect.poll(() => grid.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+      await expect(start).toBeHidden();
+      await expect(end).toBeVisible();
+      await expect(end).toHaveAttribute('title', /\((⌥→|Alt\+Right)\)$/);
+
+      const atEnd = () => grid.evaluate(element => element.scrollLeft >= element.scrollWidth - element.clientWidth - 1);
+      await end.click();
+      await expect.poll(atEnd).toBe(true);
+      await expect(end).toBeHidden();
+      await expect(start).toBeVisible();
+      await start.click();
+      await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBe(0);
+
+      await page.locator('#toolbar').click({ position: { x: 4, y: 4 } });
+      await page.keyboard.press('Alt+ArrowRight');
+      await expect.poll(atEnd).toBe(true);
+      await page.keyboard.press('Alt+ArrowLeft');
+      await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBe(0);
+
+      // An empty composer has no words to move over, so it scrolls too.
+      const input = page.locator('#unified-input');
+      await input.focus();
+      await page.keyboard.press('Alt+ArrowRight');
+      await expect.poll(atEnd).toBe(true);
+      await page.keyboard.press('Alt+ArrowLeft');
+      await expect.poll(() => grid.evaluate(element => element.scrollLeft)).toBe(0);
+
+      // With text, Option+Arrow keeps moving by word.
+      await input.fill('hello world');
+      await page.keyboard.press('Alt+ArrowRight');
+      await page.waitForTimeout(300);
+      expect(await grid.evaluate(element => element.scrollLeft)).toBe(0);
     } finally {
       await extension.close();
     }

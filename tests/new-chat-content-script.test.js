@@ -210,6 +210,32 @@ describe('new chat content script result protocol', () => {
     ]);
   });
 
+  it('treats a repeated Qwen Global request on the blank root page as ready', async () => {
+    vi.useFakeTimers();
+    window.happyDOM.setURL('https://chat.qwen.ai/');
+    document.body.innerHTML = `
+      <div role="button" tabindex="0" aria-label="New Chat" class="new-chat"></div>
+      <div class="message-input-container">
+        <textarea class="message-input-textarea"></textarea>
+      </div>
+    `;
+    const button = document.querySelector('.new-chat');
+    [button, document.querySelector('textarea')].forEach(markVisible);
+    const clicks = vi.fn();
+    button.addEventListener('click', clicks);
+
+    dispatchMultiPanelMessage({
+      type: 'NEW_CHAT',
+      requestId: 'req-qwen-global-root',
+      panelId: 'panel-qwen-global',
+      provider: 'qwen-global'
+    });
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(clicks).toHaveBeenCalledTimes(1);
+    expect(getNewChatResults().map(result => result.status)).toEqual(['verified']);
+  });
+
   it.each([
     ['wrong message source', { source: {} }],
     ['wrong extension origin', { origin: 'https://provider-page.example' }]

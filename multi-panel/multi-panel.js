@@ -5,7 +5,7 @@
  * allowing users to compare responses from multiple AI providers side by side.
  */
 
-import { PROVIDERS, getProviderById, getEnabledProviders, getProviderIcon } from '../modules/providers.js';
+import { PROVIDERS, getProviderById, getEnabledProviders, getProviderIcon, getProviderShortName } from '../modules/providers.js';
 import { DEFAULT_PROVIDER_IDS, DEFAULT_PROVIDER_ORDER, DEFAULT_STARTUP_PROVIDER_IDS } from '../modules/provider-defaults.js';
 import { GROK_WEBSOCKET_COOKIE_SYNC_ACTION } from '../modules/grok-websocket-cookies.js';
 import {
@@ -103,8 +103,8 @@ import { getStartupLayout, resolveStartupProviderIds } from '../modules/startup-
 import { clearStartupSnapshot, readStartupSnapshot, writeStartupSnapshot } from '../modules/startup-snapshot.js';
 import {
   ENGAGEMENT_KIND,
+  MAX_STORED_ROUNDS,
   OLDER_SCORE_WEIGHT,
-  RECENT_SCORE_WINDOW_MS,
   aggregateAnswerStats,
   applyEngagementEvent,
   applyTimingEvent,
@@ -115,8 +115,11 @@ import {
   toggleRoundAdoption,
   toggleRoundRejection
 } from '../modules/answer-stats.js';
+import { renderAnswerStatsTable } from '../modules/answer-stats-view.js';
+import { filterAnswerLogRounds, getAnswerLogProviderIds, renderAnswerLog } from '../modules/answer-log.js';
 import { createPointerGuard, createPointerTracker } from '../modules/pointer-guard.js';
 import { setupComposerControls } from '../modules/composer-controls.js';
+import { formatShortcutForTooltip, matchesShortcut } from '../modules/keyboard-shortcuts.js';
 import { runNewChatBatch } from '../modules/new-chat-actions.js';
 import { shuffleOrder, syncDisplayOrder } from '../modules/blind-shuffle.js';
 
@@ -165,8 +168,13 @@ const answerRounds = new Map();
 let latestAnswerRoundId = null;
 // The answer whose panel is in focus mode, counted as engagement with it.
 let zoomedAnswer = null;
-// Questions shown in the answer stats history; reset when the dialog opens.
-let answerStatsHistoryLimit = 0;
+// All stored rounds, newest first, for the answer stats and log dialogs.
+// Loaded when one of them opens, kept current while either stays open and
+// dropped once both close; null while not loaded.
+let answerStatsRoundsCache = null;
+let answerViewsRenderTimerId = null;
+// Questions shown in the answer log; reset when it opens or a filter changes.
+let answerLogLimit = 0;
 // Text of the last Fill, used as the question when Send then submits it.
 let pendingFilledPromptText = '';
 let isTemporaryChatModeEnabled = false;
@@ -180,6 +188,8 @@ let providerNotes = {};
 let isNewChatBusy = false;
 let failedNewChatPanelIds = new Set();
 const newChatResults = new Map();
+const NEW_CHAT_STATUS_AUTO_HIDE_MS = 4000;
+let newChatStatusHideTimerId = null;
 
 function getThemeAwareProviderIcon(provider) {
   return getProviderIcon(provider);
@@ -257,6 +267,9 @@ const PANELIZE_ANSWER_ENGAGEMENT = 'PANELIZE_ANSWER_ENGAGEMENT';
 const PANELIZE_PAGE_STYLE = 'PANELIZE_PAGE_STYLE';
 const MAX_IN_MEMORY_ANSWER_ROUNDS = 20;
 const ANSWER_STATS_RECENT_LIMIT = 20;
+// Timing and engagement reports arrive in bursts; open dialogs redraw at most
+// this often.
+const ANSWER_VIEWS_RENDER_DELAY_MS = 250;
 const TEMP_CHAT_RETRY_DELAYS = [1200, 2500, 4000];
 const TEMP_CHAT_OPERATION_TIMEOUT_MS = 5000;
 const TEMP_CHAT_SUPPORTED_PROVIDERS = new Set(['chatgpt', 'gemini', 'claude', 'grok', 'yuanbao']);
@@ -319,6 +332,7 @@ async function init() {
   setupRatingPrompt();
   setupShareSnapshot();
   setupAnswerStats();
+  setupAnswerLog();
   composerControls = await setupComposerControls({
     getPanels: () => getDisplayedPanels(),
     send: () => broadcastMessage(document.getElementById('unified-input').value, true),
@@ -1782,7 +1796,7 @@ function updatePanelSelectors() {
     selector.dataset.panelId = panel.id;
     selector.innerHTML = `
       <img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="provider-icon" data-provider-id="${provider.id}">
-      <span class="provider-name">${provider.name}</span>
+      <span class="provider-name">${getProviderShortName(provider)}</span>
       <span class="blind-label" aria-hidden="true"></span>
       <button class="remove-panel" title="Remove panel">
         <span class="material-symbols-outlined">close</span>
@@ -1915,6 +1929,57 @@ function scrollPanels(edge) {
   grid.scrollTo({ left: edge === 'end' ? grid.scrollWidth : 0, behavior: 'smooth' });
 }
 
+// Fixed so they never collide with the configurable shortcuts.
+const PANEL_EDGE_SHORTCUTS = Object.freeze({ start: 'Alt+ArrowLeft', end: 'Alt+ArrowRight' });
+
+function updatePanelEdgeButtons() {
+  const grid = document.getElementById('panel-grid');
+  if (!grid) return;
+  const maxScroll = grid.scrollWidth - grid.clientWidth;
+  // A 1px tolerance absorbs fractional scroll positions on zoomed pages.
+  document.getElementById('panel-edge-start-btn').hidden = maxScroll <= 1 || grid.scrollLeft <= 1;
+  document.getElementById('panel-edge-end-btn').hidden = maxScroll <= 1 || grid.scrollLeft >= maxScroll - 1;
+}
+
+function setupPanelEdgeNavigation() {
+  const grid = document.getElementById('panel-grid');
+  if (!grid) return;
+  [['start', 'composerScrollPanelsStart', 'Scroll to first panel'], ['end', 'composerScrollPanelsEnd', 'Scroll to last panel']]
+    .forEach(([edge, key, fallback]) => {
+      const button = document.getElementById(`panel-edge-${edge}-btn`);
+      button.title = `${getLocalizedText(key, fallback)} (${formatShortcutForTooltip(PANEL_EDGE_SHORTCUTS[edge])})`;
+      button.setAttribute('aria-label', button.title);
+      button.addEventListener('click', () => scrollPanels(edge));
+    });
+
+  let frameId = 0;
+  const scheduleUpdate = () => {
+    if (frameId) return;
+    frameId = requestAnimationFrame(() => {
+      frameId = 0;
+      updatePanelEdgeButtons();
+    });
+  };
+  grid.addEventListener('scroll', scheduleUpdate, { passive: true });
+  new ResizeObserver(scheduleUpdate).observe(grid);
+  // Panel count, layout and wide mode change the scroll width without resizing the grid.
+  new MutationObserver(scheduleUpdate).observe(grid, { childList: true, attributes: true, attributeFilter: ['class', 'style'] });
+  window.addEventListener('resize', scheduleUpdate);
+  scheduleUpdate();
+
+  document.addEventListener('keydown', (event) => {
+    const edge = Object.keys(PANEL_EDGE_SHORTCUTS).find(name => matchesShortcut(event, PANEL_EDGE_SHORTCUTS[name]));
+    if (!edge) return;
+    // Option+Arrow moves by word in text fields. Focus usually returns to the
+    // composer, so it still scrolls while the composer is empty.
+    const editable = event.target?.closest?.('input, textarea, select, [contenteditable="true"], [role="textbox"]');
+    if (editable && !(editable.id === 'unified-input' && !editable.value)) return;
+    if (isShareModalOpen() || Array.from(document.querySelectorAll('.modal')).some(modal => window.getComputedStyle(modal).display !== 'none')) return;
+    event.preventDefault();
+    scrollPanels(edge);
+  });
+}
+
 // `index` is 1-based and follows the on-screen order, including blind shuffles.
 function jumpToPanel(index) {
   const panel = getDisplayedPanels()[index - 1];
@@ -1982,6 +2047,8 @@ function renderBlindLabels() {
     const text = isBlindModeEnabled ? getPanelDisplayName(panel) : '';
     document.querySelectorAll(`#${CSS.escape(panel.id)} .blind-label, .panel-selector[data-panel-id="${panel.id}"] .blind-label`)
       .forEach(label => { label.textContent = text; });
+    const selector = document.querySelector(`.panel-selector[data-panel-id="${panel.id}"]`);
+    if (selector) selector.title = getPanelDisplayName(panel);
   });
   composerControls?.panelsChanged();
 }
@@ -2024,8 +2091,11 @@ async function setPageStyleModes({ blind = isBlindModeEnabled, wide = isWideCont
     } else {
       renderBlindLabels();
     }
-    // Answer stats name providers, so they stay closed while identities are hidden.
-    if (isBlindModeEnabled) closeAnswerStatsModal();
+    // Answer stats and the log name providers, so they stay closed while identities are hidden.
+    if (isBlindModeEnabled) {
+      closeAnswerStatsModal();
+      closeAnswerLogModal();
+    }
     showToast(isBlindModeEnabled
       ? getLocalizedText('blindModeOn', 'Blind mode on: AI names are hidden')
       : getLocalizedText('blindModeOff', 'Blind mode off: AI names are shown'));
@@ -3298,6 +3368,7 @@ async function newChatAllProviders({ retryFailed = false } = {}) {
   const row = document.getElementById('new-chat-status-row');
   const status = document.getElementById('new-chat-status');
   const retry = document.getElementById('retry-new-chat-btn');
+  clearTimeout(newChatStatusHideTimerId);
   row.hidden = false;
   status.textContent = getLocalizedText('composerStartingChatsHold', 'Starting new conversations… Sending is paused; keep typing.');
   retry.hidden = true;
@@ -3345,6 +3416,8 @@ async function newChatAllProviders({ retryFailed = false } = {}) {
       ? getLocalizedText('composerNewChatsPartial', '$1 confirmed; not confirmed: $2', [String(confirmedCount), failedNames.join(', ')])
       : getLocalizedText('composerNewChatsDone', '$1 new conversations ready', [String(confirmedCount)]);
     retry.hidden = failedNames.length === 0;
+    // A full success needs no action; failures stay until retried or dismissed.
+    if (!failedNames.length) newChatStatusHideTimerId = setTimeout(() => { row.hidden = true; }, NEW_CHAT_STATUS_AUTO_HIDE_MS);
     const successful = targetPanels.filter(panel => currentResults.some(result => result.panelId === panel.id && result.ok));
     // Clear answer attribution only after the provider confirmed a fresh chat.
     if (successful.length) {
@@ -3492,8 +3565,9 @@ function persistAnswerRound(round) {
   saveAnswerRound(round).catch(error => {
     console.warn('[Multi-Panel] Failed to save answer stats:', error);
   });
-  if (isAnswerStatsModalOpen()) {
-    void renderAnswerStats();
+  if (answerStatsRoundsCache) {
+    upsertCachedAnswerRound(round);
+    scheduleAnswerViewsRender();
   }
 }
 
@@ -3621,191 +3695,116 @@ function updateAnswerFeedbackButtons() {
   });
 }
 
-function isAnswerStatsModalOpen() {
-  const modal = document.getElementById('answer-stats-modal');
-  return Boolean(modal && modal.style.display !== 'none');
-}
-
-function openAnswerStatsModal() {
-  if (isBlindModeEnabled) {
-    showToast(getLocalizedText('blindModeStatsHidden', 'Turn off blind mode to see answer stats'));
+function upsertCachedAnswerRound(round) {
+  const index = answerStatsRoundsCache.findIndex(candidate => candidate.id === round.id);
+  if (index >= 0) {
+    answerStatsRoundsCache[index] = round;
     return;
   }
-  document.getElementById('answer-stats-modal').style.display = 'flex';
-  answerStatsHistoryLimit = ANSWER_STATS_RECENT_LIMIT;
-  void renderAnswerStats();
-}
-
-function closeAnswerStatsModal() {
-  document.getElementById('answer-stats-modal').style.display = 'none';
-}
-
-function formatAnswerDuration(ms) {
-  if (!Number.isFinite(ms)) {
-    return '—';
+  const insertAt = answerStatsRoundsCache.findIndex(candidate => candidate.createdAt < round.createdAt);
+  answerStatsRoundsCache.splice(insertAt < 0 ? answerStatsRoundsCache.length : insertAt, 0, round);
+  // Storage keeps the newest MAX_STORED_ROUNDS as well.
+  if (answerStatsRoundsCache.length > MAX_STORED_ROUNDS) {
+    answerStatsRoundsCache.length = MAX_STORED_ROUNDS;
   }
-  return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
 }
 
-function formatEngagedDuration(ms) {
-  if (!Number.isFinite(ms) || ms <= 0) {
-    return '—';
+async function loadAnswerStatsRounds() {
+  if (answerStatsRoundsCache) {
+    return;
   }
-  if (ms < 1000) {
-    return '<1 s';
-  }
-  return ms < 60000 ? `${Math.round(ms / 1000)} s` : `${(ms / 60000).toFixed(1)} min`;
-}
-
-function formatAnswerTiming(medianMs, averageMs) {
-  if (!Number.isFinite(medianMs)) {
-    return '—';
-  }
-  return `${formatAnswerDuration(medianMs)} (${formatAnswerDuration(averageMs)})`;
-}
-
-function getProviderDisplayName(providerId) {
-  return getProviderById(providerId)?.name || providerId;
-}
-
-function createCell(tagName, text, className = '') {
-  const cell = document.createElement(tagName);
-  cell.textContent = text;
-  if (className) {
-    cell.className = className;
-  }
-  return cell;
-}
-
-function renderAnswerStatsTable(stats) {
-  const table = document.getElementById('answer-stats-table');
-  const body = table.querySelector('tbody');
-  body.replaceChildren();
-  document.getElementById('answer-stats-older-score-header').textContent = getLocalizedText(
-    'answerStatsColumnOlderScore', 'Older ($1)', [`${Math.round(OLDER_SCORE_WEIGHT * 100)}%`]
-  );
-
-  stats.forEach(entry => {
-    const row = document.createElement('tr');
-    const notMeasured = getLocalizedText('answerStatsNotMeasured', 'Not measured');
-    const firstOutput = createCell('td', entry.timed
-      ? formatAnswerTiming(entry.medianFirstOutputMs, entry.avgFirstOutputMs)
-      : '—', 'numeric');
-    const complete = createCell('td', entry.timed
-      ? formatAnswerTiming(entry.medianCompleteMs, entry.avgCompleteMs)
-      : '—', 'numeric');
-    if (!entry.timed) {
-      firstOutput.title = notMeasured;
-      complete.title = notMeasured;
-    }
-
-    row.append(
-      createCell('td', getProviderDisplayName(entry.providerId)),
-      createCell('td', String(entry.rounds), 'numeric'),
-      firstOutput,
-      complete,
-      createCell('td', entry.timed ? String(entry.timeoutCount) : '—', 'numeric'),
-      createCell('td', String(entry.adoptedCount), 'numeric'),
-      createCell('td', entry.adoptionRate === null
-        ? '—'
-        : `${Math.round(entry.adoptionRate * 100)}%`, 'numeric'),
-      createCell('td', formatEngagedDuration(entry.activeMs), 'numeric'),
-      createCell('td', String(entry.recentScore), 'numeric'),
-      createCell('td', String(entry.olderScore), 'numeric'),
-      createCell('td', formatAnswerScore(entry.score), 'numeric answer-stats-score')
-    );
-    body.appendChild(row);
-  });
-}
-
-function formatAnswerScore(score) {
-  return Number.isInteger(score) ? String(score) : score.toFixed(1);
-}
-
-// Questions from the last RECENT_SCORE_WINDOW_MS, newest first, grouped by day.
-function renderAnswerStatsRecent(rounds, now) {
-  const list = document.getElementById('answer-stats-recent');
-  list.replaceChildren();
-  const locale = getTranslationLocale();
-  const recentRounds = rounds.filter(round => round.createdAt >= now - RECENT_SCORE_WINDOW_MS);
-  const shownRounds = recentRounds.slice(0, answerStatsHistoryLimit);
-  let lastDay = null;
-
-  document.getElementById('answer-stats-recent-count').textContent = String(recentRounds.length);
-  const moreButton = document.getElementById('answer-stats-recent-more');
-  const remaining = recentRounds.length - shownRounds.length;
-  moreButton.hidden = remaining <= 0;
-  moreButton.textContent = getLocalizedText('answerStatsShowMore', 'Show more ($1)', [String(remaining)]);
-
-  shownRounds.forEach(round => {
-    const day = new Date(round.createdAt).toLocaleDateString(locale);
-    if (day !== lastDay) {
-      lastDay = day;
-      list.appendChild(createCell('li', day, 'answer-stats-recent-day'));
-    }
-    const item = document.createElement('li');
-    const header = document.createElement('div');
-    header.className = 'answer-stats-recent-header';
-    header.append(
-      createCell('span', round.promptSummary || getLocalizedText('answerStatsNoPrompt', '(no text)'), 'answer-stats-recent-prompt'),
-      createCell('span', new Date(round.createdAt).toLocaleTimeString(locale), 'answer-stats-recent-time')
-    );
-
-    const answers = document.createElement('div');
-    answers.className = 'answer-stats-recent-answers';
-    Object.entries(round.answers).forEach(([panelId, answer]) => {
-      const isAdopted = round.adoptedPanelId === panelId;
-      let timing = '';
-      if (answer.timed) {
-        timing = answer.status === 'complete'
-          ? formatAnswerDuration(answer.completeMs)
-          : getLocalizedText(`answerStatsStatus_${answer.status}`, answer.status);
-      }
-      const chip = createCell(
-        'span',
-        timing ? `${getProviderDisplayName(answer.providerId)} · ${timing}` : getProviderDisplayName(answer.providerId),
-        `answer-stats-chip${isAdopted ? ' adopted' : ''}${answer.rejected ? ' rejected' : ''}`
-      );
-      if (isAdopted) {
-        chip.title = getLocalizedText('answerStatsAdopted', 'Adopted');
-      } else if (answer.rejected) {
-        chip.title = getLocalizedText('answerStatsRejected', '5 points deducted');
-      }
-      answers.appendChild(chip);
-    });
-
-    item.append(header, answers);
-    list.appendChild(item);
-  });
-}
-
-async function renderAnswerStats() {
-  const emptyEl = document.getElementById('answer-stats-empty');
-  const contentEl = document.getElementById('answer-stats-content');
   let rounds = [];
   try {
     rounds = await getAllAnswerRounds();
   } catch (error) {
     console.warn('[Multi-Panel] Failed to load answer stats:', error);
   }
+  if (!isAnswerStatsModalOpen() && !isAnswerLogModalOpen()) {
+    return;
+  }
+  answerStatsRoundsCache = rounds;
+  // Rounds changed while the read ran may be newer than what it returned.
+  answerRounds.forEach(upsertCachedAnswerRound);
+}
 
+function scheduleAnswerViewsRender() {
+  if (answerViewsRenderTimerId !== null) {
+    return;
+  }
+  answerViewsRenderTimerId = setTimeout(() => {
+    answerViewsRenderTimerId = null;
+    renderAnswerViews();
+  }, ANSWER_VIEWS_RENDER_DELAY_MS);
+}
+
+function renderAnswerViews() {
+  if (isAnswerStatsModalOpen()) {
+    renderAnswerStats();
+  }
+  if (isAnswerLogModalOpen()) {
+    renderAnswerLogView();
+  }
+}
+
+// Other tabs may add rounds while both dialogs are closed, so the next open reads storage again.
+function releaseAnswerStatsRoundsIfClosed() {
+  if (isAnswerStatsModalOpen() || isAnswerLogModalOpen()) {
+    return;
+  }
+  answerStatsRoundsCache = null;
+  clearTimeout(answerViewsRenderTimerId);
+  answerViewsRenderTimerId = null;
+}
+
+function getAnswerViewOptions() {
+  return { getText: getLocalizedText, getProviderName: getProviderDisplayName };
+}
+
+function getProviderDisplayName(providerId) {
+  return getProviderById(providerId)?.name || providerId;
+}
+
+function isAnswerStatsModalOpen() {
+  const modal = document.getElementById('answer-stats-modal');
+  return Boolean(modal && modal.style.display !== 'none');
+}
+
+async function openAnswerStatsModal() {
+  if (isBlindModeEnabled) {
+    showToast(getLocalizedText('blindModeStatsHidden', 'Turn off blind mode to see answer stats'));
+    return;
+  }
+  document.getElementById('answer-stats-modal').style.display = 'flex';
+  await loadAnswerStatsRounds();
+  if (isAnswerStatsModalOpen()) {
+    renderAnswerStats();
+  }
+}
+
+function closeAnswerStatsModal() {
+  document.getElementById('answer-stats-modal').style.display = 'none';
+  releaseAnswerStatsRoundsIfClosed();
+}
+
+function renderAnswerStats() {
+  const rounds = answerStatsRoundsCache || [];
   const hasRounds = rounds.length > 0;
-  emptyEl.hidden = hasRounds;
-  contentEl.hidden = !hasRounds;
+  document.getElementById('answer-stats-empty').hidden = hasRounds;
+  document.getElementById('answer-stats-content').hidden = !hasRounds;
   document.getElementById('answer-stats-export-btn').disabled = !hasRounds;
   document.getElementById('answer-stats-clear-btn').disabled = !hasRounds;
   if (!hasRounds) {
     return;
   }
 
-  const now = Date.now();
-  renderAnswerStatsTable(aggregateAnswerStats(rounds, now));
-  renderAnswerStatsRecent(rounds, now);
-}
-
-function showMoreAnswerStatsHistory() {
-  answerStatsHistoryLimit += ANSWER_STATS_RECENT_LIMIT;
-  void renderAnswerStats();
+  document.getElementById('answer-stats-older-score-header').textContent = getLocalizedText(
+    'answerStatsColumnOlderScore', 'Older ($1)', [`${Math.round(OLDER_SCORE_WEIGHT * 100)}%`]
+  );
+  renderAnswerStatsTable(
+    document.querySelector('#answer-stats-table tbody'),
+    aggregateAnswerStats(rounds, Date.now()),
+    getAnswerViewOptions()
+  );
 }
 
 async function exportAnswerStats() {
@@ -3839,8 +3838,11 @@ async function clearAnswerStats() {
   answerRounds.clear();
   latestAnswerRoundId = null;
   zoomedAnswer = null;
+  if (answerStatsRoundsCache) {
+    answerStatsRoundsCache = [];
+  }
   updateAnswerFeedbackButtons();
-  await renderAnswerStats();
+  renderAnswerViews();
 }
 
 function setupAnswerStats() {
@@ -3848,10 +3850,107 @@ function setupAnswerStats() {
   document.getElementById('close-answer-stats-modal')?.addEventListener('click', closeAnswerStatsModal);
   document.getElementById('answer-stats-export-btn')?.addEventListener('click', exportAnswerStats);
   document.getElementById('answer-stats-clear-btn')?.addEventListener('click', clearAnswerStats);
-  document.getElementById('answer-stats-recent-more')?.addEventListener('click', showMoreAnswerStatsHistory);
   document.getElementById('answer-stats-modal')?.addEventListener('click', (event) => {
     if (event.target.id === 'answer-stats-modal') {
       closeAnswerStatsModal();
+    }
+  });
+}
+
+// ===== Answer Log =====
+function isAnswerLogModalOpen() {
+  const modal = document.getElementById('answer-log-modal');
+  return Boolean(modal && modal.style.display !== 'none');
+}
+
+async function openAnswerLogModal() {
+  if (isBlindModeEnabled) {
+    showToast(getLocalizedText('blindModeStatsHidden', 'Turn off blind mode to see answer stats'));
+    return;
+  }
+  document.getElementById('answer-log-modal').style.display = 'flex';
+  answerLogLimit = ANSWER_STATS_RECENT_LIMIT;
+  await loadAnswerStatsRounds();
+  if (isAnswerLogModalOpen()) {
+    renderAnswerLogView();
+  }
+}
+
+function closeAnswerLogModal() {
+  document.getElementById('answer-log-modal').style.display = 'none';
+  releaseAnswerStatsRoundsIfClosed();
+}
+
+// Lists the providers of the shown questions; a selected provider stays listed.
+function updateAnswerLogProviderOptions(select, providerIds) {
+  const ids = select.value && !providerIds.includes(select.value)
+    ? [...providerIds, select.value]
+    : providerIds;
+  const current = [...select.options].slice(1).map(option => option.value);
+  if (current.join('\n') === ids.join('\n')) {
+    return;
+  }
+
+  const selected = select.value;
+  [...select.options].slice(1).forEach(option => option.remove());
+  ids.forEach(providerId => {
+    select.add(new Option(getProviderDisplayName(providerId), providerId));
+  });
+  select.value = selected;
+}
+
+function renderAnswerLogView() {
+  const rounds = answerStatsRoundsCache || [];
+  const hasRounds = rounds.length > 0;
+  document.getElementById('answer-log-empty').hidden = hasRounds;
+  document.getElementById('answer-log-content').hidden = !hasRounds;
+  if (!hasRounds) {
+    return;
+  }
+
+  const now = Date.now();
+  const providerSelect = document.getElementById('answer-log-provider');
+  updateAnswerLogProviderOptions(providerSelect, getAnswerLogProviderIds(filterAnswerLogRounds(rounds, { now })));
+  const filteredRounds = filterAnswerLogRounds(rounds, {
+    now,
+    query: document.getElementById('answer-log-search').value,
+    providerId: providerSelect.value,
+    feedback: document.getElementById('answer-log-feedback').value
+  });
+  const { total, shown } = renderAnswerLog(document.getElementById('answer-log-list'), filteredRounds, {
+    limit: answerLogLimit,
+    locale: getTranslationLocale(),
+    ...getAnswerViewOptions()
+  });
+
+  document.getElementById('answer-log-count').textContent = String(total);
+  document.getElementById('answer-log-no-matches').hidden = total > 0;
+  const moreButton = document.getElementById('answer-log-more');
+  const remaining = total - shown;
+  moreButton.hidden = remaining <= 0;
+  moreButton.textContent = getLocalizedText('answerStatsShowMore', 'Show more ($1)', [String(remaining)]);
+}
+
+function showMoreAnswerLog() {
+  answerLogLimit += ANSWER_STATS_RECENT_LIMIT;
+  renderAnswerLogView();
+}
+
+function handleAnswerLogFilterChange() {
+  answerLogLimit = ANSWER_STATS_RECENT_LIMIT;
+  renderAnswerLogView();
+}
+
+function setupAnswerLog() {
+  document.getElementById('answer-log-btn')?.addEventListener('click', openAnswerLogModal);
+  document.getElementById('close-answer-log-modal')?.addEventListener('click', closeAnswerLogModal);
+  document.getElementById('answer-log-more')?.addEventListener('click', showMoreAnswerLog);
+  document.getElementById('answer-log-search')?.addEventListener('input', handleAnswerLogFilterChange);
+  document.getElementById('answer-log-provider')?.addEventListener('change', handleAnswerLogFilterChange);
+  document.getElementById('answer-log-feedback')?.addEventListener('change', handleAnswerLogFilterChange);
+  document.getElementById('answer-log-modal')?.addEventListener('click', (event) => {
+    if (event.target.id === 'answer-log-modal') {
+      closeAnswerLogModal();
     }
   });
 }
@@ -4128,6 +4227,7 @@ function setupEventListeners() {
   document.getElementById('add-panel-btn').addEventListener('click', showAddPanelMenu);
   document.getElementById('scroll-panels-start-btn')?.addEventListener('click', () => scrollPanels('start'));
   document.getElementById('scroll-panels-end-btn')?.addEventListener('click', () => scrollPanels('end'));
+  setupPanelEdgeNavigation();
 
   // Toggle toolbar button and expand bar
   document.getElementById('toggle-toolbar-btn').addEventListener('click', toggleToolbar);
@@ -4148,6 +4248,10 @@ function setupEventListeners() {
   composerNewChatBtn.addEventListener('mousedown', preserveNewChatButtonFocus);
   composerNewChatBtn.addEventListener('click', () => newChatAllProviders());
   document.getElementById('retry-new-chat-btn').addEventListener('click', () => newChatAllProviders({ retryFailed: true }));
+  document.getElementById('dismiss-new-chat-status-btn').addEventListener('click', () => {
+    clearTimeout(newChatStatusHideTimerId);
+    document.getElementById('new-chat-status-row').hidden = true;
+  });
 
   // Temporary Chat button
   const temporaryChatBtn = document.getElementById('temporary-chat-btn');

@@ -1095,6 +1095,36 @@
   "answerStatsWeightNote": {
     "message": "Score = points des 30 derniers jours en entier + points plus anciens à 30 %, pour que les réponses récentes comptent davantage."
   },
+  "answerLogButtonTitle": {
+    "message": "Journal des réponses"
+  },
+  "answerLogTitle": {
+    "message": "Journal des réponses"
+  },
+  "answerLogSearchPlaceholder": {
+    "message": "Rechercher des questions"
+  },
+  "answerLogAllProviders": {
+    "message": "Toutes les IA"
+  },
+  "answerLogAllFeedback": {
+    "message": "Tous les avis"
+  },
+  "answerLogFeedbackAdopted": {
+    "message": "Adoptées"
+  },
+  "answerLogFeedbackRejected": {
+    "message": "Points retirés"
+  },
+  "answerLogFeedbackNone": {
+    "message": "Sans avis"
+  },
+  "answerLogNoMatches": {
+    "message": "Aucune question ne correspond à ces filtres."
+  },
+  "answerStatsHowCalculated": {
+    "message": "Mode de calcul"
+  },
   "labelProviderSortMode": {
     "message": "Provider order"
   },

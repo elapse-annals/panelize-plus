@@ -1095,6 +1095,36 @@
   "answerStatsWeightNote": {
     "message": "Баллы = баллы за последние 30 дней полностью + более ранние баллы × 30 %, поэтому недавние ответы весят больше."
   },
+  "answerLogButtonTitle": {
+    "message": "Журнал ответов"
+  },
+  "answerLogTitle": {
+    "message": "Журнал ответов"
+  },
+  "answerLogSearchPlaceholder": {
+    "message": "Поиск по вопросам"
+  },
+  "answerLogAllProviders": {
+    "message": "Все ИИ"
+  },
+  "answerLogAllFeedback": {
+    "message": "Все оценки"
+  },
+  "answerLogFeedbackAdopted": {
+    "message": "Принятые"
+  },
+  "answerLogFeedbackRejected": {
+    "message": "Сняты баллы"
+  },
+  "answerLogFeedbackNone": {
+    "message": "Без оценки"
+  },
+  "answerLogNoMatches": {
+    "message": "Нет вопросов, подходящих под фильтры."
+  },
+  "answerStatsHowCalculated": {
+    "message": "Как считается"
+  },
   "labelProviderSortMode": {
     "message": "Provider order"
   },

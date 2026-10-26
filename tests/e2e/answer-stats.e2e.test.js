@@ -87,14 +87,30 @@ test('Answer stats time each answer, record the adopted one and score engagement
     await expect(chatgptRow.locator('td').nth(3)).not.toHaveText('—', { timeout: 15000 });
     await expect(deepseekRow.locator('td').nth(3)).not.toHaveText('—', { timeout: 15000 });
     await expect(deepseekRow.locator('td').nth(2)).toHaveText(/\d+(\.\d)? m?s \(/);
-    await expect(page.locator('#answer-stats-recent li:not(.answer-stats-recent-day)')).toHaveCount(1);
-    await expect(page.locator('.answer-stats-recent-prompt')).toHaveText('Which answer is best?');
-    await expect(page.locator('.answer-stats-chip.adopted')).toContainText('DeepSeek');
-    await expect(page.locator('.answer-stats-chip.rejected')).toContainText('ChatGPT');
+    await expect(page.locator('.answer-stats-notes')).not.toHaveAttribute('open', '');
     await page.screenshot({ path: testInfo.outputPath('answer-stats.png') });
+    await page.locator('#close-answer-stats-modal').click();
+
+    // The answer log lists the question with each panel's answer and filters it.
+    await page.locator('#answer-log-btn').click();
+    await expect(page.locator('#answer-log-list .answer-log-item')).toHaveCount(1);
+    await expect(page.locator('.answer-log-prompt')).toHaveText('Which answer is best?');
+    await expect(page.locator('.answer-log-chip.adopted')).toContainText('DeepSeek');
+    await expect(page.locator('.answer-log-chip.rejected')).toContainText('ChatGPT');
+    await page.locator('#answer-log-search').fill('no such question');
+    await expect(page.locator('#answer-log-list .answer-log-item')).toHaveCount(0);
+    await expect(page.locator('#answer-log-no-matches')).toBeVisible();
+    await page.locator('#answer-log-search').fill('ANSWER is');
+    await expect(page.locator('#answer-log-list .answer-log-item')).toHaveCount(1);
+    await page.locator('#answer-log-feedback').selectOption('none');
+    await expect(page.locator('#answer-log-count')).toHaveText('0');
+    await page.locator('#answer-log-feedback').selectOption('all');
+    await page.locator('#answer-log-provider').selectOption('deepseek');
+    await expect(page.locator('#answer-log-list .answer-log-item')).toHaveCount(1);
+    await page.screenshot({ path: testInfo.outputPath('answer-log.png') });
+    await page.locator('#close-answer-log-modal').click();
 
     // Stats and the rejection survive a reload.
-    await page.locator('#close-answer-stats-modal').click();
     await adoptButtons.nth(1).click();
     await expect(adoptButtons.nth(1)).toHaveAttribute('aria-pressed', 'false');
     await page.reload();
@@ -102,10 +118,12 @@ test('Answer stats time each answer, record the adopted one and score engagement
     await expect(page.locator('#answer-stats-table tbody tr')).toHaveCount(2);
     const persistedChatgptRow = page.locator('#answer-stats-table tbody tr').filter({ hasText: 'ChatGPT' });
     await expect(persistedChatgptRow.locator('td').nth(10)).toHaveText('-3');
-    await expect(page.locator('.answer-stats-chip.rejected')).toContainText('ChatGPT');
+    await page.locator('#close-answer-stats-modal').click();
+    await page.locator('#answer-log-btn').click();
+    await expect(page.locator('.answer-log-chip.rejected')).toContainText('ChatGPT');
+    await page.locator('#close-answer-log-modal').click();
 
     // A new round starts with fresh, unselected feedback controls.
-    await page.locator('#close-answer-stats-modal').click();
     await expect(rejectButtons.nth(0)).toBeDisabled();
     await page.locator('#unified-input').fill('A new question');
     await page.locator('#send-all-btn').click();

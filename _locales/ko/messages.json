@@ -1095,6 +1095,36 @@
   "answerStatsWeightNote": {
     "message": "점수 = 최근 30일 점수 전액 + 이전 점수 × 30%로, 최근 답변의 비중이 더 큽니다."
   },
+  "answerLogButtonTitle": {
+    "message": "답변 기록"
+  },
+  "answerLogTitle": {
+    "message": "답변 기록"
+  },
+  "answerLogSearchPlaceholder": {
+    "message": "질문 검색"
+  },
+  "answerLogAllProviders": {
+    "message": "모든 AI"
+  },
+  "answerLogAllFeedback": {
+    "message": "모든 피드백"
+  },
+  "answerLogFeedbackAdopted": {
+    "message": "채택됨"
+  },
+  "answerLogFeedbackRejected": {
+    "message": "감점됨"
+  },
+  "answerLogFeedbackNone": {
+    "message": "피드백 없음"
+  },
+  "answerLogNoMatches": {
+    "message": "필터에 맞는 질문이 없습니다."
+  },
+  "answerStatsHowCalculated": {
+    "message": "계산 방법"
+  },
   "labelProviderSortMode": {
     "message": "Provider order"
   },

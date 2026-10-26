@@ -1095,6 +1095,36 @@
   "answerStatsWeightNote": {
     "message": "Puntuación = puntos de los últimos 30 días completos + puntos anteriores al 30 %, para que las respuestas recientes cuenten más."
   },
+  "answerLogButtonTitle": {
+    "message": "Registro de respuestas"
+  },
+  "answerLogTitle": {
+    "message": "Registro de respuestas"
+  },
+  "answerLogSearchPlaceholder": {
+    "message": "Buscar preguntas"
+  },
+  "answerLogAllProviders": {
+    "message": "Todas las IA"
+  },
+  "answerLogAllFeedback": {
+    "message": "Todas las valoraciones"
+  },
+  "answerLogFeedbackAdopted": {
+    "message": "Adoptadas"
+  },
+  "answerLogFeedbackRejected": {
+    "message": "Con puntos restados"
+  },
+  "answerLogFeedbackNone": {
+    "message": "Sin valoración"
+  },
+  "answerLogNoMatches": {
+    "message": "Ninguna pregunta coincide con estos filtros."
+  },
+  "answerStatsHowCalculated": {
+    "message": "Cómo se calcula"
+  },
   "labelProviderSortMode": {
     "message": "Provider order"
   },

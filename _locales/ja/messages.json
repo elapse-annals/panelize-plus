@@ -1095,6 +1095,36 @@
   "answerStatsWeightNote": {
     "message": "スコア = 過去 30 日間の点数（全額）+ それ以前の点数 × 30%。最近の回答ほど重視されます。"
   },
+  "answerLogButtonTitle": {
+    "message": "回答ログ"
+  },
+  "answerLogTitle": {
+    "message": "回答ログ"
+  },
+  "answerLogSearchPlaceholder": {
+    "message": "質問を検索"
+  },
+  "answerLogAllProviders": {
+    "message": "すべての AI"
+  },
+  "answerLogAllFeedback": {
+    "message": "すべての評価"
+  },
+  "answerLogFeedbackAdopted": {
+    "message": "採用済み"
+  },
+  "answerLogFeedbackRejected": {
+    "message": "減点済み"
+  },
+  "answerLogFeedbackNone": {
+    "message": "評価なし"
+  },
+  "answerLogNoMatches": {
+    "message": "条件に合う質問はありません。"
+  },
+  "answerStatsHowCalculated": {
+    "message": "計算方法"
+  },
   "labelProviderSortMode": {
     "message": "Provider order"
   },

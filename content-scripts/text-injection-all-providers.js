@@ -2652,6 +2652,9 @@
       // Both entry URLs represent a fresh Gemini chat. Private Grok chats use
       // a dedicated entry route and must survive private-mode reactivation.
       if (provider === 'gemini' && currentUrl.pathname === '/') return true;
+      // Qwen Global now keeps a fresh chat at its root; New Chat on a blank
+      // root page leaves the URL and DOM unchanged.
+      if (provider === 'qwen-global' && currentUrl.pathname === '/') return true;
       if (provider === 'grok' && currentUrl.pathname === '/c' && currentUrl.hash === '#private') return true;
 
       const expectedUrl = new URL(NEW_CHAT_URLS[provider]);

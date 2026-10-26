@@ -1110,6 +1110,36 @@
   "answerStatsWeightNote": {
     "message": "Score = points from the last 30 days in full + older points at 30%, so recent answers count more."
   },
+  "answerLogButtonTitle": {
+    "message": "Answer log"
+  },
+  "answerLogTitle": {
+    "message": "Answer log"
+  },
+  "answerLogSearchPlaceholder": {
+    "message": "Search questions"
+  },
+  "answerLogAllProviders": {
+    "message": "All AIs"
+  },
+  "answerLogAllFeedback": {
+    "message": "All feedback"
+  },
+  "answerLogFeedbackAdopted": {
+    "message": "Adopted"
+  },
+  "answerLogFeedbackRejected": {
+    "message": "Points deducted"
+  },
+  "answerLogFeedbackNone": {
+    "message": "No feedback"
+  },
+  "answerLogNoMatches": {
+    "message": "No questions match these filters."
+  },
+  "answerStatsHowCalculated": {
+    "message": "How these are calculated"
+  },
   "labelProviderSortMode": {
     "message": "Provider order"
   },

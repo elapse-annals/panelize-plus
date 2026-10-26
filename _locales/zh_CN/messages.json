@@ -1089,6 +1089,36 @@
   "answerStatsWeightNote": {
     "message": "得分 = 近 30 天得分全额 + 30 天前得分 × 30%，近期回答的权重更高。"
   },
+  "answerLogButtonTitle": {
+    "message": "答复日志"
+  },
+  "answerLogTitle": {
+    "message": "答复日志"
+  },
+  "answerLogSearchPlaceholder": {
+    "message": "搜索问题"
+  },
+  "answerLogAllProviders": {
+    "message": "全部 AI"
+  },
+  "answerLogAllFeedback": {
+    "message": "全部反馈"
+  },
+  "answerLogFeedbackAdopted": {
+    "message": "已采纳"
+  },
+  "answerLogFeedbackRejected": {
+    "message": "已减分"
+  },
+  "answerLogFeedbackNone": {
+    "message": "无反馈"
+  },
+  "answerLogNoMatches": {
+    "message": "没有符合筛选条件的问题。"
+  },
+  "answerStatsHowCalculated": {
+    "message": "计算方式"
+  },
   "labelProviderSortMode": {
     "message": "AI 平台排序"
   },

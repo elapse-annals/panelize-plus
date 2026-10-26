@@ -98,7 +98,17 @@ const FEATURE_KEYS = [
   'labelTierThinking',
   'toastTierRecipesSaved',
   'toastTierRecipesReset',
-  'answerStatsScoreNote'
+  'answerStatsScoreNote',
+  'answerLogButtonTitle',
+  'answerLogTitle',
+  'answerLogSearchPlaceholder',
+  'answerLogAllProviders',
+  'answerLogAllFeedback',
+  'answerLogFeedbackAdopted',
+  'answerLogFeedbackRejected',
+  'answerLogFeedbackNone',
+  'answerLogNoMatches',
+  'answerStatsHowCalculated'
 ];
 
 const locales = readdirSync(LOCALES_DIR);

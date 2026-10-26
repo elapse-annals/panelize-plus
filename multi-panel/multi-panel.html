@@ -27,7 +27,7 @@
     <!-- Top Toolbar -->
     <header id="toolbar">
       <div class="toolbar-left">
-        <span class="app-title">Panelize Plus</span>
+        <span class="app-title">Panelize <span class="app-title-plus">Plus</span></span>
       </div>
 
       <div class="toolbar-center">
@@ -74,6 +74,9 @@
         <button id="answer-stats-btn" class="toolbar-btn" data-i18n-title="answerStatsButtonTitle" title="Answer stats">
           <span class="material-symbols-outlined" aria-hidden="true">leaderboard</span>
         </button>
+        <button id="answer-log-btn" class="toolbar-btn" data-i18n-title="answerLogButtonTitle" data-i18n-aria="answerLogButtonTitle" title="Answer log" aria-label="Answer log">
+          <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
+        </button>
         <button id="share-snapshot-btn" class="toolbar-btn" data-i18n-title="shareButtonTitle" title="Share a snapshot of this comparison">
           <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>
           <span class="btn-text" data-i18n="shareButtonText">Share</span>
@@ -100,6 +103,12 @@
       <div id="panel-grid" class="layout-2x2">
         <!-- Panels will be dynamically generated -->
       </div>
+      <button id="panel-edge-start-btn" class="panel-edge-btn panel-edge-start" type="button" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.41 16.59L13.82 12l4.59-4.59L17 6l-6 6 6 6zM6 6h2v12H6z" /></svg>
+      </button>
+      <button id="panel-edge-end-btn" class="panel-edge-btn panel-edge-end" type="button" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5.59 7.41L10.18 12l-4.59 4.59L7 18l6-6-6-6zM16 6h2v12h-2z" /></svg>
+      </button>
     </div>
 
     <!-- Store rating prompt (shown after enough successful sends) -->
@@ -178,6 +187,9 @@
       <div id="new-chat-status-row" class="composer-result-row" hidden>
         <span id="new-chat-status" role="status" aria-live="polite"></span>
         <button id="retry-new-chat-btn" class="composer-link" data-i18n="composerRetryFailed" hidden>Retry unsuccessful</button>
+        <button id="dismiss-new-chat-status-btn" class="composer-result-close" data-i18n-aria="shareDialogClose" aria-label="Close">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
       </div>
       </div>
       <div id="snapshot-progress" class="snapshot-progress" role="status" hidden>
@@ -661,17 +673,50 @@
                 <tbody></tbody>
               </table>
             </div>
-            <p class="answer-stats-note" data-i18n="answerStatsNote">Times run from Send to the first text and to the finished answer: median, with the average in brackets. Only ChatGPT, Gemini, DeepSeek, Kimi, Qwen (China) and Yuanbao are timed. Adoption rate counts the questions where an answer was adopted.</p>
-            <p class="answer-stats-note" data-i18n="answerStatsScoreNote">Score: an adopted answer earns 5 points. The deduction button subtracts 5 points; click again to undo. Using an answer earns up to 3 more: 1 for clicking or scrolling in its panel, 1 for enlarging the panel, and 1 for every 30 s of engaged time. Engaged time adds the gaps between clicks and scrolls up to 15 s apart, and the time the panel stays enlarged. A timed answer that times out without any text also loses 5 points and earns nothing for use.</p>
-            <p class="answer-stats-note" data-i18n="answerStatsWeightNote">Score = points from the last 30 days in full + older points at 30%, so recent answers count more.</p>
-            <h4 class="answer-stats-section-title"><span data-i18n="answerStatsRecentTitle">Questions in the last 30 days</span> (<span id="answer-stats-recent-count">0</span>)</h4>
-            <ul id="answer-stats-recent" class="answer-stats-recent"></ul>
-            <button id="answer-stats-recent-more" class="btn-secondary answer-stats-recent-more" hidden>Show more</button>
+            <details class="answer-stats-notes">
+              <summary data-i18n="answerStatsHowCalculated">How these are calculated</summary>
+              <p class="answer-stats-note" data-i18n="answerStatsNote">Times run from Send to the first text and to the finished answer: median, with the average in brackets. Only ChatGPT, Gemini, DeepSeek, Kimi, Qwen (China) and Yuanbao are timed. Adoption rate counts the questions where an answer was adopted.</p>
+              <p class="answer-stats-note" data-i18n="answerStatsScoreNote">Score: an adopted answer earns 5 points. The deduction button subtracts 5 points; click again to undo. Using an answer earns up to 3 more: 1 for clicking or scrolling in its panel, 1 for enlarging the panel, and 1 for every 30 s of engaged time. Engaged time adds the gaps between clicks and scrolls up to 15 s apart, and the time the panel stays enlarged. A timed answer that times out without any text also loses 5 points and earns nothing for use.</p>
+              <p class="answer-stats-note" data-i18n="answerStatsWeightNote">Score = points from the last 30 days in full + older points at 30%, so recent answers count more.</p>
+            </details>
           </div>
         </div>
         <div class="modal-footer">
           <button id="answer-stats-clear-btn" class="btn-secondary answer-stats-clear-btn" data-i18n="answerStatsClear">Clear stats</button>
           <button id="answer-stats-export-btn" class="btn-secondary" data-i18n="answerStatsExport">Export JSON</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Answer Log Modal -->
+    <div id="answer-log-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="answer-log-modal-title">
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h3 id="answer-log-modal-title" data-i18n="answerLogTitle">Answer log</h3>
+          <button class="close-btn" id="close-answer-log-modal" data-i18n-title="shareDialogClose" data-i18n-aria="shareDialogClose" title="Close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p id="answer-log-empty" class="answer-stats-empty" data-i18n="answerStatsEmpty">No stats yet. Send a question to several AIs, then adopt the best answer with the thumbs-up button in its panel.</p>
+          <div id="answer-log-content" hidden>
+            <div class="answer-log-filters">
+              <input type="search" id="answer-log-search" class="answer-log-search" data-i18n-placeholder="answerLogSearchPlaceholder" data-i18n-aria="answerLogSearchPlaceholder" placeholder="Search questions" aria-label="Search questions">
+              <select id="answer-log-provider" class="answer-log-select" data-i18n-aria="answerStatsColumnProvider" aria-label="AI">
+                <option value="" data-i18n="answerLogAllProviders">All AIs</option>
+              </select>
+              <select id="answer-log-feedback" class="answer-log-select" data-i18n-aria="answerLogAllFeedback" aria-label="All feedback">
+                <option value="all" data-i18n="answerLogAllFeedback">All feedback</option>
+                <option value="adopted" data-i18n="answerLogFeedbackAdopted">Adopted</option>
+                <option value="rejected" data-i18n="answerLogFeedbackRejected">Points deducted</option>
+                <option value="none" data-i18n="answerLogFeedbackNone">No feedback</option>
+              </select>
+            </div>
+            <h4 class="answer-stats-section-title"><span data-i18n="answerStatsRecentTitle">Questions in the last 30 days</span> (<span id="answer-log-count">0</span>)</h4>
+            <p id="answer-log-no-matches" class="answer-stats-empty" data-i18n="answerLogNoMatches" hidden>No questions match these filters.</p>
+            <ul id="answer-log-list" class="answer-log-list"></ul>
+            <button id="answer-log-more" class="btn-secondary answer-log-more" hidden>Show more</button>
+          </div>
         </div>
       </div>
     </div>

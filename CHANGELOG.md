@@ -1,5 +1,34 @@
 # Changelog
 
+## 2.11.0 - 2026-10-27
+- The question history moves out of Answer stats into its own Answer log dialog (toolbar button next to Answer stats), with search and filters by AI and by feedback.
+- Answer stats keeps the table; its explanations fold into "How these are calculated", and the header row and AI column stay visible while the table scrolls.
+- While either dialog is open, timing and engagement updates redraw from memory at most every 250 ms instead of rereading all stored questions each time.
+
+## 2.10.1 - 2026-10-26
+- The "Plus" gradient in the toolbar title moves three times slower and uses softer colors, so it draws less attention.
+
+## 2.10.0 - 2026-10-26
+- "Plus" in the toolbar title now shows a flowing purple gradient (static when reduced motion is on).
+
+## 2.9.0 - 2026-10-26
+- The New Chat result now floats above the composer instead of taking height from it. It hides on its own after a full success and has a close button.
+
+## 2.8.0 - 2026-10-26
+- When panels overflow horizontally, light buttons on the left and right edges jump to the first or last panel. Option+Left / Option+Right (Alt+Left / Alt+Right) do the same outside text fields and in an empty composer; with text in the composer they still move by word.
+
+## 2.7.0 - 2026-10-26
+- The top toolbar is shorter, and its AI chips are smaller and show short names (for example GPT, DS, Gem). Hover a chip to see the full name.
+
+## 2.6.2 - 2026-10-26
+- Qwen (Global) New Chat is confirmed again when the panel is already on a blank chat; its fresh chat now lives at the site root.
+
+## 2.6.1 - 2026-10-26
+- A horizontal trackpad swipe in a panel (notably Gemini) or on the Multi-Panel page no longer navigates back to the previous page.
+
+## 2.6.0 - 2026-10-26
+- The bottom composer is narrower (up to 960px) so it sits more centered on wide windows.
+
 ## 2.5.1 - 2026-10-26
 - Panel notes now appear as soon as Multi-Panel opens, not only after a note is edited.
 - Doubao New Chat no longer waits out its timeout when a floating hint sits over the composer, and it stops trying to close a stuck overlay after a few attempts.
