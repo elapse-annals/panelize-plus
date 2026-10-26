@@ -31,6 +31,7 @@ const NEW_CHAT_VIA_URL_IN_PANEL = {
   claude: 'claude.ai hides its sidebar when embedded in an iframe',
   stepfun: 'StepFun has no stable new chat selector; its root opens a new chat',
   agnes: 'Agnes has no stable new chat selector; its root opens a new chat',
+  'hy-aistudio': 'Hy AI Studio has no stable new chat selector; its root opens a new chat',
 };
 
 const LIVE_TOKEN_PREFIX = 'panelize-live-';

@@ -177,7 +177,7 @@ describe('page style content script', () => {
     const nativeQuerySelectorAll = document.querySelectorAll.bind(document);
     let isolationPasses = 0;
     document.querySelectorAll = (selector, ...args) => {
-      if (selector === '[data-panelize-keep], [data-panelize-hide], [data-panelize-composer], [data-panelize-scroller]') isolationPasses += 1;
+      if (selector === '[data-panelize-keep], [data-panelize-hide], [data-panelize-collapse], [data-panelize-composer], [data-panelize-scroller]') isolationPasses += 1;
       return nativeQuerySelectorAll(selector, ...args);
     };
 
@@ -345,6 +345,75 @@ describe('page style content script', () => {
     expect(document.getElementById('composer-shell').hasAttribute('data-panelize-keep')).toBe(true);
     expect(document.getElementById('composer-send').hasAttribute('data-panelize-keep')).toBe(true);
     expect(document.getElementById('toolbar-send').hasAttribute('data-panelize-hide')).toBe(true);
+  });
+
+  it.each([
+    ['chatglm', 'https://chatglm.cn/main/alltoolsdetail', '<aside class="el-aside aside-container" id="provider-sidebar"><div class="aside-subjects"><div class="new-session">新对话</div></div><div class="el-overlay-dialog" role="dialog"></div></aside>'],
+    ['zai-global', 'https://chat.z.ai/', '<div id="sidebar"><div role="presentation"><button id="new-chat-button" class="navNewChat" aria-label="New Chat"></button></div></div>']
+  ])('hides the %s sidebar in blind mode and restores it on disable', (provider, url, sidebarHtml) => {
+    const frame = createFrame({
+      url,
+      html: `<section id="shell">${sidebarHtml}<main id="main"><div class="markdown" id="answer">Answer</div><form id="composer-root"><textarea id="composer"></textarea><button aria-label="Send">Send</button></form></main></section>`
+    });
+    const { document } = frame.win;
+    setVisibleGeometry(document.getElementById('composer'));
+    setVisibleGeometry(document.getElementById('composer-root'), { height: 86 });
+    const sidebar = document.querySelector('#provider-sidebar, #sidebar');
+
+    send(frame, { blind: true });
+    const hiddenSidebar = sidebar.hasAttribute('data-panelize-hide')
+      || [...sidebar.children].filter(child => !child.matches('[role="dialog"]')).every(child => child.hasAttribute('data-panelize-hide'));
+    expect(hiddenSidebar).toBe(true);
+    expect(document.getElementById('main').hasAttribute('data-panelize-hide')).toBe(false);
+    expect(document.getElementById('composer-root').hasAttribute('data-panelize-composer')).toBe(true);
+
+    send(frame, { blind: false });
+    expect(sidebar.hasAttribute('data-panelize-hide')).toBe(false);
+    expect(sidebar.hasAttribute('data-panelize-collapse')).toBe(false);
+  });
+
+  it('keeps ChatGLM dialogs mounted in its sidebar visible in blind mode', () => {
+    const frame = createFrame({
+      url: 'https://chatglm.cn/main/alltoolsdetail',
+      html: '<section id="shell"><aside class="el-aside aside-container" id="provider-sidebar"><div class="aside-subjects" id="history">History</div><div class="el-overlay"><div class="el-overlay-dialog" role="dialog" id="login-dialog">Log in</div></div></aside><main id="main"><form id="composer-root"><textarea id="composer"></textarea><button aria-label="Send">Send</button></form></main></section>'
+    });
+    const { document } = frame.win;
+    setVisibleGeometry(document.getElementById('composer'));
+    setVisibleGeometry(document.getElementById('composer-root'), { height: 86 });
+
+    send(frame, { blind: true });
+    const sidebar = document.getElementById('provider-sidebar');
+    expect(sidebar.hasAttribute('data-panelize-hide')).toBe(false);
+    expect(sidebar.hasAttribute('data-panelize-collapse')).toBe(true);
+    expect(document.getElementById('history').hasAttribute('data-panelize-hide')).toBe(true);
+    expect(document.getElementById('login-dialog').closest('[data-panelize-hide]')).toBeNull();
+  });
+
+  it('hides a provider sidebar even when no visible composer exists', () => {
+    const frame = createFrame({ url: 'https://chat.z.ai/', html: '<div id="sidebar">History</div><main id="main"></main>' });
+    send(frame, { blind: true });
+    expect(frame.win.document.getElementById('sidebar').hasAttribute('data-panelize-hide')).toBe(true);
+    expect(frame.win.document.getElementById('main').hasAttribute('data-panelize-hide')).toBe(false);
+  });
+
+  it('never hides a provider sidebar that holds the model picker', () => {
+    const frame = createFrame({
+      url: 'https://chat.z.ai/',
+      html: '<div id="sidebar"><button aria-label="Select Model" id="model-picker">Model</button></div><main><form id="composer-root"><textarea id="composer"></textarea><button aria-label="Send">Send</button></form></main>'
+    });
+    const { document } = frame.win;
+    setVisibleGeometry(document.getElementById('composer'));
+    setVisibleGeometry(document.getElementById('composer-root'), { height: 86 });
+
+    send(frame, { blind: true });
+    expect(document.getElementById('sidebar').hasAttribute('data-panelize-hide')).toBe(false);
+    expect(document.getElementById('model-picker').hasAttribute('data-panelize-hide')).toBe(false);
+  });
+
+  it('leaves sidebars on other providers to sibling isolation', () => {
+    const frame = createFrame({ url: 'https://chatgpt.com/', html: '<div id="sidebar">History</div><main></main>' });
+    send(frame, { blind: true });
+    expect(frame.win.document.getElementById('sidebar').hasAttribute('data-panelize-hide')).toBe(false);
   });
 
   it('does not hide anything when no visible composer exists', () => {

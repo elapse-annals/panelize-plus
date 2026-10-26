@@ -1,19 +1,20 @@
 import { DEFAULT_GOOGLE_PROVIDER_MODE } from './google-mode.js';
-import { DEFAULT_PROVIDER_IDS } from './provider-defaults.js';
+import { DEFAULT_PROVIDER_IDS, DEFAULT_PROVIDER_ORDER, DEFAULT_STARTUP_PROVIDER_IDS } from './provider-defaults.js';
 
 const DEFAULT_SETTINGS = {
   enabledProviders: DEFAULT_PROVIDER_IDS,
   googleProviderMode: DEFAULT_GOOGLE_PROVIDER_MODE,
-  providerOrder: null,
+  providerOrder: DEFAULT_PROVIDER_ORDER,
   providerSortMode: 'manual',
   providerBillingTypes: null,  // Account billing marker overrides; null uses the built-in defaults
+  providerNotes: null,  // One-line user notes shown after each panel's provider name, keyed by provider id
   pageShortcutsEnabled: true,
   keyboardShortcutBindings: {},
   selectedProviderTier: null,
   providerTierRecipes: null,  // User overrides of DEFAULT_TIER_RECIPES, keyed by provider then tier; null uses the built-in mapping
   blindModeEnabled: false,  // Panels show anonymous labels and provider pages share one neutral style
-  wideContentEnabled: false,  // Provider pages are laid out wider than their panel and scaled to fit
-  startupProviders: null,  // Provider IDs opened when Multi-Panel starts; null opens the first ones that fit the layout
+  wideContentEnabled: true,  // Provider pages are laid out wider than their panel and scaled to fit
+  startupProviders: DEFAULT_STARTUP_PROVIDER_IDS,  // Provider IDs opened when Multi-Panel starts; null opens the first ones that fit the layout
   defaultProvider: 'chatgpt',
   lastSelectedProvider: 'chatgpt',
   rememberLastProvider: true,  // When true, Panelize opens last selected provider; when false, always opens default provider

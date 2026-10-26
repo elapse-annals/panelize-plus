@@ -26,6 +26,7 @@
 | MiMo | 动态探测 | 动态探测 | 动态探测 | API 文档不作为网页控件支持的证明。 |
 | StepFun | 动态探测 | 动态探测 | 动态探测 | 仅依据可见界面探测，尚未配置固定配方。 |
 | Agnes | 动态探测 | 动态探测 | 动态探测 | 仅依据可见界面探测，尚未配置固定配方。 |
+| Hy AI Studio | 动态探测 | 动态探测 | 动态探测 | 仅依据可见界面探测，尚未配置固定配方。 |
 | Meta AI | 即时／Instant | 即时／Instant | 思考／Thinking | 快速和均衡共享即时模式；账号和地区可能限制选项。 |
 
 模型与推理强度是不同维度。Claude 的 [模型、Effort 与 Thinking 说明](https://support.claude.com/en/articles/8664678-change-the-model-effort-and-thinking-settings)、Gemini 的 [模型与思考档说明](https://support.google.com/gemini/answer/18648722)、Kimi 的 [模型与模式说明](https://www.kimi.com/en/help/others/model-mode-selection) 描述了相应控件；[ChatGPT 更新说明](https://help.openai.com/en/articles/6825453-chatgpt-release-notes) 说明了选择器档位。公开说明不能替代当前账号网页上的实际检查。

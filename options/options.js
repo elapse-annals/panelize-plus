@@ -11,7 +11,8 @@ import { normalizeStartupProviders } from '../modules/startup-providers.js';
 import { getProviderBillingType, PROVIDER_BILLING_TYPES } from '../modules/provider-billing.js';
 import {
   hasOptionalProviderPermission,
-  requestOptionalProviderPermission
+  requestOptionalProviderPermission,
+  requestOptionalProvidersPermission
 } from '../modules/optional-provider-access.js';
 import { getSettings, getSetting, saveSettings, saveSetting, resetSettings, exportSettings, importSettings } from '../modules/settings.js';
 import {
@@ -271,6 +272,7 @@ async function init() {
   setupEventListeners();
   setupStorageChangeListener();
   setupPermissionChangeListeners();
+  setupProviderAccessNotice();
   setupShortcutHelpers();
   refreshAutoSizedSelects();
 }
@@ -458,6 +460,11 @@ async function renderProviderList() {
     await hasOptionalProviderPermission(provider.id)
   ]));
   const providerAccess = new Map(providerAccessEntries);
+  renderProviderAccessNotice(PROVIDERS.filter(provider =>
+    provider.optionalOrigins
+    && enabledProviders.includes(provider.id)
+    && providerAccess.get(provider.id) === false
+  ));
 
   const orderIndex = new Map(displayOrder.map((id, index) => [id, index]));
   const sortedProviders = [...PROVIDERS].sort((a, b) => {
@@ -632,6 +639,43 @@ function setupStorageChangeListener() {
         console.error('Error syncing provider order:', error);
       });
     }
+  });
+}
+
+// Enabled providers that still need site access on this device, such as the
+// optional providers in the default setup after a fresh install.
+function renderProviderAccessNotice(providersMissingAccess) {
+  const notice = document.getElementById('provider-access-notice');
+  if (!notice) return;
+
+  notice.hidden = providersMissingAccess.length === 0;
+  notice.dataset.providerIds = providersMissingAccess.map(({ id }) => id).join(',');
+  document.getElementById('provider-access-notice-text').textContent = t(
+    'msgProviderAccessMissing',
+    providersMissingAccess.map(({ name }) => name).join(', ')
+  );
+}
+
+function setupProviderAccessNotice() {
+  const button = document.getElementById('grant-provider-access-btn');
+  button?.addEventListener('click', async () => {
+    const notice = document.getElementById('provider-access-notice');
+    const providerIds = (notice?.dataset.providerIds || '').split(',').filter(Boolean);
+    if (providerIds.length === 0) return;
+
+    try {
+      const permissionGranted = await requestOptionalProvidersPermission(providerIds);
+      if (!permissionGranted) {
+        return;
+      }
+    } catch (error) {
+      console.error('Failed to request site access for enabled providers:', error);
+      showStatus('error', t('msgProviderAccessRequestFailed'));
+      return;
+    }
+
+    await renderProviderList();
+    showStatus('success', t('msgProviderSettingsUpdated'));
   });
 }
 

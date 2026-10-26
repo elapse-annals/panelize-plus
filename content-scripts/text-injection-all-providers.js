@@ -183,7 +183,7 @@
   const MULTI_PANEL_EXTENSION_ORIGIN = getExtensionOrigin();
   const SLOW_COMPOSER_PROVIDERS = new Set([
     'deepseek', 'kimi', 'doubao', 'chatglm', 'zai-global', 'yuanbao', 'mimo', 'meta-ai',
-    'stepfun', 'agnes'
+    'stepfun', 'agnes', 'hy-aistudio'
   ]);
   const IMAGE_INJECTION_REASONS = Object.freeze({
     CONTROL_NOT_FOUND: 'control-not-found',
@@ -284,6 +284,7 @@
       'textarea[placeholder="分配一个任务或提问任何问题"]',
       'textarea[rows="1"]'
     ],
+    'hy-aistudio': ['.hy-chat-input__content textarea.t-textarea__inner', 'textarea[placeholder="有问题，尽管问"]'],
     google: [
       'textarea.ITIRGe',
       'textarea[aria-label="Ask anything"]',
@@ -467,6 +468,8 @@
       'button[aria-label="Send"]',
       'button[aria-label="发送"]'
     ],
+    // A div that is disabled by class.
+    'hy-aistudio': ['.hy-chat-input-send-btn:not(.hy-chat-input-send-btn--disabled)'],
     google: [
       'button[data-xid="input-plate-send-button"]',
       'button[aria-label="Send"]',
@@ -582,6 +585,7 @@
     // StepFun's New Chat control has no stable selector; the root opens a new chat.
     stepfun: 'https://studio.stepfun.com/',
     agnes: 'https://app.agnes-ai.com/',
+    'hy-aistudio': 'https://aistudio.tencent.com/',
     google: 'https://www.google.com/search?udm=50'
   };
 
@@ -641,6 +645,8 @@
       return 'stepfun';
     } else if (hostname === 'app.agnes-ai.com') {
       return 'agnes';
+    } else if (hostname === 'aistudio.tencent.com') {
+      return 'hy-aistudio';
     } else if (hostname.includes('google.com') || hostname.includes('google.') || hostname === 'www.google.com') {
       // Google Search / AI Mode
       // Always return 'google' for any google.com page
@@ -2249,6 +2255,132 @@
     }
   }
 
+  // Doubao is built on Semi Design: in a narrow panel the sidebar becomes a
+  // drawer behind a mask, and login or rate-limit prompts are modals.
+  const DOUBAO_OVERLAY_DIALOG_SELECTORS = [
+    '[role="dialog"]',
+    '[aria-modal="true"]',
+    '.semi-modal',
+    '.semi-sidesheet'
+  ];
+  const DOUBAO_OVERLAY_MASK_SELECTORS = [
+    // Live 2026-10-26: the narrow-layout sidebar drawer's mask is
+    // `div.fixed.inset-0.bg-[var(--s-color-bg-mask)].cursor-pointer`, hidden
+    // with `.hidden` while the drawer is collapsed off-screen.
+    '.fixed.inset-0[class*="s-color-bg-mask"]',
+    '.semi-sidesheet-mask',
+    '.semi-modal-mask',
+    '[class*="drawer-mask"]',
+    '[class*="sidebar-mask"]',
+    '[data-testid*="mask"]'
+  ];
+  const DOUBAO_OVERLAY_CLOSE_SELECTORS = [
+    '.semi-sidesheet-close',
+    '.semi-modal-close',
+    '[data-testid*="close"]',
+    'button[aria-label*="关闭"]',
+    'button[aria-label*="Close"]'
+  ];
+  const DOUBAO_SIDEBAR_COLLAPSE_SELECTORS = [
+    '[data-testid*="sidebar_collapse"]',
+    '#flow_chat_sidebar button[aria-label*="收起"]',
+    '#flow_chat_sidebar button[aria-label*="Collapse"]'
+  ];
+  const DOUBAO_BLOCKING_DIALOG_SELECTORS = ['[data-testid*="login"]'];
+  const DOUBAO_BLOCKING_DIALOG_KEYWORDS = [
+    '登录', 'log in', 'login', 'sign in', '频繁', '上限', '稍后再试', '验证码',
+    'too many', 'rate limit', 'try again later', 'captcha'
+  ];
+  const ROOT_NEW_CHAT_PATHS = new Set(['/', '/chat', '/chat/']);
+  const DOUBAO_MAX_DISMISS_ATTEMPTS = 3;
+
+  function getElementHitTarget(element) {
+    const rect = element?.getBoundingClientRect?.();
+    if (!rect || (rect.width === 0 && rect.height === 0)) return null;
+    const root = typeof element.getRootNode === 'function' ? element.getRootNode() : document;
+    const hitRoot = typeof root?.elementFromPoint === 'function' ? root : document;
+    return hitRoot.elementFromPoint?.(
+      Math.round(rect.left + rect.width / 2),
+      Math.round(rect.top + rect.height / 2)
+    ) || null;
+  }
+
+  // A hit test that finds nothing (off-screen, or no layout) cannot prove the
+  // element is covered, so only a hit on an unrelated element counts.
+  function isElementUncovered(element) {
+    const hit = getElementHitTarget(element);
+    return !hit || element.contains(hit) || hit.contains(element);
+  }
+
+  function findDoubaoOverlay() {
+    const sidebar = document.querySelector('#flow_chat_sidebar');
+    const visible = selectors => querySelectorAllDeep(selectors.join(', ')).filter(isVisibleElement);
+    const dialogs = visible(DOUBAO_OVERLAY_DIALOG_SELECTORS);
+    const blocking = visible(DOUBAO_BLOCKING_DIALOG_SELECTORS)[0] || dialogs.find(dialog => {
+      if (sidebar && (dialog.contains(sidebar) || sidebar.contains(dialog))) return false;
+      const text = getElementAccessibleText(dialog);
+      return DOUBAO_BLOCKING_DIALOG_KEYWORDS.some(keyword => text.includes(keyword));
+    });
+    if (blocking) return { element: blocking, blocking: true };
+
+    const element = visible(DOUBAO_OVERLAY_MASK_SELECTORS)[0] || dialogs[0] || null;
+    return element ? { element, blocking: false } : null;
+  }
+
+  // Close a sidebar drawer or plain dialog: click its mask, then its close or
+  // collapse control, then fall back to Escape. Never call this for a login or
+  // rate-limit prompt; those need the user.
+  function dismissDoubaoOverlay(overlay, attempt = 0) {
+    if (!overlay || overlay.blocking) return false;
+    const strategy = attempt % 3;
+    if (strategy === 0) {
+      const mask = findFirstVisibleElement(DOUBAO_OVERLAY_MASK_SELECTORS);
+      if (mask) {
+        mask.click();
+        return true;
+      }
+    }
+    if (strategy <= 1) {
+      const closeButton = [...overlay.element.querySelectorAll(DOUBAO_OVERLAY_CLOSE_SELECTORS.join(', '))]
+        .find(candidate => isVisibleElement(candidate) && isElementUncovered(candidate)) ||
+        findDeepFirstVisibleElement(DOUBAO_SIDEBAR_COLLAPSE_SELECTORS, isElementUncovered);
+      if (closeButton) {
+        closeButton.click();
+        return true;
+      }
+    }
+    const target = document.activeElement || document.body;
+    ['keydown', 'keyup'].forEach(type => {
+      target.dispatchEvent(new KeyboardEvent(type, {
+        key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true
+      }));
+    });
+    return true;
+  }
+
+  // Clicking the control from an open drawer can leave the drawer and its
+  // mask over the composer once the new chat renders.
+  function scheduleDoubaoOverlayCleanup(attempt = 0) {
+    setTimeout(() => {
+      const overlay = findDoubaoOverlay();
+      if (!overlay || overlay.blocking) return;
+      dismissDoubaoOverlay(overlay, attempt);
+      if (attempt < 2) scheduleDoubaoOverlayCleanup(attempt + 1);
+    }, 300);
+  }
+
+  // Doubao and others name a fresh conversation "新对话", so a history link
+  // with that title must not count as the new-chat control.
+  function isRootNewChatLinkCandidate(element) {
+    const anchor = element.closest('a[href]');
+    if (!anchor) return true;
+    try {
+      return ROOT_NEW_CHAT_PATHS.has(new URL(anchor.getAttribute('href'), window.location.href).pathname);
+    } catch (error) {
+      return false;
+    }
+  }
+
   // Find and click new chat button
   function clickNewChatButton(provider, providerMode = null) {
     // Special handling for Google
@@ -2262,12 +2394,21 @@
       return false;
     }
 
+    // In a narrow Doubao panel the sidebar is a drawer: its control may be
+    // off-screen or under a mask. Only click a control the user could click;
+    // otherwise load the new-chat URL instead of opening the drawer.
+    const isDoubao = provider === 'doubao';
+    const acceptCandidate = isDoubao
+      ? element => isSameOriginNewChatCandidate(element) && isElementUncovered(element)
+      : isSameOriginNewChatCandidate;
+
     // Try to find and click button
-    const button = findDeepFirstVisibleElement(selectors, isSameOriginNewChatCandidate) ||
-      findFirstVisibleElement(selectors, isSameOriginNewChatCandidate);
+    const button = findDeepFirstVisibleElement(selectors, acceptCandidate) ||
+      findFirstVisibleElement(selectors, acceptCandidate);
     if (button) {
       console.log('[Text Injection] Clicking new chat button via visible selector match');
       button.click();
+      if (isDoubao) scheduleDoubaoOverlayCleanup();
       return true;
     }
 
@@ -2276,6 +2417,9 @@
       const allButtons = document.querySelectorAll('button, a, div[role="button"]');
       for (const elem of allButtons) {
         if (!isSameOriginNewChatCandidate(elem)) {
+          continue;
+        }
+        if (isDoubao && (!isVisibleElement(elem) || !isElementUncovered(elem))) {
           continue;
         }
 
@@ -2294,9 +2438,12 @@
           ariaLabel.includes('start new') ||
           ariaLabel.includes('新建会话') ||
           ariaLabel.includes('新建对话') ||
+          // Exact match only: chat titles also read "新对话".
+          ((text.trim() === '新对话' || ariaLabel.trim() === '新对话') && isRootNewChatLinkCandidate(elem)) ||
           (href === '/' && elem.closest('nav, aside'))) {
           console.log('[Text Injection] Found new chat button by text search');
           elem.click();
+          if (isDoubao) scheduleDoubaoOverlayCleanup();
           return true;
         }
       }
@@ -2466,11 +2613,25 @@
     }
   }
 
+  // Doubao can leave its sidebar drawer or a modal over the composer. A
+  // composer the user cannot reach is not a ready new chat.
+  function isNewChatComposerCovered(provider, composer) {
+    if (provider !== 'doubao' || !composer || !isVisibleElement(composer)) return false;
+    const hit = getElementHitTarget(composer);
+    if (!hit) return false;
+    const container = getNewChatComposerContainer(provider, composer) || composer;
+    if (container.contains(hit) || hit.contains(composer)) return false;
+    // A floating hint or toolbar over the composer is not a blocker; only a
+    // detected drawer, mask or dialog is.
+    return Boolean(findDoubaoOverlay());
+  }
+
   function captureNewChatState(provider, providerMode) {
     const composer = getNewChatComposer(provider, providerMode);
     return {
       url: window.location.href,
       composerFound: Boolean(composer && isVisibleElement(composer)),
+      composerCovered: isNewChatComposerCovered(provider, composer),
       composerEmpty: isNewChatComposerEmpty(provider, composer),
       composerTextLength: getNewChatComposerText(composer).length,
       userMessageCount: countVisibleNewChatMessages(SNAPSHOT_USER_TURN_SELECTORS),
@@ -2506,6 +2667,7 @@
     return Boolean(
       state &&
       state.composerFound &&
+      !state.composerCovered &&
       state.composerEmpty &&
       state.userMessageCount === 0 &&
       state.assistantMessageCount === 0
@@ -2536,9 +2698,29 @@
   } = {}) {
     const deadline = Date.now() + timeoutMs;
     let stableSince = null;
+    let blockedSince = null;
+    let dismissAttempts = 0;
 
     while (Date.now() <= deadline) {
       const state = captureNewChatState(provider, providerMode);
+      if (state.composerCovered) {
+        const overlay = findDoubaoOverlay();
+        if (overlay?.blocking) {
+          // A login or rate-limit prompt needs the user; never dismiss it.
+          if (blockedSince === null) blockedSince = Date.now();
+          if (Date.now() - blockedSince >= stableMs) {
+            return { verified: false, failed: true, reason: 'provider-dialog-open' };
+          }
+        } else {
+          blockedSince = null;
+          // Each strategy gets one try; repeating them every poll would keep
+          // clicking and sending Escape to the page.
+          if (overlay && dismissAttempts < DOUBAO_MAX_DISMISS_ATTEMPTS) dismissDoubaoOverlay(overlay, dismissAttempts++);
+        }
+      } else {
+        blockedSince = null;
+      }
+
       const blankConversation = isBlankConversation(state);
       const transitioned = (!requireTransition || hasNewChatTransition(baseline, state))
         && (!requireCanonicalFreshUrl || isCanonicalFreshNewChatUrl(provider, providerMode));
@@ -2614,9 +2796,13 @@
       requireCanonicalFreshUrl: recovery || data.type === 'VERIFY_NEW_CHAT'
     });
 
-    return result.verified
-      ? { ...identity, provider: detectedProvider, status: 'verified' }
-      : { ...identity, provider: detectedProvider, status: 'unconfirmed', reason: result.reason };
+    if (result.verified) return { ...identity, provider: detectedProvider, status: 'verified' };
+    return {
+      ...identity,
+      provider: detectedProvider,
+      status: result.failed ? 'failed' : 'unconfirmed',
+      reason: result.reason
+    };
   }
 
   function submitNewChatRequest(data, detectedProvider, type) {

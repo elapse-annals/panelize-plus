@@ -54,7 +54,7 @@ Ever found yourself copying the same prompt across multiple AI tabs just to comp
 
 ### 🎯 Ask Once, Compare All
 
-Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, DeepSeek, Kimi, Qwen, Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, and Google simultaneously. See which AI gives you the best answer—no tab switching required.
+Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, DeepSeek, Kimi, Qwen, Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, and Google simultaneously. See which AI gives you the best answer—no tab switching required.
 
 ### 📐 Flexible Layouts
 
@@ -110,7 +110,7 @@ Save your best prompts and reuse them across all providers. Supports variables l
   </tr>
   <tr>
     <td align="center"><strong>Agnes</strong></td>
-    <td></td>
+    <td align="center"><strong>Hy AI Studio</strong></td>
     <td></td>
     <td></td>
   </tr>
@@ -181,7 +181,7 @@ Customize or clear the wide mode shortcut with the keyboard button in the bottom
 → ChatHub and ChatALL put many models behind one chat interface. Panelize shows each provider's real website instead, so you keep your own plans, model pickers and chat history. See [Panelize vs ChatHub](https://panelize.dev/alternatives/chathub/).
 
 **Which AI chatbots are supported?**
-→ ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Qwen, Doubao, Zhipu, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes and Google AI Mode. See [Supported AI Providers](#supported-ai-providers).
+→ ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Qwen, Doubao, Zhipu, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio and Google AI Mode. See [Supported AI Providers](#supported-ai-providers).
 
 ## Troubleshooting
 

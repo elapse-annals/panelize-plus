@@ -197,6 +197,17 @@ export const OPTIONAL_PROVIDER_CONFIGS = Object.freeze({
       'content-scripts/enter-behavior-agnes.js'
     )),
     frameRule: Object.freeze(createFrameRule(1008, 'https://app.agnes-ai.com/*'))
+  }),
+  'hy-aistudio': Object.freeze({
+    // Hy AI Studio keeps its session on a separate API origin. Host access lets
+    // its embedded requests carry and store the authentication cookies there.
+    origins: Object.freeze(['https://aistudio.tencent.com/*', 'https://api.hunyuan.tencent.com/*']),
+    contentScript: Object.freeze(createContentScript(
+      'hy-aistudio-scripts',
+      ['https://aistudio.tencent.com/*'],
+      'content-scripts/enter-behavior-hy-aistudio.js'
+    )),
+    frameRule: Object.freeze(createFrameRule(1009, 'https://aistudio.tencent.com/*'))
   })
 });
 
@@ -220,6 +231,17 @@ export function requestOptionalProviderPermission(providerId) {
   }
 
   return chrome.permissions.request({ origins: [...config.origins] });
+}
+
+// Requests site access for several providers in one browser prompt.
+export function requestOptionalProvidersPermission(providerIds) {
+  const origins = [...new Set((Array.isArray(providerIds) ? providerIds : [])
+    .flatMap((providerId) => getOptionalProviderConfig(providerId)?.origins || []))];
+  if (origins.length === 0) {
+    return Promise.resolve(true);
+  }
+
+  return chrome.permissions.request({ origins });
 }
 
 export async function filterProvidersWithGrantedAccess(providerIds) {

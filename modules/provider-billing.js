@@ -10,7 +10,8 @@ export const PROVIDER_BILLING_TYPES = {
 const DEFAULT_PROVIDER_BILLING_TYPES = {
   claude: 'quota',
   stepfun: 'quota',
-  agnes: 'credits'
+  agnes: 'credits',
+  'hy-aistudio': 'quota'
 };
 
 export function getProviderBillingType(providerId, overrides) {

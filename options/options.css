@@ -388,6 +388,33 @@ select:focus {
   color: #aaa;
 }
 
+.provider-access-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #e8f0fe;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #174ea6;
+}
+
+.provider-access-notice[hidden] {
+  display: none;
+}
+
+.provider-access-notice-text {
+  flex: 1 1 240px;
+}
+
+[data-theme="dark"] .provider-access-notice {
+  background: #1a3a5a;
+  color: #c6dafc;
+}
+
 /* Data Management Section */
 .data-stats {
   background: #f9f9f9;
@@ -857,6 +884,11 @@ select:focus {
 
   .startup-provider-toggle {
     color: #aaa;
+  }
+
+  .provider-access-notice {
+    background: #1a3a5a;
+    color: #c6dafc;
   }
 
   .drag-handle {

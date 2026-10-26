@@ -8,9 +8,66 @@ export const LEGACY_DEFAULT_PROVIDER_IDS = [
   'google',
 ];
 
-export const DEFAULT_PROVIDER_IDS = [
+// Target of the one-time update migration from LEGACY_DEFAULT_PROVIDER_IDS.
+export const DOUBAO_MIGRATION_PROVIDER_IDS = [
   ...LEGACY_DEFAULT_PROVIDER_IDS,
   'doubao',
+];
+
+export const DEFAULT_PROVIDER_IDS = [
+  'chatgpt',
+  'gemini',
+  'deepseek',
+  'meta-ai',
+  'mimo',
+  'doubao',
+  'yuanbao',
+  'grok',
+  'qwen-global',
+  'zai-global',
+  'google',
+  'chatglm',
+];
+
+export const DEFAULT_PROVIDER_ORDER = [
+  'chatgpt',
+  'claude',
+  'gemini',
+  'deepseek',
+  'google',
+  'qwen-cn',
+  'qwen-global',
+  'chatglm',
+  'zai-global',
+  'meta-ai',
+  'mimo',
+  'doubao',
+  'stepfun',
+  'agnes',
+  'yuanbao',
+  'grok',
+  'kimi',
+  'hy-aistudio',
+];
+
+export const DEFAULT_STARTUP_PROVIDER_IDS = [
+  'meta-ai',
+  'mimo',
+  'yuanbao',
+  'gemini',
+  'grok',
+  'deepseek',
+  'kimi',
+  'doubao',
+  'qwen-cn',
+  'chatglm',
+  'chatgpt',
+  'stepfun',
+  'agnes',
+  'hy-aistudio',
+  'google',
+  'qwen-global',
+  'zai-global',
 ];
 
 export function migrateEnabledProvidersOnUpdate(enabledProviders, providerOrder) {
@@ -49,7 +106,7 @@ function arraysContainSameIds(left, right) {
 
 function buildMigratedProviderOrder(providerOrder) {
   if (!Array.isArray(providerOrder) || providerOrder.length === 0) {
-    return DEFAULT_PROVIDER_IDS;
+    return DOUBAO_MIGRATION_PROVIDER_IDS;
   }
 
   const filteredExistingOrder = providerOrder.filter((providerId) =>

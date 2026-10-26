@@ -502,14 +502,14 @@ describe('composer control async state', () => {
 
     document.getElementById('keyboard-shortcuts-btn').click();
     const field = document.querySelector('#keyboard-shortcuts-fields [data-action="toggleWideContent"]');
-    field.dispatchEvent(keyEvent('6', { code: 'Digit6', ctrlKey: true, shiftKey: true }));
-    expect(field.value).toBe(formatShortcutForTooltip('Mod+Shift+6'));
+    field.dispatchEvent(keyEvent('Y', { code: 'KeyY', ctrlKey: true, shiftKey: true }));
+    expect(field.value).toBe(formatShortcutForTooltip('Mod+Shift+Y'));
     document.getElementById('save-keyboard-shortcuts').click();
     await flushMicrotasks();
 
-    expect(settingsState.keyboardShortcutBindings.toggleWideContent).toBe('Mod+Shift+6');
-    expect(button.title).toContain(formatShortcutForTooltip('Mod+Shift+6'));
-    window.dispatchEvent(keyEvent('6', { code: 'Digit6', ctrlKey: true, shiftKey: true }));
+    expect(settingsState.keyboardShortcutBindings.toggleWideContent).toBe('Mod+Shift+Y');
+    expect(button.title).toContain(formatShortcutForTooltip('Mod+Shift+Y'));
+    window.dispatchEvent(keyEvent('Y', { code: 'KeyY', ctrlKey: true, shiftKey: true }));
     expect(toggleWideContent).toHaveBeenCalledTimes(2);
 
     document.getElementById('keyboard-shortcuts-btn').click();
@@ -520,7 +520,7 @@ describe('composer control async state', () => {
     document.getElementById('save-keyboard-shortcuts').click();
     await flushMicrotasks();
     expect(settingsState.keyboardShortcutBindings.toggleWideContent).toBeNull();
-    window.dispatchEvent(keyEvent('6', { code: 'Digit6', ctrlKey: true, shiftKey: true }));
+    window.dispatchEvent(keyEvent('Y', { code: 'KeyY', ctrlKey: true, shiftKey: true }));
     expect(toggleWideContent).toHaveBeenCalledTimes(2);
 
     document.getElementById('keyboard-shortcuts-btn').click();

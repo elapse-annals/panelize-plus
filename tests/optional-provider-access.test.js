@@ -5,6 +5,7 @@ import {
   filterProvidersWithGrantedAccess,
   reconcileOptionalProviderAccess,
   requestOptionalProviderPermission,
+  requestOptionalProvidersPermission,
   syncOptionalProviderAccess,
 } from '../modules/optional-provider-access.js';
 
@@ -123,6 +124,17 @@ describe('optional provider access', () => {
       frameRule: {
         id: 1008,
         condition: { urlFilter: 'https://app.agnes-ai.com/*', resourceTypes: ['sub_frame'] },
+      },
+    });
+    expect(OPTIONAL_PROVIDER_CONFIGS['hy-aistudio']).toMatchObject({
+      origins: ['https://aistudio.tencent.com/*', 'https://api.hunyuan.tencent.com/*'],
+      contentScript: {
+        id: 'hy-aistudio-scripts',
+        matches: ['https://aistudio.tencent.com/*'],
+      },
+      frameRule: {
+        id: 1009,
+        condition: { urlFilter: 'https://aistudio.tencent.com/*', resourceTypes: ['sub_frame'] },
       },
     });
   });
@@ -257,6 +269,23 @@ describe('optional provider access', () => {
     });
   });
 
+  it('requests the origins of several providers in one prompt', async () => {
+    await expect(
+      requestOptionalProvidersPermission(['qwen-global', 'chatgpt', 'zai-global', 'qwen-global'])
+    ).resolves.toBe(true);
+
+    expect(chrome.permissions.request).toHaveBeenCalledTimes(1);
+    expect(chrome.permissions.request).toHaveBeenCalledWith({
+      origins: ['https://chat.qwen.ai/*', 'https://auth.qwen.ai/*', 'https://chat.z.ai/*'],
+    });
+  });
+
+  it('skips the prompt when no provider needs optional access', async () => {
+    await expect(requestOptionalProvidersPermission(['chatgpt'])).resolves.toBe(true);
+
+    expect(chrome.permissions.request).not.toHaveBeenCalled();
+  });
+
   it('reports a denied permission request without enabling access', async () => {
     chrome.permissions.request.mockResolvedValue(false);
 
@@ -382,6 +411,7 @@ describe('optional provider access', () => {
       { id: 'meta-ai-scripts' },
       { id: 'stepfun-scripts' },
       { id: 'agnes-scripts' },
+      { id: 'hy-aistudio-scripts' },
       { id: 'unrelated-script' },
     ]);
     chrome.declarativeNetRequest.getDynamicRules.mockResolvedValue([
@@ -393,6 +423,7 @@ describe('optional provider access', () => {
       { id: 1006 },
       { id: 1007 },
       { id: 1008 },
+      { id: 1009 },
       { id: 9999 },
     ]);
 
@@ -409,10 +440,11 @@ describe('optional provider access', () => {
         'meta-ai-scripts',
         'stepfun-scripts',
         'agnes-scripts',
+        'hy-aistudio-scripts',
       ],
     });
     expect(chrome.declarativeNetRequest.updateDynamicRules).toHaveBeenCalledWith({
-      removeRuleIds: [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008],
+      removeRuleIds: [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009],
       addRules: [],
     });
   });

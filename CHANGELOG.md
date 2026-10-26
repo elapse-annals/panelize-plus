@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.5.1 - 2026-10-26
+- Panel notes now appear as soon as Multi-Panel opens, not only after a note is edited.
+- Doubao New Chat no longer waits out its timeout when a floating hint sits over the composer, and it stops trying to close a stuck overlay after a few attempts.
+- In blind mode, ChatGLM login and confirmation dialogs stay visible while its sidebar is hidden.
+
+## 2.5.0 - 2026-10-26
+- Jump straight to a panel with Ctrl+Shift+1–9 (in display order, including blind-mode shuffles). New toolbar buttons and Cmd/Ctrl+Alt+, / . scroll to the first or last panel. All are customizable under Keyboard shortcuts.
+- Add a one-line note after any AI's name in its panel header (for example "great for brainstorming, very slow"). Click it to edit. Notes sync with your settings and are hidden in blind mode.
+- The toolbar, panel headers and composer take less vertical space, so the panels get more room. The composer now rests at one line and grows as you type.
+- While new conversations are starting, Send and Fill are visibly paused. Pressing them explains why, and you can keep typing your draft.
+- Blind mode now also hides the ChatGLM and Z.ai sidebars.
+- New Chat on Doubao no longer leaves the sidebar drawer or a mask overlay open in narrow panels, and no longer reports success while the composer is covered.
+
+## 2.4.0 - 2026-10-26
+- Enabled providers that still need site access on this device are now listed at the top of AI Providers in Settings, with one Grant access button that asks for all of them in a single browser prompt. Settings also opens after a fresh install so the default providers can be granted right away.
+
+## 2.3.0 - 2026-10-26
+- New installs and Reset now start with an updated default setup: 12 enabled providers (ChatGPT, Gemini, DeepSeek, Meta AI, MiMo, Doubao, Yuanbao, Grok, Qwen Global, Z.ai Global, Google and ChatGLM), a new provider order and startup panels, wide content turned on, and Hy AI Studio marked as quota billing. Existing settings are unchanged.
+
+## 2.2.0 - 2026-10-26
+- Added Tencent Hy AI Studio (aistudio.tencent.com) as an optional provider with text fill, Send All and Enter to send. It also needs access to api.hunyuan.tencent.com so the panel stays signed in.
+
 ## 2.1.0 - 2026-10-26
 - Mouse back and forward buttons no longer navigate provider panels away from their chats by accident.
 

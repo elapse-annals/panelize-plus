@@ -80,6 +80,10 @@
     [class*="logo" i], [class*="Logo"], [class*="avatar" i], [class*="Avatar"], [data-testid*="avatar" i],
     img[alt*="logo" i], svg[aria-label*="logo" i] { display: none !important; }
     [data-panelize-hide] { display: none !important; }
+    [data-panelize-collapse] {
+      width: 0 !important; min-width: 0 !important; flex-basis: 0 !important;
+      padding: 0 !important; margin: 0 !important; border: 0 !important; overflow: visible !important;
+    }
     [data-panelize-composer] {
       position: fixed !important; left: 12px !important; right: 12px !important; bottom: 12px !important;
       top: auto !important; max-width: 760px !important; margin: 0 auto !important;
@@ -120,11 +124,21 @@
     ['mimo', ['aistudio.xiaomimimo.com']],
     ['meta-ai', ['meta.ai']],
     ['stepfun', ['studio.stepfun.com']],
-    ['agnes', ['app.agnes-ai.com']]
+    ['agnes', ['app.agnes-ai.com']],
+    ['hy-aistudio', ['aistudio.tencent.com']]
   ];
   const hostname = String(window.location?.hostname || '').toLowerCase();
   const provider = PROVIDER_HOSTS.find(([, domains]) => domains.some(domain =>
     hostname === domain || hostname.endsWith(`.${domain}`)))?.[0] || null;
+  // App chrome that sibling isolation misses: ChatGLM's aside holds Element
+  // Plus dialog overlays (an isolation exception), and Z.ai's sidebar is not
+  // always a sibling of a kept branch. New Chat falls back to the provider URL
+  // when its sidebar button is hidden.
+  const PROVIDER_BLIND_HIDE_SELECTORS = {
+    chatglm: ['aside.aside-container'],
+    'zai-global': ['#sidebar']
+  };
+  const providerBlindHideSelector = PROVIDER_BLIND_HIDE_SELECTORS[provider]?.join(', ') || '';
   const extensionOrigin = getExtensionOrigin();
   const state = { blind: false };
   let styleObserver = null;
@@ -280,9 +294,10 @@
   }
 
   function clearIsolation({ preserveLayout = false } = {}) {
-    document.querySelectorAll('[data-panelize-keep], [data-panelize-hide], [data-panelize-composer], [data-panelize-scroller]').forEach(element => {
+    document.querySelectorAll('[data-panelize-keep], [data-panelize-hide], [data-panelize-collapse], [data-panelize-composer], [data-panelize-scroller]').forEach(element => {
       element.removeAttribute('data-panelize-keep');
       element.removeAttribute('data-panelize-hide');
+      element.removeAttribute('data-panelize-collapse');
       if (!preserveLayout) {
         element.removeAttribute('data-panelize-composer');
         element.removeAttribute('data-panelize-scroller');
@@ -368,6 +383,29 @@
     }
   }
 
+  function hideProviderChrome() {
+    if (!providerBlindHideSelector) return;
+    document.querySelectorAll(providerBlindHideSelector).forEach(element => {
+      // Model pickers and the composer must stay usable in blind mode.
+      if (element.matches(MODEL_LABEL_SELECTORS) || element.querySelector(MODEL_LABEL_SELECTORS)) return;
+      if (element.closest(MODEL_LABEL_SELECTORS) || element.closest('[data-panelize-composer]')) return;
+      if (element.querySelector('[data-panelize-composer]')) return;
+      hideAroundIsolationExceptions(element);
+    });
+  }
+
+  // ChatGLM mounts its dialogs inside the sidebar. Hiding the sidebar would
+  // hide them too, so collapse it and hide only the branches without dialogs.
+  function hideAroundIsolationExceptions(element) {
+    if (!containsIsolationException(element)) {
+      element.setAttribute('data-panelize-hide', '');
+      return;
+    }
+    if (element.matches(ISOLATION_EXCEPTIONS)) return;
+    element.setAttribute('data-panelize-collapse', '');
+    [...element.children].forEach(hideAroundIsolationExceptions);
+  }
+
   function isolatePage() {
     if (!state.blind || !document.body) return;
     // Keep clearance in place while reading geometry. Temporarily removing
@@ -382,6 +420,7 @@
       clearIsolation();
       observeComposer(null);
       visibleRoots = new Set(document.querySelectorAll(MESSAGE_SELECTORS));
+      hideProviderChrome();
       return;
     }
 
@@ -398,6 +437,7 @@
     document.querySelectorAll(MODEL_LABEL_SELECTORS).forEach(markVisibleRoot);
     if (document.activeElement && document.activeElement !== document.body) markVisibleRoot(document.activeElement);
     hideUnkeptSiblings();
+    hideProviderChrome();
     const scroller = findAnswerScroller();
     document.querySelectorAll('[data-panelize-composer]').forEach(element => {
       if (element !== composer) element.removeAttribute('data-panelize-composer');

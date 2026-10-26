@@ -131,6 +131,25 @@ describe('provider keyboard shortcut forwarding content script', () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
+  it('keeps its default bindings in sync with the extension module', async () => {
+    const { DEFAULT_KEYBOARD_SHORTCUT_BINDINGS } = await import('../modules/keyboard-shortcuts.js');
+    const controller = evaluateContentScript();
+    expect(controller.getBindings()).toEqual(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS);
+  });
+
+  it('forwards panel jump and scroll shortcuts typed with symbol-producing modifiers', () => {
+    evaluateContentScript();
+    const jump = new KeyboardEvent('keydown', {
+      key: '#', code: 'Digit3', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true
+    });
+    document.body.dispatchEvent(jump);
+    expect(jump.defaultPrevented).toBe(true);
+    expect(parent.postMessage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ type: 'PANELIZE_SHORTCUT', actionId: 'jumpPanel3' }),
+      expect.any(String)
+    );
+  });
+
   it('forwards the default wide mode shortcut from a provider frame', () => {
     const controller = evaluateContentScript();
     const event = dispatchKey(

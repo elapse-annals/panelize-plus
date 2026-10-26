@@ -9,7 +9,18 @@ export const KEYBOARD_SHORTCUT_ACTIONS = Object.freeze({
   TOGGLE_PROMPT_LIBRARY: 'togglePromptLibrary',
   TOGGLE_LAYOUT: 'toggleLayout',
   TOGGLE_POPULAR_SORT: 'togglePopularSort',
-  TOGGLE_WIDE_CONTENT: 'toggleWideContent'
+  TOGGLE_WIDE_CONTENT: 'toggleWideContent',
+  SCROLL_PANELS_START: 'scrollPanelsStart',
+  SCROLL_PANELS_END: 'scrollPanelsEnd',
+  JUMP_PANEL_1: 'jumpPanel1',
+  JUMP_PANEL_2: 'jumpPanel2',
+  JUMP_PANEL_3: 'jumpPanel3',
+  JUMP_PANEL_4: 'jumpPanel4',
+  JUMP_PANEL_5: 'jumpPanel5',
+  JUMP_PANEL_6: 'jumpPanel6',
+  JUMP_PANEL_7: 'jumpPanel7',
+  JUMP_PANEL_8: 'jumpPanel8',
+  JUMP_PANEL_9: 'jumpPanel9'
 });
 
 export const DEFAULT_KEYBOARD_SHORTCUT_BINDINGS = Object.freeze({
@@ -25,7 +36,20 @@ export const DEFAULT_KEYBOARD_SHORTCUT_BINDINGS = Object.freeze({
   [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_PROMPT_LIBRARY]: null,
   [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_LAYOUT]: null,
   [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_POPULAR_SORT]: null,
-  [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_WIDE_CONTENT]: 'Mod+Alt+W'
+  [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_WIDE_CONTENT]: 'Mod+Alt+W',
+  // Cmd+Option+Left/Right switch tabs on macOS, so use the < and > keys.
+  [KEYBOARD_SHORTCUT_ACTIONS.SCROLL_PANELS_START]: 'Mod+Alt+Comma',
+  [KEYBOARD_SHORTCUT_ACTIONS.SCROLL_PANELS_END]: 'Mod+Alt+Period',
+  // Ctrl, not Mod: Cmd+Shift+3/4/5 are macOS screenshot shortcuts.
+  [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_1]: 'Ctrl+Shift+1',
+  [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_2]: 'Ctrl+Shift+2',
+  [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_3]: 'Ctrl+Shift+3',
+  [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_4]: 'Ctrl+Shift+4',
+  [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_5]: 'Ctrl+Shift+5',
+  [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_6]: 'Ctrl+Shift+6',
+  [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_7]: 'Ctrl+Shift+7',
+  [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_8]: 'Ctrl+Shift+8',
+  [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_9]: 'Ctrl+Shift+9'
 });
 
 const ACTION_IDS = Object.freeze(Object.values(KEYBOARD_SHORTCUT_ACTIONS));
@@ -92,6 +116,8 @@ const KEY_CODE_ALIASES = new Map([
   ["'", 'Quote'],
   [' ', 'Space']
 ]);
+
+const PUNCTUATION_CODES = new Set(KEY_CODE_ALIASES.values());
 
 function canonicalKey(key) {
   if (typeof key !== 'string') return null;
@@ -207,6 +233,8 @@ function getEventKey(event) {
   if (/^Key[A-Z]$/.test(code)) return code.slice(3);
   if (/^Digit[0-9]$/.test(code)) return code.slice(5);
   if (/^Numpad[0-9]$/.test(code)) return code.slice(6);
+  // macOS Option turns punctuation into symbols such as ≤; fall back to code.
+  if (PUNCTUATION_CODES.has(code)) return code;
   return null;
 }
 

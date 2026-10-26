@@ -14,7 +14,7 @@ describe('providers module', () => {
 
   describe('PROVIDERS constant', () => {
     it('should contain all expected providers', () => {
-      expect(PROVIDERS).toHaveLength(17);
+      expect(PROVIDERS).toHaveLength(18);
       const providerIds = PROVIDERS.map((p) => p.id);
       expect(providerIds).toEqual([
         'chatgpt',
@@ -34,6 +34,7 @@ describe('providers module', () => {
         'meta-ai',
         'stepfun',
         'agnes',
+        'hy-aistudio',
       ]);
     });
 
@@ -95,6 +96,13 @@ describe('providers module', () => {
         icon: '/icons/providers/agnes.png',
         iconDark: '/icons/providers/dark/agnes.png',
         optionalOrigins: ['https://app.agnes-ai.com/*'],
+      });
+      expect(getProviderById('hy-aistudio')).toMatchObject({
+        name: 'Hy AI Studio',
+        url: 'https://aistudio.tencent.com/',
+        icon: '/icons/providers/hy-aistudio.png',
+        iconDark: '/icons/providers/dark/hy-aistudio.png',
+        optionalOrigins: ['https://aistudio.tencent.com/*', 'https://api.hunyuan.tencent.com/*'],
       });
     });
 

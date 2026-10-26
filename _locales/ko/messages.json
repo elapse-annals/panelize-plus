@@ -147,7 +147,7 @@
     "message": "AI 제공자 입력 필드에서 Enter 키와 수정 키가 작동하는 방식을 사용자 지정합니다."
   },
   "descEnterBehavior2": {
-    "message": "<strong>적용 대상:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes 및 Google (AI 모드)."
+    "message": "<strong>적용 대상:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio 및 Google (AI 모드)."
   },
   "labelEnableEnterCustomization": {
     "message": "Enter 키 사용자 지정 활성화"
@@ -303,6 +303,20 @@
         "content": "$1"
       }
     }
+  },
+  "msgProviderAccessMissing": {
+    "message": "다음 활성화된 제공자는 이 기기에서 사이트 액세스를 허용해야 표시됩니다: $PROVIDERS$.",
+    "placeholders": {
+      "providers": {
+        "content": "$1"
+      }
+    }
+  },
+  "msgProviderAccessRequestFailed": {
+    "message": "사이트 액세스를 요청할 수 없습니다."
+  },
+  "btnGrantProviderAccess": {
+    "message": "액세스 허용"
   },
   "msgProviderPermissionRequestFailed": {
     "message": "$PROVIDER$의 사이트 접근 권한을 요청하지 못했습니다.",
@@ -1308,5 +1322,29 @@
   },
   "msgProviderBillingUpdated": {
     "message": "요금 표시를 저장했습니다"
+  },
+  "composerScrollPanelsStart": {
+    "message": "첫 번째 패널로 스크롤"
+  },
+  "composerScrollPanelsEnd": {
+    "message": "마지막 패널로 스크롤"
+  },
+  "composerJumpPanel": {
+    "message": "$1번 패널로 이동"
+  },
+  "composerJumpPanelGroup": {
+    "message": "패널로 이동 (표시 순서)"
+  },
+  "composerSendBlockedNewChat": {
+    "message": "새 대화를 시작하는 중입니다. 초안은 유지되며 준비되면 보내세요."
+  },
+  "composerStartingChatsHold": {
+    "message": "새 대화 시작 중… 전송이 일시 중지되었습니다. 계속 입력할 수 있습니다."
+  },
+  "panelNotePlaceholder": {
+    "message": "메모 추가"
+  },
+  "panelNoteEditTitle": {
+    "message": "이 AI에 대한 한 줄 메모"
   }
 }

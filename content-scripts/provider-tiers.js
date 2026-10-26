@@ -86,7 +86,8 @@
     doubao: { ...DISCOVERY_CONFIG },
     mimo: { ...DISCOVERY_CONFIG },
     stepfun: { ...DISCOVERY_CONFIG },
-    agnes: { ...DISCOVERY_CONFIG }
+    agnes: { ...DISCOVERY_CONFIG },
+    'hy-aistudio': { ...DISCOVERY_CONFIG }
   };
 
   const hostname = String(window.location?.hostname || '').toLowerCase();
@@ -107,7 +108,8 @@
     ['mimo', ['aistudio.xiaomimimo.com']],
     ['meta-ai', ['meta.ai']],
     ['stepfun', ['studio.stepfun.com']],
-    ['agnes', ['app.agnes-ai.com']]
+    ['agnes', ['app.agnes-ai.com']],
+    ['hy-aistudio', ['aistudio.tencent.com']]
   ];
 
   function hostMatches(host, domain) {

@@ -147,7 +147,7 @@
     "message": "AI プロバイダーの入力フィールドで Enter キーと修飾キーがどのように機能するかをカスタマイズします。"
   },
   "descEnterBehavior2": {
-    "message": "<strong>適用先:</strong> ChatGPT、Claude、Gemini、Grok、DeepSeek、Kimi、Doubao、Qwen (China)、Qwen (Global)、Zhipu (China)、Z.ai (Global)、Yuanbao、MiMo、Meta AI、StepFun、Agnes、Google（AI モード）。"
+    "message": "<strong>適用先:</strong> ChatGPT、Claude、Gemini、Grok、DeepSeek、Kimi、Doubao、Qwen (China)、Qwen (Global)、Zhipu (China)、Z.ai (Global)、Yuanbao、MiMo、Meta AI、StepFun、Agnes、Hy AI Studio、Google（AI モード）。"
   },
   "labelEnableEnterCustomization": {
     "message": "Enter キーのカスタマイズを有効にする"
@@ -303,6 +303,20 @@
         "content": "$1"
       }
     }
+  },
+  "msgProviderAccessMissing": {
+    "message": "次の有効なプロバイダーは、このデバイスでサイトへのアクセスを許可すると表示されます：$PROVIDERS$。",
+    "placeholders": {
+      "providers": {
+        "content": "$1"
+      }
+    }
+  },
+  "msgProviderAccessRequestFailed": {
+    "message": "サイトへのアクセスをリクエストできませんでした。"
+  },
+  "btnGrantProviderAccess": {
+    "message": "アクセスを許可"
   },
   "msgProviderPermissionRequestFailed": {
     "message": "$PROVIDER$ のサイトアクセス権をリクエストできませんでした。",
@@ -1308,5 +1322,29 @@
   },
   "msgProviderBillingUpdated": {
     "message": "課金マークを保存しました"
+  },
+  "composerScrollPanelsStart": {
+    "message": "最初のパネルへスクロール"
+  },
+  "composerScrollPanelsEnd": {
+    "message": "最後のパネルへスクロール"
+  },
+  "composerJumpPanel": {
+    "message": "パネル $1 へ移動"
+  },
+  "composerJumpPanelGroup": {
+    "message": "パネルへ移動（表示順）"
+  },
+  "composerSendBlockedNewChat": {
+    "message": "新しい会話を開始しています。下書きは保持されます。準備ができてから送信してください。"
+  },
+  "composerStartingChatsHold": {
+    "message": "新しい会話を開始中… 送信は一時停止中です。入力は続けられます。"
+  },
+  "panelNotePlaceholder": {
+    "message": "メモを追加"
+  },
+  "panelNoteEditTitle": {
+    "message": "この AI についての一言メモ"
   }
 }

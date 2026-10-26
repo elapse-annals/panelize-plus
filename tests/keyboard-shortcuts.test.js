@@ -45,7 +45,18 @@ describe('keyboard shortcut bindings', () => {
       togglePromptLibrary: null,
       toggleLayout: null,
       togglePopularSort: null,
-      toggleWideContent: 'Mod+Alt+W'
+      toggleWideContent: 'Mod+Alt+W',
+      scrollPanelsStart: 'Mod+Alt+Comma',
+      scrollPanelsEnd: 'Mod+Alt+Period',
+      jumpPanel1: 'Ctrl+Shift+1',
+      jumpPanel2: 'Ctrl+Shift+2',
+      jumpPanel3: 'Ctrl+Shift+3',
+      jumpPanel4: 'Ctrl+Shift+4',
+      jumpPanel5: 'Ctrl+Shift+5',
+      jumpPanel6: 'Ctrl+Shift+6',
+      jumpPanel7: 'Ctrl+Shift+7',
+      jumpPanel8: 'Ctrl+Shift+8',
+      jumpPanel9: 'Ctrl+Shift+9'
     });
     expect(KEYBOARD_SHORTCUT_ACTIONS.SEND).toBe('send');
   });
@@ -87,6 +98,18 @@ describe('keyboard shortcut bindings', () => {
       'Mod+Alt+1',
       { platform: 'win32' }
     )).toBe(false);
+  });
+
+  it('matches panel jump and scroll defaults when macOS Option or Shift change the typed key', () => {
+    const optionComma = new KeyboardEvent('keydown', { key: '≤', code: 'Comma', metaKey: true, altKey: true });
+    // macOS Option is plain Alt, not AltGraph.
+    Object.defineProperty(optionComma, 'getModifierState', { value: () => false });
+    expect(matchesShortcut(optionComma, 'Mod+Alt+Comma', { platform: 'mac' })).toBe(true);
+    const shiftOne = new KeyboardEvent('keydown', { key: '!', code: 'Digit1', ctrlKey: true, shiftKey: true });
+    expect(matchesShortcut(shiftOne, 'Ctrl+Shift+1', { platform: 'mac' })).toBe(true);
+    expect(matchesShortcut(shiftOne, 'Ctrl+Shift+1', { platform: 'win32' })).toBe(true);
+    expect(validateShortcutBinding('Ctrl+Shift+1')).toBe(true);
+    expect(validateShortcutBinding('Mod+Alt+Period')).toBe(true);
   });
 
   it('captures a pressed combination in portable storage format', () => {

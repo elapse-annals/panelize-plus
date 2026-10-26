@@ -147,7 +147,7 @@
     "message": "Personnalisez le fonctionnement de la touche Entrée et des touches modificatrices lors de la saisie dans les champs de saisie des fournisseurs IA."
   },
   "descEnterBehavior2": {
-    "message": "<strong>S'applique à :</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes et Google (Mode IA)."
+    "message": "<strong>S'applique à :</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio et Google (Mode IA)."
   },
   "labelEnableEnterCustomization": {
     "message": "Activer la personnalisation de la touche Entrée"
@@ -303,6 +303,20 @@
         "content": "$1"
       }
     }
+  },
+  "msgProviderAccessMissing": {
+    "message": "Ces fournisseurs activés ont besoin d'un accès au site sur cet appareil pour s'afficher : $PROVIDERS$.",
+    "placeholders": {
+      "providers": {
+        "content": "$1"
+      }
+    }
+  },
+  "msgProviderAccessRequestFailed": {
+    "message": "Impossible de demander l'accès au site."
+  },
+  "btnGrantProviderAccess": {
+    "message": "Autoriser l'accès"
   },
   "msgProviderPermissionRequestFailed": {
     "message": "Impossible de demander l’accès au site pour $PROVIDER$.",
@@ -1308,5 +1322,29 @@
   },
   "msgProviderBillingUpdated": {
     "message": "Indicateur de facturation enregistré"
+  },
+  "composerScrollPanelsStart": {
+    "message": "Aller au premier panneau"
+  },
+  "composerScrollPanelsEnd": {
+    "message": "Aller au dernier panneau"
+  },
+  "composerJumpPanel": {
+    "message": "Aller au panneau $1"
+  },
+  "composerJumpPanelGroup": {
+    "message": "Aller au panneau (ordre d'affichage)"
+  },
+  "composerSendBlockedNewChat": {
+    "message": "De nouvelles conversations démarrent. Votre brouillon est conservé ; envoyez-le quand elles sont prêtes."
+  },
+  "composerStartingChatsHold": {
+    "message": "Démarrage de nouvelles conversations… Envoi en pause ; continuez à écrire."
+  },
+  "panelNotePlaceholder": {
+    "message": "Ajouter une note"
+  },
+  "panelNoteEditTitle": {
+    "message": "Note d'une ligne sur cette IA"
   }
 }

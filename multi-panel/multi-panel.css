@@ -73,11 +73,11 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 16px;
+  padding: 2px 12px;
   background: #ffffff;
   border-bottom: 1px solid #e0e0e0;
   flex-shrink: 0;
-  height: 52px;
+  height: 40px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
@@ -130,8 +130,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -245,7 +245,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 3px 10px;
   border: 1px solid #e0e0e0;
   border-radius: 20px;
   background: #fff;
@@ -325,8 +325,8 @@ body {
 #panel-grid {
   flex: 1;
   display: grid;
-  gap: 4px;
-  padding: 4px;
+  gap: 2px;
+  padding: 2px;
   background: #e0e0e0;
   overflow-x: auto;
   overflow-y: hidden;
@@ -695,7 +695,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 3px 8px;
   background: #f9f9f9;
   border-bottom: 1px solid #e0e0e0;
   flex-shrink: 0;
@@ -720,6 +720,49 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.panel-header-left .provider-note {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 260px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #888;
+  cursor: text;
+}
+
+.panel-header-left .provider-note:hover,
+.panel-header-left .provider-note:focus-visible {
+  background: #ececec;
+  color: #555;
+  outline: none;
+}
+
+/* The placeholder only appears on hover so empty notes add no clutter. */
+.panel-header-left .provider-note.is-empty {
+  opacity: 0;
+}
+
+.panel-header:hover .provider-note.is-empty,
+.panel-header-left .provider-note.is-empty:focus-visible {
+  opacity: 1;
+}
+
+.provider-note-input {
+  flex: 1 1 auto;
+  min-width: 60px;
+  max-width: 260px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid #c8c8c8;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  font: inherit;
+  font-size: 12px;
 }
 
 .panel-header-right {
@@ -872,6 +915,18 @@ body {
   object-fit: contain;
   opacity: 0.6;
   animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes panel-jump-highlight {
+  0%, 60% { outline-color: #1976d2; }
+  100% { outline-color: transparent; }
+}
+
+/* Outlines paint above the provider iframe, unlike an inset box-shadow. */
+.panel-item.panel-jump-highlight {
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  animation: panel-jump-highlight 900ms ease-out;
 }
 
 @keyframes pulse {
@@ -1072,7 +1127,7 @@ body {
   gap: 8px;
   min-width: 0;
 }
-.composer-controls { justify-content: space-between; padding: 0 8px 5px; flex-wrap: wrap; gap: 6px; }
+.composer-controls { justify-content: space-between; padding: 0 8px 3px; flex-wrap: wrap; gap: 6px; }
 .composer-controls-left { flex-wrap: wrap; }
 .composer-control {
   display: inline-flex;
@@ -1117,7 +1172,7 @@ body {
 .tier-option[aria-checked="true"] { color: #574681; background: #fff; box-shadow: 0 1px 4px #26253d15; }
 .tier-option:hover { color: #574681; }
 .composer-status, .composer-result-row { font-size: 12px; color: #6d7485; }
-.composer-result-row { padding: 0 12px 6px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.composer-result-row { padding: 0 12px 3px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .composer-result-row[hidden] { display: none; }
 .composer-link { border: none; color: #71609a; font: inherit; background: transparent; cursor: pointer; text-decoration: underline; }
 .composer-dialog { width: min(620px, calc(100vw - 32px)); }
@@ -1130,6 +1185,10 @@ body {
 .composer-shortcut-fields { display: grid; gap: 8px; }
 .composer-shortcut-field { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 13px; }
 .composer-shortcut-field input { min-width: 0; width: 180px; padding: 8px 10px; background: transparent; color: inherit; border: 1px solid #dddde7; border-radius: 7px; font: inherit; }
+.composer-shortcut-group { display: grid; gap: 6px; font-size: 13px; }
+.composer-shortcut-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 12px; }
+.composer-shortcut-field-compact { gap: 6px; }
+.composer-shortcut-field-compact input { width: 100%; padding: 6px 8px; }
 .composer-error { font-size: 12px; color: #c74242; min-height: 18px; margin-top: 12px; }
 #input-bar {
   position: relative;
@@ -1988,6 +2047,11 @@ body {
 [data-theme="dark"] .panel-header-left span {
   color: #e0e0e0;
 }
+
+[data-theme="dark"] .panel-header-left .provider-note { color: #8f8f8f; }
+[data-theme="dark"] .panel-header-left .provider-note:hover,
+[data-theme="dark"] .panel-header-left .provider-note:focus-visible { background: #3a3a3a; color: #ccc; }
+[data-theme="dark"] .provider-note-input { background: #2a2a2a; border-color: #555; color: #e0e0e0; }
 
 [data-theme="dark"] .panel-header-right button {
   color: #aaa;
@@ -2987,7 +3051,7 @@ html.snapshot-hide-cursor *::after {
   --composer-accent-ink: #48447a;
   --composer-muted: #647087;
   --composer-line: #e4e6ee;
-  padding: 3px 12px;
+  padding: 2px 12px;
 }
 [data-theme="dark"] #input-bar {
   --composer-accent: #7a6bc4;
@@ -3045,6 +3109,8 @@ html.snapshot-hide-cursor *::after {
 }
 #input-bar .send-btn:hover:not(:disabled) { background: var(--composer-accent-hover); }
 #input-bar .send-btn:disabled { background: var(--composer-line); color: var(--composer-muted); box-shadow: none; }
+#input-bar[data-new-chat-busy] .send-btn,
+#input-bar[data-new-chat-busy] .fill-btn { opacity: .55; cursor: not-allowed; }
 #input-bar .input-btn:focus-visible, #input-bar .clear-btn:focus-visible,
 #input-bar .fill-btn:focus-visible, #input-bar .send-btn:focus-visible {
   outline: 2px solid #8a79b5;
@@ -3113,7 +3179,7 @@ html.snapshot-hide-cursor *::after {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* A draft taller than two lines overhangs the panels instead of shrinking them;
+/* A draft taller than one line overhangs the panels instead of shrinking them;
    --composer-overflow is the extra textarea height (see resizeTextarea). */
 #input-bar .composer-shell { margin-top: calc(-1 * var(--composer-overflow, 0px)); }
 #input-bar.composer-expanded .composer-shell { box-shadow: 0 -8px 24px rgba(30, 42, 70, .12); }
@@ -3170,6 +3236,8 @@ body.blind-mode .blind-label {
 }
 body.blind-mode .panel-header-left .provider-icon,
 body.blind-mode .panel-header-left .provider-name,
+body.blind-mode .panel-header-left .provider-note,
+body.blind-mode .panel-header-left .provider-note-input,
 body.blind-mode .panel-selector .provider-icon,
 body.blind-mode .panel-selector .provider-name,
 body.blind-mode .panel-loading,

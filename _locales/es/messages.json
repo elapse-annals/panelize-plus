@@ -147,7 +147,7 @@
     "message": "Personaliza cómo funcionan la tecla Enter y las teclas modificadoras al escribir en los campos de entrada de proveedores de IA."
   },
   "descEnterBehavior2": {
-    "message": "<strong>Se aplica a:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes y Google (Modo IA)."
+    "message": "<strong>Se aplica a:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio y Google (Modo IA)."
   },
   "labelEnableEnterCustomization": {
     "message": "Habilitar Personalización de Tecla Enter"
@@ -303,6 +303,20 @@
         "content": "$1"
       }
     }
+  },
+  "msgProviderAccessMissing": {
+    "message": "Estos proveedores activados necesitan acceso al sitio en este dispositivo para aparecer: $PROVIDERS$.",
+    "placeholders": {
+      "providers": {
+        "content": "$1"
+      }
+    }
+  },
+  "msgProviderAccessRequestFailed": {
+    "message": "No se pudo solicitar el acceso al sitio."
+  },
+  "btnGrantProviderAccess": {
+    "message": "Conceder acceso"
   },
   "msgProviderPermissionRequestFailed": {
     "message": "No se pudo solicitar acceso al sitio para $PROVIDER$.",
@@ -1308,5 +1322,29 @@
   },
   "msgProviderBillingUpdated": {
     "message": "Indicador de facturación guardado"
+  },
+  "composerScrollPanelsStart": {
+    "message": "Ir al primer panel"
+  },
+  "composerScrollPanelsEnd": {
+    "message": "Ir al último panel"
+  },
+  "composerJumpPanel": {
+    "message": "Ir al panel $1"
+  },
+  "composerJumpPanelGroup": {
+    "message": "Ir al panel (en orden de visualización)"
+  },
+  "composerSendBlockedNewChat": {
+    "message": "Se están iniciando nuevas conversaciones. Tu borrador se conserva; envía cuando estén listas."
+  },
+  "composerStartingChatsHold": {
+    "message": "Iniciando nuevas conversaciones… Envío en pausa; puedes seguir escribiendo."
+  },
+  "panelNotePlaceholder": {
+    "message": "Añadir nota"
+  },
+  "panelNoteEditTitle": {
+    "message": "Nota de una línea sobre esta IA"
   }
 }

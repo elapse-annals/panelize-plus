@@ -147,7 +147,7 @@
     "message": "自訂在 AI 提供者輸入欄位中輸入時 Enter 鍵和修飾鍵的工作方式。"
   },
   "descEnterBehavior2": {
-    "message": "<strong>適用於:</strong> ChatGPT、Claude、Gemini、Grok、DeepSeek、Kimi、Doubao、Qwen (China)、Qwen (Global)、Zhipu (China)、Z.ai (Global)、Yuanbao、MiMo、Meta AI、StepFun、Agnes 和 Google(AI 模式)。"
+    "message": "<strong>適用於:</strong> ChatGPT、Claude、Gemini、Grok、DeepSeek、Kimi、Doubao、Qwen (China)、Qwen (Global)、Zhipu (China)、Z.ai (Global)、Yuanbao、MiMo、Meta AI、StepFun、Agnes、Hy AI Studio 和 Google(AI 模式)。"
   },
   "labelEnableEnterCustomization": {
     "message": "啟用 Enter 鍵自訂"
@@ -303,6 +303,20 @@
         "content": "$1"
       }
     }
+  },
+  "msgProviderAccessMissing": {
+    "message": "以下已啟用的提供者需要在此裝置上授予網站存取權限後才會顯示：$PROVIDERS$。",
+    "placeholders": {
+      "providers": {
+        "content": "$1"
+      }
+    }
+  },
+  "msgProviderAccessRequestFailed": {
+    "message": "無法要求網站存取權限。"
+  },
+  "btnGrantProviderAccess": {
+    "message": "授予存取權限"
   },
   "msgProviderPermissionRequestFailed": {
     "message": "無法為 $PROVIDER$ 請求網站存取權限。",
@@ -1302,5 +1316,29 @@
   },
   "msgProviderBillingUpdated": {
     "message": "計費標記已儲存"
+  },
+  "composerScrollPanelsStart": {
+    "message": "捲動到最左側面板"
+  },
+  "composerScrollPanelsEnd": {
+    "message": "捲動到最右側面板"
+  },
+  "composerJumpPanel": {
+    "message": "跳到第 $1 個面板"
+  },
+  "composerJumpPanelGroup": {
+    "message": "跳到面板（依顯示順序）"
+  },
+  "composerSendBlockedNewChat": {
+    "message": "正在新建對話，草稿已保留，完成後再傳送。"
+  },
+  "composerStartingChatsHold": {
+    "message": "正在新建對話… 暫停傳送，可繼續輸入。"
+  },
+  "panelNotePlaceholder": {
+    "message": "新增備註"
+  },
+  "panelNoteEditTitle": {
+    "message": "為這個 AI 寫一句話備註"
   }
 }

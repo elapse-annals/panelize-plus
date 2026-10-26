@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
   "short_name": "Panelize",
-  "version": "2.1.0",
+  "version": "2.5.1",
   "description": "__MSG_extensionDescription__",
   "default_locale": "en",
   "permissions": [
@@ -44,7 +44,9 @@
     "https://account.xiaomi.com/*",
     "https://www.meta.ai/*",
     "https://studio.stepfun.com/*",
-    "https://app.agnes-ai.com/*"
+    "https://app.agnes-ai.com/*",
+    "https://aistudio.tencent.com/*",
+    "https://api.hunyuan.tencent.com/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js",

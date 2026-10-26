@@ -2,39 +2,50 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_PROVIDER_IDS,
+  DOUBAO_MIGRATION_PROVIDER_IDS,
   LEGACY_DEFAULT_PROVIDER_IDS,
   migrateEnabledProvidersOnUpdate,
 } from '../modules/provider-defaults.js';
 
 describe('provider defaults', () => {
-  it('appends doubao to the current default provider list', () => {
+  it('uses the current default provider list', () => {
     expect(DEFAULT_PROVIDER_IDS).toEqual([
       'chatgpt',
-      'claude',
       'gemini',
-      'grok',
       'deepseek',
-      'kimi',
+      'meta-ai',
+      'mimo',
+      'doubao',
+      'yuanbao',
+      'grok',
+      'qwen-global',
+      'zai-global',
       'google',
+      'chatglm',
+    ]);
+  });
+
+  it('appends doubao to the legacy list for the update migration', () => {
+    expect(DOUBAO_MIGRATION_PROVIDER_IDS).toEqual([
+      ...LEGACY_DEFAULT_PROVIDER_IDS,
       'doubao',
     ]);
     expect(LEGACY_DEFAULT_PROVIDER_IDS).not.toContain('doubao');
-    expect(DEFAULT_PROVIDER_IDS).not.toContain('chatglm');
   });
 
   it('migrates untouched legacy defaults to include doubao', () => {
     expect(
       migrateEnabledProvidersOnUpdate(LEGACY_DEFAULT_PROVIDER_IDS, LEGACY_DEFAULT_PROVIDER_IDS)
     ).toEqual({
-      enabledProviders: DEFAULT_PROVIDER_IDS,
-      providerOrder: DEFAULT_PROVIDER_IDS,
+      enabledProviders: DOUBAO_MIGRATION_PROVIDER_IDS,
+      providerOrder: DOUBAO_MIGRATION_PROVIDER_IDS,
     });
   });
 
   it('migrates missing provider settings as untouched defaults', () => {
     expect(migrateEnabledProvidersOnUpdate(null, null)).toEqual({
-      enabledProviders: DEFAULT_PROVIDER_IDS,
-      providerOrder: DEFAULT_PROVIDER_IDS,
+      enabledProviders: DOUBAO_MIGRATION_PROVIDER_IDS,
+      providerOrder: DOUBAO_MIGRATION_PROVIDER_IDS,
     });
   });
 

@@ -28,14 +28,20 @@ const ACTION_LABELS = {
   togglePromptLibrary: ['composerPromptLibrary', 'Prompt library'],
   toggleLayout: ['composerLayout', 'Layout'],
   togglePopularSort: ['labelProviderSortMode', 'Provider order'],
-  toggleWideContent: ['composerWideContent', 'Wide mode']
+  toggleWideContent: ['composerWideContent', 'Wide mode'],
+  scrollPanelsStart: ['composerScrollPanelsStart', 'Scroll to first panel'],
+  scrollPanelsEnd: ['composerScrollPanelsEnd', 'Scroll to last panel'],
+  ...Object.fromEntries(Array.from({ length: 9 }, (_, index) =>
+    [`jumpPanel${index + 1}`, ['composerJumpPanel', 'Go to panel $1', [String(index + 1)]]]))
 };
 const BUTTON_ACTIONS = {
   'send-all-btn': 'send', 'fill-input-btn': 'fill',
   'new-chat-btn': 'newConversation', 'composer-new-chat-btn': 'newConversation',
   'prompt-library-btn': 'togglePromptLibrary', 'layout-btn': 'toggleLayout',
   'provider-sort-btn': 'togglePopularSort',
-  'wide-content-btn': 'toggleWideContent'
+  'wide-content-btn': 'toggleWideContent',
+  'scroll-panels-start-btn': 'scrollPanelsStart',
+  'scroll-panels-end-btn': 'scrollPanelsEnd'
 };
 
 /** UI orchestration stays here; provider operations retain their own verified
@@ -45,7 +51,9 @@ export async function setupComposerControls({
   openLayout, text, notify = () => {}, isOperationBusy = () => false,
   getPanelName = panel => getProviderById(panel.providerId)?.name || panel.providerId,
   isBlindMode = () => false,
-  toggleWideContent = () => {}
+  toggleWideContent = () => {},
+  scrollPanels = () => {},
+  jumpToPanel = () => {}
 }) {
   const byId = id => document.getElementById(id);
   if (!byId('composer-shell')) return null;
@@ -356,8 +364,11 @@ export async function setupComposerControls({
     const actions = {
       send, fill, newConversation, focusInput, togglePromptLibrary: openPromptLibrary,
       toggleLayout: openLayout, togglePopularSort: toggleSort, toggleWideContent,
-      tierFast: () => requestTier('fast'), tierBalanced: () => requestTier('balanced'), tierDeep: () => requestTier('deep')
+      tierFast: () => requestTier('fast'), tierBalanced: () => requestTier('balanced'), tierDeep: () => requestTier('deep'),
+      scrollPanelsStart: () => scrollPanels('start'), scrollPanelsEnd: () => scrollPanels('end')
     };
+    const jump = /^jumpPanel([1-9])$/.exec(action);
+    if (jump) actions[action] = () => jumpToPanel(Number(jump[1]));
     Promise.resolve(actions[action]?.()).catch(() => notify(tr('composerNotConfirmed', 'Not confirmed')));
   }
 
@@ -404,11 +415,21 @@ export async function setupComposerControls({
   function renderShortcutFields() {
     const container = byId('keyboard-shortcuts-fields');
     container.replaceChildren();
+    // Nine panel-jump rows would dominate the dialog; show them as a compact grid.
+    const jumpGroup = document.createElement('div');
+    jumpGroup.className = 'composer-shortcut-group';
+    const jumpTitle = document.createElement('span');
+    jumpTitle.className = 'composer-shortcut-group-title';
+    jumpTitle.textContent = tr('composerJumpPanelGroup', 'Go to panel (in display order)');
+    const jumpGrid = document.createElement('div');
+    jumpGrid.className = 'composer-shortcut-grid';
+    jumpGroup.append(jumpTitle, jumpGrid);
     Object.keys(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS).forEach(action => {
+      const jumpIndex = /^jumpPanel([1-9])$/.exec(action)?.[1];
       const row = document.createElement('label');
-      row.className = 'composer-shortcut-field';
+      row.className = jumpIndex ? 'composer-shortcut-field composer-shortcut-field-compact' : 'composer-shortcut-field';
       const caption = document.createElement('span');
-      caption.textContent = label(action);
+      caption.textContent = jumpIndex || label(action);
       const input = document.createElement('input');
       input.readOnly = true;
       input.dataset.action = action;
@@ -434,8 +455,9 @@ export async function setupComposerControls({
         input.value = formatShortcutForTooltip(value);
       });
       row.append(caption, input);
-      container.append(row);
+      (jumpIndex ? jumpGrid : container).append(row);
     });
+    container.append(jumpGroup);
   }
 
   document.querySelectorAll('.tier-option').forEach(button => {

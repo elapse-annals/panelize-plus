@@ -182,7 +182,8 @@ export const PROVIDER_TIER_CONFIG = Object.freeze({
   mimo: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://aistudio.xiaomimimo.com/' },
   'meta-ai': { strategy: 'recipe', evidence: 'user-mapping-needs-logged-in-dom-confirmation', source: 'https://www.meta.ai/' },
   stepfun: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://studio.stepfun.com/' },
-  agnes: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://app.agnes-ai.com/' }
+  agnes: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://app.agnes-ai.com/' },
+  'hy-aistudio': { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://aistudio.tencent.com/' }
 });
 
 const MENU_EFFORT_LEVELS = Object.freeze({ fast: 'Low', balanced: 'Medium', deep: 'High' });

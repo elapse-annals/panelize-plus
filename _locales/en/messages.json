@@ -201,7 +201,7 @@
     "message": "Customize how Enter and modifier keys work when typing in AI provider input fields."
   },
   "descEnterBehavior2": {
-    "message": "<strong>Applies to:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, and Google (AI Mode)."
+    "message": "<strong>Applies to:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, and Google (AI Mode)."
   },
   "labelEnableEnterCustomization": {
     "message": "Enable Enter Key Customization"
@@ -357,6 +357,20 @@
         "content": "$1"
       }
     }
+  },
+  "msgProviderAccessMissing": {
+    "message": "These enabled providers need site access on this device before they appear: $PROVIDERS$.",
+    "placeholders": {
+      "providers": {
+        "content": "$1"
+      }
+    }
+  },
+  "msgProviderAccessRequestFailed": {
+    "message": "Could not request site access."
+  },
+  "btnGrantProviderAccess": {
+    "message": "Grant access"
   },
   "msgProviderPermissionRequestFailed": {
     "message": "Could not request site access for $PROVIDER$.",
@@ -1323,5 +1337,29 @@
   },
   "msgProviderBillingUpdated": {
     "message": "Billing marker saved"
+  },
+  "composerScrollPanelsStart": {
+    "message": "Scroll to first panel"
+  },
+  "composerScrollPanelsEnd": {
+    "message": "Scroll to last panel"
+  },
+  "composerJumpPanel": {
+    "message": "Go to panel $1"
+  },
+  "composerJumpPanelGroup": {
+    "message": "Go to panel (in display order)"
+  },
+  "composerSendBlockedNewChat": {
+    "message": "New conversations are starting. Your draft is kept; send when they are ready."
+  },
+  "composerStartingChatsHold": {
+    "message": "Starting new conversations… Sending is paused; keep typing."
+  },
+  "panelNotePlaceholder": {
+    "message": "Add note"
+  },
+  "panelNoteEditTitle": {
+    "message": "Add a one-line note about this AI"
   }
 }

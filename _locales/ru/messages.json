@@ -147,7 +147,7 @@
     "message": "Настройте, как работают клавиша Enter и модификаторы при вводе в полях ввода провайдеров ИИ."
   },
   "descEnterBehavior2": {
-    "message": "<strong>Применяется к:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes и Google (AI Mode)."
+    "message": "<strong>Применяется к:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio и Google (AI Mode)."
   },
   "labelEnableEnterCustomization": {
     "message": "Включить настройку клавиши Enter"
@@ -303,6 +303,20 @@
         "content": "$1"
       }
     }
+  },
+  "msgProviderAccessMissing": {
+    "message": "Этим включённым провайдерам нужен доступ к сайтам на этом устройстве, чтобы они появились: $PROVIDERS$.",
+    "placeholders": {
+      "providers": {
+        "content": "$1"
+      }
+    }
+  },
+  "msgProviderAccessRequestFailed": {
+    "message": "Не удалось запросить доступ к сайтам."
+  },
+  "btnGrantProviderAccess": {
+    "message": "Разрешить доступ"
   },
   "msgProviderPermissionRequestFailed": {
     "message": "Не удалось запросить доступ к сайту для $PROVIDER$.",
@@ -1308,5 +1322,29 @@
   },
   "msgProviderBillingUpdated": {
     "message": "Метка оплаты сохранена"
+  },
+  "composerScrollPanelsStart": {
+    "message": "К первой панели"
+  },
+  "composerScrollPanelsEnd": {
+    "message": "К последней панели"
+  },
+  "composerJumpPanel": {
+    "message": "К панели $1"
+  },
+  "composerJumpPanelGroup": {
+    "message": "К панели (в порядке отображения)"
+  },
+  "composerSendBlockedNewChat": {
+    "message": "Запускаются новые беседы. Черновик сохранён; отправьте, когда они будут готовы."
+  },
+  "composerStartingChatsHold": {
+    "message": "Запуск новых бесед… Отправка приостановлена, можно продолжать ввод."
+  },
+  "panelNotePlaceholder": {
+    "message": "Добавить заметку"
+  },
+  "panelNoteEditTitle": {
+    "message": "Короткая заметка об этом ИИ"
   }
 }

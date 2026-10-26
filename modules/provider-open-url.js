@@ -17,7 +17,8 @@ const PROVIDER_ALLOWED_HOSTS = {
   mimo: new Set(['aistudio.xiaomimimo.com']),
   'meta-ai': new Set(['www.meta.ai']),
   stepfun: new Set(['studio.stepfun.com']),
-  agnes: new Set(['app.agnes-ai.com'])
+  agnes: new Set(['app.agnes-ai.com']),
+  'hy-aistudio': new Set(['aistudio.tencent.com'])
 };
 
 const QWEN_GLOBAL_NON_CONVERSATION_IDS = new Set(['new-chat', 'new-branch', 'guest']);
@@ -110,6 +111,7 @@ export function isProviderCurrentUrl(providerId, rawUrl) {
       return /^\/prompt\/[^/]+\/?$/.test(url.pathname);
     case 'stepfun':
     case 'agnes':
+    case 'hy-aistudio':
       // No verified stable conversation URL yet.
       return false;
     default:

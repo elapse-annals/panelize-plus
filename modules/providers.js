@@ -1,4 +1,4 @@
-import { DEFAULT_PROVIDER_IDS } from './provider-defaults.js';
+import { DEFAULT_PROVIDER_IDS, DEFAULT_PROVIDER_ORDER } from './provider-defaults.js';
 import {
   OPTIONAL_PROVIDER_CONFIGS,
   filterProvidersWithGrantedAccess
@@ -174,6 +174,16 @@ export const PROVIDERS = [
     iconDark: '/icons/providers/dark/agnes.png',
     enabled: true,
     optionalOrigins: OPTIONAL_PROVIDER_CONFIGS.agnes.origins
+  },
+  {
+    id: 'hy-aistudio',
+    name: 'Hy AI Studio',
+    url: 'https://aistudio.tencent.com/',
+    topLevelUrl: 'https://aistudio.tencent.com/',
+    icon: '/icons/providers/hy-aistudio.png',
+    iconDark: '/icons/providers/dark/hy-aistudio.png',
+    enabled: true,
+    optionalOrigins: OPTIONAL_PROVIDER_CONFIGS['hy-aistudio'].origins
   }
 ];
 
@@ -205,7 +215,7 @@ export async function getProviderByIdWithSettings(id) {
 export async function getEnabledProviders() {
   let settings = {
     enabledProviders: DEFAULT_PROVIDER_IDS,
-    providerOrder: null,
+    providerOrder: DEFAULT_PROVIDER_ORDER,
     providerSortMode: 'manual'
   };
   

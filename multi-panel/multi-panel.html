@@ -31,11 +31,21 @@
       </div>
 
       <div class="toolbar-center">
+        <button id="scroll-panels-start-btn" class="toolbar-btn" title="Scroll to first panel" aria-label="Scroll to first panel">
+          <svg class="toolbar-icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M18.41 16.59L13.82 12l4.59-4.59L17 6l-6 6 6 6zM6 6h2v12H6z" />
+          </svg>
+        </button>
         <div id="panel-selectors">
           <!-- Panel provider selectors will be dynamically generated -->
         </div>
         <button id="add-panel-btn" class="toolbar-btn" title="Add Panel">
           <span class="material-symbols-outlined">add</span>
+        </button>
+        <button id="scroll-panels-end-btn" class="toolbar-btn" title="Scroll to last panel" aria-label="Scroll to last panel">
+          <svg class="toolbar-icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M5.59 7.41L10.18 12l-4.59 4.59L7 18l6-6-6-6zM16 6h2v12h-2z" />
+          </svg>
         </button>
       </div>
 
@@ -109,7 +119,7 @@
       <div class="input-container">
         <div class="input-wrapper">
           <div id="image-preview-container" class="image-preview-container"></div>
-          <textarea id="unified-input" placeholder="Enter your question to send to all AI providers..." rows="2"></textarea>
+          <textarea id="unified-input" placeholder="Enter your question to send to all AI providers..." rows="1"></textarea>
         </div>
       </div>
       <div class="composer-controls">

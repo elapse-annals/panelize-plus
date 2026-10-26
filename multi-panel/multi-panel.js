@@ -6,7 +6,7 @@
  */
 
 import { PROVIDERS, getProviderById, getEnabledProviders, getProviderIcon } from '../modules/providers.js';
-import { DEFAULT_PROVIDER_IDS } from '../modules/provider-defaults.js';
+import { DEFAULT_PROVIDER_IDS, DEFAULT_PROVIDER_ORDER, DEFAULT_STARTUP_PROVIDER_IDS } from '../modules/provider-defaults.js';
 import { GROK_WEBSOCKET_COOKIE_SYNC_ACTION } from '../modules/grok-websocket-cookies.js';
 import {
   MIMO_SESSION_COOKIE_SYNC_ACTION,
@@ -176,6 +176,7 @@ let isWideContentEnabled = false;
 // Panel ids in display order once blind mode has shuffled them; null keeps
 // the saved order. Only CSS order changes, so frames never reload.
 let panelDisplayOrder = null;
+let providerNotes = {};
 let isNewChatBusy = false;
 let failedNewChatPanelIds = new Set();
 const newChatResults = new Map();
@@ -297,6 +298,8 @@ async function init() {
 
   // Load saved settings
   await loadSettings();
+  // Startup-snapshot panels were created before notes were loaded.
+  renderAllPanelNotes();
 
   // Initialize panels while the column widths load; the resize handles follow
   // layout changes made meanwhile.
@@ -325,6 +328,8 @@ async function init() {
     openPromptLibrary: openPromptModal,
     openLayout: openLayoutModal,
     toggleWideContent: () => setPageStyleModes({ wide: !isWideContentEnabled }),
+    scrollPanels,
+    jumpToPanel,
     isOperationBusy: () => isNewChatBusy || broadcastGate.isActive(),
     text: getLocalizedText,
     notify: showToast,
@@ -742,6 +747,11 @@ function registerStorageChangeListener() {
     if (areaName === 'sync' && changes.enabledProviders) {
       // See initializePanels: providers enabled later need current-code access too.
       void reconcileOptionalProviderAccess();
+    }
+
+    if (changes.providerNotes) {
+      providerNotes = changes.providerNotes.newValue || {};
+      renderAllPanelNotes();
     }
 
     if (changes.blindModeEnabled || changes.wideContentEnabled) {
@@ -1223,9 +1233,11 @@ async function loadSettings() {
       openMode: 'tab',
       googleProviderMode: DEFAULT_GOOGLE_PROVIDER_MODE,
       blindModeEnabled: false,
-      wideContentEnabled: false
+      wideContentEnabled: true,
+      providerNotes: null
     });
 
+    providerNotes = settings.providerNotes || {};
     currentLayout = normalizeLayout(settings.multiPanelLayout);
     isBlindModeEnabled = settings.blindModeEnabled === true;
     isWideContentEnabled = settings.wideContentEnabled === true;
@@ -1401,10 +1413,10 @@ async function initializePanels() {
     // local-statistics order consistently with the add/switch menus.
     const [settings, enabledProviders] = await Promise.all([
       chrome.storage.sync.get({
-        providerOrder: null,
+        providerOrder: DEFAULT_PROVIDER_ORDER,
         enabledProviders: DEFAULT_PROVIDERS,
         multiPanelProviders: DEFAULT_PROVIDERS,
-        startupProviders: null
+        startupProviders: DEFAULT_STARTUP_PROVIDER_IDS
       }),
       getEnabledProviders(),
       // This page always runs the extension's current code, while the service
@@ -1587,6 +1599,7 @@ function createPanel(providerId, { frameUrl = getProviderFrameUrl(providerId), b
       <div class="panel-header-left">
         <img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="provider-icon" data-provider-id="${provider.id}">
         <span class="provider-name">${provider.name}</span>
+        <span class="provider-note" role="button" tabindex="0"></span>
         <span class="blind-label" aria-hidden="true"></span>
       </div>
       <div class="panel-header-right">${getPanelHeaderRightHtml(providerId)}</div>
@@ -1602,6 +1615,9 @@ function createPanel(providerId, { frameUrl = getProviderFrameUrl(providerId), b
       ></iframe>
     </div>
   `;
+
+  bindPanelNote(panelEl, panelId);
+  renderPanelNote(panelEl, providerId);
 
   // Get iframe reference
   const iframe = panelEl.querySelector('iframe');
@@ -1728,6 +1744,7 @@ async function switchPanelProvider(panelId, newProviderId) {
   headerIcon.dataset.providerId = provider.id;
   headerIcon.alt = provider.name;
   headerName.textContent = provider.name;
+  renderPanelNote(panelEl, newProviderId);
   headerRight.innerHTML = getPanelHeaderRightHtml(newProviderId);
 
   // Update iframe
@@ -1804,9 +1821,111 @@ function getPanelDisplayName(panel) {
   return getProviderById(panel.providerId)?.name || panel.providerId;
 }
 
+// ===== Panel Notes =====
+// A one-line, per-provider note shown after the name (e.g. "good for brainstorming").
+const PANEL_NOTE_MAX_LENGTH = 80;
+
+function getProviderNote(providerId) {
+  const note = providerNotes?.[providerId];
+  return typeof note === 'string' ? note : '';
+}
+
+function renderPanelNote(panelEl, providerId) {
+  const noteEl = panelEl?.querySelector('.provider-note');
+  if (!noteEl) return;
+  const note = getProviderNote(providerId);
+  noteEl.textContent = note || getLocalizedText('panelNotePlaceholder', 'Add note');
+  noteEl.classList.toggle('is-empty', !note);
+  noteEl.title = note || getLocalizedText('panelNoteEditTitle', 'Add a one-line note about this AI');
+  noteEl.setAttribute('aria-label', noteEl.title);
+}
+
+function renderAllPanelNotes() {
+  panels.forEach(panel => renderPanelNote(document.getElementById(panel.id), panel.providerId));
+}
+
+async function saveProviderNote(providerId, note) {
+  const next = { ...providerNotes };
+  if (note) next[providerId] = note.slice(0, PANEL_NOTE_MAX_LENGTH);
+  else delete next[providerId];
+  providerNotes = next;
+  await saveSetting('providerNotes', Object.keys(next).length ? next : null);
+}
+
+function startPanelNoteEdit(panelId) {
+  const panel = panels.find(candidate => candidate.id === panelId);
+  const panelEl = document.getElementById(panelId);
+  const noteEl = panelEl?.querySelector('.provider-note');
+  if (!panel || !noteEl || isBlindModeEnabled || panelEl.querySelector('.provider-note-input')) return;
+
+  const { providerId } = panel;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'provider-note-input';
+  input.maxLength = PANEL_NOTE_MAX_LENGTH;
+  input.value = getProviderNote(providerId);
+  input.placeholder = getLocalizedText('panelNoteEditTitle', 'Add a one-line note about this AI');
+  input.setAttribute('aria-label', input.placeholder);
+  noteEl.hidden = true;
+  noteEl.after(input);
+  input.focus();
+  input.select();
+
+  let finished = false;
+  const finish = async (save) => {
+    if (finished) return;
+    finished = true;
+    const value = input.value.trim();
+    input.remove();
+    noteEl.hidden = false;
+    if (save && value !== getProviderNote(providerId)) await saveProviderNote(providerId, value);
+    renderPanelNote(panelEl, panels.find(candidate => candidate.id === panelId)?.providerId || providerId);
+  };
+  input.addEventListener('keydown', (event) => {
+    if (event.isComposing || event.keyCode === 229) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void finish(true);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      void finish(false);
+    }
+  });
+  input.addEventListener('blur', () => { void finish(true); });
+}
+
+function bindPanelNote(panelEl, panelId) {
+  const noteEl = panelEl.querySelector('.provider-note');
+  noteEl?.addEventListener('click', () => startPanelNoteEdit(panelId));
+  noteEl?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    startPanelNoteEdit(panelId);
+  });
+}
+
 function getDisplayedPanels() {
   if (!panelDisplayOrder) return panels;
   return [...panels].sort((a, b) => panelDisplayOrder.indexOf(a.id) - panelDisplayOrder.indexOf(b.id));
+}
+
+function scrollPanels(edge) {
+  const grid = document.getElementById('panel-grid');
+  if (!grid) return;
+  grid.scrollTo({ left: edge === 'end' ? grid.scrollWidth : 0, behavior: 'smooth' });
+}
+
+// `index` is 1-based and follows the on-screen order, including blind shuffles.
+function jumpToPanel(index) {
+  const panel = getDisplayedPanels()[index - 1];
+  const element = panel && document.getElementById(panel.id);
+  if (!element) return;
+  element.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+  element.classList.remove('panel-jump-highlight');
+  // Restart the highlight animation when the same panel is targeted again.
+  void element.offsetWidth;
+  element.classList.add('panel-jump-highlight');
+  element.addEventListener('animationend', () => element.classList.remove('panel-jump-highlight'), { once: true });
 }
 
 function applyPanelDisplayOrder() {
@@ -1984,7 +2103,12 @@ function setFillRetryState(panelIds) {
 }
 
 export async function broadcastMessage(text, autoSubmit = true) {
-  if (isNewChatBusy || composerControls?.isTierBusy()) {
+  if (isNewChatBusy) {
+    // The draft and textarea stay untouched so the user can keep typing.
+    showToast(getLocalizedText('composerSendBlockedNewChat', 'New conversations are starting. Your draft is kept; send when they are ready.'));
+    return;
+  }
+  if (composerControls?.isTierBusy()) {
     showToast(getLocalizedText('composerActionBusy', 'Wait for the current operation to finish.'));
     return;
   }
@@ -3149,12 +3273,25 @@ function findCurrentPanel(target) {
   return panels.find(panel => panel.id === target.id && panel.providerId === target.providerId);
 }
 
+// Send and Fill look unavailable while new chats start, but stay enabled so a
+// click or Enter reaches broadcastMessage and explains why nothing was sent.
+function setNewChatSendHold(active) {
+  document.getElementById('input-bar')?.toggleAttribute('data-new-chat-busy', active);
+  ['send-all-btn', 'fill-input-btn'].forEach(id => {
+    const button = document.getElementById(id);
+    if (!button) return;
+    if (active) button.setAttribute('aria-disabled', 'true');
+    else button.removeAttribute('aria-disabled');
+  });
+}
+
 async function newChatAllProviders({ retryFailed = false } = {}) {
   if (isNewChatBusy || broadcastGate.isActive() || composerControls?.isTierBusy()) return;
   const targetPanels = panels.filter(panel => !retryFailed || failedNewChatPanelIds.has(panel.id))
     .map(({ id, providerId, iframe }) => ({ id, providerId, iframe }));
   if (!targetPanels.length) return;
   isNewChatBusy = true;
+  setNewChatSendHold(true);
   setTemporaryChatButtonDisabled(true);
   const buttons = ['new-chat-btn', 'composer-new-chat-btn', 'retry-new-chat-btn'].map(id => document.getElementById(id));
   buttons.forEach(button => { button.disabled = true; });
@@ -3162,7 +3299,7 @@ async function newChatAllProviders({ retryFailed = false } = {}) {
   const status = document.getElementById('new-chat-status');
   const retry = document.getElementById('retry-new-chat-btn');
   row.hidden = false;
-  status.textContent = getLocalizedText('composerStartingChats', 'Starting new conversations…');
+  status.textContent = getLocalizedText('composerStartingChatsHold', 'Starting new conversations… Sending is paused; keep typing.');
   retry.hidden = true;
   if (!retryFailed) {
     failedNewChatPanelIds.clear();
@@ -3226,6 +3363,7 @@ async function newChatAllProviders({ retryFailed = false } = {}) {
     retry.hidden = false;
   } finally {
     isNewChatBusy = false;
+    setNewChatSendHold(false);
     buttons.forEach(button => { button.disabled = false; });
     setTemporaryChatButtonDisabled(false);
   }
@@ -3988,6 +4126,8 @@ function setupEventListeners() {
 
   // Add panel button
   document.getElementById('add-panel-btn').addEventListener('click', showAddPanelMenu);
+  document.getElementById('scroll-panels-start-btn')?.addEventListener('click', () => scrollPanels('start'));
+  document.getElementById('scroll-panels-end-btn')?.addEventListener('click', () => scrollPanels('end'));
 
   // Toggle toolbar button and expand bar
   document.getElementById('toggle-toolbar-btn').addEventListener('click', toggleToolbar);
@@ -4289,7 +4429,7 @@ function resizeTextarea() {
   const inputBar = document.getElementById('input-bar');
   textarea.style.height = 'auto';
   const restHeight = textarea.offsetHeight;
-  // Collapse to two lines once focus leaves the composer so the overhang never
+  // Collapse to one line once focus leaves the composer so the overhang never
   // covers panel content the user is reading.
   const expanded = Boolean(inputBar?.contains(document.activeElement));
   const height = expanded ? Math.max(restHeight, Math.min(textarea.scrollHeight, getComposerMaxHeight())) : restHeight;

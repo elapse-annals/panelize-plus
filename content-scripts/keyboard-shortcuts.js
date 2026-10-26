@@ -13,7 +13,18 @@
     'togglePromptLibrary',
     'toggleLayout',
     'togglePopularSort',
-    'toggleWideContent'
+    'toggleWideContent',
+    'scrollPanelsStart',
+    'scrollPanelsEnd',
+    'jumpPanel1',
+    'jumpPanel2',
+    'jumpPanel3',
+    'jumpPanel4',
+    'jumpPanel5',
+    'jumpPanel6',
+    'jumpPanel7',
+    'jumpPanel8',
+    'jumpPanel9'
   ];
   const DEFAULT_BINDINGS = {
     send: 'Mod+Enter',
@@ -26,7 +37,18 @@
     togglePromptLibrary: null,
     toggleLayout: null,
     togglePopularSort: null,
-    toggleWideContent: 'Mod+Alt+W'
+    toggleWideContent: 'Mod+Alt+W',
+    scrollPanelsStart: 'Mod+Alt+Comma',
+    scrollPanelsEnd: 'Mod+Alt+Period',
+    jumpPanel1: 'Ctrl+Shift+1',
+    jumpPanel2: 'Ctrl+Shift+2',
+    jumpPanel3: 'Ctrl+Shift+3',
+    jumpPanel4: 'Ctrl+Shift+4',
+    jumpPanel5: 'Ctrl+Shift+5',
+    jumpPanel6: 'Ctrl+Shift+6',
+    jumpPanel7: 'Ctrl+Shift+7',
+    jumpPanel8: 'Ctrl+Shift+8',
+    jumpPanel9: 'Ctrl+Shift+9'
   };
   const MODIFIERS = new Map([
     ['ctrl', 'Ctrl'], ['control', 'Ctrl'],
@@ -70,6 +92,7 @@
     if (host === 'meta.ai' || host === 'www.meta.ai') return 'meta-ai';
     if (host === 'studio.stepfun.com') return 'stepfun';
     if (host === 'app.agnes-ai.com') return 'agnes';
+    if (host === 'aistudio.tencent.com') return 'hy-aistudio';
     return null;
   }
 
@@ -191,6 +214,7 @@
     if (/^Key[A-Z]$/.test(code)) return code.slice(3);
     if (/^Digit[0-9]$/.test(code)) return code.slice(5);
     if (/^Numpad[0-9]$/.test(code)) return code.slice(6);
+    if ([...KEY_SYMBOLS.values()].includes(code)) return code;
     return null;
   }
 

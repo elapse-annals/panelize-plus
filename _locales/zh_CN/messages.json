@@ -147,7 +147,7 @@
     "message": "自定义在 AI 提供商输入字段中输入时回车键和修饰键的工作方式。"
   },
   "descEnterBehavior2": {
-    "message": "<strong>适用于:</strong> ChatGPT、Claude、Gemini、Grok、DeepSeek、Kimi、Doubao、Qwen (China)、Qwen (Global)、Zhipu (China)、Z.ai (Global)、Yuanbao、MiMo、Meta AI、StepFun、Agnes 和 Google(AI 模式)。"
+    "message": "<strong>适用于:</strong> ChatGPT、Claude、Gemini、Grok、DeepSeek、Kimi、Doubao、Qwen (China)、Qwen (Global)、Zhipu (China)、Z.ai (Global)、Yuanbao、MiMo、Meta AI、StepFun、Agnes、Hy AI Studio 和 Google(AI 模式)。"
   },
   "labelEnableEnterCustomization": {
     "message": "启用回车键自定义"
@@ -303,6 +303,20 @@
         "content": "$1"
       }
     }
+  },
+  "msgProviderAccessMissing": {
+    "message": "以下已启用的提供商需要在此设备上授予网站访问权限后才会显示：$PROVIDERS$。",
+    "placeholders": {
+      "providers": {
+        "content": "$1"
+      }
+    }
+  },
+  "msgProviderAccessRequestFailed": {
+    "message": "无法请求网站访问权限。"
+  },
+  "btnGrantProviderAccess": {
+    "message": "授予访问权限"
   },
   "msgProviderPermissionRequestFailed": {
     "message": "无法为 $PROVIDER$ 请求网站访问权限。",
@@ -1302,5 +1316,29 @@
   },
   "msgProviderBillingUpdated": {
     "message": "计费标记已保存"
+  },
+  "composerScrollPanelsStart": {
+    "message": "滚动到最左侧面板"
+  },
+  "composerScrollPanelsEnd": {
+    "message": "滚动到最右侧面板"
+  },
+  "composerJumpPanel": {
+    "message": "跳到第 $1 个面板"
+  },
+  "composerJumpPanelGroup": {
+    "message": "跳到面板（按显示顺序）"
+  },
+  "composerSendBlockedNewChat": {
+    "message": "正在新建对话，草稿已保留，完成后再发送。"
+  },
+  "composerStartingChatsHold": {
+    "message": "正在新建对话… 暂停发送，可继续输入。"
+  },
+  "panelNotePlaceholder": {
+    "message": "添加备注"
+  },
+  "panelNoteEditTitle": {
+    "message": "为这个 AI 写一句话备注"
   }
 }

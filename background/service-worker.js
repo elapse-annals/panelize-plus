@@ -159,7 +159,22 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   await createContextMenus();
   await loadShortcutSetting();
   await loadOpenModeSetting();
+  await openOptionsAfterInstall(details);
 });
+
+// Optional providers in the default setup need site access, which the
+// browser only grants from a user gesture, so show the grant prompt in options.
+async function openOptionsAfterInstall(details) {
+  if (details?.reason !== 'install') {
+    return;
+  }
+
+  try {
+    await chrome.runtime.openOptionsPage?.();
+  } catch (error) {
+    console.warn('[Background] Failed to open options after install:', error);
+  }
+}
 
 chrome.runtime.onStartup.addListener(async () => {
   await scheduleOptionalProviderReconcile();

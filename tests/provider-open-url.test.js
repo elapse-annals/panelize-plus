@@ -65,6 +65,9 @@ describe('provider open URL helpers', () => {
     expect(isProviderAllowedUrl('stepfun', 'https://studio.stepfun.com/')).toBe(true);
     expect(isProviderAllowedUrl('agnes', 'https://app.agnes-ai.com/')).toBe(true);
     expect(isProviderAllowedUrl('agnes', 'https://evil.example/')).toBe(false);
+    expect(isProviderCurrentUrl('hy-aistudio', 'https://aistudio.tencent.com/chat/abc123')).toBe(false);
+    expect(isProviderAllowedUrl('hy-aistudio', 'https://aistudio.tencent.com/')).toBe(true);
+    expect(isProviderAllowedUrl('hy-aistudio', 'https://yuanbao.tencent.com/')).toBe(false);
   });
 
   it('opens the reported current URL when it is valid', () => {
