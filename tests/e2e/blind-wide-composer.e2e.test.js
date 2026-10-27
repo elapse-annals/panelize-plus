@@ -125,8 +125,15 @@ test.describe('Blind mode, wide content and composer overhang', () => {
       for (const host of ['chatgpt.com', 'chat.deepseek.com']) {
         const frame = page.frames().find(candidate => candidate.url().includes(host));
         for (let pass = 0; pass < 3; pass += 1) {
-          await frame.evaluate(() => document.body.append(document.createElement('div')));
-          await frame.waitForTimeout(300);
+          // Resolves once the isolation pass this mutation triggers has run.
+          await frame.evaluate(() => new Promise(resolve => {
+            const observer = new MutationObserver(() => {
+              observer.disconnect();
+              resolve();
+            });
+            observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['data-panelize-keep'] });
+            document.body.append(document.createElement('div'));
+          }));
           expect(await frame.evaluate(() => ({
             identities: [...document.querySelectorAll('.fixture-identity')].map(element => getComputedStyle(element).display),
             composers: document.querySelectorAll('[data-panelize-composer]').length
@@ -149,8 +156,13 @@ test.describe('Blind mode, wide content and composer overhang', () => {
         const rect = panel.getBoundingClientRect();
         return rect.left >= 0 && rect.right <= window.innerWidth;
       })).toBe(true);
-      await chatgpt.locator('[data-testid="reasoning-effort"]').click();
-      await expect(chatgpt.locator('#model-menu')).toBeVisible();
+      // Right after the panel row scrolls, Chrome sometimes delivers the first
+      // click to no frame at all; retry while the menu is still closed.
+      const effortButton = chatgpt.locator('[data-testid="reasoning-effort"]');
+      await expect(async () => {
+        if (await effortButton.getAttribute('aria-expanded') !== 'true') await effortButton.click();
+        await expect(chatgpt.locator('#model-menu')).toBeVisible({ timeout: 1000 });
+      }).toPass({ timeout: 10000 });
       await chatgpt.locator('[data-tier-option="balanced"]').click();
       await expect.poll(() => chatgpt.evaluate(() => window.__fixture.isolationRefreshed)).toBe(true);
       // Model controls keep their dimensions and portal menus remain usable.

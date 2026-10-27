@@ -19,6 +19,11 @@
     '[data-testid*="send" i]', '[data-testid*="submit" i]'
   ].join(', ');
   const ISOLATION_EXCEPTIONS = '[role="menu"], [role="listbox"], [role="dialog"], [data-radix-popper-content-wrapper], script, style';
+  // The composer's own controls are made transparent; visibility checks must
+  // not count that against the composer (see elementIsVisible).
+  const COMPOSER_CONTROLS_SELECTOR = '[data-panelize-composer] > *';
+  const COMPOSER_GAP_PX = 12;
+  const UNANCHOR_ATTRIBUTE = 'data-panelize-unanchor';
   // Model pickers stay in the page so tier switching keeps working; only
   // their text and icons are made invisible.
   const MODEL_LABEL_SELECTORS = [
@@ -74,15 +79,18 @@
       background-color: transparent !important; background-image: none !important;
       box-shadow: none !important; border-color: transparent !important;
     }
-    /* A transformed or transform-animated wrapper (Google) would anchor the
-       fixed composer to itself instead of the bottom of the panel. */
-    :is(body, body *):has([data-panelize-composer]) {
+    /* Only wrappers found to pull the fixed composer off the panel bottom
+       (see unanchorComposer); its animation is dropped, so keep it visible. */
+    [${UNANCHOR_ATTRIBUTE}] {
       animation: none !important; transform: none !important; will-change: auto !important; filter: none !important;
       translate: none !important; rotate: none !important; scale: none !important;
-      perspective: none !important; backdrop-filter: none !important; contain: none !important;
+      perspective: none !important; backdrop-filter: none !important; contain: none !important; opacity: 1 !important;
     }
-    /* Scrollbars would show which pages overflow; scrolling still works. */
-    * { scrollbar-width: none !important; }
+    /* Page scrollbars would show which pages overflow; scrolling still works.
+       Answers, menus and dialogs keep theirs. */
+    :where(*):not(:where(${MESSAGE_SELECTORS}) *, :where(${ISOLATION_EXCEPTIONS}), :where(${ISOLATION_EXCEPTIONS}) *) {
+      scrollbar-width: none !important;
+    }
     :where(${MESSAGE_SELECTORS}), :where(${MESSAGE_SELECTORS}) :where(*) { color: #1f1f1f !important; }
     :where(${MESSAGE_SELECTORS}) :where(pre) {
       background: #f5f5f5 !important; border: none !important; border-radius: 8px !important;
@@ -94,7 +102,7 @@
     }
     /* Every composer looks like the same empty box. Its own controls stay in
        place and usable, only invisible, so text fill, Send and tiers work. */
-    [data-panelize-composer] > * { opacity: 0 !important; }
+    ${COMPOSER_CONTROLS_SELECTOR} { opacity: 0 !important; }
     [data-panelize-composer]::after {
       content: "" !important; display: block !important; position: absolute !important;
       left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important; height: 56px !important;
@@ -120,7 +128,7 @@
       padding: 0 !important; margin: 0 !important; border: 0 !important; overflow: visible !important;
     }
     [data-panelize-composer] {
-      position: fixed !important; left: 12px !important; right: 12px !important; bottom: 12px !important;
+      position: fixed !important; left: ${COMPOSER_GAP_PX}px !important; right: ${COMPOSER_GAP_PX}px !important; bottom: ${COMPOSER_GAP_PX}px !important;
       top: auto !important; width: auto !important; min-height: 56px !important; max-width: 760px !important; margin: 0 auto !important;
       transform: none !important; z-index: 20 !important;
     }
@@ -324,7 +332,7 @@
       // The blind composer's own children are made transparent on purpose.
       // Counting that would drop the composer on the next pass and flip the
       // page between isolated and not, which flickers.
-      const ownTransparency = current.parentElement?.hasAttribute('data-panelize-composer');
+      const ownTransparency = current.matches(COMPOSER_CONTROLS_SELECTOR);
       if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse'
         || (style.opacity === '0' && !ownTransparency)) {
         return false;
@@ -335,13 +343,14 @@
   }
 
   function clearIsolation({ preserveLayout = false } = {}) {
-    document.querySelectorAll('[data-panelize-keep], [data-panelize-hide], [data-panelize-collapse], [data-panelize-composer], [data-panelize-scroller]').forEach(element => {
+    document.querySelectorAll(`[data-panelize-keep], [data-panelize-hide], [data-panelize-collapse], [data-panelize-composer], [data-panelize-scroller], [${UNANCHOR_ATTRIBUTE}]`).forEach(element => {
       element.removeAttribute('data-panelize-keep');
       element.removeAttribute('data-panelize-hide');
       element.removeAttribute('data-panelize-collapse');
       if (!preserveLayout) {
         element.removeAttribute('data-panelize-composer');
         element.removeAttribute('data-panelize-scroller');
+        element.removeAttribute(UNANCHOR_ATTRIBUTE);
       }
     });
     if (!preserveLayout) {
@@ -369,6 +378,39 @@
       if (composer) composerObserver?.observe(composer);
     }
     updateComposerSpace();
+  }
+
+  const isSet = value => Boolean(value) && value !== 'none';
+
+  function establishesFixedContainingBlock(element) {
+    const style = window.getComputedStyle(element);
+    return isSet(style.transform) || isSet(style.translate) || isSet(style.rotate) || isSet(style.scale)
+      || isSet(style.filter) || isSet(style.perspective) || isSet(style.backdropFilter)
+      || /transform|translate|rotate|scale|filter|perspective/.test(style.willChange || '')
+      || /paint|layout|strict|content/.test(style.contain || '')
+      // A running transform animation does this even when the transform
+      // itself is overridden (Google AI Mode).
+      || Boolean(element.getAnimations?.().length);
+  }
+
+  function isComposerAnchored(composer) {
+    return Math.abs(composer.getBoundingClientRect().bottom - (window.innerHeight - COMPOSER_GAP_PX)) <= 1;
+  }
+
+  // A transformed, filtered or animated wrapper becomes the containing block
+  // of the fixed composer and pulls it off the panel bottom. Only wrappers
+  // that actually do this are neutralised, nearest first, so layouts that
+  // use transforms elsewhere keep them.
+  function unanchorComposer(composer) {
+    document.querySelectorAll(`[${UNANCHOR_ATTRIBUTE}]`).forEach(element => {
+      if (!element.contains(composer)) element.removeAttribute(UNANCHOR_ATTRIBUTE);
+    });
+    for (let current = composer.parentElement; current && current !== document.documentElement; current = current.parentElement) {
+      if (isComposerAnchored(composer)) return;
+      if (!current.hasAttribute(UNANCHOR_ATTRIBUTE) && establishesFixedContainingBlock(current)) {
+        current.setAttribute(UNANCHOR_ATTRIBUTE, '');
+      }
+    }
   }
 
   function findAnswerScroller() {
@@ -487,6 +529,7 @@
       if (element !== scroller) element.removeAttribute('data-panelize-scroller');
     });
     scroller.setAttribute('data-panelize-scroller', '');
+    unanchorComposer(composer);
     observeComposer(composer);
   }
 

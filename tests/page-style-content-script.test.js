@@ -203,9 +203,12 @@ describe('page style content script', () => {
     expect(css).toContain('[data-panelize-composer] > * { opacity: 0 !important; }');
     // Only wrappers of the composer lose their pseudo-element frame; answer bullets keep theirs.
     expect(css).toContain(':is(body, body *):has([data-panelize-composer])::before, :is(body, body *):has([data-panelize-composer])::after {');
-    // A transformed wrapper must not become the fixed composer's containing block.
-    expect(css).toContain(':is(body, body *):has([data-panelize-composer]) {\n      animation: none !important; transform: none !important; will-change: auto !important; filter: none !important;');
-    expect(css).toContain('* { scrollbar-width: none !important; }');
+    // Only wrappers that pull the fixed composer off the bottom lose transforms and animations.
+    expect(css).toContain('[data-panelize-unanchor] {\n      animation: none !important; transform: none !important;');
+    expect(css).toContain('contain: none !important; opacity: 1 !important;');
+    expect(css).not.toContain(':is(body, body *):has([data-panelize-composer]) {');
+    // Page scrollbars are hidden; answers, menus and dialogs keep theirs.
+    expect(css).toMatch(/:where\(\*\):not\(:where\([^)]*\.markdown[^{]*\[role="menu"\][^{]*\{\s*scrollbar-width: none !important;/);
     expect(css).toContain('[data-panelize-composer]::after {');
     expect(css).toContain('height: 56px !important;');
     expect(css).toContain('background: #fff !important; border: 1px solid #d9d9de !important;');
@@ -252,7 +255,7 @@ describe('page style content script', () => {
     const nativeQuerySelectorAll = document.querySelectorAll.bind(document);
     let isolationPasses = 0;
     document.querySelectorAll = (selector, ...args) => {
-      if (selector === '[data-panelize-keep], [data-panelize-hide], [data-panelize-collapse], [data-panelize-composer], [data-panelize-scroller]') isolationPasses += 1;
+      if (selector === '[data-panelize-keep], [data-panelize-hide], [data-panelize-collapse], [data-panelize-composer], [data-panelize-scroller], [data-panelize-unanchor]') isolationPasses += 1;
       return nativeQuerySelectorAll(selector, ...args);
     };
 
@@ -337,6 +340,28 @@ describe('page style content script', () => {
       expect(document.getElementById('composer-root').hasAttribute('data-panelize-composer')).toBe(true);
       expect(document.getElementById('welcome').hasAttribute('data-panelize-hide')).toBe(true);
     }
+  });
+
+  it('neutralises only the wrapper that pulls the fixed composer off the panel bottom', () => {
+    const frame = createFrame({
+      html: '<main id="app" style="transform: translateX(-50%)"><section id="conversation"><article class="prose" id="answer">Answer</article></section><div id="slide" style="will-change: transform"><form id="composer-root"><textarea id="composer"></textarea><button aria-label="Send">Send</button></form></div></main>'
+    });
+    const { document } = frame.win;
+    const root = document.getElementById('composer-root');
+    setVisibleGeometry(document.getElementById('composer'));
+    // The composer reaches the panel bottom once the animated wrapper is neutralised.
+    root.getBoundingClientRect = () => {
+      const bottom = document.getElementById('slide').hasAttribute('data-panelize-unanchor') ? frame.win.innerHeight - 12 : 200;
+      return { width: 400, height: 90, top: bottom - 90, right: 400, bottom, left: 0, x: 0, y: bottom - 90 };
+    };
+
+    send(frame, { blind: true });
+
+    expect(document.getElementById('slide').hasAttribute('data-panelize-unanchor')).toBe(true);
+    expect(document.getElementById('app').hasAttribute('data-panelize-unanchor')).toBe(false);
+
+    send(frame, { blind: false });
+    expect(document.querySelectorAll('[data-panelize-unanchor]')).toHaveLength(0);
   });
 
   it('uses the document scroller for an empty new conversation and removes its markers on disable', () => {

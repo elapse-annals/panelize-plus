@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.17.1 - 2026-10-27
+- Blind mode no longer flickers: each provider page now stays reduced to its answers and the same empty composer box, instead of switching back to the provider's own page on every page change or focus change, which also left panels looking different from one another.
+- In blind mode, Doubao no longer shows a second empty box where its composer used to be, Google AI Mode's box sits at the bottom like the others instead of halfway up, and pages no longer show their own scrollbars, so every panel looks the same.
+
 ## 2.13.0 - 2026-10-27
 - Answer stats now time Zhipu, Z.ai and MiMo answers (first output, completion and timeouts) instead of showing —.
 
