@@ -156,6 +156,7 @@ let loadingPanelIds = new Set(); // Track iframes still loading, used for focus 
 let newChatFocusRestoreTimerIds = [];
 let focusRestoreGeneration = 0; // Bumped on every cancel so queued refocus frames are dropped
 let isRestoringFocusAfterNewChat = false;
+let activeNewChatFocusRequestId = null;
 let sendFocusRestoreTimerIds = [];
 let isRestoringFocusAfterSend = false;
 let activeSendFocusRequestId = null;
@@ -799,6 +800,7 @@ function cancelUnifiedInputFocusRestore() {
   newChatFocusRestoreTimerIds.forEach(timerId => clearTimeout(timerId));
   newChatFocusRestoreTimerIds = [];
   isRestoringFocusAfterNewChat = false;
+  activeNewChatFocusRequestId = null;
 }
 
 function cancelUnifiedInputFocusRestoreAfterSend() {
@@ -936,18 +938,14 @@ function isUnifiedInputOrSendControl(target) {
   return Boolean(target.closest('#unified-input, #send-all-btn'));
 }
 
-function restoreUnifiedInputFocusAfterNewChat() {
-  cancelUnifiedInputFocusRestore();
-  isRestoringFocusAfterNewChat = true;
-
-  const restoreDelays = [0, 80, 200, 400, 800, 1000, 1200, 1500];
+function scheduleNewChatFocusRestore(restoreDelays, { stopAtEnd }) {
   restoreDelays.forEach((delay, index) => {
     const timerId = setTimeout(() => {
       if (!isRestoringFocusAfterNewChat) {
         return;
       }
 
-      if (index === restoreDelays.length - 1) {
+      if (stopAtEnd && index === restoreDelays.length - 1) {
         cancelUnifiedInputFocusRestore();
       }
 
@@ -956,6 +954,44 @@ function restoreUnifiedInputFocusAfterNewChat() {
 
     newChatFocusRestoreTimerIds.push(timerId);
   });
+}
+
+// With a requestId the protection lasts until finishNewChatFocusRestore, so
+// providers that autofocus while the new chat is still being confirmed or
+// its tier restored cannot pull focus out of the unified input.
+function restoreUnifiedInputFocusAfterNewChat(requestId = null) {
+  cancelUnifiedInputFocusRestore();
+  isRestoringFocusAfterNewChat = true;
+  activeNewChatFocusRequestId = requestId;
+
+  if (requestId) {
+    scheduleNewChatFocusRestore([0, 80, 200, 400, 800], { stopAtEnd: false });
+    return;
+  }
+  scheduleNewChatFocusRestore([0, 80, 200, 400, 800, 1000, 1200, 1500], { stopAtEnd: true });
+}
+
+// Covers providers that autofocus shortly after confirming the new chat; the
+// last delay matches the panel load grace period.
+function finishNewChatFocusRestore(requestId) {
+  if (!isRestoringFocusAfterNewChat || activeNewChatFocusRequestId !== requestId) {
+    return;
+  }
+  scheduleNewChatFocusRestore([0, 400, 1000, 1500, 2000, 3000], { stopAtEnd: true });
+}
+
+// The click that moved focus into the panel also blurred the unified input,
+// and the restore pulled focus back before the provider's USER_INTERACTION
+// message arrived. Return focus to the panel the user actually chose.
+function returnFocusToPanel(panel) {
+  if (document.activeElement !== document.getElementById('unified-input')) {
+    return;
+  }
+  panel.iframe.focus();
+  panel.iframe.contentWindow?.postMessage({
+    type: 'PANELIZE_RESTORE_USER_FOCUS',
+    context: 'multi-panel'
+  }, '*');
 }
 
 function createSendFocusRequestId() {
@@ -1121,16 +1157,10 @@ function handleProviderStatusMessage(event) {
     case PANELIZE_PROVIDER_USER_INTERACTION:
       if (data.requestId === activeSendFocusRequestId) {
         cancelUnifiedInputFocusRestoreAfterSend();
-        // The click that moved focus into the panel also blurred the unified
-        // input, and the restore pulled focus back before this message
-        // arrived. Return focus to the panel the user actually chose.
-        if (document.activeElement === document.getElementById('unified-input')) {
-          panel.iframe.focus();
-          panel.iframe.contentWindow?.postMessage({
-            type: 'PANELIZE_RESTORE_USER_FOCUS',
-            context: 'multi-panel'
-          }, '*');
-        }
+        returnFocusToPanel(panel);
+      } else if (data.requestId === activeNewChatFocusRequestId) {
+        cancelUnifiedInputFocusRestore();
+        returnFocusToPanel(panel);
       }
       break;
     case PANELIZE_RESPONSE_TIMING:
@@ -3395,10 +3425,10 @@ async function newChatAllProviders({ retryFailed = false } = {}) {
     failedNewChatPanelIds.clear();
     newChatResults.clear();
   }
+  const requestId = `new-chat-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   try {
     if (isTemporaryChatModeEnabled) startTemporaryChatActivationCycle();
-    restoreUnifiedInputFocusAfterNewChat();
-    const requestId = `new-chat-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    restoreUnifiedInputFocusAfterNewChat(requestId);
     const { results } = await runNewChatBatch({
       panels: targetPanels,
       requestId,
@@ -3455,6 +3485,7 @@ async function newChatAllProviders({ retryFailed = false } = {}) {
     retry.hidden = false;
   } finally {
     isNewChatBusy = false;
+    finishNewChatFocusRestore(requestId);
     setNewChatSendHold(false);
     buttons.forEach(button => { button.disabled = false; });
     setTemporaryChatButtonDisabled(false);

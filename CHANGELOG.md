@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.18.1 - 2026-10-27
+- Starting new conversations no longer pulls focus out of the question box partway through: it stays there while the AIs confirm their new chats and restore reasoning levels, and for a few seconds after, so you can keep typing. Clicking into a panel still lets that panel keep focus.
+
 ## 2.18.0 - 2026-10-27
 - The upload button now attaches files as well as images: PDF, Word, Excel, PowerPoint, text, Markdown, CSV, JSON and common code files, by picking, pasting or dropping them (up to 10, 20MB each). Files show as cards with their name.
 - ChatGPT, Claude, Gemini, Grok, DeepSeek and Kimi receive files. Other AIs take images only; for them a file fill fails right away, their text is still filled but not sent, and you can retry.

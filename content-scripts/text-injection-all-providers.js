@@ -1232,13 +1232,17 @@
 
     if (tracking.interactionHandler) {
       document.removeEventListener('pointerdown', tracking.interactionHandler, true);
-      document.removeEventListener('keydown', tracking.interactionHandler, true);
+      if (!tracking.pointerOnly) {
+        document.removeEventListener('keydown', tracking.interactionHandler, true);
+      }
     }
 
     multiPanelUserInteractionTracking = null;
   }
 
-  function startMultiPanelUserInteractionTracking(requestId, provider = detectProvider()) {
+  // pointerOnly ignores keys: while the host restores focus, keys that land
+  // here only arrive because the page stole focus mid-typing.
+  function startMultiPanelUserInteractionTracking(requestId, provider = detectProvider(), { pointerOnly = false } = {}) {
     if (!requestId || !provider) {
       return;
     }
@@ -1248,6 +1252,7 @@
     const tracking = {
       requestId,
       provider,
+      pointerOnly,
       timeoutId: null,
       interactionHandler: null
     };
@@ -1273,7 +1278,9 @@
     };
 
     document.addEventListener('pointerdown', tracking.interactionHandler, true);
-    document.addEventListener('keydown', tracking.interactionHandler, true);
+    if (!pointerOnly) {
+      document.addEventListener('keydown', tracking.interactionHandler, true);
+    }
 
     tracking.timeoutId = setTimeout(() => {
       if (multiPanelUserInteractionTracking !== tracking) {
@@ -4755,7 +4762,10 @@
     // clicks a control; the host has already selected the destination URL.
     if (event.data.type === 'VERIFY_NEW_CHAT' && event.data.context === 'multi-panel') {
       if (!isTrustedNewChatHostMessage(event, event.data)) return;
-      submitNewChatRequest(event.data, detectProvider(), 'VERIFY_NEW_CHAT');
+      const provider = detectProvider();
+      // Lets the host stop its focus restore when the user clicks this panel.
+      startMultiPanelUserInteractionTracking(event.data.requestId, provider, { pointerOnly: true });
+      submitNewChatRequest(event.data, provider, 'VERIFY_NEW_CHAT');
       return;
     }
 
@@ -4763,7 +4773,12 @@
     if (event.data.type === 'NEW_CHAT' && event.data.context === 'multi-panel') {
       if (event.data.requestId && !isTrustedNewChatHostMessage(event, event.data)) return;
       const provider = detectProvider();
-      stopMultiPanelUserInteractionTracking();
+      if (event.data.requestId) {
+        // Lets the host stop its focus restore when the user clicks this panel.
+        startMultiPanelUserInteractionTracking(event.data.requestId, provider, { pointerOnly: true });
+      } else {
+        stopMultiPanelUserInteractionTracking();
+      }
       if (provider === 'chatgpt') {
         stopChatgptSendTracking();
       }

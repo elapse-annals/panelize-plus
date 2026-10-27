@@ -168,6 +168,36 @@ test.describe('Focus protection E2E', () => {
     expect(await activeElementLabel()).toBe('unified-input');
   });
 
+  test('new chat keeps typing in the unified input through late autofocus', async () => {
+    // Steals after the first 1.5s used to land once the fixed restore timers
+    // ended. The fixture confirms the new chat after about 1s.
+    await openPanels({ chatgpt: { newChatStealDelays: [2000, 3500] } });
+    await waitForLoadGracePeriod();
+    await page.click('#unified-input');
+
+    await page.click('#new-chat-btn');
+    await page.keyboard.type('typing during new chat', { delay: 120 });
+    await waitForSteals('chatgpt', 'new-chat', 2);
+
+    expect(await activeElementLabel()).toBe('unified-input');
+    await expect(page.locator('#unified-input')).toHaveValue('typing during new chat');
+  });
+
+  test('clicking inside a provider panel cancels the new chat focus restore', async () => {
+    await openPanels({ chatgpt: {} });
+    await waitForLoadGracePeriod();
+    await page.click('#unified-input');
+
+    await page.click('#new-chat-btn');
+    await expect.poll(async () => (await fixtureState('chatgpt')).newChats).toBe(1);
+
+    await page.frameLocator('iframe').locator('#prompt-textarea').click();
+    await page.waitForTimeout(2500);
+
+    expect(await activeElementLabel()).toBe('IFRAME');
+    expect(await providerFrame('chatgpt').evaluate(() => document.activeElement?.id)).toBe('prompt-textarea');
+  });
+
   test('clicking elsewhere cancels the new chat focus restore', async () => {
     await openPanels({ chatgpt: { newChatStealDelays: [900] } });
     await waitForLoadGracePeriod();
