@@ -201,6 +201,11 @@ describe('page style content script', () => {
     expect(css).toContain(':where([data-panelize-keep]):not([data-panelize-composer], [data-panelize-composer] *, table, table *, hr) {');
     expect(css).toContain('background: transparent !important; border-color: transparent !important; box-shadow: none !important;');
     expect(css).toContain('[data-panelize-composer] > * { opacity: 0 !important; }');
+    // Only wrappers of the composer lose their pseudo-element frame; answer bullets keep theirs.
+    expect(css).toContain(':is(body, body *):has([data-panelize-composer])::before, :is(body, body *):has([data-panelize-composer])::after {');
+    // A transformed wrapper must not become the fixed composer's containing block.
+    expect(css).toContain(':is(body, body *):has([data-panelize-composer]) {\n      animation: none !important; transform: none !important; will-change: auto !important; filter: none !important;');
+    expect(css).toContain('* { scrollbar-width: none !important; }');
     expect(css).toContain('[data-panelize-composer]::after {');
     expect(css).toContain('height: 56px !important;');
     expect(css).toContain('background: #fff !important; border: 1px solid #d9d9de !important;');
@@ -313,6 +318,25 @@ describe('page style content script', () => {
     expect(document.querySelectorAll('[data-panelize-composer], [data-panelize-scroller]')).toHaveLength(0);
     expect(document.documentElement.style.getPropertyValue('--panelize-composer-space')).toBe('');
     expect(document.body.style.getPropertyValue('--panelize-composer-space')).toBe('');
+  });
+
+  it('keeps the page isolated across later passes even though its composer controls are invisible', async () => {
+    const frame = createFrame({
+      html: '<header id="welcome">Provider home</header><main id="app"><section id="conversation" style="overflow-y:auto"><article class="prose" id="answer">Answer</article></section><form id="composer-root"><div id="editor-wrapper"><div contenteditable="true" id="composer"></div></div><button aria-label="Send">Send</button></form></main>'
+    });
+    const { document } = frame.win;
+    setVisibleGeometry(document.getElementById('composer'));
+    setVisibleGeometry(document.getElementById('composer-root'), { height: 90 });
+
+    send(frame, { blind: true });
+    expect(frame.win.getComputedStyle(document.getElementById('editor-wrapper')).opacity).toBe('0');
+
+    for (let pass = 0; pass < 3; pass += 1) {
+      document.body.append(document.createElement('div'));
+      await new Promise(resolve => setTimeout(resolve, 260));
+      expect(document.getElementById('composer-root').hasAttribute('data-panelize-composer')).toBe(true);
+      expect(document.getElementById('welcome').hasAttribute('data-panelize-hide')).toBe(true);
+    }
   });
 
   it('uses the document scroller for an empty new conversation and removes its markers on disable', () => {

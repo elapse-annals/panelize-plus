@@ -121,6 +121,18 @@ test.describe('Blind mode, wide content and composer overhang', () => {
           document.querySelector('[data-panelize-composer]').getBoundingClientRect().top)).toBe(true);
       }
       const chatgpt = page.frames().find(frame => frame.url().includes('chatgpt.com'));
+      // Later isolation passes keep the page isolated instead of flipping it back.
+      for (const host of ['chatgpt.com', 'chat.deepseek.com']) {
+        const frame = page.frames().find(candidate => candidate.url().includes(host));
+        for (let pass = 0; pass < 3; pass += 1) {
+          await frame.evaluate(() => document.body.append(document.createElement('div')));
+          await frame.waitForTimeout(300);
+          expect(await frame.evaluate(() => ({
+            identities: [...document.querySelectorAll('.fixture-identity')].map(element => getComputedStyle(element).display),
+            composers: document.querySelectorAll('[data-panelize-composer]').length
+          }))).toEqual({ identities: ['none', 'none', 'none', 'none', 'none'], composers: 1 });
+        }
+      }
       await chatgpt.evaluate(() => {
         window.__fixture.isolationRefreshed = false;
         const observer = new MutationObserver(() => {
@@ -129,6 +141,14 @@ test.describe('Blind mode, wide content and composer overhang', () => {
         });
         observer.observe(document.querySelector('.markdown'), { attributes: true, attributeFilter: ['data-panelize-keep'] });
       });
+      // Wide content is on by default, so the ChatGPT panel can sit past the
+      // right edge of the panel row; bring it into view before clicking in it.
+      const chatgptPanel = page.locator('#panel-grid .panel-item').filter({ has: page.locator('iframe[src*="chatgpt.com"]') });
+      await chatgptPanel.evaluate(panel => panel.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'instant' }));
+      await expect.poll(() => chatgptPanel.evaluate(panel => {
+        const rect = panel.getBoundingClientRect();
+        return rect.left >= 0 && rect.right <= window.innerWidth;
+      })).toBe(true);
       await chatgpt.locator('[data-testid="reasoning-effort"]').click();
       await expect(chatgpt.locator('#model-menu')).toBeVisible();
       await chatgpt.locator('[data-tier-option="balanced"]').click();

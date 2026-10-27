@@ -66,6 +66,23 @@
       background-color: transparent !important; background-image: none !important;
       box-shadow: none !important; border-color: transparent !important;
     }
+    /* Wrappers around the composer may draw its frame with a pseudo-element
+       (Doubao), which would show a second box where the composer used to be.
+       These rules follow the composer marker, which stays in place while the
+       page is isolated again, so a wrapper animation does not restart. */
+    :is(body, body *):has([data-panelize-composer])::before, :is(body, body *):has([data-panelize-composer])::after {
+      background-color: transparent !important; background-image: none !important;
+      box-shadow: none !important; border-color: transparent !important;
+    }
+    /* A transformed or transform-animated wrapper (Google) would anchor the
+       fixed composer to itself instead of the bottom of the panel. */
+    :is(body, body *):has([data-panelize-composer]) {
+      animation: none !important; transform: none !important; will-change: auto !important; filter: none !important;
+      translate: none !important; rotate: none !important; scale: none !important;
+      perspective: none !important; backdrop-filter: none !important; contain: none !important;
+    }
+    /* Scrollbars would show which pages overflow; scrolling still works. */
+    * { scrollbar-width: none !important; }
     :where(${MESSAGE_SELECTORS}), :where(${MESSAGE_SELECTORS}) :where(*) { color: #1f1f1f !important; }
     :where(${MESSAGE_SELECTORS}) :where(pre) {
       background: #f5f5f5 !important; border: none !important; border-radius: 8px !important;
@@ -304,7 +321,12 @@
     if (!element?.isConnected || element.closest('[hidden], [aria-hidden="true"]')) return false;
     for (let current = element; current && current.nodeType === 1; current = current.parentElement) {
       const style = window.getComputedStyle(current);
-      if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse' || style.opacity === '0') {
+      // The blind composer's own children are made transparent on purpose.
+      // Counting that would drop the composer on the next pass and flip the
+      // page between isolated and not, which flickers.
+      const ownTransparency = current.parentElement?.hasAttribute('data-panelize-composer');
+      if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse'
+        || (style.opacity === '0' && !ownTransparency)) {
         return false;
       }
     }
