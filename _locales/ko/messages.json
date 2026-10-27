@@ -990,6 +990,26 @@
   "msgShareWatermarkDisabled": {
     "message": "공유 이미지 워터마크가 꺼졌습니다"
   },
+  "notificationAnswerCompleteTitle": {
+    "message": "$NAME$ 답변 완료",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "labelAnswerCompleteNotification": {
+    "message": "답변이 끝나면 알림"
+  },
+  "descAnswerCompleteNotification": {
+    "message": "질문할 때마다 첫 번째 AI가 답변을 마치면 시스템 알림을 표시합니다. 알림을 클릭하면 Panelize로 돌아갑니다."
+  },
+  "msgAnswerCompleteNotificationEnabled": {
+    "message": "답변 완료 알림이 켜졌습니다"
+  },
+  "msgAnswerCompleteNotificationDisabled": {
+    "message": "답변 완료 알림이 꺼졌습니다"
+  },
   "focusPanelTitle": {
     "message": "이 패널에 집중"
   },
@@ -1421,5 +1441,50 @@
   },
   "composerTierDetailsTitle": {
     "message": "AI 모드 매핑\n수준별로 각 AI가 쓰는 모드 보기"
+  },
+  "composerPromptModeLabel": {
+    "message": "프롬프트 모드"
+  },
+  "promptModeDefault": {
+    "message": "기본"
+  },
+  "promptModeLearning": {
+    "message": "학습"
+  },
+  "promptModeConcise": {
+    "message": "간결"
+  },
+  "promptModeBrainstorm": {
+    "message": "브레인스토밍"
+  },
+  "promptModeCompete": {
+    "message": "경쟁"
+  },
+  "promptModeDefaultHint": {
+    "message": "아무것도 덧붙이지 않고 각 AI가 평소 방식으로 답합니다"
+  },
+  "promptModeLearningHint": {
+    "message": "학습 지시를 덧붙입니다: 결론 먼저, 그다음 원리"
+  },
+  "promptModeConciseHint": {
+    "message": "간결 지시를 덧붙입니다: 결론과 핵심만"
+  },
+  "promptModeBrainstormHint": {
+    "message": "브레인스토밍 지시를 덧붙입니다: 여러 각도, 성급한 결론 없이"
+  },
+  "promptModeCompeteHint": {
+    "message": "경쟁 지시를 덧붙입니다: 나란히 비교에서 앞서는 답"
+  },
+  "promptModeSuffix_learning": {
+    "message": "선생님처럼 답해 주세요. 먼저 핵심 결론을 제시한 뒤 예시를 곁들여 원리를 단계적으로 설명하고, 마지막에 이해를 확인하는 질문을 1~2개 덧붙여 주세요."
+  },
+  "promptModeSuffix_concise": {
+    "message": "최대한 간결하게 답해 주세요. 결론과 핵심 요점만 제시하고 서론, 인사말, 반복은 생략해 주세요."
+  },
+  "promptModeSuffix_brainstorm": {
+    "message": "브레인스토밍해 주세요. 서로 다른 여러 각도에서 최대한 다양하고 과감한 아이디어를 제시하고 각각의 장단점을 짧게 적어 주세요. 결론을 서두르지 마세요."
+  },
+  "promptModeSuffix_compete": {
+    "message": "이 질문에는 다른 여러 AI도 동시에 답하고 있으며 답변은 나란히 비교됩니다. 가장 정확하고 통찰력 있으며 실용적인 답을 제시해 주세요."
   }
 }

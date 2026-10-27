@@ -1005,6 +1005,26 @@
   "msgShareWatermarkDisabled": {
     "message": "Watermark on shared images disabled"
   },
+  "notificationAnswerCompleteTitle": {
+    "message": "$NAME$ finished answering",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "labelAnswerCompleteNotification": {
+    "message": "Notify when an answer is done"
+  },
+  "descAnswerCompleteNotification": {
+    "message": "Show a system notification when the first AI finishes answering each question. Clicking it returns to Panelize."
+  },
+  "msgAnswerCompleteNotificationEnabled": {
+    "message": "Answer notifications enabled"
+  },
+  "msgAnswerCompleteNotificationDisabled": {
+    "message": "Answer notifications disabled"
+  },
   "focusPanelTitle": {
     "message": "Focus this panel"
   },
@@ -1436,5 +1456,50 @@
   },
   "composerTierDetailsTitle": {
     "message": "AI mode mapping\nSee which mode each AI uses for each level"
+  },
+  "composerPromptModeLabel": {
+    "message": "Prompt mode"
+  },
+  "promptModeDefault": {
+    "message": "Default"
+  },
+  "promptModeLearning": {
+    "message": "Learning"
+  },
+  "promptModeConcise": {
+    "message": "Concise"
+  },
+  "promptModeBrainstorm": {
+    "message": "Brainstorm"
+  },
+  "promptModeCompete": {
+    "message": "Competitive"
+  },
+  "promptModeDefaultHint": {
+    "message": "Nothing is added; each AI answers in its own way"
+  },
+  "promptModeLearningHint": {
+    "message": "Append a teaching instruction: conclusion first, then the reasoning"
+  },
+  "promptModeConciseHint": {
+    "message": "Append a concise instruction: conclusion and key points only"
+  },
+  "promptModeBrainstormHint": {
+    "message": "Append a brainstorm instruction: many varied angles, no early verdict"
+  },
+  "promptModeCompeteHint": {
+    "message": "Append a competitive instruction: aim to win the side-by-side comparison"
+  },
+  "promptModeSuffix_learning": {
+    "message": "Answer as a teacher: give the core conclusion first, then explain the reasoning step by step with examples, and finish with 1–2 questions that check my understanding."
+  },
+  "promptModeSuffix_concise": {
+    "message": "Be as concise as possible: give the conclusion and the key points only, and skip preamble, pleasantries and repetition."
+  },
+  "promptModeSuffix_brainstorm": {
+    "message": "Brainstorm: offer several different angles, as varied and even as bold as you can, briefly note the pros and cons of each, and do not rush to a verdict."
+  },
+  "promptModeSuffix_compete": {
+    "message": "You are answering this alongside several other AIs and the answers will be compared side by side. Give the most accurate, insightful and useful answer you can."
   }
 }

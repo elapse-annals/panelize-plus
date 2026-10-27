@@ -984,6 +984,26 @@
   "msgShareWatermarkDisabled": {
     "message": "已关闭分享图片水印"
   },
+  "notificationAnswerCompleteTitle": {
+    "message": "$NAME$ 已完成回答",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "labelAnswerCompleteNotification": {
+    "message": "回答完成时通知"
+  },
+  "descAnswerCompleteNotification": {
+    "message": "每次提问后，第一个 AI 回答完成时发送系统通知。点击通知回到 Panelize。"
+  },
+  "msgAnswerCompleteNotificationEnabled": {
+    "message": "已开启回答完成通知"
+  },
+  "msgAnswerCompleteNotificationDisabled": {
+    "message": "已关闭回答完成通知"
+  },
   "focusPanelTitle": {
     "message": "放大此面板"
   },
@@ -1415,5 +1435,50 @@
   },
   "composerTierDetailsTitle": {
     "message": "AI 档位匹配\n查看每个档位下各 AI 使用的模式"
+  },
+  "composerPromptModeLabel": {
+    "message": "提示词模式"
+  },
+  "promptModeDefault": {
+    "message": "默认"
+  },
+  "promptModeLearning": {
+    "message": "学习"
+  },
+  "promptModeConcise": {
+    "message": "精简"
+  },
+  "promptModeBrainstorm": {
+    "message": "头脑风暴"
+  },
+  "promptModeCompete": {
+    "message": "竞争"
+  },
+  "promptModeDefaultHint": {
+    "message": "不追加内容，各 AI 按自己的方式回答"
+  },
+  "promptModeLearningHint": {
+    "message": "追加教学指令：先给结论，再解释原理"
+  },
+  "promptModeConciseHint": {
+    "message": "追加精简指令：只给结论和要点"
+  },
+  "promptModeBrainstormHint": {
+    "message": "追加头脑风暴指令：多角度、不急于下结论"
+  },
+  "promptModeCompeteHint": {
+    "message": "追加竞争指令：让回答在多 AI 比较中胜出"
+  },
+  "promptModeSuffix_learning": {
+    "message": "请以教学方式回答：先给出核心结论，再循序渐进解释原理，配合例子，并在最后提出 1–2 个检验理解的问题。"
+  },
+  "promptModeSuffix_concise": {
+    "message": "请尽量简洁：直接给出结论和关键要点，省略铺垫、客套和重复。"
+  },
+  "promptModeSuffix_brainstorm": {
+    "message": "请进行头脑风暴：给出多个不同角度、尽量多样甚至大胆的思路，简要说明各自优缺点，不急于下结论。"
+  },
+  "promptModeSuffix_compete": {
+    "message": "你正在与其他多个 AI 同时回答这个问题，回答将被直接比较。请给出你能做到的最准确、最有洞见、最实用的回答。"
   }
 }

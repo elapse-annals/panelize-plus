@@ -318,6 +318,12 @@ async function loadSettings() {
     shareWatermarkToggle.checked = settings.shareWatermarkEnabled !== false;
   }
 
+  // Answer complete notification setting
+  const answerCompleteNotificationToggle = document.getElementById('answer-complete-notification-toggle');
+  if (answerCompleteNotificationToggle) {
+    answerCompleteNotificationToggle.checked = settings.answerCompleteNotificationEnabled !== false;
+  }
+
   // Enter key behavior settings
   const enterBehavior = settings.enterKeyBehavior || {
     enabled: true,
@@ -1030,6 +1036,16 @@ function setupEventListeners() {
       const enabled = e.target.checked;
       await saveSetting('shareWatermarkEnabled', enabled);
       showStatus('success', enabled ? t('msgShareWatermarkEnabled') : t('msgShareWatermarkDisabled'));
+    });
+  }
+
+  // Multi-Panel: Answer complete notification
+  const answerCompleteNotificationToggle = document.getElementById('answer-complete-notification-toggle');
+  if (answerCompleteNotificationToggle) {
+    answerCompleteNotificationToggle.addEventListener('change', async (e) => {
+      const enabled = e.target.checked;
+      await saveSetting('answerCompleteNotificationEnabled', enabled);
+      showStatus('success', enabled ? t('msgAnswerCompleteNotificationEnabled') : t('msgAnswerCompleteNotificationDisabled'));
     });
   }
 

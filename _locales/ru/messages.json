@@ -990,6 +990,26 @@
   "msgShareWatermarkDisabled": {
     "message": "Водяной знак на изображениях выключен"
   },
+  "notificationAnswerCompleteTitle": {
+    "message": "$NAME$ закончил отвечать",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "labelAnswerCompleteNotification": {
+    "message": "Уведомлять о готовом ответе"
+  },
+  "descAnswerCompleteNotification": {
+    "message": "Показывать системное уведомление, когда первый ИИ заканчивает отвечать на вопрос. Нажатие возвращает в Panelize."
+  },
+  "msgAnswerCompleteNotificationEnabled": {
+    "message": "Уведомления об ответах включены"
+  },
+  "msgAnswerCompleteNotificationDisabled": {
+    "message": "Уведомления об ответах выключены"
+  },
   "focusPanelTitle": {
     "message": "Сфокусировать эту панель"
   },
@@ -1421,5 +1441,50 @@
   },
   "composerTierDetailsTitle": {
     "message": "Соответствие режимов ИИ\nКакой режим использует каждый ИИ на каждом уровне"
+  },
+  "composerPromptModeLabel": {
+    "message": "Режим запроса"
+  },
+  "promptModeDefault": {
+    "message": "По умолчанию"
+  },
+  "promptModeLearning": {
+    "message": "Обучение"
+  },
+  "promptModeConcise": {
+    "message": "Кратко"
+  },
+  "promptModeBrainstorm": {
+    "message": "Мозговой штурм"
+  },
+  "promptModeCompete": {
+    "message": "Соревнование"
+  },
+  "promptModeDefaultHint": {
+    "message": "Ничего не добавляется; каждый ИИ отвечает по-своему"
+  },
+  "promptModeLearningHint": {
+    "message": "Добавить учебную инструкцию: сначала вывод, затем объяснение"
+  },
+  "promptModeConciseHint": {
+    "message": "Добавить инструкцию краткости: только вывод и ключевые пункты"
+  },
+  "promptModeBrainstormHint": {
+    "message": "Добавить инструкцию штурма: много ракурсов, без поспешного вывода"
+  },
+  "promptModeCompeteHint": {
+    "message": "Добавить соревновательную инструкцию: выиграть в сравнении"
+  },
+  "promptModeSuffix_learning": {
+    "message": "Отвечай как преподаватель: сначала дай основной вывод, затем шаг за шагом объясни рассуждение с примерами и в конце задай 1–2 вопроса для проверки понимания."
+  },
+  "promptModeSuffix_concise": {
+    "message": "Отвечай максимально кратко: только вывод и ключевые тезисы, без вступлений, любезностей и повторов."
+  },
+  "promptModeSuffix_brainstorm": {
+    "message": "Проведи мозговой штурм: предложи несколько разных подходов, как можно более разнообразных и даже смелых, кратко укажи плюсы и минусы каждого и не спеши с выводом."
+  },
+  "promptModeSuffix_compete": {
+    "message": "Ты отвечаешь одновременно с несколькими другими ИИ, и ответы будут сравнивать напрямую. Дай максимально точный, глубокий и полезный ответ, на который способен."
   }
 }

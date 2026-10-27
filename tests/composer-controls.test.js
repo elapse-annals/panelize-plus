@@ -156,6 +156,7 @@ beforeEach(() => {
   globalListenerRecords = [];
   settingsState = {
     selectedProviderTier: null,
+    selectedPromptMode: null,
     providerSortMode: 'manual',
     keyboardShortcutBindings: {},
     pageShortcutsEnabled: true
@@ -583,5 +584,67 @@ describe('composer control async state', () => {
 
     dispatchShortcut(panel.iframe.contentWindow, 'https://chatgpt.com');
     expect(toggleWideContent).toHaveBeenCalledOnce();
+  });
+});
+
+describe('prompt mode control', () => {
+  const promptSelect = () => document.getElementById('prompt-mode-select');
+
+  it('starts on the saved mode and marks the select as active', async () => {
+    settingsState.selectedPromptMode = 'concise';
+    const controls = await setupControls([]);
+
+    expect(promptSelect().value).toBe('concise');
+    expect(controls.getPromptMode()).toBe('concise');
+    expect(promptSelect().closest('.prompt-mode-control').dataset.active).toBe('true');
+    expect(promptSelect().title).toBe('Prompt mode: Concise\nAppend a concise instruction: conclusion and key points only');
+  });
+
+  it('starts on Default when nothing or an unknown mode is saved', async () => {
+    settingsState.selectedPromptMode = 'verbose';
+    const controls = await setupControls([]);
+
+    expect(promptSelect().value).toBe('');
+    expect(controls.getPromptMode()).toBeNull();
+    expect(promptSelect().closest('.prompt-mode-control').dataset.active).toBe('false');
+    expect(promptSelect().title).toBe('Prompt mode\nNothing is added; each AI answers in its own way');
+  });
+
+  it('saves the chosen mode and reports it', async () => {
+    const controls = await setupControls([]);
+    promptSelect().value = 'brainstorm';
+    promptSelect().dispatchEvent(new Event('change', { bubbles: true }));
+    await flushMicrotasks();
+
+    expect(mocks.saveSetting).toHaveBeenCalledWith('selectedPromptMode', 'brainstorm');
+    expect(controls.getPromptMode()).toBe('brainstorm');
+    expect(promptSelect().closest('.prompt-mode-control').dataset.active).toBe('true');
+    expect(promptSelect().title).toContain('Prompt mode: Brainstorm');
+  });
+
+  it('clears the mode when Default is picked again', async () => {
+    settingsState.selectedPromptMode = 'learning';
+    const controls = await setupControls([]);
+
+    promptSelect().value = '';
+    promptSelect().dispatchEvent(new Event('change', { bubbles: true }));
+    await flushMicrotasks();
+
+    expect(mocks.saveSetting).toHaveBeenCalledWith('selectedPromptMode', null);
+    expect(controls.getPromptMode()).toBeNull();
+    expect(promptSelect().closest('.prompt-mode-control').dataset.active).toBe('false');
+  });
+
+  it('follows a mode saved in another window', async () => {
+    const controls = await setupControls([]);
+
+    getStorageChangeListener()({ selectedPromptMode: { newValue: 'compete' } }, 'sync');
+
+    expect(controls.getPromptMode()).toBe('compete');
+    expect(promptSelect().value).toBe('compete');
+
+    getStorageChangeListener()({ selectedPromptMode: { newValue: null } }, 'local');
+    expect(controls.getPromptMode()).toBeNull();
+    expect(promptSelect().value).toBe('');
   });
 });

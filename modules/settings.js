@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
   pageShortcutsEnabled: true,
   keyboardShortcutBindings: {},
   selectedProviderTier: null,
+  selectedPromptMode: null,  // Instruction appended to the question every AI receives; null appends nothing
   providerTierRecipes: null,  // User overrides of DEFAULT_TIER_RECIPES, keyed by provider then tier; null uses the built-in mapping
   blindModeEnabled: false,  // Panels show anonymous labels and provider pages share one neutral style
   wideContentEnabled: true,  // Provider pages are laid out wider than their panel and scaled to fit
@@ -23,6 +24,7 @@ const DEFAULT_SETTINGS = {
   keyboardShortcutEnabled: true,
   openMode: 'tab',  // 'tab' or 'popup'
   shareWatermarkEnabled: true,  // Adds the "Compared with Panelize" strip to shared snapshots
+  answerCompleteNotificationEnabled: true,  // System notification when the first AI in a round finishes answering
   enterKeyBehavior: {
     enabled: true,
     preset: 'default',  // 'default', 'swapped', 'slack', 'discord', 'custom'

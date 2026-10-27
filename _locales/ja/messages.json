@@ -990,6 +990,26 @@
   "msgShareWatermarkDisabled": {
     "message": "共有画像の透かしを無効にしました"
   },
+  "notificationAnswerCompleteTitle": {
+    "message": "$NAME$ が回答を完了しました",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "labelAnswerCompleteNotification": {
+    "message": "回答完了時に通知"
+  },
+  "descAnswerCompleteNotification": {
+    "message": "質問ごとに、最初の AI が回答を終えたときにシステム通知を表示します。クリックすると Panelize に戻ります。"
+  },
+  "msgAnswerCompleteNotificationEnabled": {
+    "message": "回答完了通知をオンにしました"
+  },
+  "msgAnswerCompleteNotificationDisabled": {
+    "message": "回答完了通知をオフにしました"
+  },
   "focusPanelTitle": {
     "message": "このパネルにフォーカス"
   },
@@ -1421,5 +1441,50 @@
   },
   "composerTierDetailsTitle": {
     "message": "AI モードの対応\n各レベルで各 AI が使うモードを確認"
+  },
+  "composerPromptModeLabel": {
+    "message": "プロンプトモード"
+  },
+  "promptModeDefault": {
+    "message": "標準"
+  },
+  "promptModeLearning": {
+    "message": "学習"
+  },
+  "promptModeConcise": {
+    "message": "簡潔"
+  },
+  "promptModeBrainstorm": {
+    "message": "アイデア出し"
+  },
+  "promptModeCompete": {
+    "message": "競争"
+  },
+  "promptModeDefaultHint": {
+    "message": "何も追加せず、各 AI が独自の形式で回答します"
+  },
+  "promptModeLearningHint": {
+    "message": "教学用の指示を追加：結論を先に、その後に根拠"
+  },
+  "promptModeConciseHint": {
+    "message": "簡潔用の指示を追加：結論と要点のみ"
+  },
+  "promptModeBrainstormHint": {
+    "message": "発想用の指示を追加：多角的に、結論を急がない"
+  },
+  "promptModeCompeteHint": {
+    "message": "競争用の指示を追加：並列比較で勝つ回答を狙う"
+  },
+  "promptModeSuffix_learning": {
+    "message": "教師のように回答してください。まず核心となる結論を示し、その後に例を交えて原理を順を追って説明し、最後に理解を確認する質問を 1〜2 個挙げてください。"
+  },
+  "promptModeSuffix_concise": {
+    "message": "できるだけ簡潔にしてください。結論と要点だけを示し、前置きや挨拶、繰り返しは省いてください。"
+  },
+  "promptModeSuffix_brainstorm": {
+    "message": "ブレインストーミングしてください。複数の異なる視点から、できるだけ多様で大胆な案を出し、それぞれの長所と短所を簡潔に示してください。結論を急ぐ必要はありません。"
+  },
+  "promptModeSuffix_compete": {
+    "message": "この質問には他の複数の AI も同時に回答しており、回答は並べて比較されます。あなたが出せる最も正確で洞察に富み、実用的な回答を示してください。"
   }
 }

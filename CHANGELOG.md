@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.20.1 - 2026-10-27
+- Answer notifications only appear when you have switched away from Panelize, and clicking one returns to the Panelize page that asked the question even when several are open. They never name the AI of a blind question, and they are removed when that page closes.
+- A prompt mode now also applies when you send files without text, and retrying the panels that failed a file fill keeps the mode the fill started with.
+
+## 2.20.0 - 2026-10-27
+- A new prompt mode next to the reasoning levels appends a short instruction to every question you send, without changing the question itself: Learning (conclusion first, then the reasoning, with questions to check you), Concise (conclusion and key points only), Brainstorm (several angles, no early verdict) and Competitive (aim to win the side-by-side comparison). Answer stats and shared snapshots still show your original question, and the choice is remembered.
+- The Prompt Library closes with Esc; the prompt editor and variable dialogs keep Esc so unsaved text is not lost.
+- The composer is less crowded: the reasoning levels are narrower, and AI mode mapping is now a small light "i" instead of a sliders icon.
+
+## 2.19.0 - 2026-10-27
+- Panelize now shows a system notification when the first AI finishes answering a question, once per question, so you can switch away while you wait. Clicking it brings Panelize back. In blind mode the notification does not name the AI.
+- Turn it off in Options with "Notify when an answer is done". Claude, StepFun, Agnes and Hy AI Studio do not report when they finish, so they never trigger it. The extension now asks for the notifications permission.
+
 ## 2.18.1 - 2026-10-27
 - Starting new conversations no longer pulls focus out of the question box partway through: it stays there while the AIs confirm their new chats and restore reasoning levels, and for a few seconds after, so you can keep typing. Clicking into a panel still lets that panel keep focus.
 

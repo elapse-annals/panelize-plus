@@ -58,6 +58,14 @@ describe('settings module', () => {
       expect(result.shareWatermarkEnabled).toBe(true);
     });
 
+    it('should notify when an answer is done by default', async () => {
+      chrome.storage.sync.get.mockImplementation(async (defaults) => defaults);
+
+      const result = await getSettings();
+
+      expect(result.answerCompleteNotificationEnabled).toBe(true);
+    });
+
     it('should expose the default Google provider mode', async () => {
       chrome.storage.sync.get.mockImplementation(async (defaults) => defaults);
 
@@ -65,6 +73,14 @@ describe('settings module', () => {
 
       expect(result.googleProviderMode).toBe(DEFAULT_GOOGLE_PROVIDER_MODE);
       expect(result.enabledProviders).toEqual(DEFAULT_PROVIDER_IDS);
+    });
+
+    it('should append no prompt instruction by default', async () => {
+      chrome.storage.sync.get.mockImplementation(async (defaults) => defaults);
+
+      const result = await getSettings();
+
+      expect(result.selectedPromptMode).toBeNull();
     });
   });
 

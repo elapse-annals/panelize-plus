@@ -1213,7 +1213,7 @@ body {
 .tier-controls { display: inline-flex; gap: 2px; background: #f3f4f8; padding: 2px; border-radius: 8px; }
 .tier-option {
   position: relative;
-  padding: 1px 9px;
+  padding: 1px 6px;
   min-height: 20px;
   border: none;
   border-radius: 6px;
@@ -3293,7 +3293,46 @@ html.snapshot-hide-cursor *::after {
 /* Control row: equal heights so the divider, levels and status line up. */
 #input-bar .composer-controls-left { gap: 4px 6px; }
 #input-bar .composer-control { min-height: 26px; }
-#input-bar .tier-option { min-height: 22px; padding: 1px 10px; transition: background-color .15s ease, color .15s ease, box-shadow .15s ease; }
+#input-bar .tier-option { min-height: 22px; padding: 1px 6px; transition: background-color .15s ease, color .15s ease, box-shadow .15s ease; }
+/* AI mode mapping: a small, light "i" keeps the control row quiet. */
+#input-bar .tier-details-btn {
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0;
+  color: #a3a8b8;
+  font-size: 14px;
+  background: transparent;
+}
+#input-bar .tier-details-btn .material-symbols-outlined { font-size: 14px; }
+#input-bar .tier-details-btn:hover { color: #6d7485; background: transparent; }
+/* Prompt mode: a quiet select that takes the pressed-button accent while an
+   instruction is appended to every question. */
+#input-bar .prompt-mode-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  color: var(--composer-muted);
+}
+#input-bar .prompt-mode-control .material-symbols-outlined { font-size: 15px; }
+#input-bar .prompt-mode-control[data-active="true"] { color: #635799; }
+#input-bar .prompt-mode-select {
+  display: inline-block;
+  min-height: 22px;
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--composer-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+#input-bar .prompt-mode-select:hover { color: var(--composer-accent-ink); }
+#input-bar .prompt-mode-control[data-active="true"] .prompt-mode-select {
+  color: #635799;
+  background: #f1eef9;
+}
+#input-bar .prompt-mode-select:focus-visible { outline: 2px solid #8a79b5; outline-offset: 2px; }
 /* Confirmed level: solid accent. Requested but not yet confirmed on every AI
    (or switching): outlined, matching the "x/y switched · mixed" status. */
 #input-bar .tier-option[aria-checked="true"] {
@@ -3366,6 +3405,10 @@ html.snapshot-hide-cursor *::after {
 [data-theme="dark"] .tier-option[aria-checked="true"] { color: #e0d5ff; background: #44394f; }
 [data-theme="dark"] #input-bar .tier-option[aria-checked="true"] { color: #fff; background: var(--composer-accent); }
 [data-theme="dark"] #input-bar .tier-option[data-requested="true"][aria-checked="false"] { color: var(--composer-accent-ink); }
+[data-theme="dark"] #input-bar .tier-details-btn { color: #75798a; }
+[data-theme="dark"] #input-bar .tier-details-btn:hover { color: #c9c6d6; }
+[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] { color: #d2c5f4; }
+[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] .prompt-mode-select { color: #d2c5f4; background: #393344; }
 [data-theme="dark"] .composer-divider { background: #42414d; }
 [data-theme="dark"] .composer-help, [data-theme="dark"] .composer-status, [data-theme="dark"] .composer-result-row { color: #aaa6b8; }
 [data-theme="dark"] .composer-result-row { background: #26262b; box-shadow: 0 3px 12px #0005; }

@@ -117,6 +117,7 @@ import {
   clearAnswerRounds,
   createRound,
   getAllAnswerRounds,
+  isFirstRoundCompletion,
   saveAnswerRound,
   toggleRoundAdoption,
   toggleRoundRejection
@@ -128,6 +129,7 @@ import { setupComposerControls } from '../modules/composer-controls.js';
 import { formatShortcutForTooltip, matchesShortcut } from '../modules/keyboard-shortcuts.js';
 import { runNewChatBatch } from '../modules/new-chat-actions.js';
 import { shuffleOrder, syncDisplayOrder } from '../modules/blind-shuffle.js';
+import { applyPromptMode, getPromptModeSuffix } from '../modules/prompt-modes.js';
 
 
 // ===== State Management =====
@@ -149,6 +151,9 @@ const panelFitObserver = typeof ResizeObserver === 'function'
 let uploadedImages = []; // Array of uploaded images { id, name, type, dataUrl }
 let failedFillPanelIds = new Set();
 let pendingFillImageIdsByPanel = new Map();
+// Prompt mode of the last file fill, reused when retrying its failed panels so
+// every panel in one question gets the same instruction; undefined when unset.
+let pendingFillPromptMode = undefined;
 const broadcastGate = createBroadcastGate();
 let fillActionRequestCounter = 0;
 let fillPayloadRevision = 0;
@@ -188,6 +193,7 @@ let isTemporaryChatModeEnabled = false;
 let composerControls = null;
 let isBlindModeEnabled = false;
 let isWideContentEnabled = false;
+let isAnswerCompleteNotificationEnabled = true;
 // Panel ids in display order once blind mode has shuffled them; null keeps
 // the saved order. Only CSS order changes, so frames never reload.
 let panelDisplayOrder = null;
@@ -311,6 +317,7 @@ async function init() {
   translatePage();
   registerRuntimeMessageListener();
   registerStorageChangeListener();
+  registerAnswerCompleteNotificationClick();
 
   // Detect window type and load mode, and restore state if needed (after mode
   // switch). The restored state must be saved before the settings are loaded.
@@ -394,6 +401,14 @@ function focusUnifiedInput({ force = false } = {}) {
       inputTextarea.focus();
     }
   });
+}
+
+function isModalOpen(modal) {
+  return Boolean(modal) && window.getComputedStyle(modal).display !== 'none';
+}
+
+function isAnyModalOpen() {
+  return Array.from(document.querySelectorAll('.modal')).some(isModalOpen);
 }
 
 function isFocusInOpenModal() {
@@ -773,6 +788,10 @@ function registerStorageChangeListener() {
     if (changes.providerNotes) {
       providerNotes = changes.providerNotes.newValue || {};
       renderAllPanelNotes();
+    }
+
+    if (changes.answerCompleteNotificationEnabled) {
+      isAnswerCompleteNotificationEnabled = changes.answerCompleteNotificationEnabled.newValue !== false;
     }
 
     if (changes.blindModeEnabled || changes.wideContentEnabled) {
@@ -1284,13 +1303,15 @@ async function loadSettings() {
       googleProviderMode: DEFAULT_GOOGLE_PROVIDER_MODE,
       blindModeEnabled: false,
       wideContentEnabled: true,
-      providerNotes: null
+      providerNotes: null,
+      answerCompleteNotificationEnabled: true
     });
 
     providerNotes = settings.providerNotes || {};
     currentLayout = normalizeLayout(settings.multiPanelLayout);
     isBlindModeEnabled = settings.blindModeEnabled === true;
     isWideContentEnabled = settings.wideContentEnabled === true;
+    isAnswerCompleteNotificationEnabled = settings.answerCompleteNotificationEnabled !== false;
     document.body.classList.toggle('blind-mode', isBlindModeEnabled);
     document.body.classList.toggle('wide-content', isWideContentEnabled);
     currentOpenMode = settings.openMode || 'tab';
@@ -1864,8 +1885,8 @@ function updatePanelSelectors() {
 
 // ===== Blind mode & wide content =====
 
-function getPanelDisplayName(panel) {
-  if (isBlindModeEnabled) {
+function getPanelDisplayName(panel, { blind = isBlindModeEnabled } = {}) {
+  if (blind) {
     return getLocalizedText('blindPanelLabel', 'Anonymous model');
   }
   return getProviderById(panel.providerId)?.name || panel.providerId;
@@ -2019,7 +2040,7 @@ function setupPanelEdgeNavigation() {
     // composer, so it still scrolls while the composer is empty.
     const editable = event.target?.closest?.('input, textarea, select, [contenteditable="true"], [role="textbox"]');
     if (editable && !(editable.id === 'unified-input' && !editable.value)) return;
-    if (isShareModalOpen() || Array.from(document.querySelectorAll('.modal')).some(modal => window.getComputedStyle(modal).display !== 'none')) return;
+    if (isShareModalOpen() || isAnyModalOpen()) return;
     event.preventDefault();
     scrollPanels(edge);
   });
@@ -2203,6 +2224,7 @@ function updateFillRetryButton() {
 function resetFillRetryState() {
   fillPayloadRevision += 1;
   pendingFillImageIdsByPanel = new Map();
+  pendingFillPromptMode = undefined;
   if (failedFillPanelIds.size === 0) {
     updateFillRetryButton();
     return;
@@ -2255,6 +2277,19 @@ export async function broadcastMessage(text, autoSubmit = true) {
       return;
     }
 
+    // Only the message the AIs receive carries the prompt-mode instruction:
+    // the question stays as typed for answer stats, snapshots and the draft.
+    // Files sent without text get the instruction on its own.
+    const promptMode = hasImages && hasFailedPanels && pendingFillPromptMode !== undefined
+      ? pendingFillPromptMode
+      : composerControls?.getPromptMode() ?? null;
+    if (hasImages) {
+      pendingFillPromptMode = promptMode;
+    }
+    const panelText = text.trim()
+      ? applyPromptMode(text, promptMode, getLocalizedText)
+      : getPromptModeSuffix(promptMode, getLocalizedText) || text;
+
     // Filling focuses each provider's composer too. Keep the unified input
     // focused, or the next Enter lands in one panel and sends only there.
     const fillActionRequestId = isFillAction ? createFillActionRequestId() : null;
@@ -2304,7 +2339,7 @@ export async function broadcastMessage(text, autoSubmit = true) {
 
         return sendToPanel(
           panel,
-          text,
+          panelText,
           panelImages,
           shouldAutoSubmit,
           requestId,
@@ -3653,7 +3688,67 @@ function handleAnswerTimingMessage(panel, data) {
   const nextRound = applyTimingEvent(round, panel.id, data.phase, data.at);
   if (nextRound) {
     persistAnswerRound(nextRound);
+    if (isAnswerCompleteNotificationEnabled && isFirstRoundCompletion(round, nextRound, panel.id)) {
+      showAnswerCompleteNotification(panel, nextRound);
+    }
   }
+}
+
+// ===== Answer complete notification =====
+const ANSWER_COMPLETE_NOTIFICATION_PREFIX = 'panelize-answer-complete:';
+// Notifications this page showed; other Panelize pages ignore their clicks.
+const answerCompleteNotificationIds = new Set();
+
+function showAnswerCompleteNotification(panel, round) {
+  if (typeof chrome.notifications?.create !== 'function') {
+    return;
+  }
+  // Only when the user has switched away; focus inside a panel still counts.
+  if (document.visibilityState === 'visible' && document.hasFocus()) {
+    return;
+  }
+  const notificationId = `${ANSWER_COMPLETE_NOTIFICATION_PREFIX}${round.id}`;
+  answerCompleteNotificationIds.add(notificationId);
+  // The round's own blind flag, so turning blind mode off mid-round never
+  // names the AI of a blind question.
+  const panelName = getPanelDisplayName(panel, { blind: round.blind === true });
+  Promise.resolve(chrome.notifications.create(notificationId, {
+    type: 'basic',
+    iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+    title: getLocalizedText('notificationAnswerCompleteTitle', '$1 finished answering', [panelName]),
+    message: round.promptSummary || ''
+  })).catch(error => {
+    console.warn('[Multi-Panel] Failed to show answer notification:', error);
+  });
+}
+
+// Clicking the notification brings this Multi-Panel page to the front. The
+// page handles its own clicks, so its notifications go when it closes.
+function registerAnswerCompleteNotificationClick() {
+  if (typeof chrome.notifications?.onClicked?.addListener !== 'function') {
+    return;
+  }
+  window.addEventListener('pagehide', () => {
+    answerCompleteNotificationIds.forEach(id => chrome.notifications.clear(id));
+    answerCompleteNotificationIds.clear();
+  });
+  chrome.notifications.onClicked.addListener(async (notificationId) => {
+    if (!answerCompleteNotificationIds.delete(notificationId)) {
+      return;
+    }
+    try {
+      const tabId = await getCurrentTabId();
+      if (tabId !== null) {
+        const tab = await chrome.tabs.update(tabId, { active: true });
+        if (tab?.windowId !== undefined) {
+          await chrome.windows.update(tab.windowId, { focused: true });
+        }
+      }
+    } catch (error) {
+      console.warn('[Multi-Panel] Failed to focus Multi-Panel:', error);
+    }
+    chrome.notifications.clear(notificationId);
+  });
 }
 
 function recordAnswerEngagement(roundId, panelId, kind) {
@@ -4254,7 +4349,7 @@ function setupEventListeners() {
       return;
     }
     // Opening a dialog can leave focus on its toolbar trigger.
-    if (Array.from(document.querySelectorAll('.modal')).some(modal => window.getComputedStyle(modal).display !== 'none')) {
+    if (isAnyModalOpen()) {
       return;
     }
     // The provider and add-panel menus are not modals but are still open popups.
@@ -4262,6 +4357,20 @@ function setupEventListeners() {
       return;
     }
     setFocusedPanel(null);
+  });
+
+  // Esc closes the Prompt Library. Dialogs opened on top of it keep Esc away,
+  // so unsaved prompt edits and half-filled variables are not lost.
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing || event.keyCode === 229) {
+      return;
+    }
+    const isOpen = id => isModalOpen(document.getElementById(id));
+    if (!isOpen('prompt-modal') || isOpen('prompt-editor-modal') || isOpen('variable-modal')) {
+      return;
+    }
+    event.preventDefault();
+    closePromptModal();
   });
 
   // Layout button

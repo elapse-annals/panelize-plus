@@ -20,12 +20,14 @@
     "expand_more",
     "fit_width",
     "grid_view",
+    "info",
     "input",
     "keyboard",
     "leaderboard",
     "open_in_full",
     "open_in_new",
     "photo_camera",
+    "psychology",
     "refresh",
     "schedule",
     "screen_share",
@@ -36,7 +38,6 @@
     "swap_horiz",
     "tab",
     "thumb_up",
-    "tune",
     "visibility",
     "visibility_off"
   ]

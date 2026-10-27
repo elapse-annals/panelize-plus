@@ -990,6 +990,26 @@
   "msgShareWatermarkDisabled": {
     "message": "Filigrane des images partagées désactivé"
   },
+  "notificationAnswerCompleteTitle": {
+    "message": "$NAME$ a fini de répondre",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "labelAnswerCompleteNotification": {
+    "message": "Avertir quand une réponse est prête"
+  },
+  "descAnswerCompleteNotification": {
+    "message": "Affiche une notification système lorsque la première IA a fini de répondre à chaque question. Un clic ramène à Panelize."
+  },
+  "msgAnswerCompleteNotificationEnabled": {
+    "message": "Notifications de réponse activées"
+  },
+  "msgAnswerCompleteNotificationDisabled": {
+    "message": "Notifications de réponse désactivées"
+  },
   "focusPanelTitle": {
     "message": "Agrandir ce panneau"
   },
@@ -1421,5 +1441,50 @@
   },
   "composerTierDetailsTitle": {
     "message": "Correspondance des modes IA\nVoir le mode utilisé par chaque IA à chaque niveau"
+  },
+  "composerPromptModeLabel": {
+    "message": "Mode de prompt"
+  },
+  "promptModeDefault": {
+    "message": "Par défaut"
+  },
+  "promptModeLearning": {
+    "message": "Apprentissage"
+  },
+  "promptModeConcise": {
+    "message": "Concis"
+  },
+  "promptModeBrainstorm": {
+    "message": "Brainstorming"
+  },
+  "promptModeCompete": {
+    "message": "Compétitif"
+  },
+  "promptModeDefaultHint": {
+    "message": "Rien n'est ajouté ; chaque IA répond à sa façon"
+  },
+  "promptModeLearningHint": {
+    "message": "Ajouter une consigne pédagogique : d'abord la conclusion, puis le raisonnement"
+  },
+  "promptModeConciseHint": {
+    "message": "Ajouter une consigne de concision : conclusion et points clés seulement"
+  },
+  "promptModeBrainstormHint": {
+    "message": "Ajouter une consigne de brainstorming : plusieurs angles, sans verdict hâtif"
+  },
+  "promptModeCompeteHint": {
+    "message": "Ajouter une consigne compétitive : viser la meilleure réponse en comparaison"
+  },
+  "promptModeSuffix_learning": {
+    "message": "Réponds comme un enseignant : donne d'abord la conclusion essentielle, explique ensuite le raisonnement étape par étape avec des exemples, et termine par 1 à 2 questions pour vérifier ma compréhension."
+  },
+  "promptModeSuffix_concise": {
+    "message": "Sois aussi concis que possible : donne seulement la conclusion et les points clés, sans préambule, formules de politesse ni répétitions."
+  },
+  "promptModeSuffix_brainstorm": {
+    "message": "Fais un brainstorming : propose plusieurs angles différents, aussi variés et même audacieux que possible, indique brièvement les avantages et les inconvénients de chacun, sans conclure trop vite."
+  },
+  "promptModeSuffix_compete": {
+    "message": "Tu réponds en même temps que plusieurs autres IA et les réponses seront comparées côte à côte. Donne la réponse la plus exacte, la plus éclairante et la plus utile dont tu es capable."
   }
 }

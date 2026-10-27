@@ -990,6 +990,26 @@
   "msgShareWatermarkDisabled": {
     "message": "Marca de agua en imágenes compartidas desactivada"
   },
+  "notificationAnswerCompleteTitle": {
+    "message": "$NAME$ terminó de responder",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "labelAnswerCompleteNotification": {
+    "message": "Avisar cuando haya una respuesta"
+  },
+  "descAnswerCompleteNotification": {
+    "message": "Muestra una notificación del sistema cuando la primera IA termina de responder cada pregunta. Al hacer clic vuelves a Panelize."
+  },
+  "msgAnswerCompleteNotificationEnabled": {
+    "message": "Avisos de respuesta activados"
+  },
+  "msgAnswerCompleteNotificationDisabled": {
+    "message": "Avisos de respuesta desactivados"
+  },
   "focusPanelTitle": {
     "message": "Enfocar este panel"
   },
@@ -1421,5 +1441,50 @@
   },
   "composerTierDetailsTitle": {
     "message": "Correspondencia de modos de IA\nVer qué modo usa cada IA en cada nivel"
+  },
+  "composerPromptModeLabel": {
+    "message": "Modo de prompt"
+  },
+  "promptModeDefault": {
+    "message": "Predeterminado"
+  },
+  "promptModeLearning": {
+    "message": "Aprendizaje"
+  },
+  "promptModeConcise": {
+    "message": "Breve"
+  },
+  "promptModeBrainstorm": {
+    "message": "Lluvia de ideas"
+  },
+  "promptModeCompete": {
+    "message": "Competitivo"
+  },
+  "promptModeDefaultHint": {
+    "message": "No se añade nada; cada IA responde a su manera"
+  },
+  "promptModeLearningHint": {
+    "message": "Añadir una instrucción didáctica: primero la conclusión y luego el razonamiento"
+  },
+  "promptModeConciseHint": {
+    "message": "Añadir una instrucción de brevedad: solo conclusión y puntos clave"
+  },
+  "promptModeBrainstormHint": {
+    "message": "Añadir una instrucción de lluvia de ideas: muchos enfoques, sin veredicto previo"
+  },
+  "promptModeCompeteHint": {
+    "message": "Añadir una instrucción competitiva: destacar en la comparación"
+  },
+  "promptModeSuffix_learning": {
+    "message": "Responde como un profesor: da primero la conclusión principal, explica después el razonamiento paso a paso con ejemplos y termina con 1 o 2 preguntas para comprobar mi comprensión."
+  },
+  "promptModeSuffix_concise": {
+    "message": "Sé lo más breve posible: da solo la conclusión y los puntos clave, y omite la introducción, las cortesías y las repeticiones."
+  },
+  "promptModeSuffix_brainstorm": {
+    "message": "Haz una lluvia de ideas: plantea varios enfoques distintos, lo más variados y hasta audaces que puedas, señala brevemente sus pros y sus contras y no te apresures a concluir."
+  },
+  "promptModeSuffix_compete": {
+    "message": "Estás respondiendo junto a otras IA y las respuestas se compararán en paralelo. Da la respuesta más precisa, lúcida y útil que puedas."
   }
 }

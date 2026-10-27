@@ -152,9 +152,16 @@
             <button type="button" class="tier-option" data-tier="deep" data-shortcut-action="tierDeep" role="radio" aria-checked="false" data-i18n="composerTierDeep">Deep</button>
           </div>
           <button id="tier-details-btn" class="composer-control tier-details-btn" data-i18n-title="composerTierDetailsTitle" title="View AI mode mapping">
-            <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+            <span class="material-symbols-outlined" aria-hidden="true">info</span>
           </button>
           <span id="tier-status" class="composer-status" role="status" aria-live="polite"></span>
+          <span class="composer-divider" aria-hidden="true"></span>
+          <label class="prompt-mode-control" data-active="false">
+            <span class="material-symbols-outlined" aria-hidden="true">psychology</span>
+            <select id="prompt-mode-select" class="composer-control prompt-mode-select" data-i18n-aria="composerPromptModeLabel" aria-label="Prompt mode">
+              <option value="" data-i18n="promptModeDefault">Default</option>
+            </select>
+          </label>
         </div>
         <div class="composer-controls-right">
           <button id="provider-sort-btn" class="composer-control" data-shortcut-action="togglePopularSort" aria-pressed="false">

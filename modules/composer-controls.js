@@ -16,6 +16,7 @@ import {
   requestProviderTierState,
   runProviderTierBatch
 } from './provider-tiers.js';
+import { PROMPT_MODES, getPromptMode, isPromptMode } from './prompt-modes.js';
 
 const DEFAULT_TIER = 'default';
 const ACTION_LABELS = {
@@ -35,6 +36,7 @@ const ACTION_LABELS = {
   ...Object.fromEntries(Array.from({ length: 9 }, (_, index) =>
     [`jumpPanel${index + 1}`, ['composerJumpPanel', 'Go to panel $1', [String(index + 1)]]]))
 };
+const PROMPT_MODE_DEFAULT_HINT = ['promptModeDefaultHint', 'Nothing is added; each AI answers in its own way'];
 // What a button does, shown on the tooltip's second line.
 const ACTION_HINTS = {
   send: ['composerSendHint', 'Fill every panel with the question and send it'],
@@ -74,6 +76,7 @@ export async function setupComposerControls({
   let selectedTier = PROVIDER_TIER_IDS.includes(settings.selectedProviderTier) ? settings.selectedProviderTier : null;
   let tierRecipeOverrides = settings.providerTierRecipes || null;
   let sortMode = settings.providerSortMode;
+  let promptMode = isPromptMode(settings.selectedPromptMode) ? settings.selectedPromptMode : null;
   let bindings = settings.keyboardShortcutBindings || {};
   let shortcutsEnabled = settings.pageShortcutsEnabled !== false;
   let draftBindings = {};
@@ -366,6 +369,21 @@ export async function setupComposerControls({
     notify(tr('composerSortUpdated', 'Order applies to AI menus and the next startup.'));
   }
 
+  // The select stays quiet until a mode is picked; then it takes the same soft
+  // accent as pressed composer buttons so the appended instruction is visible.
+  function renderPromptMode() {
+    const select = byId('prompt-mode-select');
+    if (!select) return;
+    select.value = promptMode || '';
+    const label = tr('composerPromptModeLabel', 'Prompt mode');
+    const mode = getPromptMode(promptMode);
+    const heading = mode ? `${label}: ${tr(mode.labelKey, mode.label)}` : label;
+    const hint = mode ? tr(mode.hintKey, mode.hint) : tr(...PROMPT_MODE_DEFAULT_HINT);
+    select.title = `${heading}\n${hint}`;
+    select.setAttribute('aria-label', heading);
+    select.closest('.prompt-mode-control')?.setAttribute('data-active', String(Boolean(promptMode)));
+  }
+
   function isAnyModalOpen() {
     return [...document.querySelectorAll('.modal')].some(modal => getComputedStyle(modal).display !== 'none');
   }
@@ -505,6 +523,18 @@ export async function setupComposerControls({
   });
   byId('unified-input').addEventListener('focus', pulse);
   byId('provider-sort-btn').addEventListener('click', toggleSort);
+  // Only Default is in the page; the mode options come from PROMPT_MODES.
+  byId('prompt-mode-select').append(...PROMPT_MODES.map(mode => {
+    const option = document.createElement('option');
+    option.value = mode.id;
+    option.textContent = tr(mode.labelKey, mode.label);
+    return option;
+  }));
+  byId('prompt-mode-select').addEventListener('change', async event => {
+    promptMode = isPromptMode(event.target.value) ? event.target.value : null;
+    renderPromptMode();
+    await saveSetting('selectedPromptMode', promptMode);
+  });
   byId('tier-details-btn').addEventListener('click', () => { renderTierState(); openDialog('tier-details-modal'); });
   byId('retry-tier-btn').addEventListener('click', retryTier);
   byId('refresh-tier-state-btn').addEventListener('click', () => refreshStates());
@@ -562,11 +592,16 @@ export async function setupComposerControls({
 
   chrome.storage?.onChanged?.addListener((changes, area) => {
     if (!['sync', 'local'].includes(area)) return;
-    if (!['keyboardShortcutBindings', 'pageShortcutsEnabled', 'providerSortMode', 'selectedProviderTier', 'providerTierRecipes'].some(key => changes[key])) return;
+    if (!['keyboardShortcutBindings', 'pageShortcutsEnabled', 'providerSortMode', 'selectedProviderTier', 'providerTierRecipes', 'selectedPromptMode'].some(key => changes[key])) return;
     if (changes.keyboardShortcutBindings) bindings = changes.keyboardShortcutBindings.newValue || {};
     if (changes.pageShortcutsEnabled) shortcutsEnabled = changes.pageShortcutsEnabled.newValue !== false;
     keyboard.update({ bindings, enabled: shortcutsEnabled && !isAnyModalOpen() });
     if (changes.providerSortMode) { sortMode = changes.providerSortMode.newValue; renderSortMode(); }
+    if (changes.selectedPromptMode) {
+      const next = changes.selectedPromptMode.newValue;
+      promptMode = isPromptMode(next) ? next : null;
+      renderPromptMode();
+    }
     if (changes.providerTierRecipes) {
       tierRecipeOverrides = changes.providerTierRecipes.newValue || null;
       // Re-apply with the edited labels when no other tier change is pending.
@@ -604,6 +639,7 @@ export async function setupComposerControls({
     updateTooltips();
   }).catch(() => {});
   renderSortMode();
+  renderPromptMode();
   renderTierState();
   void refreshStates();
   getPanels().forEach(panelLoaded);
@@ -622,7 +658,8 @@ export async function setupComposerControls({
     },
     refreshStates,
     refreshTooltips: updateTooltips,
-    isTierBusy: () => tierBusy || pendingDesiredTier !== undefined
+    isTierBusy: () => tierBusy || pendingDesiredTier !== undefined,
+    getPromptMode: () => promptMode
   };
 }
 

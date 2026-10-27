@@ -984,6 +984,26 @@
   "msgShareWatermarkDisabled": {
     "message": "已關閉分享圖片浮水印"
   },
+  "notificationAnswerCompleteTitle": {
+    "message": "$NAME$ 已完成回答",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "labelAnswerCompleteNotification": {
+    "message": "回答完成時通知"
+  },
+  "descAnswerCompleteNotification": {
+    "message": "每次提問後，第一個 AI 回答完成時發送系統通知。點擊通知回到 Panelize。"
+  },
+  "msgAnswerCompleteNotificationEnabled": {
+    "message": "已開啟回答完成通知"
+  },
+  "msgAnswerCompleteNotificationDisabled": {
+    "message": "已關閉回答完成通知"
+  },
   "focusPanelTitle": {
     "message": "聚焦此面板"
   },
@@ -1415,5 +1435,50 @@
   },
   "composerTierDetailsTitle": {
     "message": "AI 檔位對應\n查看每個檔位下各 AI 使用的模式"
+  },
+  "composerPromptModeLabel": {
+    "message": "提示詞模式"
+  },
+  "promptModeDefault": {
+    "message": "預設"
+  },
+  "promptModeLearning": {
+    "message": "學習"
+  },
+  "promptModeConcise": {
+    "message": "精簡"
+  },
+  "promptModeBrainstorm": {
+    "message": "腦力激盪"
+  },
+  "promptModeCompete": {
+    "message": "競爭"
+  },
+  "promptModeDefaultHint": {
+    "message": "不附加內容，各 AI 依自己的方式回答"
+  },
+  "promptModeLearningHint": {
+    "message": "附加教學指令：先給結論，再解釋原理"
+  },
+  "promptModeConciseHint": {
+    "message": "附加精簡指令：只給結論和重點"
+  },
+  "promptModeBrainstormHint": {
+    "message": "附加腦力激盪指令：多角度、不急於下結論"
+  },
+  "promptModeCompeteHint": {
+    "message": "附加競爭指令：讓回答在多 AI 比較中勝出"
+  },
+  "promptModeSuffix_learning": {
+    "message": "請以教學方式回答：先給出核心結論，再循序漸進解釋原理，配合例子，並在最後提出 1–2 個檢驗理解的問題。"
+  },
+  "promptModeSuffix_concise": {
+    "message": "請盡量簡潔：直接給出結論和關鍵重點，省略鋪陳、客套和重複。"
+  },
+  "promptModeSuffix_brainstorm": {
+    "message": "請進行腦力激盪：給出多個不同角度、盡量多樣甚至大膽的思路，簡要說明各自優缺點，不急於下結論。"
+  },
+  "promptModeSuffix_compete": {
+    "message": "你正在與其他多個 AI 同時回答這個問題，回答將被直接比較。請給出你能做到的最準確、最有洞見、最實用的回答。"
   }
 }

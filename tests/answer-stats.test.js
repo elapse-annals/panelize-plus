@@ -8,6 +8,7 @@ import {
   getEngagementPoints,
   getNoOutputPenalty,
   createRound,
+  isFirstRoundCompletion,
   summarizePromptText,
   toggleRoundAdoption,
   toggleRoundRejection
@@ -84,6 +85,24 @@ describe('applyTimingEvent', () => {
     expect(round.answers.p1).toMatchObject({ status: ANSWER_STATUS.TIMEOUT, completeMs: null });
     const cancelled = applyTimingEvent(newRound(), 'p2', 'cancelled', 2000);
     expect(cancelled.answers.p2.status).toBe(ANSWER_STATUS.CANCELLED);
+  });
+});
+
+describe('isFirstRoundCompletion', () => {
+  it('is true only for the first answer in a round to complete', () => {
+    const round = applyTimingEvent(newRound(), 'p1', 'first-output', 1800);
+    const first = applyTimingEvent(round, 'p1', 'complete', 4000);
+    expect(isFirstRoundCompletion(round, first, 'p1')).toBe(true);
+    const second = applyTimingEvent(first, 'p2', 'complete', 5000);
+    expect(isFirstRoundCompletion(first, second, 'p2')).toBe(false);
+  });
+
+  it('ignores first output, timeouts and cancellations', () => {
+    const round = newRound();
+    expect(isFirstRoundCompletion(round, applyTimingEvent(round, 'p1', 'first-output', 1800), 'p1')).toBe(false);
+    expect(isFirstRoundCompletion(round, applyTimingEvent(round, 'p1', 'timeout', 99000), 'p1')).toBe(false);
+    expect(isFirstRoundCompletion(round, applyTimingEvent(round, 'p2', 'cancelled', 2000), 'p2')).toBe(false);
+    expect(isFirstRoundCompletion(round, null, 'p1')).toBe(false);
   });
 });
 

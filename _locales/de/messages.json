@@ -990,6 +990,26 @@
   "msgShareWatermarkDisabled": {
     "message": "Wasserzeichen auf geteilten Bildern deaktiviert"
   },
+  "notificationAnswerCompleteTitle": {
+    "message": "$NAME$ hat die Antwort fertig",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "labelAnswerCompleteNotification": {
+    "message": "Benachrichtigen, wenn eine Antwort fertig ist"
+  },
+  "descAnswerCompleteNotification": {
+    "message": "Zeigt eine Systembenachrichtigung, sobald die erste KI eine Frage fertig beantwortet hat. Ein Klick führt zurück zu Panelize."
+  },
+  "msgAnswerCompleteNotificationEnabled": {
+    "message": "Antwortbenachrichtigungen aktiviert"
+  },
+  "msgAnswerCompleteNotificationDisabled": {
+    "message": "Antwortbenachrichtigungen deaktiviert"
+  },
   "focusPanelTitle": {
     "message": "Dieses Panel fokussieren"
   },
@@ -1421,5 +1441,50 @@
   },
   "composerTierDetailsTitle": {
     "message": "KI-Modus-Zuordnung\nZeigt, welchen Modus jede KI pro Stufe nutzt"
+  },
+  "composerPromptModeLabel": {
+    "message": "Prompt-Modus"
+  },
+  "promptModeDefault": {
+    "message": "Standard"
+  },
+  "promptModeLearning": {
+    "message": "Lernen"
+  },
+  "promptModeConcise": {
+    "message": "Kurz"
+  },
+  "promptModeBrainstorm": {
+    "message": "Ideen"
+  },
+  "promptModeCompete": {
+    "message": "Wettbewerb"
+  },
+  "promptModeDefaultHint": {
+    "message": "Es wird nichts ergänzt; jede KI antwortet auf ihre Art"
+  },
+  "promptModeLearningHint": {
+    "message": "Lehranweisung ergänzen: erst Fazit, dann Begründung"
+  },
+  "promptModeConciseHint": {
+    "message": "Kürzanweisung ergänzen: nur Fazit und Kernpunkte"
+  },
+  "promptModeBrainstormHint": {
+    "message": "Ideenanweisung ergänzen: viele Blickwinkel, kein frühes Urteil"
+  },
+  "promptModeCompeteHint": {
+    "message": "Wettbewerbsanweisung ergänzen: im direkten Vergleich gewinnen"
+  },
+  "promptModeSuffix_learning": {
+    "message": "Antworte wie eine Lehrkraft: Nenne zuerst das Kernergebnis, erkläre dann die Grundlagen Schritt für Schritt mit Beispielen und stelle am Ende 1–2 Fragen, die mein Verständnis prüfen."
+  },
+  "promptModeSuffix_concise": {
+    "message": "Antworte so knapp wie möglich: nur Ergebnis und Kernpunkte, ohne Einleitung, Höflichkeitsfloskeln und Wiederholungen."
+  },
+  "promptModeSuffix_brainstorm": {
+    "message": "Denke in alle Richtungen: Nenne mehrere unterschiedliche, möglichst vielfältige und auch kühne Ansätze, beschreibe kurz deren Vor- und Nachteile und lege dich nicht vorschnell fest."
+  },
+  "promptModeSuffix_compete": {
+    "message": "Du antwortest parallel zu mehreren anderen KIs und die Antworten werden direkt verglichen. Gib die genaueste, gehaltvollste und nützlichste Antwort, die dir möglich ist."
   }
 }

@@ -140,6 +140,17 @@ export function applyTimingEvent(round, panelId, phase, at) {
 }
 
 /**
+ * True when a timing report made this panel's answer the first one in the
+ * round to complete; used to notify once per round.
+ */
+export function isFirstRoundCompletion(round, nextRound, panelId) {
+  if (!round?.answers || nextRound?.answers?.[panelId]?.status !== ANSWER_STATUS.COMPLETE) {
+    return false;
+  }
+  return !Object.values(round.answers).some(answer => answer.status === ANSWER_STATUS.COMPLETE);
+}
+
+/**
  * Marks one panel's answer as adopted, or clears the adoption when that panel
  * is already adopted or panelId is null.
  */
