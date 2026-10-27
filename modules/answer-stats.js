@@ -7,7 +7,7 @@ const DB_VERSION = 1;
 const ROUNDS_STORE = 'rounds';
 
 // Providers whose content script reports response timing.
-export const ANSWER_TIMING_PROVIDER_IDS = Object.freeze(['chatgpt', 'gemini', 'deepseek', 'kimi', 'qwen-cn', 'yuanbao', 'chatglm', 'zai-global', 'mimo']);
+export const ANSWER_TIMING_PROVIDER_IDS = Object.freeze(['chatgpt', 'gemini', 'deepseek', 'kimi', 'qwen-cn', 'yuanbao', 'chatglm', 'zai-global', 'mimo', 'qwen-global', 'grok', 'meta-ai', 'doubao', 'google']);
 export const PROMPT_SUMMARY_MAX_LENGTH = 100;
 export const MAX_STORED_ROUNDS = 1000;
 
@@ -36,16 +36,21 @@ export const ENGAGEMENT_KIND = Object.freeze({
 export const ENGAGEMENT_ACTIVE_GAP_MS = 15 * 1000;
 export const ENGAGEMENT_ZOOM_MAX_GAP_MS = 5 * 60 * 1000;
 
-// Score: an adopted answer earns ADOPTED_ANSWER_POINTS; a rejected answer,
-// or a timed answer that timed out without any output, loses
-// REJECTED_ANSWER_POINTS. An answer the user adopted, clicked or scrolled in
-// had output even when timing missed it, so it does not count as timed out
-// without output. Engagement with an answer that never showed output
-// earns nothing; otherwise it earns up to
-// MAX_ENGAGEMENT_POINTS more: one for clicking or scrolling, one for enlarging
-// the panel and one per ENGAGEMENT_POINT_ACTIVE_MS of active time.
+// Score: an adopted answer earns ADOPTED_ANSWER_POINTS; a rejected answer
+// loses REJECTED_ANSWER_POINTS. A timed answer that timed out without any
+// output may only mean timing missed the output, so it only counts as a
+// timeout. It costs points only once confirmed: the provider's previous and
+// next timed answers both showed output, so timing worked around it. A
+// provider's confirmed failures in one score window together lose
+// NO_OUTPUT_PENALTY_POINTS * log2(1 + count), so each repeat costs less. An
+// answer the user adopted, clicked or scrolled in had output even when timing
+// missed it, so it does not count as timed out without output. Engagement
+// with an answer that never showed output earns nothing; otherwise it earns
+// up to MAX_ENGAGEMENT_POINTS more: one for clicking or scrolling, one for
+// enlarging the panel and one per ENGAGEMENT_POINT_ACTIVE_MS of active time.
 export const ADOPTED_ANSWER_POINTS = 5;
 export const REJECTED_ANSWER_POINTS = 5;
+export const NO_OUTPUT_PENALTY_POINTS = 5;
 export const MAX_ENGAGEMENT_POINTS = 3;
 export const ENGAGEMENT_POINT_ACTIVE_MS = 30 * 1000;
 
@@ -266,13 +271,39 @@ function hasTimedOutWithoutOutput(answers, adopted) {
       || (answer.engagement?.clicks || 0) + (answer.engagement?.scrolls || 0) > 0);
 }
 
+// What timing saw of a provider's answers in one round: OUTPUT when one showed
+// output, MISSED when one timed out without output, null when there is no
+// verdict yet (untimed, pending or cancelled answers).
+const TIMING_OUTCOME = Object.freeze({ OUTPUT: 'output', MISSED: 'missed' });
+
+function getTimingOutcome(answers) {
+  if (answers.some(answer => answer.status === ANSWER_STATUS.COMPLETE || Number.isFinite(answer.firstOutputMs))) {
+    return TIMING_OUTCOME.OUTPUT;
+  }
+  if (answers.some(answer => answer.timed && answer.status === ANSWER_STATUS.TIMEOUT)) {
+    return TIMING_OUTCOME.MISSED;
+  }
+  return null;
+}
+
+export function getNoOutputPenalty(count) {
+  return count > 0 ? NO_OUTPUT_PENALTY_POINTS * Math.log2(1 + count) : 0;
+}
+
+function toScoreTenths(value) {
+  return Math.round(value * 10) / 10;
+}
+
 /**
  * Per-provider totals. A provider shown in two panels of one round counts
  * once for that round; its fastest answer counts for timing.
  * Adoption rate only counts rounds where some answer was adopted. Score adds
  * the adoption points and the best engagement points of each round, minus
- * one deduction per provider per round if any of its answers was rejected or
- * none of them showed output before timing out (see hasTimedOutWithoutOutput).
+ * one deduction per provider per round if any of its answers was rejected.
+ * Rounds where none of its answers showed output before timing out (see
+ * hasTimedOutWithoutOutput) count as noOutputCount; those whose neighbouring
+ * timed rounds both showed output also count as confirmedNoOutputCount and
+ * lose getNoOutputPenalty(count) per score window.
  * Rounds older than RECENT_SCORE_WINDOW_MS before `now` count towards
  * olderScore, which the total score weighs by OLDER_SCORE_WEIGHT.
  */
@@ -290,11 +321,15 @@ export function aggregateAnswerStats(rounds, now = Date.now()) {
         adoptedCount: 0,
         completeCount: 0,
         timeoutCount: 0,
+        noOutputCount: 0,
+        confirmedNoOutputCount: 0,
         engagedRounds: 0,
         activeMs: 0,
         score: 0,
-        recentScore: 0,
-        olderScore: 0,
+        recentPoints: 0,
+        olderPoints: 0,
+        recentNoOutputCount: 0,
+        olderNoOutputCount: 0,
         firstOutputValues: [],
         completeValues: []
       });
@@ -302,7 +337,10 @@ export function aggregateAnswerStats(rounds, now = Date.now()) {
     return byProvider.get(providerId);
   };
 
-  rounds.forEach(round => {
+  // Confirming a failure needs each provider's rounds in time order.
+  const providerRounds = [];
+  const timelines = new Map();
+  [...rounds].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).forEach(round => {
     const answersByProvider = new Map();
     Object.values(round.answers || {}).forEach(answer => {
       if (!answer?.providerId) return;
@@ -312,63 +350,99 @@ export function aggregateAnswerStats(rounds, now = Date.now()) {
       answersByProvider.get(answer.providerId).push(answer);
     });
 
-    const isRecent = round.createdAt >= recentSince;
     answersByProvider.forEach((answers, providerId) => {
-      const entry = getEntry(providerId);
-      let roundScore = 0;
-      entry.rounds += 1;
-      if (round.adoptedProviderId) {
-        entry.decidedRounds += 1;
-        if (round.adoptedProviderId === providerId) {
-          entry.adoptedCount += 1;
-          roundScore += ADOPTED_ANSWER_POINTS;
+      const item = { round, providerId, answers, outcome: getTimingOutcome(answers), confirmedNoOutput: false };
+      providerRounds.push(item);
+      if (item.outcome) {
+        if (!timelines.has(providerId)) {
+          timelines.set(providerId, []);
         }
-      }
-      const timedOutWithoutOutput = hasTimedOutWithoutOutput(answers, round.adoptedProviderId === providerId);
-      if (timedOutWithoutOutput || answers.some(answer => answer.rejected)) {
-        roundScore -= REJECTED_ANSWER_POINTS;
-      }
-
-      const engagements = answers.map(answer => answer.engagement).filter(Boolean);
-      if (engagements.some(engagement => engagement.clicks + engagement.scrolls + engagement.zooms > 0)) {
-        entry.engagedRounds += 1;
-      }
-      entry.activeMs += engagements.reduce((sum, engagement) => sum + (engagement.activeMs || 0), 0);
-      if (!timedOutWithoutOutput) {
-        roundScore += Math.max(0, ...engagements.map(getEngagementPoints));
-      }
-      if (isRecent) {
-        entry.recentScore += roundScore;
-      } else {
-        entry.olderScore += roundScore;
-      }
-
-      const completed = answers.filter(answer => answer.status === ANSWER_STATUS.COMPLETE);
-      if (completed.length > 0) {
-        entry.completeCount += 1;
-        const firstOutputs = completed
-          .map(answer => answer.firstOutputMs)
-          .filter(Number.isFinite);
-        if (firstOutputs.length > 0) {
-          entry.firstOutputValues.push(Math.min(...firstOutputs));
-        }
-        entry.completeValues.push(Math.min(...completed.map(answer => answer.completeMs)));
-      } else if (answers.some(answer => answer.status === ANSWER_STATUS.TIMEOUT)) {
-        entry.timeoutCount += 1;
+        timelines.get(providerId).push(item);
       }
     });
   });
+  timelines.forEach(items => items.forEach((item, index) => {
+    item.confirmedNoOutput = item.outcome === TIMING_OUTCOME.MISSED
+      && items[index - 1]?.outcome === TIMING_OUTCOME.OUTPUT
+      && items[index + 1]?.outcome === TIMING_OUTCOME.OUTPUT;
+  }));
+
+  providerRounds.forEach(({ round, providerId, answers, confirmedNoOutput }) => {
+    const entry = getEntry(providerId);
+    const isRecent = round.createdAt >= recentSince;
+    let points = 0;
+    entry.rounds += 1;
+    if (round.adoptedProviderId) {
+      entry.decidedRounds += 1;
+      if (round.adoptedProviderId === providerId) {
+        entry.adoptedCount += 1;
+        points += ADOPTED_ANSWER_POINTS;
+      }
+    }
+    const timedOutWithoutOutput = hasTimedOutWithoutOutput(answers, round.adoptedProviderId === providerId);
+    if (timedOutWithoutOutput) {
+      entry.noOutputCount += 1;
+      if (confirmedNoOutput) {
+        entry.confirmedNoOutputCount += 1;
+      }
+    }
+    if (answers.some(answer => answer.rejected)) {
+      points -= REJECTED_ANSWER_POINTS;
+    } else if (timedOutWithoutOutput && confirmedNoOutput) {
+      if (isRecent) {
+        entry.recentNoOutputCount += 1;
+      } else {
+        entry.olderNoOutputCount += 1;
+      }
+    }
+
+    const engagements = answers.map(answer => answer.engagement).filter(Boolean);
+    if (engagements.some(engagement => engagement.clicks + engagement.scrolls + engagement.zooms > 0)) {
+      entry.engagedRounds += 1;
+    }
+    entry.activeMs += engagements.reduce((sum, engagement) => sum + (engagement.activeMs || 0), 0);
+    if (!timedOutWithoutOutput) {
+      points += Math.max(0, ...engagements.map(getEngagementPoints));
+    }
+    if (isRecent) {
+      entry.recentPoints += points;
+    } else {
+      entry.olderPoints += points;
+    }
+
+    const completed = answers.filter(answer => answer.status === ANSWER_STATUS.COMPLETE);
+    if (completed.length > 0) {
+      entry.completeCount += 1;
+      const firstOutputs = completed
+        .map(answer => answer.firstOutputMs)
+        .filter(Number.isFinite);
+      if (firstOutputs.length > 0) {
+        entry.firstOutputValues.push(Math.min(...firstOutputs));
+      }
+      entry.completeValues.push(Math.min(...completed.map(answer => answer.completeMs)));
+    } else if (answers.some(answer => answer.status === ANSWER_STATUS.TIMEOUT)) {
+      entry.timeoutCount += 1;
+    }
+  });
 
   return [...byProvider.values()]
-    .map(({ firstOutputValues, completeValues, ...entry }) => ({
-      ...entry,
-      score: Math.round((entry.recentScore + entry.olderScore * OLDER_SCORE_WEIGHT) * 10) / 10,
-      avgFirstOutputMs: average(firstOutputValues),
-      medianFirstOutputMs: median(firstOutputValues),
-      avgCompleteMs: average(completeValues),
-      medianCompleteMs: median(completeValues),
-      adoptionRate: entry.decidedRounds > 0 ? entry.adoptedCount / entry.decidedRounds : null
-    }))
+    .map(({
+      firstOutputValues, completeValues, recentPoints, olderPoints, recentNoOutputCount, olderNoOutputCount, ...entry
+    }) => {
+      const recentScore = recentPoints - getNoOutputPenalty(recentNoOutputCount);
+      const olderScore = olderPoints - getNoOutputPenalty(olderNoOutputCount);
+      return {
+        ...entry,
+        recentScore: toScoreTenths(recentScore),
+        olderScore: toScoreTenths(olderScore),
+        score: toScoreTenths(recentScore + olderScore * OLDER_SCORE_WEIGHT),
+        avgFirstOutputMs: average(firstOutputValues),
+        medianFirstOutputMs: median(firstOutputValues),
+        avgCompleteMs: average(completeValues),
+        medianCompleteMs: median(completeValues),
+        adoptionRate: entry.decidedRounds > 0 ? entry.adoptedCount / entry.decidedRounds : null
+      };
+    })
     .sort((a, b) => b.score - a.score || b.adoptedCount - a.adoptedCount || b.rounds - a.rounds);
 }
 

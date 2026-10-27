@@ -1033,7 +1033,7 @@
     "message": "採納率"
   },
   "answerStatsNote": {
-    "message": "時間從點擊傳送開始，分別計到出現第一個字和回答完成：顯示中位數，括號內為平均值。只對 ChatGPT、Gemini、DeepSeek、Kimi、Qwen (China) 和 Yuanbao 計時。採納率只統計已採納回答的問題。"
+    "message": "時間從點擊傳送開始，分別計到出現第一個字和回答完成：顯示中位數，括號內為平均值。Claude、StepFun、Agnes 和 Hy AI Studio 不計時。採納率只統計已採納回答的問題。"
   },
   "answerStatsRecentTitle": {
     "message": "近 30 天的問題"
@@ -1075,7 +1075,7 @@
     "message": "得分"
   },
   "answerStatsScoreNote": {
-    "message": "得分：被採納的回答得 5 分。使用回答最多再得 3 分：在面板中點擊或捲動得 1 分，放大面板得 1 分，每 30 秒互動時長得 1 分。互動時長累計相隔不超過 15 秒的點擊和捲動之間的時間，以及面板保持放大的時間。點擊減分按鈕扣 5 分，再點撤銷。計時的回答逾時仍未出字、且未被採納也沒有點擊或捲動時，同樣扣 5 分，且使用不得分。"
+    "message": "得分：被採納的回答得 5 分。使用回答最多再得 3 分：在面板中點擊或捲動得 1 分，放大面板得 1 分，每 30 秒互動時長得 1 分。互動時長累計相隔不超過 15 秒的點擊和捲動之間的時間，以及面板保持放大的時間。點擊減分按鈕扣 5 分，再點撤銷。計時的回答逾時仍未出字、且未被採納也沒有點擊或捲動時，使用不得分，但可能只是沒統計到，所以只計入逾時次數、不扣分；只有該服務前後兩次計時的回答都正常出字，才認定確實沒有回答並扣分：30 天內 n 次共扣 5 × log₂(1 + n) 分，次數越多每次扣得越少。"
   },
   "answerStatsColumnRecentScore": {
     "message": "近 30 天"
@@ -1370,5 +1370,50 @@
   },
   "panelNoteEditTitle": {
     "message": "為這個 AI 寫一句話備註"
+  },
+  "composerInputPlaceholder": {
+    "message": "輸入問題，傳送給所有 AI..."
+  },
+  "composerPlaceholderSend": {
+    "message": "$1 傳送"
+  },
+  "composerPlaceholderNewLine": {
+    "message": "$1 換行"
+  },
+  "composerPlaceholderFill": {
+    "message": "$1 僅填入"
+  },
+  "composerSendHint": {
+    "message": "把問題填入所有面板並傳送"
+  },
+  "composerFillHint": {
+    "message": "把問題填入所有面板，不傳送"
+  },
+  "composerNewChatHint": {
+    "message": "在所有面板開始新對話"
+  },
+  "composerPromptLibraryHint": {
+    "message": "選擇已儲存的提示詞插入"
+  },
+  "composerTierFastHint": {
+    "message": "把所有 AI 切換到最快模式"
+  },
+  "composerTierBalancedHint": {
+    "message": "把所有 AI 切換到均衡模式"
+  },
+  "composerTierDeepHint": {
+    "message": "把所有 AI 切換到最深推理模式"
+  },
+  "composerImageUploadTitle": {
+    "message": "上傳圖片或檔案\n附加圖片或檔案傳送給所有 AI（也可直接貼上或拖入）"
+  },
+  "composerClearAllTitle": {
+    "message": "清除全部輸入\n清除本輸入框、圖片和所有面板的輸入"
+  },
+  "composerShortcutsTitle": {
+    "message": "快捷鍵\n查看和修改快捷鍵"
+  },
+  "composerTierDetailsTitle": {
+    "message": "AI 檔位對應\n查看每個檔位下各 AI 使用的模式"
   }
 }

@@ -536,6 +536,28 @@ describe('composer control async state', () => {
     expect(toggleWideContent).toHaveBeenCalledTimes(3);
   });
 
+  it('shows the send and fill shortcuts in the placeholder and describes buttons in tooltips', async () => {
+    await setupControls([]);
+    const fillShortcut = formatShortcutForTooltip(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS.fill);
+    const input = document.getElementById('unified-input');
+    const focusShortcut = formatShortcutForTooltip(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS.focusInput);
+    expect(input.placeholder.startsWith(`${focusShortcut}  Enter your question`)).toBe(true);
+    expect(input.placeholder).toContain(`${formatShortcutForTooltip('Shift+Enter')} new line`);
+    expect(input.placeholder).toContain(`${fillShortcut} fill only`);
+
+    const send = document.getElementById('send-all-btn');
+    expect(send.title).toBe(`Send to all (${formatShortcutForTooltip(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS.send)})\nFill every panel with the question and send it`);
+    expect(send.getAttribute('aria-label')).not.toContain('\n');
+    expect(document.querySelector('[data-tier="deep"]').title).toContain('Switch every AI to its deepest reasoning mode');
+
+    document.getElementById('keyboard-shortcuts-btn').click();
+    document.getElementById('page-shortcuts-enabled').checked = false;
+    document.getElementById('save-keyboard-shortcuts').click();
+    await flushMicrotasks();
+    expect(input.placeholder).not.toContain('fill only');
+    expect(input.placeholder.startsWith('Enter your question')).toBe(true);
+  });
+
   it('accepts wide mode shortcuts only from the current provider iframe', async () => {
     const panel = makePanel('panel-a');
     const toggleWideContent = vi.fn();

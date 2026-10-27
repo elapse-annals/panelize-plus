@@ -1039,7 +1039,7 @@
     "message": "Tasa de adopción"
   },
   "answerStatsNote": {
-    "message": "Tiempos desde el envío hasta el primer texto y hasta la respuesta terminada: mediana, con la media entre paréntesis. Solo se miden ChatGPT, Gemini, DeepSeek, Kimi, Qwen (China) y Yuanbao. La tasa de adopción solo cuenta las preguntas en las que se adoptó una respuesta."
+    "message": "Tiempos desde el envío hasta el primer texto y hasta la respuesta terminada: mediana, con la media entre paréntesis. Claude, StepFun, Agnes y Hy AI Studio no se miden. La tasa de adopción solo cuenta las preguntas en las que se adoptó una respuesta."
   },
   "answerStatsRecentTitle": {
     "message": "Preguntas de los últimos 30 días"
@@ -1081,7 +1081,7 @@
     "message": "Puntuación"
   },
   "answerStatsScoreNote": {
-    "message": "Puntuación: una respuesta adoptada suma 5 puntos. Usar una respuesta suma hasta 3 más: 1 por hacer clic o desplazarse en su panel, 1 por ampliar el panel y 1 por cada 30 s de interacción. El tiempo de interacción suma los intervalos de hasta 15 s entre clics y desplazamientos, y el tiempo que el panel permanece ampliado. Haz clic en el botón menos para restar 5 puntos; haz clic de nuevo para deshacerlo. Una respuesta medida que agota el tiempo sin texto también resta 5 puntos y no suma por su uso, salvo que la hayas adoptado o hayas hecho clic o te hayas desplazado en ella."
+    "message": "Puntuación: una respuesta adoptada suma 5 puntos. Usar una respuesta suma hasta 3 más: 1 por hacer clic o desplazarse en su panel, 1 por ampliar el panel y 1 por cada 30 s de interacción. El tiempo de interacción suma los intervalos de hasta 15 s entre clics y desplazamientos, y el tiempo que el panel permanece ampliado. Haz clic en el botón menos para restar 5 puntos; haz clic de nuevo para deshacerlo. Una respuesta medida que agota el tiempo sin texto, salvo que la hayas adoptado o hayas hecho clic o te hayas desplazado en ella, no suma por su uso y solo cuenta como tiempo agotado, ya que la medición pudo perder el texto. Solo resta puntos si las respuestas medidas anterior y siguiente del mismo proveedor mostraron texto: n respuestas así en 30 días restan en total 5 × log₂(1 + n) puntos, así que las repeticiones cuestan menos."
   },
   "answerStatsColumnRecentScore": {
     "message": "Últimos 30 días"
@@ -1376,5 +1376,50 @@
   },
   "panelNoteEditTitle": {
     "message": "Nota de una línea sobre esta IA"
+  },
+  "composerInputPlaceholder": {
+    "message": "Escribe tu pregunta para enviarla a todos los proveedores de IA..."
+  },
+  "composerPlaceholderSend": {
+    "message": "$1 enviar"
+  },
+  "composerPlaceholderNewLine": {
+    "message": "$1 nueva línea"
+  },
+  "composerPlaceholderFill": {
+    "message": "$1 solo rellenar"
+  },
+  "composerSendHint": {
+    "message": "Rellenar todos los paneles con la pregunta y enviarla"
+  },
+  "composerFillHint": {
+    "message": "Rellenar todos los paneles con la pregunta sin enviar"
+  },
+  "composerNewChatHint": {
+    "message": "Iniciar un chat nuevo en todos los paneles"
+  },
+  "composerPromptLibraryHint": {
+    "message": "Elegir un prompt guardado para insertarlo"
+  },
+  "composerTierFastHint": {
+    "message": "Cambiar todas las IA a su modo más rápido"
+  },
+  "composerTierBalancedHint": {
+    "message": "Cambiar todas las IA a un modo equilibrado"
+  },
+  "composerTierDeepHint": {
+    "message": "Cambiar todas las IA a su modo de razonamiento más profundo"
+  },
+  "composerImageUploadTitle": {
+    "message": "Subir imágenes o archivos\nAdjuntar imágenes o archivos para todas las IA (también puedes pegarlos o arrastrarlos)"
+  },
+  "composerClearAllTitle": {
+    "message": "Borrar todas las entradas\nBorrar este cuadro, sus imágenes y la entrada de cada panel"
+  },
+  "composerShortcutsTitle": {
+    "message": "Atajos de teclado\nVer y cambiar los atajos"
+  },
+  "composerTierDetailsTitle": {
+    "message": "Correspondencia de modos de IA\nVer qué modo usa cada IA en cada nivel"
   }
 }

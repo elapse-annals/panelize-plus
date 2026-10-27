@@ -1039,7 +1039,7 @@
     "message": "採用率"
   },
   "answerStatsNote": {
-    "message": "送信から最初のテキストが出るまでと回答が完了するまでの時間です。中央値を示し、括弧内は平均値です。計測対象は ChatGPT、Gemini、DeepSeek、Kimi、Qwen (China)、Yuanbao のみです。採用率は回答が採用された質問だけを数えます。"
+    "message": "送信から最初のテキストが出るまでと回答が完了するまでの時間です。中央値を示し、括弧内は平均値です。Claude、StepFun、Agnes、Hy AI Studio は計測しません。採用率は回答が採用された質問だけを数えます。"
   },
   "answerStatsRecentTitle": {
     "message": "過去 30 日間の質問"
@@ -1081,7 +1081,7 @@
     "message": "スコア"
   },
   "answerStatsScoreNote": {
-    "message": "スコア：採用した回答は 5 点です。回答の利用でさらに最大 3 点加算されます。パネル内のクリックやスクロールで 1 点、パネルの拡大で 1 点、操作時間 30 秒ごとに 1 点です。操作時間は 15 秒以内の間隔で続いたクリックとスクロールの間の時間と、パネルを拡大していた時間の合計です。マイナスボタンをクリックすると 5 点減点され、もう一度クリックすると取り消されます。計測対象の回答がテキストを出さずにタイムアウトした場合も、採用もクリックやスクロールもしていなければ 5 点減点され、利用による加点はありません。"
+    "message": "スコア：採用した回答は 5 点です。回答の利用でさらに最大 3 点加算されます。パネル内のクリックやスクロールで 1 点、パネルの拡大で 1 点、操作時間 30 秒ごとに 1 点です。操作時間は 15 秒以内の間隔で続いたクリックとスクロールの間の時間と、パネルを拡大していた時間の合計です。マイナスボタンをクリックすると 5 点減点され、もう一度クリックすると取り消されます。計測対象の回答がテキストを出さずにタイムアウトし、採用もクリックやスクロールもしていない場合、利用による加点はありません。計測漏れの可能性があるため、タイムアウトとして数えるだけで減点しません。そのサービスの前後の計測済み回答がどちらもテキストを出した場合にのみ減点し、30 日以内に n 回なら合計 5 × log₂(1 + n) 点を減点します。回数が増えるほど 1 回あたりの減点は小さくなります。"
   },
   "answerStatsColumnRecentScore": {
     "message": "過去 30 日"
@@ -1376,5 +1376,50 @@
   },
   "panelNoteEditTitle": {
     "message": "この AI についての一言メモ"
+  },
+  "composerInputPlaceholder": {
+    "message": "質問を入力してすべての AI に送信..."
+  },
+  "composerPlaceholderSend": {
+    "message": "$1 送信"
+  },
+  "composerPlaceholderNewLine": {
+    "message": "$1 改行"
+  },
+  "composerPlaceholderFill": {
+    "message": "$1 入力のみ"
+  },
+  "composerSendHint": {
+    "message": "すべてのパネルに質問を入力して送信"
+  },
+  "composerFillHint": {
+    "message": "すべてのパネルに質問を入力（送信しない）"
+  },
+  "composerNewChatHint": {
+    "message": "すべてのパネルで新しいチャットを開始"
+  },
+  "composerPromptLibraryHint": {
+    "message": "保存したプロンプトを選んで挿入"
+  },
+  "composerTierFastHint": {
+    "message": "すべての AI を最速モードに切り替え"
+  },
+  "composerTierBalancedHint": {
+    "message": "すべての AI をバランスモードに切り替え"
+  },
+  "composerTierDeepHint": {
+    "message": "すべての AI を最も深い推論モードに切り替え"
+  },
+  "composerImageUploadTitle": {
+    "message": "画像またはファイルをアップロード\nすべての AI に送る画像やファイルを添付（貼り付けやドラッグも可）"
+  },
+  "composerClearAllTitle": {
+    "message": "すべての入力をクリア\nこの欄・画像・全パネルの入力をクリア"
+  },
+  "composerShortcutsTitle": {
+    "message": "キーボードショートカット\nショートカットの確認と変更"
+  },
+  "composerTierDetailsTitle": {
+    "message": "AI モードの対応\n各レベルで各 AI が使うモードを確認"
   }
 }

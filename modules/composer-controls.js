@@ -2,6 +2,7 @@ import { getSettings, saveSetting, saveSettings } from './settings.js';
 import { getProviderById } from './providers.js';
 import {
   DEFAULT_KEYBOARD_SHORTCUT_BINDINGS,
+  formatKeyForTooltip,
   formatShortcutForTooltip,
   getShortcutBindingFromEvent,
   normalizeShortcutBinding,
@@ -33,6 +34,16 @@ const ACTION_LABELS = {
   scrollPanelsEnd: ['composerScrollPanelsEnd', 'Scroll to last panel'],
   ...Object.fromEntries(Array.from({ length: 9 }, (_, index) =>
     [`jumpPanel${index + 1}`, ['composerJumpPanel', 'Go to panel $1', [String(index + 1)]]]))
+};
+// What a button does, shown on the tooltip's second line.
+const ACTION_HINTS = {
+  send: ['composerSendHint', 'Fill every panel with the question and send it'],
+  fill: ['composerFillHint', 'Fill every panel with the question without sending'],
+  newConversation: ['composerNewChatHint', 'Start a new chat in every panel'],
+  togglePromptLibrary: ['composerPromptLibraryHint', 'Pick a saved prompt to insert'],
+  tierFast: ['composerTierFastHint', 'Switch every AI to its fastest mode'],
+  tierBalanced: ['composerTierBalancedHint', 'Switch every AI to a balanced mode'],
+  tierDeep: ['composerTierDeepHint', 'Switch every AI to its deepest reasoning mode']
 };
 const BUTTON_ACTIONS = {
   'send-all-btn': 'send', 'fill-input-btn': 'fill',
@@ -393,9 +404,28 @@ export async function setupComposerControls({
           ? tr('composerRetryFailed', 'Retry unsuccessful')
           : action === 'toggleWideContent'
             ? tr('wideContentTitle', 'Wide mode: each panel is 1.5× wider; scroll horizontally to view.') : label(action);
-      button.title = `${base}${shortcut || globalShortcut ? ` (${shortcut || globalShortcut})` : ''}`;
-      button.setAttribute('aria-label', button.title);
+      const heading = `${base}${shortcut || globalShortcut ? ` (${shortcut || globalShortcut})` : ''}`;
+      const hint = ACTION_HINTS[action] && button.dataset.retryFailed !== 'true' ? tr(...ACTION_HINTS[action]) : '';
+      button.title = hint ? `${heading}\n${hint}` : heading;
+      button.setAttribute('aria-label', heading);
     });
+    updateInputPlaceholder(active);
+  }
+
+  // Plain Enter always sends and Shift+Enter adds a line (multi-panel.js);
+  // focus and fill follow the configurable page shortcuts.
+  function updateInputPlaceholder(active) {
+    const input = byId('unified-input');
+    if (!input) return;
+    const keys = [
+      tr('composerPlaceholderSend', '$1 send', [formatKeyForTooltip('Enter')]),
+      tr('composerPlaceholderNewLine', '$1 new line', [formatShortcutForTooltip('Shift+Enter')])
+    ];
+    const fillShortcut = shortcutsEnabled ? formatShortcutForTooltip(active.fill) : '';
+    if (fillShortcut) keys.push(tr('composerPlaceholderFill', '$1 fill only', [fillShortcut]));
+    const focusShortcut = shortcutsEnabled ? formatShortcutForTooltip(active.focusInput) : '';
+    const prefix = focusShortcut ? `${focusShortcut}  ` : '';
+    input.placeholder = `${prefix}${tr('composerInputPlaceholder', 'Enter your question to send to all AI providers...')}  ${keys.join(' · ')}`;
   }
 
   function openDialog(id) {

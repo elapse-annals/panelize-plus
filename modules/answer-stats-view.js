@@ -71,8 +71,8 @@ export function renderAnswerStatsTable(tbody, stats, { getText, getProviderName 
         ? '—'
         : `${Math.round(entry.adoptionRate * 100)}%`, 'numeric'),
       createCell('td', formatEngagedDuration(entry.activeMs), 'numeric'),
-      createCell('td', String(entry.recentScore), 'numeric'),
-      createCell('td', String(entry.olderScore), 'numeric'),
+      createCell('td', formatAnswerScore(entry.recentScore), 'numeric'),
+      createCell('td', formatAnswerScore(entry.olderScore), 'numeric'),
       createCell('td', formatAnswerScore(entry.score), 'numeric answer-stats-score')
     );
     return row;

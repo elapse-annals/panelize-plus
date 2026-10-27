@@ -6,6 +6,7 @@ import {
   applyEngagementEvent,
   applyTimingEvent,
   getEngagementPoints,
+  getNoOutputPenalty,
   createRound,
   summarizePromptText,
   toggleRoundAdoption,
@@ -313,7 +314,7 @@ describe('aggregateAnswerStats', () => {
     expect(entry).toMatchObject({ score: 2, engagedRounds: 1, activeMs: 1000 });
   });
 
-  it('deducts five points from a timed answer that times out without output and ignores its engagement', () => {
+  it('only counts a timed answer that times out without output and ignores its engagement', () => {
     let round = engage(newRound(), 'p1', [['zoom-in', 2000], ['zoom-out', 62000]]);
     round = applyTimingEvent(round, 'p1', 'timeout', 301000);
     // Output before the timeout is not a failure.
@@ -322,8 +323,8 @@ describe('aggregateAnswerStats', () => {
     round = applyTimingEvent(round, 'p2', 'timeout', 901000);
 
     const byProvider = Object.fromEntries(aggregateAnswerStats([round], NOW).map(entry => [entry.providerId, entry]));
-    expect(byProvider.chatgpt).toMatchObject({ score: -5, timeoutCount: 1, engagedRounds: 1 });
-    expect(byProvider.gemini).toMatchObject({ score: 1, timeoutCount: 1 });
+    expect(byProvider.chatgpt).toMatchObject({ score: 0, timeoutCount: 1, noOutputCount: 1, confirmedNoOutputCount: 0, engagedRounds: 1 });
+    expect(byProvider.gemini).toMatchObject({ score: 1, timeoutCount: 1, noOutputCount: 0 });
   });
 
   it('does not deduct for a timeout when the answer was adopted or clicked or scrolled in', () => {
@@ -337,8 +338,37 @@ describe('aggregateAnswerStats', () => {
 
     const [chatgpt] = aggregateAnswerStats([clicked, scrolled, adopted, untouched], NOW)
       .filter(entry => entry.providerId === 'chatgpt');
-    // 3 + 1 engagement points, 5 for the adoption, -5 for the untouched timeout.
-    expect(chatgpt).toMatchObject({ score: 4, timeoutCount: 4, adoptedCount: 1 });
+    // 3 + 1 engagement points and 5 for the adoption; the untouched timeout
+    // is only counted because timing never saw this provider's output.
+    expect(chatgpt).toMatchObject({ score: 9, timeoutCount: 4, adoptedCount: 1, noOutputCount: 1 });
+  });
+
+  it('deducts logarithmically for timeouts confirmed by output in the neighbouring rounds', () => {
+    const output = (id, createdAt) => finish(newRound(id, createdAt), 'p1', 1000, 2000);
+    const missed = (id, createdAt) => applyTimingEvent(newRound(id, createdAt), 'p1', 'timeout', createdAt + 300000);
+    const rounds = [
+      output('o1', 1000), missed('m1', 2000), output('o2', 3000),
+      missed('m2', 4000), output('o3', 5000), missed('m3', 6000), output('o4', 7000),
+      // Two timeouts in a row may mean timing broke, so neither is confirmed.
+      missed('m4', 8000), missed('m5', 9000), output('o5', 10000),
+      // The latest timeout waits for a later answer to confirm it.
+      missed('m6', 11000)
+    ];
+
+    const [chatgpt] = aggregateAnswerStats(rounds, NOW).filter(entry => entry.providerId === 'chatgpt');
+    // Three confirmed failures lose 5 * log2(4) = 10 points instead of 15.
+    expect(chatgpt).toMatchObject({ score: -10, timeoutCount: 6, noOutputCount: 6, confirmedNoOutputCount: 3 });
+    expect(getNoOutputPenalty(1)).toBe(5);
+    expect(getNoOutputPenalty(0)).toBe(0);
+  });
+
+  it('does not deduct twice for a rejected answer whose timeout is confirmed', () => {
+    const output = (id, createdAt) => finish(newRound(id, createdAt), 'p1', 1000, 2000);
+    const missed = toggleRoundRejection(applyTimingEvent(newRound('m', 2000), 'p1', 'timeout', 302000), 'p1');
+
+    const [chatgpt] = aggregateAnswerStats([output('a', 1000), missed, output('b', 3000)], NOW)
+      .filter(entry => entry.providerId === 'chatgpt');
+    expect(chatgpt).toMatchObject({ score: -5, confirmedNoOutputCount: 1 });
   });
 
   it('deducts once for a rejected answer without output and not for pending or cancelled answers', () => {

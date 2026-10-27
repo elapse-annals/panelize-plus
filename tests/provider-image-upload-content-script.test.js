@@ -22,6 +22,13 @@ const SAMPLE_IMAGES = [
   },
 ];
 
+const SAMPLE_PDF = {
+  id: 'sample-pdf-id',
+  name: 'report.pdf',
+  type: 'application/pdf',
+  dataUrl: 'data:application/pdf;base64,JVBERi0xLjQKJSVFT0YK',
+};
+
 function markVisible(element) {
   Object.defineProperty(element, 'offsetParent', {
     configurable: true,
@@ -747,5 +754,72 @@ describe('provider image upload adapters', () => {
       status: 'succeeded',
       succeededImageIds: [],
     }, '*');
+  });
+
+  it('uploads a PDF to Kimi through its native files input', async () => {
+    window.happyDOM.setURL('https://www.kimi.com/');
+    const { uploadedNames } = createKimiDom();
+
+    dispatchImageInjection({ images: [SAMPLE_PDF], requestId: 'fill-request-kimi-pdf' });
+    await finishSuccessfulInjection();
+
+    expect(uploadedNames).toEqual(['report.pdf']);
+    expect(window.parent.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      requestId: 'fill-request-kimi-pdf',
+      status: 'succeeded',
+      succeededImageIds: ['sample-pdf-id'],
+    }), '*');
+  });
+
+  it('uploads a PDF to Grok and verifies it by filename', async () => {
+    window.happyDOM.setURL('https://grok.com/');
+    const { uploadedNames } = createGrokDom();
+
+    dispatchImageInjection({ images: [SAMPLE_PDF], requestId: 'fill-request-grok-pdf' });
+    await finishSuccessfulInjection();
+
+    expect(uploadedNames).toEqual(['report.pdf']);
+    expect(window.parent.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      requestId: 'fill-request-grok-pdf',
+      status: 'succeeded',
+    }), '*');
+  });
+
+  it('does not give a PDF to a DeepSeek input that only accepts images', async () => {
+    window.happyDOM.setURL('https://chat.deepseek.com/');
+    const { uploadedNames } = createDeepSeekDom();
+
+    dispatchImageInjection({ images: [SAMPLE_PDF], requestId: 'fill-request-deepseek-pdf' });
+    await finishTimedOutInjection();
+
+    expect(uploadedNames).toEqual([]);
+    expect(window.parent.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      requestId: 'fill-request-deepseek-pdf',
+      status: 'failed',
+      succeededImageIds: [],
+    }), '*');
+  });
+
+  it('reports a PDF as unsupported right away for image-only providers and keeps it unsent', async () => {
+    window.happyDOM.setURL('https://www.doubao.com/chat/');
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    document.body.append(fileInput);
+
+    dispatchImageInjection({
+      images: [SAMPLE_PDF],
+      requestId: 'fill-request-doubao-pdf',
+      autoSubmit: true,
+    });
+    await finishSuccessfulInjection();
+
+    expect(fileInput.files).toHaveLength(0);
+    expect(window.parent.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      requestId: 'fill-request-doubao-pdf',
+      provider: 'doubao',
+      status: 'failed',
+      reason: 'unsupported',
+      succeededImageIds: [],
+    }), '*');
   });
 });

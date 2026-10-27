@@ -329,6 +329,12 @@ export function formatShortcutForTooltip(value, options = {}) {
   return [...labels, OTHER_KEY_LABELS[key] || key].join('+');
 }
 
+/** Label for a single key without modifiers, such as the fixed Enter-to-send key. */
+export function formatKeyForTooltip(key, options = {}) {
+  const platform = resolvePlatform(typeof options === 'string' ? options : options.platform);
+  return (platform === 'mac' ? MAC_KEY_LABELS : OTHER_KEY_LABELS)[key] || key;
+}
+
 function isEditableTarget(target) {
   if (!target || typeof target.closest !== 'function') return false;
   return Boolean(target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]'));

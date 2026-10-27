@@ -280,6 +280,23 @@ describe('response timing content script', () => {
     ['mimo', 'https://aistudio.xiaomimimo.com/#/chat/test',
       '<div class="markdown-blocks"><div class="markdown-prose" data-is-typing="true"><p>Hi</p></div></div>',
       (thread) => thread.querySelector('[data-is-typing]').setAttribute('data-is-typing', 'false')],
+    ['chatgpt', 'https://chatgpt.com/c/test',
+      '<div data-talvt-turn-state="in_progress"><div data-markdown-text-style="assistant-message"><p>Hi</p></div></div>',
+      (thread) => thread.querySelector('[data-talvt-turn-state]').setAttribute('data-talvt-turn-state', 'complete')],
+    ['qwen-global', 'https://chat.qwen.ai/c/test',
+      '<div class="qwen-chat-message qwen-chat-message-assistant"><div class="response-message-content phase-answer">Hi</div></div>'
+        + '<button class="stop-button" aria-label="停止"></button>',
+      (thread) => thread.querySelector('.stop-button').remove()],
+    ['grok', 'https://grok.com/c/test',
+      '<div data-testid="assistant-message"><div class="response-content-markdown">Hi</div></div>'
+        + '<button aria-label="Stop model response"></button>',
+      (thread) => thread.querySelector('button').remove()],
+    ['meta-ai', 'https://www.meta.ai/prompt/test',
+      '<div data-testid="assistant-message" data-streaming-complete="false"><div class="markdown-content">Hi</div></div>',
+      (thread) => thread.querySelector('[data-testid="assistant-message"]').setAttribute('data-streaming-complete', 'true')],
+    ['doubao', 'https://www.doubao.com/chat/test',
+      '<div data-testid="receive_message"><div data-testid="message_text_content" data-streaming="true">Hi</div></div>',
+      (thread) => thread.querySelector('[data-streaming]').setAttribute('data-streaming', 'false')],
   ])('completes a %s answer once it stops typing', async (provider, url, answerHtml, stopTyping) => {
     window.happyDOM.setURL(url);
     document.body.innerHTML = '<div id="thread"></div>';
@@ -340,6 +357,28 @@ describe('response timing content script', () => {
     expect(getPhases('req-yuanbao')).toEqual(['first-output']);
     await vi.advanceTimersByTimeAsync(500);
     expect(getPhases('req-yuanbao')).toEqual(['first-output', 'complete']);
+  });
+
+  it('times a Google AI Mode answer from its main column, not the hidden reply label', async () => {
+    window.happyDOM.setURL('https://www.google.com/search?udm=50');
+    document.body.innerHTML = '<div id="thread"></div>';
+    const thread = document.getElementById('thread');
+
+    startSend('req-google');
+    await vi.advanceTimersByTimeAsync(1000);
+    thread.innerHTML = '<div data-subtree="aimc"><span>AI Mode reply for question</span>'
+      + '<div data-container-id="main-col"></div></div>';
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(getPhases('req-google')).toEqual([]);
+
+    thread.innerHTML = '<div data-subtree="aimc"><span>AI Mode reply for question</span>'
+      + '<div data-container-id="main-col">Answer</div></div>';
+    await vi.advanceTimersByTimeAsync(250);
+    expect(getTimingCalls('req-google')).toEqual([
+      expect.objectContaining({ phase: 'first-output', provider: 'google' }),
+    ]);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(getPhases('req-google')).toEqual(['first-output', 'complete']);
   });
 
   it('does not count a re-rendered previous answer as new output', async () => {
@@ -416,13 +455,13 @@ describe('response timing content script', () => {
   });
 
   it('does not time providers without timing support', async () => {
-    window.happyDOM.setURL('https://grok.com/');
+    window.happyDOM.setURL('https://claude.ai/new');
     document.body.innerHTML = '<div id="thread"></div>';
 
-    startSend('req-grok');
+    startSend('req-claude');
     document.getElementById('thread').innerHTML = '<div class="markdown">Answer</div>';
     await vi.advanceTimersByTimeAsync(10000);
 
-    expect(getPhases('req-grok')).toEqual([]);
+    expect(getPhases('req-claude')).toEqual([]);
   });
 });

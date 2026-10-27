@@ -1,8 +1,27 @@
 # Changelog
 
+## 2.18.0 - 2026-10-27
+- The upload button now attaches files as well as images: PDF, Word, Excel, PowerPoint, text, Markdown, CSV, JSON and common code files, by picking, pasting or dropping them (up to 10, 20MB each). Files show as cards with their name.
+- ChatGPT, Claude, Gemini, Grok, DeepSeek and Kimi receive files. Other AIs take images only; for them a file fill fails right away, their text is still filled but not sent, and you can retry.
+
 ## 2.17.1 - 2026-10-27
 - Blind mode no longer flickers: each provider page now stays reduced to its answers and the same empty composer box, instead of switching back to the provider's own page on every page change or focus change, which also left panels looking different from one another.
 - In blind mode, Doubao no longer shows a second empty box where its composer used to be, Google AI Mode's box sits at the bottom like the others instead of halfway up, and pages no longer show their own scrollbars, so every panel looks the same.
+
+## 2.17.0 - 2026-10-27
+- The composer's placeholder now starts with the focus-input shortcut, so you can see how to jump to the question box (hidden when page shortcuts are off).
+
+## 2.16.0 - 2026-10-27
+- Answer stats now time Qwen (Global), Grok, Meta AI, Doubao and Google AI Mode answers too.
+- Signed-in ChatGPT answers are timed again; before, ChatGPT's current signed-in page was not recognised, so its answers timed out and lost 5 points.
+- The Answer stats explanation now names the providers that are not timed (Claude, StepFun, Agnes and Hy AI Studio).
+
+## 2.15.0 - 2026-10-27
+- The composer's placeholder now shows its keys: Enter sends, Shift+Enter adds a line, and the fill shortcut fills without sending (hidden when page shortcuts are off).
+- Composer buttons now explain what they do on hover, below the name and shortcut: Send All, Fill, the reasoning levels, Prompt Library, Upload images, Clear all inputs, Keyboard shortcuts and AI mode mapping.
+
+## 2.14.0 - 2026-10-27
+- Answer stats no longer deduct for a timed answer that timed out without text when timing may simply have missed it; it only counts as a timeout. It costs points only when the provider's previous and next timed answers both showed text, and such confirmed failures lose 5 × log₂(1 + n) points per 30-day window instead of 5 each.
 
 ## 2.13.0 - 2026-10-27
 - Answer stats now time Zhipu, Z.ai and MiMo answers (first output, completion and timeouts) instead of showing —.

@@ -1039,7 +1039,7 @@
     "message": "Tasso di adozione"
   },
   "answerStatsNote": {
-    "message": "Tempi dall’invio al primo testo e alla risposta completata: mediana, con la media tra parentesi. Vengono misurati solo ChatGPT, Gemini, DeepSeek, Kimi, Qwen (China) e Yuanbao. Il tasso di adozione conta solo le domande in cui è stata adottata una risposta."
+    "message": "Tempi dall’invio al primo testo e alla risposta completata: mediana, con la media tra parentesi. Claude, StepFun, Agnes e Hy AI Studio non vengono misurati. Il tasso di adozione conta solo le domande in cui è stata adottata una risposta."
   },
   "answerStatsRecentTitle": {
     "message": "Domande degli ultimi 30 giorni"
@@ -1081,7 +1081,7 @@
     "message": "Punteggio"
   },
   "answerStatsScoreNote": {
-    "message": "Punteggio: una risposta adottata vale 5 punti. Usare una risposta ne aggiunge fino a 3: 1 per clic o scorrimento nel suo pannello, 1 per l’ingrandimento del pannello e 1 ogni 30 s di interazione. Il tempo di interazione somma gli intervalli fino a 15 s tra clic e scorrimenti e il tempo in cui il pannello resta ingrandito. Fai clic sul pulsante meno per sottrarre 5 punti; fai di nuovo clic per annullare. Una risposta misurata che scade senza testo perde anch’essa 5 punti e non ne guadagna per l’uso, a meno che tu non l’abbia adottata o vi abbia fatto clic o scorrimento."
+    "message": "Punteggio: una risposta adottata vale 5 punti. Usare una risposta ne aggiunge fino a 3: 1 per clic o scorrimento nel suo pannello, 1 per l’ingrandimento del pannello e 1 ogni 30 s di interazione. Il tempo di interazione somma gli intervalli fino a 15 s tra clic e scorrimenti e il tempo in cui il pannello resta ingrandito. Fai clic sul pulsante meno per sottrarre 5 punti; fai di nuovo clic per annullare. Una risposta misurata che scade senza testo, a meno che tu non l’abbia adottata o vi abbia fatto clic o scorrimento, non guadagna punti per l’uso e conta solo come scaduta, perché la misurazione potrebbe aver perso il testo. Perde punti solo se la risposta misurata precedente e quella successiva dello stesso fornitore hanno mostrato testo: n risposte così in 30 giorni costano in tutto 5 × log₂(1 + n) punti, quindi le ripetizioni costano meno."
   },
   "answerStatsColumnRecentScore": {
     "message": "Ultimi 30 giorni"
@@ -1376,5 +1376,50 @@
   },
   "panelNoteEditTitle": {
     "message": "Nota di una riga su questa IA"
+  },
+  "composerInputPlaceholder": {
+    "message": "Scrivi la domanda da inviare a tutti i provider di IA..."
+  },
+  "composerPlaceholderSend": {
+    "message": "$1 invia"
+  },
+  "composerPlaceholderNewLine": {
+    "message": "$1 nuova riga"
+  },
+  "composerPlaceholderFill": {
+    "message": "$1 solo compila"
+  },
+  "composerSendHint": {
+    "message": "Compila tutti i pannelli con la domanda e inviala"
+  },
+  "composerFillHint": {
+    "message": "Compila tutti i pannelli con la domanda senza inviare"
+  },
+  "composerNewChatHint": {
+    "message": "Avvia una nuova chat in tutti i pannelli"
+  },
+  "composerPromptLibraryHint": {
+    "message": "Scegli un prompt salvato da inserire"
+  },
+  "composerTierFastHint": {
+    "message": "Porta tutte le IA alla modalità più veloce"
+  },
+  "composerTierBalancedHint": {
+    "message": "Porta tutte le IA a una modalità bilanciata"
+  },
+  "composerTierDeepHint": {
+    "message": "Porta tutte le IA alla modalità di ragionamento più profonda"
+  },
+  "composerImageUploadTitle": {
+    "message": "Carica immagini o file\nAllega immagini o file da inviare a tutte le IA (puoi anche incollarli o trascinarli)"
+  },
+  "composerClearAllTitle": {
+    "message": "Cancella tutti gli input\nCancella questa casella, le immagini e l'input di ogni pannello"
+  },
+  "composerShortcutsTitle": {
+    "message": "Scorciatoie da tastiera\nVisualizza e modifica le scorciatoie"
+  },
+  "composerTierDetailsTitle": {
+    "message": "Corrispondenza modalità IA\nVedi quale modalità usa ogni IA per ogni livello"
   }
 }

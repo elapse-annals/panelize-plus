@@ -136,10 +136,10 @@
           <button id="prompt-library-btn" class="input-btn" title="Prompt Library">
             <span class="material-symbols-outlined">auto_awesome</span>
           </button>
-          <button id="image-upload-btn" class="input-btn" title="Upload Images">
-            <span class="material-symbols-outlined">add_photo_alternate</span>
+          <button id="image-upload-btn" class="input-btn" data-i18n-title="composerImageUploadTitle" title="Upload images or files">
+            <span class="material-symbols-outlined">attach_file</span>
           </button>
-          <input type="file" id="image-file-input" accept="image/*" multiple style="display: none;">
+          <input type="file" id="image-file-input" multiple style="display: none;">
           <button id="composer-new-chat-btn" class="composer-control" data-shortcut-action="newConversation" data-i18n-title="composerNewChat" title="New conversation">
             <span class="material-symbols-outlined" aria-hidden="true">add_comment</span>
             <span data-i18n="composerNewChat">New conversation</span>
@@ -151,7 +151,7 @@
             <button type="button" class="tier-option" data-tier="balanced" data-shortcut-action="tierBalanced" role="radio" aria-checked="false" data-i18n="composerTierBalanced">Balanced</button>
             <button type="button" class="tier-option" data-tier="deep" data-shortcut-action="tierDeep" role="radio" aria-checked="false" data-i18n="composerTierDeep">Deep</button>
           </div>
-          <button id="tier-details-btn" class="composer-control tier-details-btn" data-i18n-title="composerTierDetails" title="View AI mode mapping">
+          <button id="tier-details-btn" class="composer-control tier-details-btn" data-i18n-title="composerTierDetailsTitle" title="View AI mode mapping">
             <span class="material-symbols-outlined" aria-hidden="true">tune</span>
           </button>
           <span id="tier-status" class="composer-status" role="status" aria-live="polite"></span>
@@ -161,13 +161,13 @@
             <span class="material-symbols-outlined" aria-hidden="true">sort</span>
             <span id="provider-sort-label" data-i18n="optionProviderSortManual">Manual</span>
           </button>
-          <button id="keyboard-shortcuts-btn" class="composer-control" data-i18n-title="composerShortcuts" title="Keyboard shortcuts">
+          <button id="keyboard-shortcuts-btn" class="composer-control" data-i18n-title="composerShortcutsTitle" title="Keyboard shortcuts">
             <span class="material-symbols-outlined" aria-hidden="true">keyboard</span>
           </button>
           <div class="input-actions">
             <span id="send-status" class="send-status"></span>
             <!-- Clear All Inputs Button -->
-            <button id="clear-all-btn" class="clear-btn" title="Clear All Inputs">
+            <button id="clear-all-btn" class="clear-btn" data-i18n-title="composerClearAllTitle" title="Clear all inputs">
               <span class="material-symbols-outlined">backspace</span>
             </button>
             <span class="composer-divider" aria-hidden="true"></span>

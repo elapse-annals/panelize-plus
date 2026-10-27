@@ -1039,7 +1039,7 @@
     "message": "Übernahmequote"
   },
   "answerStatsNote": {
-    "message": "Zeiten ab dem Senden bis zum ersten Text und bis zur fertigen Antwort: Median, in Klammern der Durchschnitt. Gemessen werden nur ChatGPT, Gemini, DeepSeek, Kimi, Qwen (China) und Yuanbao. Die Übernahmequote zählt nur Fragen, bei denen eine Antwort übernommen wurde."
+    "message": "Zeiten ab dem Senden bis zum ersten Text und bis zur fertigen Antwort: Median, in Klammern der Durchschnitt. Claude, StepFun, Agnes und Hy AI Studio werden nicht gemessen. Die Übernahmequote zählt nur Fragen, bei denen eine Antwort übernommen wurde."
   },
   "answerStatsRecentTitle": {
     "message": "Fragen der letzten 30 Tage"
@@ -1081,7 +1081,7 @@
     "message": "Punkte"
   },
   "answerStatsScoreNote": {
-    "message": "Punkte: Eine übernommene Antwort bringt 5 Punkte. Die Nutzung einer Antwort bringt bis zu 3 weitere: 1 für Klicken oder Scrollen in ihrem Bereich, 1 für das Vergrößern des Bereichs und 1 je 30 s Nutzungszeit. Die Nutzungszeit summiert die Abstände zwischen Klicks und Scrollen von höchstens 15 s sowie die Zeit, in der der Bereich vergrößert ist. Mit einem Klick auf die Minustaste werden 5 Punkte abgezogen; mit einem weiteren Klick wird dies rückgängig gemacht. Eine gemessene Antwort, die ohne Text abläuft, verliert ebenfalls 5 Punkte und erhält keine Punkte für die Nutzung, sofern sie weder übernommen noch darin geklickt oder gescrollt wurde."
+    "message": "Punkte: Eine übernommene Antwort bringt 5 Punkte. Die Nutzung einer Antwort bringt bis zu 3 weitere: 1 für Klicken oder Scrollen in ihrem Bereich, 1 für das Vergrößern des Bereichs und 1 je 30 s Nutzungszeit. Die Nutzungszeit summiert die Abstände zwischen Klicks und Scrollen von höchstens 15 s sowie die Zeit, in der der Bereich vergrößert ist. Mit einem Klick auf die Minustaste werden 5 Punkte abgezogen; mit einem weiteren Klick wird dies rückgängig gemacht. Eine gemessene Antwort, die ohne Text abläuft und weder übernommen noch angeklickt oder gescrollt wurde, erhält keine Punkte für die Nutzung und zählt nur als Zeitüberschreitung, da die Messung den Text verpasst haben kann. Punkte verliert sie nur, wenn die vorherige und die nächste gemessene Antwort desselben Anbieters Text zeigten: n solche Antworten in 30 Tagen kosten zusammen 5 × log₂(1 + n) Punkte, Wiederholungen also weniger."
   },
   "answerStatsColumnRecentScore": {
     "message": "Letzte 30 Tage"
@@ -1376,5 +1376,50 @@
   },
   "panelNoteEditTitle": {
     "message": "Kurze Notiz zu dieser KI"
+  },
+  "composerInputPlaceholder": {
+    "message": "Frage eingeben, um sie an alle KI-Anbieter zu senden..."
+  },
+  "composerPlaceholderSend": {
+    "message": "$1 senden"
+  },
+  "composerPlaceholderNewLine": {
+    "message": "$1 neue Zeile"
+  },
+  "composerPlaceholderFill": {
+    "message": "$1 nur einfügen"
+  },
+  "composerSendHint": {
+    "message": "Frage in alle Panels einfügen und senden"
+  },
+  "composerFillHint": {
+    "message": "Frage in alle Panels einfügen, ohne zu senden"
+  },
+  "composerNewChatHint": {
+    "message": "In allen Panels einen neuen Chat starten"
+  },
+  "composerPromptLibraryHint": {
+    "message": "Gespeicherten Prompt auswählen und einfügen"
+  },
+  "composerTierFastHint": {
+    "message": "Alle KIs auf ihren schnellsten Modus stellen"
+  },
+  "composerTierBalancedHint": {
+    "message": "Alle KIs auf einen ausgewogenen Modus stellen"
+  },
+  "composerTierDeepHint": {
+    "message": "Alle KIs auf ihren gründlichsten Denkmodus stellen"
+  },
+  "composerImageUploadTitle": {
+    "message": "Bilder oder Dateien hochladen\nBilder oder Dateien für alle KIs anhängen (Einfügen oder Hineinziehen geht auch)"
+  },
+  "composerClearAllTitle": {
+    "message": "Alle Eingaben leeren\nDieses Feld, seine Bilder und die Eingaben aller Panels leeren"
+  },
+  "composerShortcutsTitle": {
+    "message": "Tastenkürzel\nTastenkürzel ansehen und ändern"
+  },
+  "composerTierDetailsTitle": {
+    "message": "KI-Modus-Zuordnung\nZeigt, welchen Modus jede KI pro Stufe nutzt"
   }
 }

@@ -1368,6 +1368,31 @@ body {
   font-size: 16px;
 }
 
+.image-preview-item.file-preview {
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+  box-sizing: border-box;
+  color: #555;
+}
+
+.image-preview-item .file-preview-icon {
+  font-size: 24px;
+}
+
+.image-preview-item .file-preview-name {
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .image-preview-item:hover .remove-image {
   opacity: 1;
 }
@@ -2182,6 +2207,10 @@ body {
 [data-theme="dark"] .image-preview-item {
   border-color: #444;
   background: #1e1e1e;
+}
+
+[data-theme="dark"] .image-preview-item.file-preview {
+  color: #ccc;
 }
 
 [data-theme="dark"] .image-preview-item .remove-image {

@@ -1054,7 +1054,7 @@
     "message": "Adoption rate"
   },
   "answerStatsNote": {
-    "message": "Times run from Send to the first text and to the finished answer: median, with the average in brackets. Only ChatGPT, Gemini, DeepSeek, Kimi, Qwen (China) and Yuanbao are timed. Adoption rate counts the questions where an answer was adopted."
+    "message": "Times run from Send to the first text and to the finished answer: median, with the average in brackets. Claude, StepFun, Agnes and Hy AI Studio are not timed. Adoption rate counts the questions where an answer was adopted."
   },
   "answerStatsRecentTitle": {
     "message": "Questions in the last 30 days"
@@ -1096,7 +1096,7 @@
     "message": "Score"
   },
   "answerStatsScoreNote": {
-    "message": "Score: an adopted answer earns 5 points. Using an answer earns up to 3 more: 1 for clicking or scrolling in its panel, 1 for enlarging the panel, and 1 for every 30 s of engaged time. Engaged time adds the gaps between clicks and scrolls up to 15 s apart, and the time the panel stays enlarged. Click the minus button to deduct 5 points; click again to undo. A timed answer that times out without any text also loses 5 points and earns nothing for use, unless you adopted it or clicked or scrolled in it."
+    "message": "Score: an adopted answer earns 5 points. Using an answer earns up to 3 more: 1 for clicking or scrolling in its panel, 1 for enlarging the panel, and 1 for every 30 s of engaged time. Engaged time adds the gaps between clicks and scrolls up to 15 s apart, and the time the panel stays enlarged. Click the minus button to deduct 5 points; click again to undo. A timed answer that times out without any text, unless you adopted it or clicked or scrolled in it, earns nothing for use and only counts as a timeout, since timing may have missed the text. It loses points only when the provider's previous and next timed answers both showed text: n such answers within 30 days lose 5 × log₂(1 + n) points in total, so repeats cost less."
   },
   "answerStatsColumnRecentScore": {
     "message": "Last 30 days"
@@ -1391,5 +1391,50 @@
   },
   "panelNoteEditTitle": {
     "message": "Add a one-line note about this AI"
+  },
+  "composerInputPlaceholder": {
+    "message": "Enter your question to send to all AI providers..."
+  },
+  "composerPlaceholderSend": {
+    "message": "$1 send"
+  },
+  "composerPlaceholderNewLine": {
+    "message": "$1 new line"
+  },
+  "composerPlaceholderFill": {
+    "message": "$1 fill only"
+  },
+  "composerSendHint": {
+    "message": "Fill every panel with the question and send it"
+  },
+  "composerFillHint": {
+    "message": "Fill every panel with the question without sending"
+  },
+  "composerNewChatHint": {
+    "message": "Start a new chat in every panel"
+  },
+  "composerPromptLibraryHint": {
+    "message": "Pick a saved prompt to insert"
+  },
+  "composerTierFastHint": {
+    "message": "Switch every AI to its fastest mode"
+  },
+  "composerTierBalancedHint": {
+    "message": "Switch every AI to a balanced mode"
+  },
+  "composerTierDeepHint": {
+    "message": "Switch every AI to its deepest reasoning mode"
+  },
+  "composerImageUploadTitle": {
+    "message": "Upload images or files\nAttach images or files to send to every AI (pasting or dropping also works)"
+  },
+  "composerClearAllTitle": {
+    "message": "Clear all inputs\nClear this box, its images and every panel's input"
+  },
+  "composerShortcutsTitle": {
+    "message": "Keyboard shortcuts\nView and change the shortcuts"
+  },
+  "composerTierDetailsTitle": {
+    "message": "AI mode mapping\nSee which mode each AI uses for each level"
   }
 }

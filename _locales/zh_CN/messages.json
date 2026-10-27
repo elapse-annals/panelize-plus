@@ -1033,7 +1033,7 @@
     "message": "采纳率"
   },
   "answerStatsNote": {
-    "message": "时间从点击发送开始，分别计到出现第一个字和回答完成：显示中位数，括号内为平均值。只对 ChatGPT、Gemini、DeepSeek、Kimi、Qwen (China) 和 Yuanbao 计时。采纳率只统计已采纳回答的问题。"
+    "message": "时间从点击发送开始，分别计到出现第一个字和回答完成：显示中位数，括号内为平均值。Claude、StepFun、Agnes 和 Hy AI Studio 不计时。采纳率只统计已采纳回答的问题。"
   },
   "answerStatsRecentTitle": {
     "message": "近 30 天的问题"
@@ -1075,7 +1075,7 @@
     "message": "得分"
   },
   "answerStatsScoreNote": {
-    "message": "得分：被采纳的回答得 5 分。使用回答最多再得 3 分：在面板中点击或滚动得 1 分，放大面板得 1 分，每 30 秒互动时长得 1 分。互动时长累计相隔不超过 15 秒的点击和滚动之间的时间，以及面板保持放大的时间。点击减分按钮扣 5 分，再点撤销。计时的回答超时仍未出字、且未被采纳也没有点击或滚动时，同样扣 5 分，且使用不得分。"
+    "message": "得分：被采纳的回答得 5 分。使用回答最多再得 3 分：在面板中点击或滚动得 1 分，放大面板得 1 分，每 30 秒互动时长得 1 分。互动时长累计相隔不超过 15 秒的点击和滚动之间的时间，以及面板保持放大的时间。点击减分按钮扣 5 分，再点撤销。计时的回答超时仍未出字、且未被采纳也没有点击或滚动时，使用不得分，但可能只是没统计到，所以只计入超时次数、不扣分；只有该服务前后两次计时的回答都正常出字，才认定确实没有回答并扣分：30 天内 n 次共扣 5 × log₂(1 + n) 分，次数越多每次扣得越少。"
   },
   "answerStatsColumnRecentScore": {
     "message": "近 30 天"
@@ -1370,5 +1370,50 @@
   },
   "panelNoteEditTitle": {
     "message": "为这个 AI 写一句话备注"
+  },
+  "composerInputPlaceholder": {
+    "message": "输入问题，发送给所有 AI..."
+  },
+  "composerPlaceholderSend": {
+    "message": "$1 发送"
+  },
+  "composerPlaceholderNewLine": {
+    "message": "$1 换行"
+  },
+  "composerPlaceholderFill": {
+    "message": "$1 仅填充"
+  },
+  "composerSendHint": {
+    "message": "把问题填入所有面板并发送"
+  },
+  "composerFillHint": {
+    "message": "把问题填入所有面板，不发送"
+  },
+  "composerNewChatHint": {
+    "message": "在所有面板开始新对话"
+  },
+  "composerPromptLibraryHint": {
+    "message": "选择已保存的提示词插入"
+  },
+  "composerTierFastHint": {
+    "message": "把所有 AI 切换到最快模式"
+  },
+  "composerTierBalancedHint": {
+    "message": "把所有 AI 切换到均衡模式"
+  },
+  "composerTierDeepHint": {
+    "message": "把所有 AI 切换到最深推理模式"
+  },
+  "composerImageUploadTitle": {
+    "message": "上传图片或文件\n附加图片或文件发送给所有 AI（也可直接粘贴或拖入）"
+  },
+  "composerClearAllTitle": {
+    "message": "清空全部输入\n清空本输入框、图片和所有面板的输入"
+  },
+  "composerShortcutsTitle": {
+    "message": "快捷键\n查看和修改快捷键"
+  },
+  "composerTierDetailsTitle": {
+    "message": "AI 档位匹配\n查看每个档位下各 AI 使用的模式"
   }
 }

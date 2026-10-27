@@ -14,6 +14,12 @@ import {
 } from '../modules/mimo-session-cookies.js';
 import { reconcileOptionalProviderAccess } from '../modules/optional-provider-access.js';
 import {
+  ATTACHMENT_ACCEPT,
+  isImageAttachment,
+  isSupportedAttachmentFile,
+  resolveAttachmentType
+} from '../modules/attachment-files.js';
+import {
   DEFAULT_GOOGLE_PROVIDER_MODE,
   GOOGLE_PROVIDER_MODE_AI,
   GOOGLE_PROVIDER_MODE_SEARCH,
@@ -2215,7 +2221,7 @@ export async function broadcastMessage(text, autoSubmit = true) {
         await triggerSendButtons();
         return;
       }
-      showToast('Please enter a message or upload an image');
+      showToast('Please enter a message or attach a file');
       return;
     }
 
@@ -3255,26 +3261,27 @@ function setupShareSnapshot() {
 }
 
 // ===== Image Management =====
-const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB per image
+// Images and other attachments share one list, kept as uploadedImages.
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB per attachment
 const MAX_IMAGE_COUNT = 10;
 
 async function addImage(file) {
   try {
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      showToast('Please select an image file');
+    if (!isSupportedAttachmentFile(file)) {
+      showToast('Unsupported file type');
       return false;
     }
 
     // Validate file size
     if (file.size > MAX_IMAGE_SIZE) {
-      showToast('Image size must be less than 20MB');
+      showToast('File size must be less than 20MB');
       return false;
     }
 
-    // Validate image count
+    // Validate attachment count
     if (uploadedImages.length >= MAX_IMAGE_COUNT) {
-      showToast(`Maximum ${MAX_IMAGE_COUNT} images allowed`);
+      showToast(`Maximum ${MAX_IMAGE_COUNT} attachments allowed`);
       return false;
     }
 
@@ -3286,7 +3293,7 @@ async function addImage(file) {
     uploadedImages.push({
       id: imageId,
       name: file.name,
-      type: file.type,
+      type: resolveAttachmentType(file),
       dataUrl: dataUrl
     });
     resetFillRetryState();
@@ -3295,8 +3302,8 @@ async function addImage(file) {
     renderImagePreviews();
     return true;
   } catch (error) {
-    console.error('Error adding image:', error);
-    showToast('Failed to add image');
+    console.error('Error adding attachment:', error);
+    showToast('Failed to add file');
     return false;
   }
 }
@@ -3331,8 +3338,11 @@ function renderImagePreviews() {
   }
 
   container.innerHTML = uploadedImages.map(img => `
-    <div class="image-preview-item" data-image-id="${img.id}">
-      <img src="${img.dataUrl}" alt="${img.name}">
+    <div class="image-preview-item${isImageAttachment(img) ? '' : ' file-preview'}" data-image-id="${img.id}" title="${escapeHtml(img.name)}">
+      ${isImageAttachment(img)
+        ? `<img src="${img.dataUrl}" alt="${escapeHtml(img.name)}">`
+        : `<span class="material-symbols-outlined file-preview-icon" aria-hidden="true">description</span>
+      <span class="file-preview-name">${escapeHtml(img.name)}</span>`}
       <button class="remove-image" onclick="window.removeImageById('${img.id}')" title="Remove">
         <span class="material-symbols-outlined">close</span>
       </button>
@@ -4290,6 +4300,7 @@ function setupEventListeners() {
   const imageUploadBtn = document.getElementById('image-upload-btn');
   const imageFileInput = document.getElementById('image-file-input');
   const inputWrapper = document.querySelector('.input-wrapper');
+  imageFileInput.accept = ATTACHMENT_ACCEPT;
 
   imageUploadBtn.addEventListener('click', () => {
     imageFileInput.click();
@@ -4319,7 +4330,7 @@ function setupEventListeners() {
     e.preventDefault();
     inputWrapper.classList.remove('drag-over');
 
-    const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+    const files = Array.from(e.dataTransfer.files).filter(isSupportedAttachmentFile);
     for (const file of files) {
       await addImage(file);
     }
@@ -4443,16 +4454,15 @@ function setupEventListeners() {
     }
   });
 
-  // Paste image support (must be after inputTextarea is defined)
+  // Paste image and file support (must be after inputTextarea is defined)
   inputTextarea.addEventListener('paste', async (e) => {
     const items = Array.from(e.clipboardData.items);
     for (const item of items) {
-      if (item.type.startsWith('image/')) {
+      if (item.kind !== 'file') continue;
+      const file = item.getAsFile();
+      if (file && isSupportedAttachmentFile(file)) {
         e.preventDefault();
-        const file = item.getAsFile();
-        if (file) {
-          await addImage(file);
-        }
+        await addImage(file);
       }
     }
   });

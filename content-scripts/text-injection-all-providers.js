@@ -104,9 +104,10 @@
       // Current layout: the answer's markdown inside the assistant turn, whose
       // own text starts with a hidden speaker label. The turn carries
       // data-message-streaming while it generates. The author-role turn is the
-      // legacy layout.
-      answerSelector: '[data-message-role="assistant"] [data-assistant-markdown-root], [data-message-author-role="assistant"]',
-      busySelector: `${CHATGPT_STOP_BUTTON_SELECTOR}, [data-message-role="assistant"][data-message-streaming]`,
+      // legacy layout. Signed in, the answer is the assistant markdown root and
+      // its turn carries data-talvt-turn-state="in_progress" while it generates.
+      answerSelector: '[data-message-role="assistant"] [data-assistant-markdown-root], [data-message-author-role="assistant"], [data-markdown-text-style="assistant-message"]',
+      busySelector: `${CHATGPT_STOP_BUTTON_SELECTOR}, [data-message-role="assistant"][data-message-streaming], [data-talvt-turn-state="in_progress"]`,
       settleMs: 3000
     },
     gemini: {
@@ -154,6 +155,36 @@
       answerSelector: '.markdown-blocks',
       busySelector: '[data-is-typing="true"]',
       settleMs: 3000
+    },
+    'qwen-global': {
+      // The answer content appears once thinking ends; the stop button shows
+      // for the whole reply.
+      answerSelector: '.qwen-chat-message-assistant .response-message-content',
+      busySelector: 'button.stop-button',
+      settleMs: 3000
+    },
+    grok: {
+      answerSelector: '[data-testid="assistant-message"] .response-content-markdown',
+      busySelector: 'button[aria-label="Stop model response"]',
+      settleMs: 3000
+    },
+    'meta-ai': {
+      // The thinking summary and the answer each render as .markdown-content.
+      answerSelector: '[data-testid="assistant-message"] .markdown-content',
+      busySelector: '[data-testid="composer-stop-button"], [data-testid="assistant-message"][data-streaming-complete="false"]',
+      settleMs: 3000
+    },
+    doubao: {
+      answerSelector: '[data-testid="receive_message"] [data-testid="message_text_content"]',
+      busySelector: '[data-testid="message_text_content"][data-streaming="true"]',
+      settleMs: 3000
+    },
+    google: {
+      // AI Mode answers in place; each turn's main column holds the answer
+      // without the hidden "AI Mode reply for" label.
+      answerSelector: '[data-subtree="aimc"] [data-container-id="main-col"]',
+      busySelector: null,
+      settleMs: 5000
     }
   };
   const RESPONSE_TIMING_CHECK_INTERVAL_MS = 250;
@@ -347,6 +378,18 @@
     stepfun: true,
     google: true  // Google AI Mode supports images
   };
+
+  // Providers whose upload path also takes non-image files (PDFs, documents,
+  // code). The others only verify image thumbnails, so they report such files
+  // as unsupported instead of waiting for a preview that never appears.
+  const PROVIDER_FILE_SUPPORT = new Set([
+    'chatgpt',
+    'claude',
+    'gemini',
+    'grok',
+    'deepseek',
+    'kimi'
+  ]);
 
   // Provider-specific file input selectors for image upload
   const FILE_INPUT_SELECTORS = {
@@ -3238,6 +3281,11 @@
   async function injectSingleImage(provider, imageData, { retry = false } = {}) {
     console.log('[Image Injection] Injecting image to', provider);
 
+    if (!isImageFileData(imageData) && !PROVIDER_FILE_SUPPORT.has(provider)) {
+      console.warn('[Image Injection] Provider does not take non-image files:', provider);
+      return createImageInjectionFailure(IMAGE_INJECTION_REASONS.UNSUPPORTED);
+    }
+
     // Use provider-specific strategies
     let result;
     switch (provider) {
@@ -3333,6 +3381,29 @@
     return !accept || accept.includes('image/') || [
       '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.avif', '.apng'
     ].some(extension => accept.includes(extension));
+  }
+
+  function isImageFileData(fileData) {
+    return typeof fileData?.type === 'string' && fileData.type.startsWith('image/');
+  }
+
+  // Whether the input's accept filter takes this file; images keep the image check.
+  function acceptsFile(fileInput, fileData) {
+    if (isImageFileData(fileData)) {
+      return acceptsImageFiles(fileInput);
+    }
+    const accept = (fileInput?.getAttribute('accept') || '').toLowerCase();
+    if (!accept) {
+      return true;
+    }
+    const type = (fileData?.type || '').toLowerCase();
+    const name = (fileData?.name || '').toLowerCase();
+    return accept.split(',').map(entry => entry.trim()).filter(Boolean).some(entry => {
+      if (entry === '*' || entry === '*/*') return true;
+      if (entry.startsWith('.')) return name.endsWith(entry);
+      if (entry.endsWith('/*')) return type.startsWith(entry.slice(0, -1));
+      return entry === type;
+    });
   }
 
   async function createImageFile(imageData) {
@@ -3624,9 +3695,9 @@
     return editor?.closest('form') || null;
   }
 
-  function findGrokFileInput(composer) {
+  function findGrokFileInput(composer, imageData) {
     return [...(composer?.querySelectorAll('input[type="file"]') || [])]
-      .find(input => acceptsImageFiles(input)) || null;
+      .find(input => acceptsFile(input, imageData)) || null;
   }
 
   function countGrokAttachmentPreviews(composer, fileName) {
@@ -3652,14 +3723,14 @@
       }
 
       const file = await createImageFile(imageData);
-      let fileInput = findGrokFileInput(composer);
+      let fileInput = findGrokFileInput(composer, imageData);
       if (!fileInput) {
         // Grok ignores synthetic clicks when deciding whether to open its
         // attachment menu. Its native composer file input is still usable;
         // only use synthetic UI events to wake a lazily mounted input.
         attachButton.click();
         dispatchDragEventsToWakeInput(composer, file);
-        fileInput = await waitForFileInput(() => findGrokFileInput(composer));
+        fileInput = await waitForFileInput(() => findGrokFileInput(composer, imageData));
       }
       if (!fileInput) {
         return createImageInjectionFailure(IMAGE_INJECTION_REASONS.CONTROL_NOT_FOUND);
@@ -3691,9 +3762,9 @@
     return findClosestAncestorContaining(editor, 'input[type="file"]');
   }
 
-  function findDeepSeekFileInput(composer) {
+  function findDeepSeekFileInput(composer, imageData) {
     return [...(composer?.querySelectorAll('input[type="file"]') || [])]
-      .find(input => input.multiple && acceptsImageFiles(input)) || null;
+      .find(input => input.multiple && acceptsFile(input, imageData)) || null;
   }
 
   async function injectImageToDeepSeek(imageData) {
@@ -3704,10 +3775,10 @@
       }
 
       const file = await createImageFile(imageData);
-      let fileInput = findDeepSeekFileInput(composer);
+      let fileInput = findDeepSeekFileInput(composer, imageData);
       if (!fileInput) {
         dispatchDragEventsToWakeInput(composer, file);
-        fileInput = await waitForFileInput(() => findDeepSeekFileInput(composer));
+        fileInput = await waitForFileInput(() => findDeepSeekFileInput(composer, imageData));
       }
       if (!fileInput) {
         return createImageInjectionFailure(IMAGE_INJECTION_REASONS.CONTROL_NOT_FOUND);
@@ -3893,7 +3964,7 @@
       if (!fileInput) {
         return createImageInjectionFailure(IMAGE_INJECTION_REASONS.UNSUPPORTED);
       }
-      if (!acceptsImageFiles(fileInput)) {
+      if (!acceptsFile(fileInput, imageData)) {
         return createImageInjectionFailure(IMAGE_INJECTION_REASONS.CONTROL_NOT_FOUND);
       }
 
