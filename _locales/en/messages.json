@@ -240,7 +240,7 @@
     "message": "Prompt Library"
   },
   "descPromptLibrary": {
-    "message": "Import curated meta-prompts for AI workflows, research, coding, and analysis"
+    "message": "Add the built-in prompt modes or import your own prompts"
   },
   "labelDefaultLibrary": {
     "message": "Default Prompt Library"
@@ -722,7 +722,7 @@
     "message": "Default Prompt Library"
   },
   "descDefaultPromptLibrary": {
-    "message": "Meta-prompts for prompt refinement, planning, coding, testing, research, writing, and more. Includes variables support for dynamic templates."
+    "message": "The built-in prompt modes: Concise, Learning, Challenge and Brainstorm. Modes already in your library are not added again."
   },
   "statStorageUsed": {
     "message": "Storage Used"
@@ -1403,6 +1403,24 @@
   "composerSendBlockedNewChat": {
     "message": "New conversations are starting. Your draft is kept; send when they are ready."
   },
+  "composerPreparingHold": {
+    "message": "Preparing AIs: $1/$2 ready. Sending is paused; keep typing."
+  },
+  "composerWaitingFor": {
+    "message": "Waiting for $1."
+  },
+  "composerAllReady": {
+    "message": "All $1 AIs are ready."
+  },
+  "composerNotReady": {
+    "message": "$1/$2 AIs ready. Sending is back on; check sign-in or reload the others."
+  },
+  "composerNotReadyNames": {
+    "message": "Not ready: $1."
+  },
+  "composerSendBlockedPreparing": {
+    "message": "The AIs are still loading. Your draft is kept; send when they are ready."
+  },
   "composerStartingChatsHold": {
     "message": "Starting new conversations… Sending is paused; keep typing."
   },
@@ -1553,6 +1571,9 @@
   "composerPlaceholderTriggers": {
     "message": "Auto: $1"
   },
+  "composerTriggerCompletionHint": {
+    "message": "Tab · $1"
+  },
   "promptTriggersLabel": {
     "message": "Trigger words (Auto mode)"
   },
@@ -1568,6 +1589,12 @@
   "aiSummaryTitle": {
     "message": "AI summary"
   },
+  "aiSummaryExpand": {
+    "message": "Expand"
+  },
+  "aiSummaryShrink": {
+    "message": "Shrink"
+  },
   "aiSummaryCopy": {
     "message": "Copy summary"
   },
@@ -1579,6 +1606,18 @@
   },
   "aiSummaryDisagreements": {
     "message": "Disagreements"
+  },
+  "aiSummaryVerdict": {
+    "message": "Verdict"
+  },
+  "aiSummaryConsensus": {
+    "message": "Agreed"
+  },
+  "aiSummaryUnique": {
+    "message": "Unique insights"
+  },
+  "aiSummaryAllSources": {
+    "message": "All $1 AIs"
   },
   "aiSummaryCollecting": {
     "message": "Reading the answers…"
@@ -1672,5 +1711,29 @@
   },
   "msgAiSummaryTestFailed": {
     "message": "API test failed: $1"
+  },
+  "composerPreparingCanSend": {
+    "message": "$1/$2 AIs ready. You can send; the rest get the question once they are ready."
+  },
+  "composerSkippedPreparing": {
+    "message": "$1 AIs were still loading; they get this question once they are ready."
+  },
+  "composerSkippedPreparingFiles": {
+    "message": "$1 AIs were still loading and were skipped; use Retry Failed once they are ready."
+  },
+  "promptModeEdit": {
+    "message": "Edit"
+  },
+  "promptModeDelete": {
+    "message": "Delete"
+  },
+  "promptModeNew": {
+    "message": "New mode"
+  },
+  "promptModeDeleteConfirm": {
+    "message": "Delete the mode \"$1\"?"
+  },
+  "promptModeDeleted": {
+    "message": "Mode deleted"
   }
 }

@@ -10,22 +10,23 @@
  * the conversation is unchanged because only the outgoing message carries it.
  */
 
-// Seed order, with each built-in mode's locale keys and English fallbacks.
+// Menu and seed order (Concise, Learning, Challenge, Brainstorm), with each
+// built-in mode's locale keys and English fallbacks.
 // `id` becomes the seeded prompt's modeKey, which also matches the
 // selectedPromptMode values saved before modes moved into the library.
 export const PROMPT_MODES = [
-  { id: 'learning', labelKey: 'promptModeLearning', label: 'Learning',
-    hintKey: 'promptModeLearningHint', hint: 'Append a teaching instruction: conclusion first, then the reasoning',
-    triggers: ['/study', '/learn'] },
   { id: 'concise', labelKey: 'promptModeConcise', label: 'Concise',
     hintKey: 'promptModeConciseHint', hint: 'Append a concise instruction: conclusion and key points only',
     triggers: ['/brief', '/concise'] },
-  { id: 'brainstorm', labelKey: 'promptModeBrainstorm', label: 'Brainstorm',
-    hintKey: 'promptModeBrainstormHint', hint: 'Append a brainstorm instruction: many varied angles, no early verdict',
-    triggers: ['/brainstorm', '/idea'] },
+  { id: 'learning', labelKey: 'promptModeLearning', label: 'Learning',
+    hintKey: 'promptModeLearningHint', hint: 'Append a teaching instruction: conclusion first, then the reasoning',
+    triggers: ['/study', '/learn'] },
   { id: 'compete', labelKey: 'promptModeCompete', label: 'Challenge',
     hintKey: 'promptModeCompeteHint', hint: 'Append a challenge instruction: aim to win the side-by-side comparison',
-    triggers: ['/challenge', '/compete'] }
+    triggers: ['/challenge', '/compete'] },
+  { id: 'brainstorm', labelKey: 'promptModeBrainstorm', label: 'Brainstorm',
+    hintKey: 'promptModeBrainstormHint', hint: 'Append a brainstorm instruction: many varied angles, no early verdict',
+    triggers: ['/brainstorm', '/idea'] }
 ];
 
 // The composer's Auto choice: no mode by default, but a mode prompt's trigger
@@ -117,10 +118,40 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// A trigger word is a whole word: it may not follow a path, URL or identifier
+// character (a/study, https://x/study) or be followed by one (/studying,
+// /study.md). Whitespace, Chinese text and punctuation may touch it.
+const TRIGGER_NOT_AFTER = '(?<![A-Za-z0-9_/.:@%~#&=+\\-])';
+const TRIGGER_NOT_BEFORE = '(?![A-Za-z0-9_/.\\-])';
+
+/**
+ * Trigger word matches in `text`, in text order, as { start, end, prompt }.
+ * Matching ignores case; overlapping matches keep the earlier one.
+ *
+ * @param {string} text
+ * @param {Array<object>} modePrompts - Prompts from selectModePrompts.
+ * @returns {Array<{ start: number, end: number, prompt: object }>}
+ */
+function findPromptModeMatches(text, modePrompts) {
+  const found = [];
+  for (const prompt of Array.isArray(modePrompts) ? modePrompts : []) {
+    for (const trigger of normalizePromptTriggers(prompt?.triggers)) {
+      const pattern = new RegExp(`${TRIGGER_NOT_AFTER}${escapeRegExp(trigger)}${TRIGGER_NOT_BEFORE}`, 'giu');
+      for (const match of text.matchAll(pattern)) {
+        found.push({ start: match.index, end: match.index + match[0].length, prompt });
+      }
+    }
+  }
+  const kept = [];
+  for (const match of found.sort((a, b) => a.start - b.start)) {
+    if (!kept.length || match.start >= kept[kept.length - 1].end) kept.push(match);
+  }
+  return kept;
+}
+
 /**
  * Finds the mode prompts whose trigger words appear in `text` as whole words
- * and removes those words from it. Matching ignores case. Each matched mode
- * counts once, in menu order.
+ * and removes those words from it. Each matched mode counts once, in menu order.
  *
  * @param {string} text - The question as the user typed it.
  * @param {Array<object>} modePrompts - Prompts from selectModePrompts.
@@ -128,23 +159,45 @@ function escapeRegExp(value) {
  */
 export function detectPromptModeTriggers(text, modePrompts) {
   if (typeof text !== 'string' || !text) return { text, prompts: [] };
-  let remaining = text;
-  const prompts = [];
-  for (const prompt of Array.isArray(modePrompts) ? modePrompts : []) {
-    let matched = false;
-    for (const trigger of normalizePromptTriggers(prompt?.triggers)) {
-      const pattern = new RegExp(`(^|\\s)${escapeRegExp(trigger)}(?=\\s|$)`, 'giu');
-      const next = remaining.replace(pattern, '$1');
-      if (next !== remaining) {
-        matched = true;
-        remaining = next;
-      }
-    }
-    if (matched) prompts.push(prompt);
+  const matches = findPromptModeMatches(text, modePrompts);
+  if (!matches.length) return { text, prompts: [] };
+  let remaining = '';
+  let cursor = 0;
+  for (const match of matches) {
+    remaining += text.slice(cursor, match.start);
+    cursor = match.end;
   }
-  if (!prompts.length) return { text, prompts };
+  remaining += text.slice(cursor);
+  const prompts = (Array.isArray(modePrompts) ? modePrompts : [])
+    .filter(prompt => matches.some(match => match.prompt === prompt));
   // Only the edges are trimmed; the rest of the question keeps its spacing.
   return { text: remaining.trim(), prompts };
+}
+
+/**
+ * The trigger word the user is typing at `caret`, for Tab completion: "/st"
+ * completes to the first trigger, in menu order, that starts with it. Only at
+ * the end of a line, so the inline hint never covers text after the caret.
+ *
+ * @param {string} text
+ * @param {number} caret - Caret offset in `text`.
+ * @param {Array<object>} modePrompts - Prompts from selectModePrompts.
+ * @returns {{ start: number, end: number, trigger: string, rest: string, prompt: object } | null}
+ */
+export function findPromptTriggerCompletion(text, caret, modePrompts) {
+  if (typeof text !== 'string' || !Number.isInteger(caret) || caret < 0 || caret > text.length) return null;
+  if (caret < text.length && text[caret] !== '\n') return null;
+  const match = new RegExp(`${TRIGGER_NOT_AFTER}/[^\\s/]+$`, 'u').exec(text.slice(0, caret));
+  if (!match) return null;
+  const typed = match[0].toLowerCase();
+  for (const prompt of Array.isArray(modePrompts) ? modePrompts : []) {
+    for (const trigger of normalizePromptTriggers(prompt?.triggers)) {
+      if (trigger.length > typed.length && trigger.startsWith(typed)) {
+        return { start: match.index, end: caret, trigger, rest: trigger.slice(typed.length), prompt };
+      }
+    }
+  }
+  return null;
 }
 
 /**
@@ -163,21 +216,59 @@ export function resolvePromptModeForText(text, { auto = false, instruction = nul
   return { text: detected.text, instruction: combined || null, prompts: detected.prompts };
 }
 
+/**
+ * What the composer previews under the question: the typed text with the
+ * trigger words Auto mode removes marked, then the instruction that follows
+ * it. Mirrors resolvePromptModeForText, so the preview matches the send.
+ * Returns null when nothing is appended or nothing would be sent.
+ *
+ * @param {string} text
+ * @param {{ auto?: boolean, instruction?: string | null, modePrompts?: Array<object> }} options
+ * @returns {Array<{ kind: 'text' | 'removed' | 'suffix', value: string }> | null}
+ */
+export function describePromptSend(text, { auto = false, instruction = null, modePrompts = [] } = {}) {
+  if (typeof text !== 'string' || !text.trim()) return null;
+  const resolved = resolvePromptModeForText(text, { auto, instruction, modePrompts });
+  const matches = auto ? findPromptModeMatches(text, modePrompts) : [];
+  if (!resolved.text.trim() || (!resolved.instruction && !matches.length)) return null;
+  const segments = [];
+  let cursor = 0;
+  for (const match of matches) {
+    if (match.start > cursor) segments.push({ kind: 'text', value: text.slice(cursor, match.start) });
+    segments.push({ kind: 'removed', value: text.slice(match.start, match.end) });
+    cursor = match.end;
+  }
+  if (cursor < text.length) segments.push({ kind: 'text', value: text.slice(cursor) });
+  if (resolved.instruction) segments.push({ kind: 'suffix', value: `\n\n${resolved.instruction}` });
+  return segments;
+}
+
 /** A modeKey for a prompt the user marks as a mode. */
 export function createModeKey() {
   return `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function builtInModeRank(prompt) {
+  const index = PROMPT_MODE_IDS.indexOf(prompt.modeKey);
+  return index === -1 ? PROMPT_MODE_IDS.length : index;
+}
+
 /**
- * Library prompts marked as modes, in menu order (oldest first).
+ * Library prompts marked as modes, in menu order: the built-in modes in
+ * PROMPT_MODES order, then the user's own modes oldest first. A modeKey listed
+ * twice (say after an import) shows once, as its oldest prompt.
  *
  * @param {Array<object>} prompts
  * @returns {Array<object>}
  */
 export function selectModePrompts(prompts) {
+  const byAge = (a, b) => (a.createdAt || 0) - (b.createdAt || 0) || (a.id || 0) - (b.id || 0);
+  const seen = new Set();
   return (Array.isArray(prompts) ? prompts : [])
     .filter(prompt => prompt?.isMode === true && prompt.modeKey && typeof prompt.content === 'string' && prompt.content.trim())
-    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0) || (a.id || 0) - (b.id || 0));
+    .sort(byAge)
+    .filter(prompt => !seen.has(prompt.modeKey) && seen.add(prompt.modeKey))
+    .sort((a, b) => builtInModeRank(a) - builtInModeRank(b) || byAge(a, b));
 }
 
 /**
@@ -202,6 +293,24 @@ export function getDefaultModePrompts(tr = null) {
 }
 
 /**
+ * Adds the built-in modes the library lacks (by modeKey) and returns how many
+ * it added. Built-ins already present, from an import say, are not copied again.
+ *
+ * @param {{ getAllPrompts: () => Promise<object[]>, savePrompt: (data: object) => Promise<unknown>, tr?: Function }} options
+ * @returns {Promise<number>}
+ */
+export async function restoreDefaultModePrompts({ getAllPrompts, savePrompt, tr = null }) {
+  const existing = new Set((await getAllPrompts()).map(prompt => prompt.modeKey).filter(Boolean));
+  let added = 0;
+  for (const prompt of getDefaultModePrompts(tr)) {
+    if (existing.has(prompt.modeKey)) continue;
+    await savePrompt(prompt);
+    added += 1;
+  }
+  return added;
+}
+
+/**
  * Adds the built-in modes to the library once per device. Modes the user
  * deleted stay deleted, and a library that already holds a built-in (from an
  * import, say) does not get a second copy.
@@ -214,10 +323,7 @@ export async function ensureDefaultModePrompts({ getAllPrompts, savePrompt, stor
   if (!storage?.get || !storage?.set) return false;
   const stored = await storage.get(PROMPT_MODES_SEEDED_KEY);
   if (stored?.[PROMPT_MODES_SEEDED_KEY]) return false;
-  const existing = new Set((await getAllPrompts()).map(prompt => prompt.modeKey).filter(Boolean));
-  for (const prompt of getDefaultModePrompts(tr)) {
-    if (!existing.has(prompt.modeKey)) await savePrompt(prompt);
-  }
+  await restoreDefaultModePrompts({ getAllPrompts, savePrompt, tr });
   await storage.set({ [PROMPT_MODES_SEEDED_KEY]: true });
   return true;
 }
@@ -241,4 +347,38 @@ export async function ensureDefaultModeTriggers({ getAllPrompts, updatePrompt, s
   }
   await storage.set({ [PROMPT_MODE_TRIGGERS_SEEDED_KEY]: true });
   return true;
+}
+
+// chrome.storage.local flag for the one-time sample cleanup below. V2 runs it
+// again for samples re-imported before Options stopped importing them.
+export const SAMPLE_PROMPTS_CLEANED_KEY = 'samplePromptsCleanedV2';
+
+const normalizeSampleText = value => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '');
+
+/**
+ * Removes, once per device, the sample prompts an earlier "Import default
+ * library" added, so the library starts from the prompt modes. Only prompts
+ * still exactly as shipped (same title and content) go; modes, favorites and
+ * anything the user edited or wrote stay.
+ *
+ * @param {{ getAllPrompts: () => Promise<object[]>, deletePrompt: (id: number) => Promise<unknown>,
+ *   loadSamples: () => Promise<Array<{ title?: string, content?: string }>>,
+ *   storage?: { get: Function, set: Function } }} options
+ * @returns {Promise<number>} How many prompts were removed.
+ */
+export async function cleanupSamplePrompts({ getAllPrompts, deletePrompt, loadSamples, storage }) {
+  if (!storage?.get || !storage?.set) return 0;
+  const stored = await storage.get(SAMPLE_PROMPTS_CLEANED_KEY);
+  if (stored?.[SAMPLE_PROMPTS_CLEANED_KEY]) return 0;
+  const samples = new Set((await loadSamples())
+    .map(sample => `${normalizeSampleText(sample?.title)}\n${normalizeSampleText(sample?.content)}`));
+  let removed = 0;
+  for (const prompt of await getAllPrompts()) {
+    if (prompt?.isMode === true || prompt?.isFavorite) continue;
+    if (!samples.has(`${normalizeSampleText(prompt?.title)}\n${normalizeSampleText(prompt?.content)}`)) continue;
+    await deletePrompt(prompt.id);
+    removed += 1;
+  }
+  await storage.set({ [SAMPLE_PROMPTS_CLEANED_KEY]: true });
+  return removed;
 }

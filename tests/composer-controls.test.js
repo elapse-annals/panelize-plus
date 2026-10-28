@@ -654,7 +654,12 @@ describe('composer control async state', () => {
 });
 
 describe('prompt mode control', () => {
-  const promptSelect = () => document.getElementById('prompt-mode-select');
+  const promptSelect = () => document.getElementById('prompt-mode-btn');
+  const modeOption = value => document.querySelector(`.prompt-mode-option[data-mode="${value}"]`);
+  const chooseMode = async value => {
+    modeOption(value).click();
+    await flushMicrotasks();
+  };
   const modePrompts = () => [
     { id: 1, title: 'Learning', content: 'Teach me.', isMode: true, modeKey: 'learning', createdAt: 1 },
     { id: 2, title: 'Concise', content: 'Be brief.', isMode: true, modeKey: 'concise', createdAt: 2 },
@@ -665,20 +670,58 @@ describe('prompt mode control', () => {
     const loadModePrompts = vi.fn(async () => prompts);
     return setupControls([], { loadModePrompts }).then(controls => ({ controls, loadModePrompts }));
   };
-  const optionLabels = () => [...promptSelect().options].map(option => option.textContent);
+  const optionLabels = () => [...document.querySelectorAll('.prompt-mode-option-name')].map(option => option.textContent);
+  const optionValues = () => [...document.querySelectorAll('.prompt-mode-option')].map(option => option.dataset.mode);
 
-  it('lists only the library prompts marked as modes after Default and Auto', async () => {
+  it('lists only the library prompts marked as modes after Default and Auto, built-ins in menu order', async () => {
     await setupWithModes();
 
-    expect([...promptSelect().options].map(option => option.value)).toEqual(['', 'auto', 'learning', 'concise', 'compete']);
-    expect(optionLabels().slice(2)).toEqual(['Learning', 'Concise', 'Challenge']);
+    expect(optionValues()).toEqual(['', 'auto', 'concise', 'learning', 'compete']);
+    expect(optionLabels().slice(2)).toEqual(['Concise', 'Learning', 'Challenge']);
+    expect(document.querySelectorAll('.prompt-mode-edit')).toHaveLength(3);
+    expect(document.querySelectorAll('.prompt-mode-delete')).toHaveLength(3);
+    expect(document.querySelector('.prompt-mode-new')).not.toBeNull();
+  });
+
+  it('opens and closes the mode menu from its button', async () => {
+    await setupWithModes();
+    const list = document.getElementById('prompt-mode-list');
+
+    expect(list.hidden).toBe(true);
+    promptSelect().click();
+    expect(list.hidden).toBe(false);
+    expect(promptSelect().getAttribute('aria-expanded')).toBe('true');
+    await chooseMode('concise');
+    expect(list.hidden).toBe(true);
+    expect(document.getElementById('prompt-mode-label').textContent).toBe('Concise');
+  });
+
+  it('edits, deletes and creates modes from the menu', async () => {
+    const prompts = modePrompts();
+    const editModePrompt = vi.fn();
+    const newModePrompt = vi.fn();
+    const deleteModePrompt = vi.fn(async prompt => { prompts.splice(prompts.indexOf(prompt), 1); });
+    const loadModePrompts = vi.fn(async () => prompts);
+    await setupControls([], { loadModePrompts, editModePrompt, newModePrompt, deleteModePrompt });
+
+    document.querySelector('.prompt-mode-edit[data-prompt-id="2"]').click();
+    expect(editModePrompt).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }));
+
+    document.querySelector('.prompt-mode-new').click();
+    expect(newModePrompt).toHaveBeenCalledOnce();
+
+    document.querySelector('.prompt-mode-delete[data-prompt-id="1"]').click();
+    await flushMicrotasks();
+    await flushMicrotasks();
+    expect(deleteModePrompt).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+    expect(optionLabels()).not.toContain('Learning');
   });
 
   it('starts on the saved mode and marks the select as active', async () => {
     settingsState.selectedPromptMode = 'concise';
     const { controls } = await setupWithModes();
 
-    expect(promptSelect().value).toBe('concise');
+    expect(promptSelect().dataset.mode).toBe('concise');
     expect(controls.getPromptMode()).toBe('Be brief.');
     expect(promptSelect().closest('.prompt-mode-control').dataset.active).toBe('true');
     expect(promptSelect().title).toBe('Prompt mode: Concise\nBe brief.');
@@ -691,17 +734,34 @@ describe('prompt mode control', () => {
 
     expect(input.placeholder).toContain('Appends: Be brief.');
 
-    promptSelect().value = '';
-    promptSelect().dispatchEvent(new Event('change', { bubbles: true }));
-    await flushMicrotasks();
+    await chooseMode('');
     expect(input.placeholder).not.toContain('Appends:');
+  });
+
+  it('previews the appended instruction after the question and hides it when empty', async () => {
+    settingsState.selectedPromptMode = 'concise';
+    const { controls } = await setupWithModes();
+    const input = document.getElementById('unified-input');
+    const ghost = document.getElementById('prompt-ghost');
+
+    expect(ghost.hidden).toBe(true);
+    input.value = 'Explain closures';
+    controls.refreshPromptGhost();
+    expect(ghost.hidden).toBe(false);
+    expect(ghost.textContent).toBe('Explain closures\u200bBe brief.');
+    expect(ghost.querySelector('.prompt-ghost-suffix').textContent).toBe('Be brief.');
+
+    input.value = '';
+    controls.refreshPromptGhost();
+    expect(ghost.hidden).toBe(true);
+    expect(ghost.textContent).toBe('');
   });
 
   it('starts on Default when nothing or a missing mode is saved', async () => {
     settingsState.selectedPromptMode = 'verbose';
     const { controls } = await setupWithModes();
 
-    expect(promptSelect().value).toBe('');
+    expect(promptSelect().dataset.mode).toBe('');
     expect(controls.getPromptMode()).toBeNull();
     expect(promptSelect().closest('.prompt-mode-control').dataset.active).toBe('false');
     expect(promptSelect().title).toBe('Prompt mode\nNothing is added; each AI answers in its own way');
@@ -709,9 +769,7 @@ describe('prompt mode control', () => {
 
   it('saves the chosen mode and reports its instruction', async () => {
     const { controls } = await setupWithModes();
-    promptSelect().value = 'compete';
-    promptSelect().dispatchEvent(new Event('change', { bubbles: true }));
-    await flushMicrotasks();
+    await chooseMode('compete');
 
     expect(mocks.saveSetting).toHaveBeenCalledWith('selectedPromptMode', 'compete');
     expect(controls.getPromptMode()).toBe('Win the comparison.');
@@ -723,9 +781,7 @@ describe('prompt mode control', () => {
     settingsState.selectedPromptMode = 'learning';
     const { controls } = await setupWithModes();
 
-    promptSelect().value = '';
-    promptSelect().dispatchEvent(new Event('change', { bubbles: true }));
-    await flushMicrotasks();
+    await chooseMode('');
 
     expect(mocks.saveSetting).toHaveBeenCalledWith('selectedPromptMode', null);
     expect(controls.getPromptMode()).toBeNull();
@@ -746,7 +802,7 @@ describe('prompt mode control', () => {
     prompts[1].isMode = false;
     await controls.refreshPromptModes();
     expect(optionLabels()).not.toContain('Short');
-    expect(promptSelect().value).toBe('');
+    expect(promptSelect().dataset.mode).toBe('');
     expect(controls.getPromptMode()).toBeNull();
     expect(mocks.saveSetting).not.toHaveBeenCalledWith('selectedPromptMode', null);
   });
@@ -779,13 +835,13 @@ describe('prompt mode control', () => {
       settingsState.selectedPromptMode = 'auto';
       const { controls } = await setupWithModes(triggerPrompts());
 
-      expect(promptSelect().value).toBe('auto');
+      expect(promptSelect().dataset.mode).toBe('auto');
       expect(controls.getPromptMode()).toBeNull();
       expect(controls.resolvePromptMode('Explain closures')).toEqual({ text: 'Explain closures', instruction: null, prompts: [] });
       const resolved = controls.resolvePromptMode('/study Explain closures');
       expect(resolved.text).toBe('Explain closures');
       expect(resolved.instruction).toBe('Teach me.');
-      expect(controls.resolvePromptMode('/BRIEF why /study').instruction).toBe('Teach me.\n\nBe brief.');
+      expect(controls.resolvePromptMode('/BRIEF why /study').instruction).toBe('Be brief.\n\nTeach me.');
     });
 
     it('marks the select active and lists the trigger words', async () => {
@@ -794,8 +850,77 @@ describe('prompt mode control', () => {
 
       expect(promptSelect().closest('.prompt-mode-control').dataset.active).toBe('true');
       expect(promptSelect().title).toContain('Prompt mode: Auto');
-      expect(promptSelect().title).toContain('/study Learning · /brief Concise');
-      expect(document.getElementById('unified-input').placeholder).toContain('Auto: /study Learning · /brief Concise');
+      expect(promptSelect().title).toContain('/brief Concise · /study Learning');
+      expect(document.getElementById('unified-input').placeholder).toContain('Auto: /brief Concise · /study Learning');
+    });
+
+    it('previews the removed trigger words struck through and the instruction appended', async () => {
+      settingsState.selectedPromptMode = 'auto';
+      const { controls } = await setupWithModes(triggerPrompts());
+      const input = document.getElementById('unified-input');
+      const ghost = document.getElementById('prompt-ghost');
+
+      input.value = 'Explain closures /study';
+      controls.refreshPromptGhost();
+      expect(ghost.querySelector('.prompt-ghost-removed').textContent).toBe('/study');
+      expect(ghost.querySelector('.prompt-ghost-suffix').textContent).toBe('Teach me.');
+
+      input.value = 'Explain closures';
+      controls.refreshPromptGhost();
+      expect(ghost.hidden).toBe(true);
+    });
+
+    it('shows the trigger completion at the caret and completes it with Tab', async () => {
+      settingsState.selectedPromptMode = 'auto';
+      const { controls } = await setupWithModes(triggerPrompts());
+      const input = document.getElementById('unified-input');
+      const ghost = document.getElementById('prompt-ghost');
+      input.focus();
+      input.value = 'Explain /st';
+      input.setSelectionRange(input.value.length, input.value.length);
+      controls.refreshPromptGhost();
+
+      expect(ghost.hidden).toBe(false);
+      expect(ghost.querySelector('.prompt-ghost-completion').textContent).toBe('udy');
+      expect(ghost.querySelector('.prompt-ghost-completion-hint').textContent).toBe('Tab · Learning');
+
+      const onInput = vi.fn();
+      input.addEventListener('input', onInput);
+      const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+      input.dispatchEvent(tab);
+      expect(tab.defaultPrevented).toBe(true);
+      expect(input.value).toBe('Explain /study ');
+      expect(input.selectionStart).toBe(input.value.length);
+      expect(onInput).toHaveBeenCalled();
+      expect(ghost.querySelector('.prompt-ghost-completion')).toBeNull();
+      expect(ghost.querySelector('.prompt-ghost-removed').textContent).toBe('/study');
+    });
+
+    it('leaves Tab alone without a completion, with Shift, or outside Auto mode', async () => {
+      settingsState.selectedPromptMode = 'auto';
+      const { controls } = await setupWithModes(triggerPrompts());
+      const input = document.getElementById('unified-input');
+      const pressTab = (options = {}) => {
+        const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true, ...options });
+        input.dispatchEvent(event);
+        return event.defaultPrevented;
+      };
+      input.focus();
+      input.value = 'Explain';
+      expect(pressTab()).toBe(false);
+      input.value = '/st';
+      input.setSelectionRange(3, 3);
+      expect(pressTab({ shiftKey: true })).toBe(false);
+      expect(input.value).toBe('/st');
+
+      settingsState.selectedPromptMode = 'concise';
+      await chooseMode('concise');
+      input.focus();
+      input.setSelectionRange(3, 3);
+      controls.refreshPromptGhost();
+      expect(document.querySelector('.prompt-ghost-completion')).toBeNull();
+      expect(pressTab()).toBe(false);
+      expect(input.value).toBe('/st');
     });
 
     it('keeps trigger words as typed outside Auto mode', async () => {
@@ -812,10 +937,10 @@ describe('prompt mode control', () => {
     getStorageChangeListener()({ selectedPromptMode: { newValue: 'compete' } }, 'sync');
 
     expect(controls.getPromptMode()).toBe('Win the comparison.');
-    expect(promptSelect().value).toBe('compete');
+    expect(promptSelect().dataset.mode).toBe('compete');
 
     getStorageChangeListener()({ selectedPromptMode: { newValue: null } }, 'local');
     expect(controls.getPromptMode()).toBeNull();
-    expect(promptSelect().value).toBe('');
+    expect(promptSelect().dataset.mode).toBe('');
   });
 });

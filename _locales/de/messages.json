@@ -186,7 +186,7 @@
     "message": "Prompt-Bibliothek"
   },
   "descPromptLibrary": {
-    "message": "Importieren Sie kuratierte Meta-Prompts für KI-Workflows, Recherche, Programmierung und Analyse"
+    "message": "Fügen Sie die integrierten Prompt-Modi hinzu oder importieren Sie eigene Prompts"
   },
   "labelDefaultLibrary": {
     "message": "Standard-Prompt-Bibliothek"
@@ -666,7 +666,7 @@
     "message": "Standard-Prompt-Bibliothek"
   },
   "descDefaultPromptLibrary": {
-    "message": "Meta-Prompts für Prompt-Verfeinerung, Planung, Programmierung, Tests, Recherche, Schreiben und mehr. Enthält Variablenunterstützung für dynamische Vorlagen."
+    "message": "Die integrierten Prompt-Modi: Kurz, Lernen, Herausforderung und Ideen. Bereits vorhandene Modi werden nicht erneut hinzugefügt."
   },
   "statStorageUsed": {
     "message": "Verwendeter Speicher"
@@ -1388,6 +1388,24 @@
   "composerSendBlockedNewChat": {
     "message": "Neue Unterhaltungen werden gestartet. Dein Entwurf bleibt erhalten; sende, sobald sie bereit sind."
   },
+  "composerPreparingHold": {
+    "message": "KIs werden vorbereitet: $1/$2 bereit. Senden pausiert; du kannst weiter tippen."
+  },
+  "composerWaitingFor": {
+    "message": "Warte auf $1."
+  },
+  "composerAllReady": {
+    "message": "Alle $1 KIs sind bereit."
+  },
+  "composerNotReady": {
+    "message": "$1/$2 KIs bereit. Senden ist wieder möglich; prüfe bei den übrigen die Anmeldung oder lade sie neu."
+  },
+  "composerNotReadyNames": {
+    "message": "Nicht bereit: $1."
+  },
+  "composerSendBlockedPreparing": {
+    "message": "Die KIs laden noch. Dein Entwurf bleibt erhalten; sende, sobald sie bereit sind."
+  },
   "composerStartingChatsHold": {
     "message": "Neue Unterhaltungen werden gestartet… Senden pausiert; du kannst weiter tippen."
   },
@@ -1538,6 +1556,9 @@
   "composerPlaceholderTriggers": {
     "message": "Automatisch: $1"
   },
+  "composerTriggerCompletionHint": {
+    "message": "Tab · $1"
+  },
   "promptTriggersLabel": {
     "message": "Auslösewörter (automatischer Modus)"
   },
@@ -1553,6 +1574,12 @@
   "aiSummaryTitle": {
     "message": "KI-Zusammenfassung"
   },
+  "aiSummaryExpand": {
+    "message": "Vergrößern"
+  },
+  "aiSummaryShrink": {
+    "message": "Verkleinern"
+  },
   "aiSummaryCopy": {
     "message": "Zusammenfassung kopieren"
   },
@@ -1564,6 +1591,18 @@
   },
   "aiSummaryDisagreements": {
     "message": "Abweichungen"
+  },
+  "aiSummaryVerdict": {
+    "message": "Fazit"
+  },
+  "aiSummaryConsensus": {
+    "message": "Übereinstimmung"
+  },
+  "aiSummaryUnique": {
+    "message": "Einzelne Erkenntnisse"
+  },
+  "aiSummaryAllSources": {
+    "message": "Alle $1 KIs"
   },
   "aiSummaryCollecting": {
     "message": "Antworten werden gelesen…"
@@ -1657,5 +1696,29 @@
   },
   "msgAiSummaryTestFailed": {
     "message": "API-Test fehlgeschlagen: $1"
+  },
+  "composerPreparingCanSend": {
+    "message": "$1/$2 KIs bereit. Du kannst senden; die übrigen erhalten die Frage, sobald sie bereit sind."
+  },
+  "composerSkippedPreparing": {
+    "message": "$1 KIs laden noch; sie erhalten diese Frage, sobald sie bereit sind."
+  },
+  "composerSkippedPreparingFiles": {
+    "message": "$1 KIs luden noch und wurden übersprungen; nutze „Retry Failed“, sobald sie bereit sind."
+  },
+  "promptModeEdit": {
+    "message": "Bearbeiten"
+  },
+  "promptModeDelete": {
+    "message": "Löschen"
+  },
+  "promptModeNew": {
+    "message": "Neuer Modus"
+  },
+  "promptModeDeleteConfirm": {
+    "message": "Modus „$1“ löschen?"
+  },
+  "promptModeDeleted": {
+    "message": "Modus gelöscht"
   }
 }

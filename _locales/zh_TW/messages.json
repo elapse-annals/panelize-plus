@@ -186,7 +186,7 @@
     "message": "提示詞庫"
   },
   "descPromptLibrary": {
-    "message": "匯入為 AI 工作流程、研究、編碼和分析精心挑選的元提示"
+    "message": "新增內建提示詞模式，或匯入你自己的提示詞"
   },
   "labelDefaultLibrary": {
     "message": "預設提示詞庫"
@@ -660,7 +660,7 @@
     "message": "預設提示詞庫"
   },
   "descDefaultPromptLibrary": {
-    "message": "用於提示詞最佳化、規劃、編碼、測試、研究、寫作等的元提示。包含對動態範本的變數支援。"
+    "message": "內建提示詞模式：精簡、學習、挑戰和腦力激盪。庫中已有的模式不會重複新增。"
   },
   "statStorageUsed": {
     "message": "已用儲存空間"
@@ -1382,6 +1382,24 @@
   "composerSendBlockedNewChat": {
     "message": "正在新建對話，草稿已保留，完成後再傳送。"
   },
+  "composerPreparingHold": {
+    "message": "AI 準備中：$1/$2 已就緒。暫停傳送，可繼續輸入。"
+  },
+  "composerWaitingFor": {
+    "message": "等待：$1。"
+  },
+  "composerAllReady": {
+    "message": "$1 個 AI 已全部就緒。"
+  },
+  "composerNotReady": {
+    "message": "$1/$2 個 AI 已就緒。已恢復傳送；其餘請檢查登入或重新載入。"
+  },
+  "composerNotReadyNames": {
+    "message": "未就緒：$1。"
+  },
+  "composerSendBlockedPreparing": {
+    "message": "AI 仍在載入，草稿已保留，就緒後再傳送。"
+  },
   "composerStartingChatsHold": {
     "message": "正在新建對話… 暫停傳送，可繼續輸入。"
   },
@@ -1532,6 +1550,9 @@
   "composerPlaceholderTriggers": {
     "message": "自動：$1"
   },
+  "composerTriggerCompletionHint": {
+    "message": "Tab · $1"
+  },
   "promptTriggersLabel": {
     "message": "觸發詞（自動模式）"
   },
@@ -1547,6 +1568,12 @@
   "aiSummaryTitle": {
     "message": "AI 彙整"
   },
+  "aiSummaryExpand": {
+    "message": "放大"
+  },
+  "aiSummaryShrink": {
+    "message": "縮小"
+  },
   "aiSummaryCopy": {
     "message": "複製彙整"
   },
@@ -1557,7 +1584,19 @@
     "message": "設定 AI 彙整"
   },
   "aiSummaryDisagreements": {
-    "message": "分歧點"
+    "message": "分歧"
+  },
+  "aiSummaryVerdict": {
+    "message": "結論"
+  },
+  "aiSummaryConsensus": {
+    "message": "一致"
+  },
+  "aiSummaryUnique": {
+    "message": "獨到觀點"
+  },
+  "aiSummaryAllSources": {
+    "message": "全部 $1 個 AI"
   },
   "aiSummaryCollecting": {
     "message": "正在讀取回答…"
@@ -1651,5 +1690,29 @@
   },
   "msgAiSummaryTestFailed": {
     "message": "API 測試失敗：$1"
+  },
+  "composerPreparingCanSend": {
+    "message": "$1/$2 個 AI 已就緒，可以傳送；其餘就緒後會自動收到問題。"
+  },
+  "composerSkippedPreparing": {
+    "message": "$1 個 AI 仍在載入，就緒後會自動收到這個問題。"
+  },
+  "composerSkippedPreparingFiles": {
+    "message": "$1 個 AI 仍在載入，已略過；就緒後點「Retry Failed」補送。"
+  },
+  "promptModeEdit": {
+    "message": "編輯"
+  },
+  "promptModeDelete": {
+    "message": "刪除"
+  },
+  "promptModeNew": {
+    "message": "新增模式"
+  },
+  "promptModeDeleteConfirm": {
+    "message": "刪除模式「$1」？"
+  },
+  "promptModeDeleted": {
+    "message": "模式已刪除"
   }
 }

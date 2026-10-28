@@ -186,7 +186,7 @@
     "message": "Bibliothèque de prompts"
   },
   "descPromptLibrary": {
-    "message": "Importez des méta-prompts sélectionnés pour les flux de travail IA, la recherche, le codage et l'analyse"
+    "message": "Ajoutez les modes de prompt intégrés ou importez vos propres prompts"
   },
   "labelDefaultLibrary": {
     "message": "Bibliothèque de prompts par défaut"
@@ -666,7 +666,7 @@
     "message": "Bibliothèque de prompts par défaut"
   },
   "descDefaultPromptLibrary": {
-    "message": "Méta-prompts pour le raffinement de prompts, la planification, le codage, les tests, la recherche, l'écriture et plus encore. Inclut la prise en charge des variables pour des modèles dynamiques."
+    "message": "Les modes de prompt intégrés : Concis, Apprentissage, Défi et Brainstorming. Les modes déjà présents dans votre bibliothèque ne sont pas ajoutés à nouveau."
   },
   "statStorageUsed": {
     "message": "Stockage utilisé"
@@ -1388,6 +1388,24 @@
   "composerSendBlockedNewChat": {
     "message": "De nouvelles conversations démarrent. Votre brouillon est conservé ; envoyez-le quand elles sont prêtes."
   },
+  "composerPreparingHold": {
+    "message": "Préparation des IA : $1/$2 prêtes. Envoi en pause ; continuez à écrire."
+  },
+  "composerWaitingFor": {
+    "message": "En attente de $1."
+  },
+  "composerAllReady": {
+    "message": "Les $1 IA sont prêtes."
+  },
+  "composerNotReady": {
+    "message": "$1/$2 IA prêtes. L’envoi est rétabli ; vérifiez la connexion ou rechargez les autres."
+  },
+  "composerNotReadyNames": {
+    "message": "Pas prêtes : $1."
+  },
+  "composerSendBlockedPreparing": {
+    "message": "Les IA sont encore en chargement. Votre brouillon est conservé ; envoyez-le quand elles sont prêtes."
+  },
   "composerStartingChatsHold": {
     "message": "Démarrage de nouvelles conversations… Envoi en pause ; continuez à écrire."
   },
@@ -1538,6 +1556,9 @@
   "composerPlaceholderTriggers": {
     "message": "Auto : $1"
   },
+  "composerTriggerCompletionHint": {
+    "message": "Tab · $1"
+  },
   "promptTriggersLabel": {
     "message": "Mots déclencheurs (mode Auto)"
   },
@@ -1553,6 +1574,12 @@
   "aiSummaryTitle": {
     "message": "Synthèse IA"
   },
+  "aiSummaryExpand": {
+    "message": "Agrandir"
+  },
+  "aiSummaryShrink": {
+    "message": "Réduire"
+  },
   "aiSummaryCopy": {
     "message": "Copier la synthèse"
   },
@@ -1564,6 +1591,18 @@
   },
   "aiSummaryDisagreements": {
     "message": "Désaccords"
+  },
+  "aiSummaryVerdict": {
+    "message": "Verdict"
+  },
+  "aiSummaryConsensus": {
+    "message": "Points communs"
+  },
+  "aiSummaryUnique": {
+    "message": "Points uniques"
+  },
+  "aiSummaryAllSources": {
+    "message": "Les $1 IA"
   },
   "aiSummaryCollecting": {
     "message": "Lecture des réponses…"
@@ -1657,5 +1696,29 @@
   },
   "msgAiSummaryTestFailed": {
     "message": "Échec du test de l'API : $1"
+  },
+  "composerPreparingCanSend": {
+    "message": "$1/$2 IA prêtes. Vous pouvez envoyer ; les autres recevront la question dès qu'elles seront prêtes."
+  },
+  "composerSkippedPreparing": {
+    "message": "$1 IA chargeaient encore ; elles recevront cette question dès qu'elles seront prêtes."
+  },
+  "composerSkippedPreparingFiles": {
+    "message": "$1 IA chargeaient encore et ont été ignorées ; utilisez Retry Failed une fois prêtes."
+  },
+  "promptModeEdit": {
+    "message": "Modifier"
+  },
+  "promptModeDelete": {
+    "message": "Supprimer"
+  },
+  "promptModeNew": {
+    "message": "Nouveau mode"
+  },
+  "promptModeDeleteConfirm": {
+    "message": "Supprimer le mode « $1 » ?"
+  },
+  "promptModeDeleted": {
+    "message": "Mode supprimé"
   }
 }

@@ -112,6 +112,63 @@
       <button id="panel-edge-end-btn" class="panel-edge-btn panel-edge-end" type="button" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5.59 7.41L10.18 12l-4.59 4.59L7 18l6-6-6-6zM16 6h2v12h-2z" /></svg>
       </button>
+      <!-- AI summary drawer: between the toolbar and the composer -->
+      <aside id="ai-summary-drawer" class="ai-summary-drawer" hidden aria-labelledby="ai-summary-title">
+        <div class="modal-header">
+          <h3 id="ai-summary-title" data-i18n="aiSummaryTitle">AI summary</h3>
+          <div class="modal-header-actions">
+            <button class="header-action-btn" id="ai-summary-expand-btn" data-i18n-title="aiSummaryExpand" data-i18n-aria="aiSummaryExpand" title="Expand" aria-label="Expand" aria-pressed="false">
+              <span class="material-symbols-outlined" aria-hidden="true">open_in_full</span>
+            </button>
+            <button class="header-action-btn" id="ai-summary-copy-btn" data-i18n-title="aiSummaryCopy" data-i18n-aria="aiSummaryCopy" title="Copy summary" aria-label="Copy summary" disabled>
+              <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
+            </button>
+            <button class="header-action-btn" id="ai-summary-rerun-btn" data-i18n-title="aiSummaryRerun" data-i18n-aria="aiSummaryRerun" title="Summarize again" aria-label="Summarize again">
+              <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+            </button>
+            <button class="close-btn" id="close-ai-summary-drawer" data-i18n-title="shareDialogClose" data-i18n-aria="shareDialogClose" title="Close" aria-label="Close">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+        </div>
+        <div class="modal-body ai-summary-body">
+          <p id="ai-summary-question" class="ai-summary-question" hidden></p>
+          <p id="ai-summary-status" class="ai-summary-status" role="status"></p>
+          <button type="button" class="btn-secondary" id="ai-summary-settings-btn" data-i18n="aiSummaryOpenSettings" hidden>Set up the AI summary</button>
+          <div id="ai-summary-result" hidden>
+            <div id="ai-summary-verdict" class="ai-summary-verdict ai-summary-reveal" hidden>
+              <span class="material-symbols-outlined ai-summary-verdict-icon" aria-hidden="true">auto_awesome</span>
+              <div class="ai-summary-verdict-content">
+                <span class="ai-summary-verdict-label" data-i18n="aiSummaryVerdict">Verdict</span>
+                <p id="ai-summary-verdict-text" class="ai-summary-verdict-text"></p>
+              </div>
+            </div>
+            <p id="ai-summary-overview" class="ai-summary-overview ai-summary-reveal"></p>
+            <section id="ai-summary-consensus-section" class="ai-summary-section ai-summary-reveal" hidden>
+              <h4 class="ai-summary-subtitle ai-summary-subtitle-consensus">
+                <span class="material-symbols-outlined" aria-hidden="true">thumb_up</span>
+                <span data-i18n="aiSummaryConsensus">Agreed</span>
+              </h4>
+              <ul id="ai-summary-consensus" class="ai-summary-list ai-summary-consensus"></ul>
+            </section>
+            <section id="ai-summary-unique-section" class="ai-summary-section ai-summary-reveal" hidden>
+              <h4 class="ai-summary-subtitle ai-summary-subtitle-unique">
+                <span class="material-symbols-outlined" aria-hidden="true">psychology</span>
+                <span data-i18n="aiSummaryUnique">Unique insights</span>
+              </h4>
+              <ul id="ai-summary-unique" class="ai-summary-list ai-summary-consensus ai-summary-unique"></ul>
+            </section>
+            <section id="ai-summary-disagreements-section" class="ai-summary-section ai-summary-reveal" hidden>
+              <h4 class="ai-summary-subtitle ai-summary-subtitle-disagreements">
+                <span class="material-symbols-outlined" aria-hidden="true">swap_horiz</span>
+                <span data-i18n="aiSummaryDisagreements">Disagreements</span>
+              </h4>
+              <div id="ai-summary-disagreements" class="ai-summary-disagreements"></div>
+            </section>
+          </div>
+          <p id="ai-summary-missing" class="ai-summary-missing" hidden></p>
+        </div>
+      </aside>
     </div>
 
     <!-- Store rating prompt (shown after enough successful sends) -->
@@ -131,14 +188,30 @@
       <div class="input-container">
         <div class="input-wrapper">
           <div id="image-preview-container" class="image-preview-container"></div>
-          <textarea id="unified-input" placeholder="Enter your question to send to all AI providers..." rows="1"></textarea>
+          <div class="prompt-input-stack">
+            <div id="prompt-ghost" class="prompt-ghost" aria-hidden="true" hidden></div>
+            <textarea id="unified-input" placeholder="Enter your question to send to all AI providers..." rows="1"></textarea>
+          </div>
         </div>
       </div>
       <div class="composer-controls">
         <div class="composer-controls-left">
-          <button id="prompt-library-btn" class="input-btn" title="Prompt Library">
-            <span class="material-symbols-outlined">auto_awesome</span>
-          </button>
+          <!-- Prompt Library and the prompt-mode menu sit together. -->
+          <div class="composer-prompt-group">
+            <button id="prompt-library-btn" class="input-btn" title="Prompt Library">
+              <span class="material-symbols-outlined">auto_awesome</span>
+            </button>
+            <div class="prompt-mode-control tier-menu" data-active="false">
+              <button type="button" id="prompt-mode-btn" class="composer-control prompt-mode-btn" data-mode="" aria-haspopup="menu" aria-expanded="false" aria-controls="prompt-mode-list" data-i18n-aria="composerPromptModeLabel" aria-label="Prompt mode">
+                <span class="material-symbols-outlined" aria-hidden="true">psychology</span>
+                <span id="prompt-mode-label" data-i18n="promptModeDefault">Default</span>
+                <span class="material-symbols-outlined tier-menu-caret" aria-hidden="true">expand_more</span>
+              </button>
+              <!-- Default and Auto, then the library's mode prompts with edit and delete; filled by composer-controls.js. -->
+              <div id="prompt-mode-list" class="tier-menu-list prompt-mode-list" role="menu" data-i18n-aria="composerPromptModeLabel" aria-label="Prompt mode" hidden></div>
+            </div>
+          </div>
+          <span class="composer-divider" aria-hidden="true"></span>
           <button id="image-upload-btn" class="input-btn" data-i18n-title="composerImageUploadTitle" title="Upload images or files">
             <span class="material-symbols-outlined">attach_file</span>
           </button>
@@ -181,14 +254,6 @@
             <span class="material-symbols-outlined" aria-hidden="true">info</span>
           </button>
           <span id="tier-status" class="composer-status" role="status" aria-live="polite"></span>
-          <span class="composer-divider" aria-hidden="true"></span>
-          <label class="prompt-mode-control" data-active="false">
-            <span class="material-symbols-outlined" aria-hidden="true">psychology</span>
-            <select id="prompt-mode-select" class="composer-control prompt-mode-select" data-i18n-aria="composerPromptModeLabel" aria-label="Prompt mode">
-              <option value="" data-i18n="promptModeDefault">Default</option>
-              <option value="auto" data-i18n="promptModeAuto">Auto</option>
-            </select>
-          </label>
         </div>
         <div class="composer-controls-right">
           <button id="provider-sort-btn" class="composer-control" data-shortcut-action="togglePopularSort" aria-pressed="false">
@@ -222,6 +287,12 @@
         <span id="new-chat-status" role="status" aria-live="polite"></span>
         <button id="retry-new-chat-btn" class="composer-link" data-i18n="composerRetryFailed" hidden>Retry unsuccessful</button>
         <button id="dismiss-new-chat-status-btn" class="composer-result-close" data-i18n-aria="shareDialogClose" aria-label="Close">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <div id="ai-ready-status-row" class="composer-result-row" hidden>
+        <span id="ai-ready-status" role="status" aria-live="polite"></span>
+        <button id="dismiss-ai-ready-status-btn" class="composer-result-close" data-i18n-aria="shareDialogClose" aria-label="Close">
           <span class="material-symbols-outlined" aria-hidden="true">close</span>
         </button>
       </div>
@@ -586,6 +657,9 @@
         <div class="modal-header">
           <h3>Prompt Library</h3>
           <div class="modal-header-actions">
+            <button id="restore-mode-prompts-btn" class="header-action-btn" title="Restore built-in modes" aria-label="Restore built-in modes">
+              <span class="material-symbols-outlined">refresh</span>
+            </button>
             <button id="new-prompt-btn" class="header-action-btn" title="New Prompt">
               <span class="material-symbols-outlined">add</span>
             </button>
@@ -731,34 +805,6 @@
     </div>
 
     <!-- AI Summary Drawer -->
-    <aside id="ai-summary-drawer" class="ai-summary-drawer" hidden aria-labelledby="ai-summary-title">
-      <div class="modal-header">
-        <h3 id="ai-summary-title" data-i18n="aiSummaryTitle">AI summary</h3>
-        <div class="modal-header-actions">
-          <button class="header-action-btn" id="ai-summary-copy-btn" data-i18n-title="aiSummaryCopy" data-i18n-aria="aiSummaryCopy" title="Copy summary" aria-label="Copy summary" disabled>
-            <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
-          </button>
-          <button class="header-action-btn" id="ai-summary-rerun-btn" data-i18n-title="aiSummaryRerun" data-i18n-aria="aiSummaryRerun" title="Summarize again" aria-label="Summarize again">
-            <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
-          </button>
-          <button class="close-btn" id="close-ai-summary-drawer" data-i18n-title="shareDialogClose" data-i18n-aria="shareDialogClose" title="Close" aria-label="Close">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
-      </div>
-      <div class="modal-body ai-summary-body">
-        <p id="ai-summary-question" class="ai-summary-question" hidden></p>
-        <p id="ai-summary-status" class="ai-summary-status" role="status"></p>
-        <button type="button" class="btn-secondary" id="ai-summary-settings-btn" data-i18n="aiSummaryOpenSettings" hidden>Set up the AI summary</button>
-        <div id="ai-summary-result" hidden>
-          <p id="ai-summary-overview" class="ai-summary-overview"></p>
-          <ul id="ai-summary-points" class="ai-summary-list"></ul>
-          <h4 id="ai-summary-disagreements-title" class="ai-summary-subtitle" data-i18n="aiSummaryDisagreements" hidden>Disagreements</h4>
-          <ul id="ai-summary-disagreements" class="ai-summary-list"></ul>
-        </div>
-        <p id="ai-summary-missing" class="ai-summary-missing" hidden></p>
-      </div>
-    </aside>
 
     <!-- Answer Log Modal -->
     <div id="answer-log-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="answer-log-modal-title">

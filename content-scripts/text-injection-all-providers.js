@@ -33,6 +33,11 @@
   const MULTI_PANEL_SNAPSHOT_CONTEXT = 'multi-panel-snapshot';
   const PANELIZE_PAGE_WIDTH = 'PANELIZE_PAGE_WIDTH';
   const PAGE_WIDTH_REPORT_THROTTLE_MS = 500;
+  const PANELIZE_COMPOSER_READY = 'PANELIZE_COMPOSER_READY';
+  const COMPOSER_READY_CHECK_THROTTLE_MS = 250;
+  // Multi-Panel stops waiting long before this; a later report still clears
+  // its "not ready" notice.
+  const COMPOSER_READY_MAX_WAIT_MS = 60000;
   // The app shell is near the top of the tree; deeper nodes are content.
   const PAGE_WIDTH_MAX_DEPTH = 12;
   const PAGE_WIDTH_MAX_ELEMENTS = 1000;
@@ -768,6 +773,64 @@
 
   function resetGoogleSearchFillSession() {
     googleSearchReplaceOnNextFill = true;
+  }
+
+  function findReadyComposer(provider) {
+    if (provider === 'google') {
+      return findFirstVisibleElement([...GOOGLE_AI_INPUT_SELECTORS, ...GOOGLE_SEARCH_INPUT_SELECTORS]);
+    }
+    return findProviderInput(provider);
+  }
+
+  // Tells Multi-Panel once this page's question box exists, so sending can
+  // wait until every AI is able to take the question.
+  function setupComposerReadyReporting() {
+    if (!isMultiPanelFrame()) {
+      return;
+    }
+    let timer = null;
+    let giveUpTimer = null;
+    let done = false;
+    let observer = null;
+
+    const stop = () => {
+      done = true;
+      clearTimeout(timer);
+      clearTimeout(giveUpTimer);
+      timer = null;
+      observer?.disconnect();
+    };
+
+    const check = () => {
+      timer = null;
+      if (done) return;
+      const provider = detectProvider();
+      if (!provider || !findReadyComposer(provider)) return;
+      stop();
+      window.parent.postMessage({
+        type: PANELIZE_COMPOSER_READY,
+        provider,
+        context: MULTI_PANEL_PROVIDER_STATUS_CONTEXT
+      }, '*');
+    };
+
+    const schedule = () => {
+      if (!done && timer === null) {
+        timer = setTimeout(check, COMPOSER_READY_CHECK_THROTTLE_MS);
+      }
+    };
+
+    giveUpTimer = setTimeout(stop, COMPOSER_READY_MAX_WAIT_MS);
+    window.addEventListener('pagehide', stop, { once: true });
+    check();
+    if (done) return;
+    observer = new MutationObserver(schedule);
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style']
+    });
   }
 
   function isVisibleElement(element) {
@@ -6167,6 +6230,7 @@
   // Listen for messages from the multi-panel host
   setupProviderLocationReporting();
   setupPageWidthReporting();
+  setupComposerReadyReporting();
   setupAnswerEngagementReporting();
   window.addEventListener('message', handleTextInjection);
   if (document.readyState === 'loading') {

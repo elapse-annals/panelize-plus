@@ -186,7 +186,7 @@
     "message": "プロンプトライブラリ"
   },
   "descPromptLibrary": {
-    "message": "AI ワークフロー、研究、コーディング、分析のための厳選されたメタプロンプトをインポート"
+    "message": "組み込みのプロンプトモードを追加するか、独自のプロンプトをインポート"
   },
   "labelDefaultLibrary": {
     "message": "デフォルトプロンプトライブラリ"
@@ -666,7 +666,7 @@
     "message": "デフォルトプロンプトライブラリ"
   },
   "descDefaultPromptLibrary": {
-    "message": "プロンプトの改良、計画、コーディング、テスト、研究、執筆などのためのメタプロンプト。動的テンプレートのための変数サポートが含まれています。"
+    "message": "組み込みのプロンプトモード：簡潔、学習、挑戦、アイデア出し。ライブラリにすでにあるモードは再度追加されません。"
   },
   "statStorageUsed": {
     "message": "使用中のストレージ"
@@ -1388,6 +1388,24 @@
   "composerSendBlockedNewChat": {
     "message": "新しい会話を開始しています。下書きは保持されます。準備ができてから送信してください。"
   },
+  "composerPreparingHold": {
+    "message": "AI を準備中：$1/$2 準備完了。送信は一時停止中です。入力は続けられます。"
+  },
+  "composerWaitingFor": {
+    "message": "待機中：$1。"
+  },
+  "composerAllReady": {
+    "message": "$1 個の AI がすべて準備完了です。"
+  },
+  "composerNotReady": {
+    "message": "$1/$2 の AI が準備完了。送信を再開しました。残りはログインを確認するか再読み込みしてください。"
+  },
+  "composerNotReadyNames": {
+    "message": "準備未完了：$1。"
+  },
+  "composerSendBlockedPreparing": {
+    "message": "AI はまだ読み込み中です。下書きは保持されます。準備ができてから送信してください。"
+  },
   "composerStartingChatsHold": {
     "message": "新しい会話を開始中… 送信は一時停止中です。入力は続けられます。"
   },
@@ -1538,6 +1556,9 @@
   "composerPlaceholderTriggers": {
     "message": "自動: $1"
   },
+  "composerTriggerCompletionHint": {
+    "message": "Tab · $1"
+  },
   "promptTriggersLabel": {
     "message": "トリガー語（自動モード）"
   },
@@ -1553,6 +1574,12 @@
   "aiSummaryTitle": {
     "message": "AI まとめ"
   },
+  "aiSummaryExpand": {
+    "message": "拡大"
+  },
+  "aiSummaryShrink": {
+    "message": "縮小"
+  },
   "aiSummaryCopy": {
     "message": "まとめをコピー"
   },
@@ -1564,6 +1591,18 @@
   },
   "aiSummaryDisagreements": {
     "message": "意見の相違"
+  },
+  "aiSummaryVerdict": {
+    "message": "結論"
+  },
+  "aiSummaryConsensus": {
+    "message": "一致点"
+  },
+  "aiSummaryUnique": {
+    "message": "独自の視点"
+  },
+  "aiSummaryAllSources": {
+    "message": "全 $1 個の AI"
   },
   "aiSummaryCollecting": {
     "message": "回答を読み取っています…"
@@ -1657,5 +1696,29 @@
   },
   "msgAiSummaryTestFailed": {
     "message": "API テストに失敗しました：$1"
+  },
+  "composerPreparingCanSend": {
+    "message": "$1/$2 個の AI が準備完了。送信できます。残りは準備でき次第質問を受け取ります。"
+  },
+  "composerSkippedPreparing": {
+    "message": "$1 個の AI がまだ読み込み中です。準備でき次第この質問を受け取ります。"
+  },
+  "composerSkippedPreparingFiles": {
+    "message": "$1 個の AI がまだ読み込み中のためスキップしました。準備後に「Retry Failed」してください。"
+  },
+  "promptModeEdit": {
+    "message": "編集"
+  },
+  "promptModeDelete": {
+    "message": "削除"
+  },
+  "promptModeNew": {
+    "message": "新しいモード"
+  },
+  "promptModeDeleteConfirm": {
+    "message": "モード「$1」を削除しますか？"
+  },
+  "promptModeDeleted": {
+    "message": "モードを削除しました"
   }
 }

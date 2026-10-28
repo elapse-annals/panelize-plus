@@ -38,6 +38,10 @@ function collectAssignedIcons(source) {
   return icons;
 }
 
+function collectHelperIcons(source) {
+  return Array.from(source.matchAll(/\bmaterialIcon\((['"])([a-z][a-z0-9_]*)\1\)/g), match => match[2]);
+}
+
 function collectCssContentIcons(source) {
   return Array.from(source.matchAll(/\bcontent\s*:\s*(['"])([a-z][a-z0-9_]*)\1/gi), match => match[2]);
 }
@@ -48,6 +52,7 @@ describe('Material Symbols font subset', () => {
       'multi-panel/multi-panel.html',
       'multi-panel/multi-panel.js',
       'multi-panel/multi-panel.css',
+      'modules/composer-controls.js',
       'options/options.html',
       'options/options.js',
       'options/options.css'
@@ -57,6 +62,7 @@ describe('Material Symbols font subset', () => {
       return [
         ...collectMarkupIcons(source),
         ...collectAssignedIcons(source),
+        ...collectHelperIcons(source),
         ...collectCssContentIcons(source)
       ];
     });

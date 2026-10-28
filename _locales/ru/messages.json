@@ -186,7 +186,7 @@
     "message": "Библиотека промптов"
   },
   "descPromptLibrary": {
-    "message": "Импортируйте готовые мета-промпты для работы с ИИ, исследований, программирования и анализа"
+    "message": "Добавьте встроенные режимы промптов или импортируйте свои промпты"
   },
   "labelDefaultLibrary": {
     "message": "Стандартная библиотека промптов"
@@ -666,7 +666,7 @@
     "message": "Стандартная библиотека промптов"
   },
   "descDefaultPromptLibrary": {
-    "message": "Мета-промпты для улучшения промптов, планирования, программирования, тестирования, исследований, написания текстов и многого другого. Включает поддержку переменных для динамических шаблонов."
+    "message": "Встроенные режимы промптов: Кратко, Обучение, Вызов и Мозговой штурм. Режимы, уже имеющиеся в библиотеке, повторно не добавляются."
   },
   "statStorageUsed": {
     "message": "Использовано хранилища"
@@ -1388,6 +1388,24 @@
   "composerSendBlockedNewChat": {
     "message": "Запускаются новые беседы. Черновик сохранён; отправьте, когда они будут готовы."
   },
+  "composerPreparingHold": {
+    "message": "Подготовка ИИ: готово $1/$2. Отправка приостановлена, можно продолжать ввод."
+  },
+  "composerWaitingFor": {
+    "message": "Ожидание: $1."
+  },
+  "composerAllReady": {
+    "message": "Все ИИ готовы ($1)."
+  },
+  "composerNotReady": {
+    "message": "Готово ИИ: $1/$2. Отправка снова доступна; для остальных проверьте вход или перезагрузите их."
+  },
+  "composerNotReadyNames": {
+    "message": "Не готовы: $1."
+  },
+  "composerSendBlockedPreparing": {
+    "message": "ИИ ещё загружаются. Черновик сохранён; отправьте, когда они будут готовы."
+  },
   "composerStartingChatsHold": {
     "message": "Запуск новых бесед… Отправка приостановлена, можно продолжать ввод."
   },
@@ -1538,6 +1556,9 @@
   "composerPlaceholderTriggers": {
     "message": "Авто: $1"
   },
+  "composerTriggerCompletionHint": {
+    "message": "Tab · $1"
+  },
   "promptTriggersLabel": {
     "message": "Слова-триггеры (режим «Авто»)"
   },
@@ -1553,6 +1574,12 @@
   "aiSummaryTitle": {
     "message": "ИИ-сводка"
   },
+  "aiSummaryExpand": {
+    "message": "Развернуть"
+  },
+  "aiSummaryShrink": {
+    "message": "Свернуть"
+  },
   "aiSummaryCopy": {
     "message": "Копировать сводку"
   },
@@ -1564,6 +1591,18 @@
   },
   "aiSummaryDisagreements": {
     "message": "Разногласия"
+  },
+  "aiSummaryVerdict": {
+    "message": "Вывод"
+  },
+  "aiSummaryConsensus": {
+    "message": "Совпадает"
+  },
+  "aiSummaryUnique": {
+    "message": "Уникальные мысли"
+  },
+  "aiSummaryAllSources": {
+    "message": "Все ИИ ($1)"
   },
   "aiSummaryCollecting": {
     "message": "Чтение ответов…"
@@ -1657,5 +1696,29 @@
   },
   "msgAiSummaryTestFailed": {
     "message": "Проверка API не удалась: $1"
+  },
+  "composerPreparingCanSend": {
+    "message": "Готово ИИ: $1/$2. Можно отправлять; остальные получат вопрос, когда будут готовы."
+  },
+  "composerSkippedPreparing": {
+    "message": "ИИ ещё загружаются: $1; они получат этот вопрос, когда будут готовы."
+  },
+  "composerSkippedPreparingFiles": {
+    "message": "ИИ ещё загружались и были пропущены: $1; нажмите «Retry Failed», когда они будут готовы."
+  },
+  "promptModeEdit": {
+    "message": "Изменить"
+  },
+  "promptModeDelete": {
+    "message": "Удалить"
+  },
+  "promptModeNew": {
+    "message": "Новый режим"
+  },
+  "promptModeDeleteConfirm": {
+    "message": "Удалить режим «$1»?"
+  },
+  "promptModeDeleted": {
+    "message": "Режим удалён"
   }
 }

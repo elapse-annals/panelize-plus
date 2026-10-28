@@ -5,10 +5,13 @@ import {
   formatSummaryText,
   getSummaryOriginPattern,
   isRoundReadyForSummary,
+  isStronglySupported,
   isSummaryConfigured,
   normalizeChatCompletionsUrl,
   parseSummaryResponse,
+  replaceSourceIds,
   requestSummary,
+  stripSourceIds,
   truncateAnswerText
 } from '../modules/ai-summary.js';
 import { applyTimingEvent, createRound } from '../modules/answer-stats.js';
@@ -54,6 +57,12 @@ describe('buildSummaryMessages', () => {
     });
     expect(messages[0].role).toBe('system');
     expect(messages[0].content).toContain('"zh-CN"');
+    expect(messages[0].content).toContain('"verdict"');
+    expect(messages[0].content).toContain('"positions"');
+    expect(messages[0].content).toContain('"unique"');
+    expect(messages[0].content).toContain('contradict each other and cannot both be true');
+    expect(messages[0].content).toContain('does not mention a point does not disagree');
+    expect(messages[0].content).toContain('Never write source ids');
     expect(messages[1].content).toContain('Why is the sky blue?');
     expect(messages[1].content).toContain('--- Answer S1 (AI 1) ---\nRayleigh scattering.');
     expect(messages[1].content).not.toContain('x'.repeat(ANSWER_TEXT_MAX_LENGTH));
@@ -69,16 +78,65 @@ describe('parseSummaryResponse', () => {
   const valid = ['S1', 'S2'];
 
   it('parses JSON in a code fence and drops unknown sources', () => {
-    const summary = parseSummaryResponse('```json\n{"overview":"Both agree.","points":[{"text":"Scattering","sources":["s1","S2","S9","S1"]},{"text":" ","sources":["S1"]}],"disagreements":[{"text":"Color","sources":["S2"]}]}\n```', valid);
+    const summary = parseSummaryResponse('```json\n{"verdict":{"text":"Yes","sources":["s1","S9"]},"consensus":[{"text":"Scattering","sources":["s1","S2","S9","S1"]},{"text":" ","sources":["S1"]}],"disagreements":[{"topic":"Color","positions":[{"text":"Blue","sources":["S1"]},{"text":"Violet","sources":["S2"]}]}]}\n```', valid);
     expect(summary).toEqual({
+      verdict: { text: 'Yes', sources: ['S1'] },
+      overview: '',
+      consensus: [{ text: 'Scattering', sources: ['S1', 'S2'] }],
+      unique: [],
+      disagreements: [{ topic: 'Color', sources: [], positions: [{ text: 'Blue', sources: ['S1'] }, { text: 'Violet', sources: ['S2'] }] }]
+    });
+  });
+
+  it('reads unique points and strips cited source ids from the text', () => {
+    const summary = parseSummaryResponse(JSON.stringify({
+      consensus: [{ text: 'Uses EAV (S1, S2)', sources: ['S1', 'S2'] }],
+      unique: [{ text: 'S2：Has plugins', sources: ['S2'] }],
+      disagreements: [{ topic: 'Cost【S1】', positions: [{ text: 'Cheap（S1、S2）', sources: ['S1'] }] }]
+    }), valid);
+    expect(summary.consensus).toEqual([{ text: 'Uses EAV', sources: ['S1', 'S2'] }]);
+    expect(summary.unique).toEqual([{ text: 'Has plugins', sources: ['S2'] }]);
+    expect(summary.disagreements[0].topic).toBe('Cost');
+    expect(summary.disagreements[0].positions[0].text).toBe('Cheap');
+  });
+
+  it('keeps at most three positions and drops empty disagreements', () => {
+    const positions = ['A', 'B', 'C', 'D'].map(text => ({ text, sources: ['S1'] }));
+    const summary = parseSummaryResponse(JSON.stringify({ verdict: null, disagreements: [{ topic: 'T', positions }, { topic: ' ', positions: [] }] }), valid);
+    expect(summary.verdict).toBeNull();
+    expect(summary.disagreements).toHaveLength(1);
+    expect(summary.disagreements[0].positions.map(position => position.text)).toEqual(['A', 'B', 'C']);
+  });
+
+  it('reads the older points and flat disagreements', () => {
+    const summary = parseSummaryResponse('{"overview":"Both agree.","points":[{"text":"Scattering","sources":["S1"]}],"disagreements":[{"text":"Color","sources":["S2"]}]}', valid);
+    expect(summary).toEqual({
+      verdict: null,
       overview: 'Both agree.',
-      points: [{ text: 'Scattering', sources: ['S1', 'S2'] }],
-      disagreements: [{ text: 'Color', sources: ['S2'] }]
+      consensus: [{ text: 'Scattering', sources: ['S1'] }],
+      unique: [],
+      disagreements: [{ topic: 'Color', sources: ['S2'], positions: [] }]
     });
   });
 
   it('keeps a non-JSON reply as the overview', () => {
-    expect(parseSummaryResponse('Plain summary', valid)).toEqual({ overview: 'Plain summary', points: [], disagreements: [] });
+    expect(parseSummaryResponse('Plain summary', valid)).toEqual({ verdict: null, overview: 'Plain summary', consensus: [], unique: [], disagreements: [] });
+  });
+});
+
+describe('source ids in text', () => {
+  it('strips bracketed and leading ids only', () => {
+    expect(stripSourceIds('Fast (S1, S2)')).toBe('Fast');
+    expect(stripSourceIds('采用 EAV（S1、S3）模型')).toBe('采用 EAV模型');
+    expect(stripSourceIds('Point [S2] here')).toBe('Point here');
+    expect(stripSourceIds('S1, S2: Fast')).toBe('Fast');
+    expect(stripSourceIds('S1 thinks so')).toBe('S1 thinks so');
+    expect(stripSourceIds(null)).toBe('');
+  });
+
+  it('replaces remaining known ids with labels', () => {
+    const label = id => ({ S1: 'ChatGPT', S2: 'Gemini' })[id];
+    expect(replaceSourceIds('S1 认为 A，s2 认为 B，S9 未知', label)).toBe('ChatGPT 认为 A，Gemini 认为 B，S9 未知');
   });
 });
 
@@ -117,6 +175,24 @@ describe('requestSummary', () => {
   });
 });
 
+describe('isStronglySupported', () => {
+  const ids = count => Array.from({ length: count }, (_, index) => `S${index + 1}`);
+
+  it('is true at or above 80% of the summarized answers', () => {
+    expect(isStronglySupported(ids(4), 5)).toBe(true);
+    expect(isStronglySupported(ids(12), 15)).toBe(true);
+    expect(isStronglySupported(ids(2), 2)).toBe(true);
+  });
+
+  it('is false below 80%, with one answer, or without sources', () => {
+    expect(isStronglySupported(ids(3), 5)).toBe(false);
+    expect(isStronglySupported(ids(11), 15)).toBe(false);
+    expect(isStronglySupported(ids(1), 1)).toBe(false);
+    expect(isStronglySupported([], 5)).toBe(false);
+    expect(isStronglySupported(undefined, 5)).toBe(false);
+  });
+});
+
 describe('isRoundReadyForSummary', () => {
   const round = createRound({
     id: 'r1',
@@ -141,12 +217,14 @@ describe('isRoundReadyForSummary', () => {
 });
 
 describe('formatSummaryText', () => {
-  it('lists points with their source labels', () => {
+  it('lists the verdict, consensus and disagreements with their source labels', () => {
     const text = formatSummaryText({
-      overview: 'Overview',
-      points: [{ text: 'Point', sources: ['S1', 'S2'] }],
-      disagreements: [{ text: 'Split', sources: [] }]
-    }, id => ({ S1: 'ChatGPT', S2: 'Gemini' })[id]);
-    expect(text).toBe('Overview\n\n- Point [ChatGPT, Gemini]\n\nDisagreements:\n- Split');
+      verdict: { text: 'Yes', sources: ['S1'] },
+      overview: '',
+      consensus: [{ text: 'Point', sources: ['S1', 'S2'] }],
+      unique: [{ text: 'Only one', sources: ['S2'] }],
+      disagreements: [{ topic: 'Split', sources: [], positions: [{ text: 'A', sources: ['S1'] }, { text: 'B', sources: ['S2'] }] }]
+    }, id => ({ S1: 'ChatGPT', S2: 'Gemini' })[id], { verdictTitle: '结论', consensusTitle: '一致', uniqueTitle: '独到观点', disagreementsTitle: '分歧' });
+    expect(text).toBe('结论: Yes [ChatGPT]\n\n一致:\n- Point [ChatGPT, Gemini]\n\n独到观点:\n- Only one [Gemini]\n\n分歧:\n- Split\n  · A [ChatGPT]\n  · B [Gemini]');
   });
 });

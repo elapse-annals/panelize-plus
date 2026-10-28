@@ -130,8 +130,10 @@ import {
   formatSummaryText,
   getSummaryOriginPattern,
   isRoundReadyForSummary,
+  isStronglySupported,
   isSummaryConfigured,
   parseSummaryResponse,
+  replaceSourceIds,
   requestSummary
 } from '../modules/ai-summary.js';
 import { filterAnswerLogRounds, getAnswerLogProviderIds, renderAnswerLog } from '../modules/answer-log.js';
@@ -139,8 +141,15 @@ import { createPointerGuard, createPointerTracker } from '../modules/pointer-gua
 import { setupComposerControls } from '../modules/composer-controls.js';
 import { formatShortcutForTooltip, matchesShortcut } from '../modules/keyboard-shortcuts.js';
 import { runNewChatBatch } from '../modules/new-chat-actions.js';
+import {
+  PANELIZE_COMPOSER_READY,
+  PANEL_READY_STATE,
+  PANEL_READY_TIMEOUT_MS,
+  isSendHeldByReadiness,
+  summarizePanelReadiness
+} from '../modules/panel-readiness.js';
 import { shuffleOrder, syncDisplayOrder } from '../modules/blind-shuffle.js';
-import { applyPromptMode, ensureDefaultModePrompts, ensureDefaultModeTriggers, normalizePromptTriggers } from '../modules/prompt-modes.js';
+import { applyPromptMode, cleanupSamplePrompts, ensureDefaultModePrompts, ensureDefaultModeTriggers, normalizePromptTriggers, restoreDefaultModePrompts } from '../modules/prompt-modes.js';
 
 
 // ===== State Management =====
@@ -216,6 +225,13 @@ let failedNewChatPanelIds = new Set();
 const newChatResults = new Map();
 const NEW_CHAT_STATUS_AUTO_HIDE_MS = 4000;
 let newChatStatusHideTimerId = null;
+let readyStatusHideTimerId = null;
+// Set while some panel is loading, so finishing shows "all ready" once.
+let wasPreparingPanels = false;
+let isReadyStatusDismissed = false;
+// Text sends skipped for AIs still loading, by panel id; each is sent once
+// that panel is ready, or dropped when it times out or a new send starts.
+const catchUpSends = new Map();
 
 function getThemeAwareProviderIcon(provider) {
   return getProviderIcon(provider);
@@ -376,6 +392,12 @@ async function init() {
   await ensureDefaultModeTriggers({
     getAllPrompts, updatePrompt, storage: chrome.storage?.local
   }).catch(error => console.warn('Could not add the built-in mode trigger words', error));
+  await cleanupSamplePrompts({
+    getAllPrompts,
+    deletePrompt,
+    loadSamples: loadSamplePromptLibraries,
+    storage: chrome.storage?.local
+  }).catch(error => console.warn('Could not remove the imported sample prompts', error));
   composerControls = await setupComposerControls({
     getPanels: () => getDisplayedPanels(),
     send: () => broadcastMessage(document.getElementById('unified-input').value, true),
@@ -392,7 +414,10 @@ async function init() {
     notify: showToast,
     getPanelName: getPanelDisplayName,
     isBlindMode: () => isBlindModeEnabled,
-    loadModePrompts: getModePrompts
+    loadModePrompts: getModePrompts,
+    editModePrompt: prompt => openPromptEditor(prompt.id),
+    newModePrompt: () => openPromptEditor(null, { asMode: true }),
+    deleteModePrompt
   });
   updatePageStyleButtons();
   updateTemporaryChatButtonState();
@@ -696,6 +721,7 @@ async function reloadPanelIframe(panel, overrideUrl = null) {
   panel.currentUrl = null;
   iframe.src = overrideUrl || getProviderFrameUrl(panel.providerId);
   panel.iframe = iframe;
+  startPanelReadiness(panel);
 }
 
 async function openProviderTopLevel(panel) {
@@ -1223,8 +1249,9 @@ function handleProviderStatusMessage(event) {
   const isTempChatMessage = data.type === PANELIZE_TEMP_CHAT_ENABLED;
   const isLocationMessage = data.type === PANELIZE_PROVIDER_LOCATION;
   const isPageWidthMessage = data.type === PANELIZE_PAGE_WIDTH;
+  const isComposerReadyMessage = data.type === PANELIZE_COMPOSER_READY;
   if (data.context !== MULTI_PANEL_PROVIDER_STATUS_CONTEXT
-    || (!data.requestId && !isTempChatMessage && !isLocationMessage && !isPageWidthMessage)) {
+    || (!data.requestId && !isTempChatMessage && !isLocationMessage && !isPageWidthMessage && !isComposerReadyMessage)) {
     return;
   }
 
@@ -1246,6 +1273,11 @@ function handleProviderStatusMessage(event) {
       }
       panel.pageNeededWidth = data.neededWidth;
       updatePanelFit(panel);
+      break;
+    case PANELIZE_COMPOSER_READY:
+      if (panel.readyState !== PANEL_READY_STATE.READY) {
+        setPanelReadyState(panel, PANEL_READY_STATE.READY);
+      }
       break;
     case PANELIZE_PROVIDER_BUSY:
       if (!isChatgptProvider(panel.providerId)) {
@@ -1826,6 +1858,8 @@ function createPanel(providerId, { frameUrl = getProviderFrameUrl(providerId), b
   iframe.addEventListener('error', () => {
     loadingEl.innerHTML = `<img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="loading-icon" data-provider-id="${provider.id}"><span class="loading-text">Failed to load ${provider.name}</span>`;
     loadingPanelIds.delete(panelId);
+    const panel = panels.find(p => p.id === panelId);
+    if (panel) setPanelReadyState(panel, PANEL_READY_STATE.TIMEOUT);
   });
 
   // Add to panels array
@@ -1840,6 +1874,7 @@ function createPanel(providerId, { frameUrl = getProviderFrameUrl(providerId), b
   };
   panelGrid.insertBefore(panelEl, beforePanelId ? document.getElementById(beforePanelId) : null);
   panels.push(panel);
+  startPanelReadiness(panel);
   panelFitObserver?.observe(iframe.parentElement);
   resetFillRetryState();
 
@@ -1870,9 +1905,11 @@ function removePanel(panelId, { persist = true } = {}) {
   }
 
   // Remove from arrays and sets
+  clearTimeout(panels[panelIndex].readyTimerId);
   panels.splice(panelIndex, 1);
   composerControls?.panelsChanged();
   loadingPanelIds.delete(panelId);
+  renderReadinessStatus();
   resetFillRetryState();
 
   // Auto-shrink layout if applicable
@@ -2256,6 +2293,7 @@ async function setPageStyleModes({ blind = isBlindModeEnabled, wide = isWideCont
   if (wideChanged) panelResize?.refresh();
   updatePageStyleButtons();
   if (blindChanged) {
+    renderReadinessStatus();
     if (isBlindModeEnabled) {
       // Each time blind mode turns on, deal the panels into a new order.
       const shuffled = shuffleOrder(getDisplayedPanels().map(panel => panel.id));
@@ -2355,6 +2393,10 @@ export async function broadcastMessage(typedText, autoSubmit = true) {
     showToast(getLocalizedText('composerSendBlockedNewChat', 'New conversations are starting. Your draft is kept; send when they are ready.'));
     return;
   }
+  if (isSendHeldByReadiness(summarizePanelReadiness(panels))) {
+    showToast(getLocalizedText('composerSendBlockedPreparing', 'The AIs are still loading. Your draft is kept; send when they are ready.'));
+    return;
+  }
   if (composerControls?.isTierBusy()) {
     showToast(getLocalizedText('composerActionBusy', 'Wait for the current operation to finish.'));
     return;
@@ -2426,9 +2468,14 @@ export async function broadcastMessage(typedText, autoSubmit = true) {
 
     cleanStalePanelRetryState(panels, pendingFillImageIdsByPanel, failedFillPanelIds);
 
-    const targetPanels = hasImages
+    // Past the ready threshold, AIs still loading are skipped: with files they
+    // join Retry Failed, and a text send reaches each once it is ready.
+    catchUpSends.clear();
+    const loadingPanels = summarizePanelReadiness(panels).pending;
+    const loadingPanelIds = new Set(loadingPanels.map(panel => panel.id));
+    const targetPanels = (hasImages
       ? getFillTargetPanels(panels, failedFillPanelIds)
-      : panels;
+      : panels).filter(panel => !loadingPanelIds.has(panel.id));
     const previousFailedPanelIds = new Set(failedFillPanelIds);
     const attemptedImagesByPanel = new Map();
     if (waitForActionResult) {
@@ -2477,7 +2524,24 @@ export async function broadcastMessage(typedText, autoSubmit = true) {
         });
       })
     );
-    const normalizedResults = normalizePanelResults(panelResults, targetPanels);
+    const normalizedResults = [
+      ...normalizePanelResults(panelResults, targetPanels),
+      ...loadingPanels.map(panel => ({ panelId: panel.id, ok: false, reason: 'not-ready', succeededImageIds: [] }))
+    ];
+    if (loadingPanels.length && !hasImages) {
+      loadingPanels.forEach(panel => catchUpSends.set(panel.id, {
+        providerId: panel.providerId, text: panelText, autoSubmit: shouldAutoSubmit, isFillAction, waitForActionResult
+      }));
+    }
+    if (loadingPanels.length) {
+      showToast(getLocalizedText(
+        hasImages ? 'composerSkippedPreparingFiles' : 'composerSkippedPreparing',
+        hasImages
+          ? '$1 AIs were still loading and were skipped; use Retry Failed once they are ready.'
+          : '$1 AIs were still loading; they get this question once they are ready.',
+        [String(loadingPanels.length)]
+      ));
+    }
 
     if (hasImages) {
       if (fillPayloadRevision !== payloadRevisionAtStart) {
@@ -3562,16 +3626,96 @@ function findCurrentPanel(target) {
   return panels.find(panel => panel.id === target.id && panel.providerId === target.providerId);
 }
 
-// Send and Fill look unavailable while new chats start, but stay enabled so a
-// click or Enter reaches broadcastMessage and explains why nothing was sent.
-function setNewChatSendHold(active) {
-  document.getElementById('input-bar')?.toggleAttribute('data-new-chat-busy', active);
+// Send and Fill look unavailable while new chats start or AIs are still
+// loading, but stay enabled so a click or Enter reaches broadcastMessage and
+// explains why nothing was sent.
+function updateSendHold() {
+  const isPreparing = isSendHeldByReadiness(summarizePanelReadiness(panels));
+  const inputBar = document.getElementById('input-bar');
+  inputBar?.toggleAttribute('data-new-chat-busy', isNewChatBusy);
+  inputBar?.toggleAttribute('data-ai-preparing', isPreparing);
   ['send-all-btn', 'fill-input-btn'].forEach(id => {
     const button = document.getElementById(id);
     if (!button) return;
-    if (active) button.setAttribute('aria-disabled', 'true');
+    if (isNewChatBusy || isPreparing) button.setAttribute('aria-disabled', 'true');
     else button.removeAttribute('aria-disabled');
   });
+}
+
+// A panel holds Send until its page shows a question box, or until
+// PANEL_READY_TIMEOUT_MS passes (e.g. the provider is signed out).
+function startPanelReadiness(panel) {
+  isReadyStatusDismissed = false;
+  setPanelReadyState(panel, PANEL_READY_STATE.PENDING);
+  panel.readyTimerId = setTimeout(() => {
+    if (panel.readyState === PANEL_READY_STATE.PENDING) {
+      setPanelReadyState(panel, PANEL_READY_STATE.TIMEOUT);
+    }
+  }, PANEL_READY_TIMEOUT_MS);
+}
+
+function setPanelReadyState(panel, state) {
+  clearTimeout(panel.readyTimerId);
+  panel.readyTimerId = null;
+  panel.readyState = state;
+  renderReadinessStatus();
+  sendCatchUp(panel, state);
+}
+
+function sendCatchUp(panel, state) {
+  const pending = catchUpSends.get(panel.id);
+  if (!pending || state === PANEL_READY_STATE.PENDING) return;
+  catchUpSends.delete(panel.id);
+  if (state !== PANEL_READY_STATE.READY || pending.providerId !== panel.providerId) return;
+  sendToPanel(panel, pending.text, [], pending.autoSubmit, null, false, 8000, {
+    isFillAction: pending.isFillAction,
+    waitForActionResult: pending.waitForActionResult
+  }).catch(error => console.warn('[Multi-Panel] Catch-up send failed:', error));
+}
+
+function getReadinessNames(list) {
+  // Blind mode never names the AIs.
+  return isBlindModeEnabled ? '' : list.map(panel => getPanelDisplayName(panel)).join(', ');
+}
+
+function renderReadinessStatus() {
+  updateSendHold();
+  const row = document.getElementById('ai-ready-status-row');
+  const status = document.getElementById('ai-ready-status');
+  if (!row || !status) return;
+  const summary = summarizePanelReadiness(panels);
+  const counts = [String(summary.ready.length), String(summary.total)];
+  clearTimeout(readyStatusHideTimerId);
+  if (summary.pending.length) {
+    wasPreparingPanels = true;
+    const names = getReadinessNames(summary.pending);
+    status.textContent = [
+      isSendHeldByReadiness(summary)
+        ? getLocalizedText('composerPreparingHold', 'Preparing AIs: $1/$2 ready. Sending is paused; keep typing.', counts)
+        : getLocalizedText('composerPreparingCanSend', '$1/$2 AIs ready. You can send; the rest get the question once they are ready.', counts),
+      names && getLocalizedText('composerWaitingFor', 'Waiting for $1.', [names])
+    ].filter(Boolean).join(' ');
+    row.hidden = isReadyStatusDismissed;
+    return;
+  }
+  if (summary.notReady.length) {
+    wasPreparingPanels = false;
+    const names = getReadinessNames(summary.notReady);
+    status.textContent = [
+      getLocalizedText('composerNotReady', '$1/$2 AIs ready. Sending is back on; check sign-in or reload the others.', counts),
+      names && getLocalizedText('composerNotReadyNames', 'Not ready: $1.', [names])
+    ].filter(Boolean).join(' ');
+    row.hidden = isReadyStatusDismissed;
+    return;
+  }
+  if (wasPreparingPanels && summary.total > 0) {
+    wasPreparingPanels = false;
+    status.textContent = getLocalizedText('composerAllReady', 'All $1 AIs are ready.', [String(summary.total)]);
+    row.hidden = isReadyStatusDismissed;
+    readyStatusHideTimerId = setTimeout(() => { row.hidden = true; }, NEW_CHAT_STATUS_AUTO_HIDE_MS);
+    return;
+  }
+  row.hidden = true;
 }
 
 async function newChatAllProviders({ retryFailed = false } = {}) {
@@ -3580,7 +3724,8 @@ async function newChatAllProviders({ retryFailed = false } = {}) {
     .map(({ id, providerId, iframe }) => ({ id, providerId, iframe }));
   if (!targetPanels.length) return;
   isNewChatBusy = true;
-  setNewChatSendHold(true);
+  catchUpSends.clear();
+  updateSendHold();
   setTemporaryChatButtonDisabled(true);
   const buttons = ['new-chat-btn', 'composer-new-chat-btn', 'retry-new-chat-btn'].map(id => document.getElementById(id));
   buttons.forEach(button => { button.disabled = true; });
@@ -3656,7 +3801,7 @@ async function newChatAllProviders({ retryFailed = false } = {}) {
   } finally {
     isNewChatBusy = false;
     finishNewChatFocusRestore(requestId);
-    setNewChatSendHold(false);
+    updateSendHold();
     buttons.forEach(button => { button.disabled = false; });
     setTemporaryChatButtonDisabled(false);
   }
@@ -3837,6 +3982,7 @@ function handleAnswerTimingMessage(panel, data) {
     }
   }
   maybeAutoSummarize(round.id);
+  maybeRemindAiSummary(round.id);
 }
 
 // ===== AI Summary =====
@@ -3845,6 +3991,7 @@ const answerTextsByRound = new Map();
 const answerQuestionsByRound = new Map();
 const aiSummaryConfig = { autoEnabled: false, baseUrl: '', model: '', apiKey: '' };
 const autoSummarizedRoundIds = new Set();
+const remindedAiSummaryRoundIds = new Set();
 const pendingAnswerTextRequests = new Map();
 // status: 'idle', 'collecting', 'running', 'done' or 'error'.
 let aiSummaryState = { roundId: null, status: 'idle', sources: [], missing: [], summary: null, error: '', needsSetup: false };
@@ -3868,23 +4015,120 @@ function applyAiSummaryConfigChanges(changes, areaName) {
   if (changes.aiSummaryModel) aiSummaryConfig.model = changes.aiSummaryModel.newValue || '';
 }
 
+// The drawer grows out of the toolbar button and shrinks back into it.
+const AI_SUMMARY_OPEN_MS = 420;
+const AI_SUMMARY_CLOSE_MS = 280;
+// With at least this many summarized AIs, a point all of them back shows one
+// "All N AIs" badge instead of a chip per AI.
+const AI_SUMMARY_ALL_SOURCES_MIN = 3;
+let aiSummaryDrawerAnimation = null;
+
 function isAiSummaryDrawerOpen() {
-  return document.getElementById('ai-summary-drawer')?.hidden === false;
+  const drawer = document.getElementById('ai-summary-drawer');
+  return drawer?.hidden === false && !drawer.classList.contains('ai-summary-closing');
+}
+
+// Keyframes that place the drawer at the button, scaled down to a dot.
+function getAiSummaryCollapsedFrame(drawer) {
+  const button = document.getElementById('ai-summary-btn');
+  const drawerRect = drawer.getBoundingClientRect();
+  const buttonRect = button?.getBoundingClientRect();
+  if (buttonRect && buttonRect.width) {
+    const x = buttonRect.left + buttonRect.width / 2 - drawerRect.left;
+    const y = buttonRect.top + buttonRect.height / 2 - drawerRect.top;
+    drawer.style.transformOrigin = `${x}px ${y}px`;
+  } else {
+    drawer.style.transformOrigin = 'top right';
+  }
+  return { transform: 'scale(0.04)', opacity: 0, borderRadius: '50vh', filter: 'blur(8px)' };
+}
+
+function animateAiSummaryDrawer(drawer, opening) {
+  aiSummaryDrawerAnimation?.cancel();
+  aiSummaryDrawerAnimation = null;
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion || typeof drawer.animate !== 'function') {
+    return null;
+  }
+  const collapsed = getAiSummaryCollapsedFrame(drawer);
+  const expanded = { transform: 'scale(1)', opacity: 1, borderRadius: getComputedStyle(drawer).borderRadius, filter: 'blur(0)' };
+  const frames = opening
+    ? [collapsed, { ...expanded, transform: 'scale(1.012)', offset: 0.72 }, expanded]
+    : [expanded, { ...collapsed, opacity: 0.6, offset: 0.7 }, collapsed];
+  aiSummaryDrawerAnimation = drawer.animate(frames, {
+    duration: opening ? AI_SUMMARY_OPEN_MS : AI_SUMMARY_CLOSE_MS,
+    easing: opening ? 'cubic-bezier(0.2, 0.9, 0.25, 1)' : 'cubic-bezier(0.5, 0, 0.75, 0)'
+  });
+  return aiSummaryDrawerAnimation;
 }
 
 function openAiSummaryDrawer() {
   const drawer = document.getElementById('ai-summary-drawer');
-  if (!drawer) return;
+  if (!drawer || isAiSummaryDrawerOpen()) return;
+  drawer.classList.remove('ai-summary-closing');
   drawer.hidden = false;
-  document.getElementById('ai-summary-btn')?.setAttribute('aria-expanded', 'true');
+  const button = document.getElementById('ai-summary-btn');
+  button?.setAttribute('aria-expanded', 'true');
+  button?.classList.remove('ai-summary-ready');
   renderAiSummary();
+  animateAiSummaryDrawer(drawer, true);
 }
 
 function closeAiSummaryDrawer() {
   const drawer = document.getElementById('ai-summary-drawer');
-  if (!drawer) return;
-  drawer.hidden = true;
-  document.getElementById('ai-summary-btn')?.setAttribute('aria-expanded', 'false');
+  if (!drawer || !isAiSummaryDrawerOpen()) return;
+  const button = document.getElementById('ai-summary-btn');
+  button?.setAttribute('aria-expanded', 'false');
+  const finish = () => {
+    drawer.classList.remove('ai-summary-closing');
+    drawer.hidden = true;
+    // The button gives a little bounce as it takes the drawer in.
+    button?.classList.remove('ai-summary-absorb');
+    void button?.offsetWidth;
+    button?.classList.add('ai-summary-absorb');
+  };
+  const animation = animateAiSummaryDrawer(drawer, false);
+  if (!animation) {
+    finish();
+    return;
+  }
+  drawer.classList.add('ai-summary-closing');
+  // A cancelled close (the drawer reopened) leaves the drawer showing.
+  animation.addEventListener('finish', () => {
+    if (aiSummaryDrawerAnimation === animation) aiSummaryDrawerAnimation = null;
+    finish();
+  });
+}
+
+// The drawer keeps its width between openings while the page stays open.
+function setAiSummaryExpanded(expanded) {
+  document.getElementById('ai-summary-drawer')?.classList.toggle('ai-summary-expanded', expanded);
+  const button = document.getElementById('ai-summary-expand-btn');
+  if (!button) return;
+  const label = expanded
+    ? getLocalizedText('aiSummaryShrink', 'Shrink')
+    : getLocalizedText('aiSummaryExpand', 'Expand');
+  button.setAttribute('aria-pressed', String(expanded));
+  button.title = label;
+  button.setAttribute('aria-label', label);
+  button.querySelector('.material-symbols-outlined').textContent = expanded ? 'close_fullscreen' : 'open_in_full';
+}
+
+function toggleAiSummaryExpanded() {
+  const drawer = document.getElementById('ai-summary-drawer');
+  setAiSummaryExpanded(!drawer?.classList.contains('ai-summary-expanded'));
+}
+
+// Clicks on empty space or text toggle the width; controls, source chips and
+// finishing a text selection do not.
+function handleAiSummaryDrawerClick(event) {
+  const drawer = event.currentTarget;
+  if (drawer.classList.contains('ai-summary-closing')) return;
+  const target = event.target;
+  if (target instanceof Element && target.closest('button, a, input, textarea, select, .ai-summary-source')) return;
+  const selection = window.getSelection?.();
+  if (selection && !selection.isCollapsed && drawer.contains(selection.anchorNode)) return;
+  toggleAiSummaryExpanded();
 }
 
 function toggleAiSummaryDrawer() {
@@ -3905,6 +4149,7 @@ function startAiSummaryRound(roundId) {
   aiSummaryController?.abort();
   aiSummaryController = null;
   aiSummaryState = { roundId, status: 'idle', sources: [], missing: [], summary: null, error: '', needsSetup: false };
+  document.getElementById('ai-summary-btn')?.classList.remove('ai-summary-ready');
   renderAiSummary();
 }
 
@@ -3917,6 +4162,18 @@ function maybeAutoSummarize(roundId) {
   autoSummarizedRoundIds.add(roundId);
   openAiSummaryDrawer();
   void runAiSummary(roundId);
+}
+
+// Rings the AI summary button once the latest round is ready and the drawer is
+// closed, so a finished comparison is not missed. Needs a configured API.
+function maybeRemindAiSummary(roundId) {
+  const round = answerRounds.get(roundId);
+  if (roundId !== latestAnswerRoundId || remindedAiSummaryRoundIds.has(roundId) || isAiSummaryDrawerOpen()
+    || !isSummaryConfigured(aiSummaryConfig) || !isRoundReadyForSummary(round, getRoundAnswerTexts(round))) {
+    return;
+  }
+  remindedAiSummaryRoundIds.add(roundId);
+  document.getElementById('ai-summary-btn')?.classList.add('ai-summary-ready');
 }
 
 // Texts of the panels still showing the round's answer.
@@ -4065,21 +4322,78 @@ async function runAiSummary(roundId, { collect = false } = {}) {
   }
 }
 
-function createAiSummaryItem(item, sourcesById, round) {
-  const li = document.createElement('li');
-  li.append(document.createTextNode(item.text));
-  item.sources.forEach(sourceId => {
-    const source = sourcesById.get(sourceId);
-    if (!source) return;
+function createAiSummarySourceChips(sources, sourcesById, round) {
+  return sources.map(sourceId => sourcesById.get(sourceId)).filter(Boolean).map(source => {
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'ai-summary-source';
     chip.textContent = getAiSummarySourceLabel(source, round);
     chip.title = getLocalizedText('aiSummaryJumpToPanel', 'Go to this panel');
     chip.addEventListener('click', () => jumpToPanel(source.position));
-    li.append(chip);
+    return chip;
   });
+}
+
+// The AIs behind one item, on their own row under its text. When every
+// summarized AI backs it, one badge stands in for the whole row of chips.
+function createAiSummarySources(sources, sourcesById, round, totalSources) {
+  const row = document.createElement('span');
+  row.className = 'ai-summary-item-sources';
+  const known = sources.filter(sourceId => sourcesById.has(sourceId));
+  if (totalSources >= AI_SUMMARY_ALL_SOURCES_MIN && known.length === totalSources) {
+    const badge = document.createElement('span');
+    badge.className = 'ai-summary-source ai-summary-source-all';
+    badge.textContent = getLocalizedText('aiSummaryAllSources', 'All $1 AIs', [String(totalSources)]);
+    badge.title = known.map(sourceId => getAiSummarySourceLabel(sourcesById.get(sourceId), round)).join(', ');
+    row.append(badge);
+  } else {
+    row.append(...createAiSummarySourceChips(known, sourcesById, round));
+  }
+  return row;
+}
+
+// Item text with any source id the model left in replaced by its AI's name.
+function createAiSummaryText(text, sourcesById, round) {
+  const element = document.createElement('p');
+  element.className = 'ai-summary-item-text';
+  element.textContent = replaceSourceIds(text, sourceId => {
+    const source = sourcesById.get(sourceId);
+    return source ? getAiSummarySourceLabel(source, round) : '';
+  });
+  return element;
+}
+
+function createAiSummaryItem(item, sourcesById, round, totalSources) {
+  const li = document.createElement('li');
+  li.classList.toggle('ai-summary-strong', isStronglySupported(item.sources, totalSources));
+  li.append(createAiSummaryText(item.text, sourcesById, round), createAiSummarySources(item.sources, sourcesById, round, totalSources));
   return li;
+}
+
+// One disagreement: its topic, then each position on its own row followed by
+// the AIs that hold it.
+function createAiSummaryDisagreement(item, sourcesById, round, totalSources) {
+  const card = document.createElement('div');
+  card.className = 'ai-summary-disagreement';
+  if (item.topic) {
+    const topic = createAiSummaryText(item.topic, sourcesById, round);
+    topic.className = 'ai-summary-disagreement-topic';
+    card.append(topic);
+    if (item.sources.length) card.append(createAiSummarySources(item.sources, sourcesById, round, totalSources));
+  }
+  if (item.positions.length) {
+    const positions = document.createElement('ul');
+    positions.className = 'ai-summary-positions';
+    item.positions.forEach(position => {
+      const row = document.createElement('li');
+      row.className = 'ai-summary-position';
+      row.classList.toggle('ai-summary-strong', isStronglySupported(position.sources, totalSources));
+      row.append(createAiSummaryText(position.text, sourcesById, round), createAiSummarySources(position.sources, sourcesById, round, totalSources));
+      positions.append(row);
+    });
+    card.append(positions);
+  }
+  return card;
 }
 
 function renderAiSummary() {
@@ -4115,10 +4429,29 @@ function renderAiSummary() {
   const summary = state.status === 'done' ? state.summary : null;
   result.hidden = !summary;
   const sourcesById = new Map(state.sources.map(source => [source.sourceId, source]));
-  byId('ai-summary-overview').textContent = summary?.overview || '';
-  byId('ai-summary-points').replaceChildren(...(summary?.points || []).map(item => createAiSummaryItem(item, sourcesById, round)));
-  byId('ai-summary-disagreements').replaceChildren(...(summary?.disagreements || []).map(item => createAiSummaryItem(item, sourcesById, round)));
-  byId('ai-summary-disagreements-title').hidden = !summary?.disagreements.length;
+  const verdict = byId('ai-summary-verdict');
+  verdict.hidden = !summary?.verdict;
+  byId('ai-summary-verdict-text').replaceChildren(...(summary?.verdict
+    ? [
+      document.createTextNode(replaceSourceIds(summary.verdict.text, sourceId => {
+        const source = sourcesById.get(sourceId);
+        return source ? getAiSummarySourceLabel(source, round) : '';
+      })),
+      createAiSummarySources(summary.verdict.sources, sourcesById, round, state.sources.length)
+    ]
+    : []));
+  const overview = byId('ai-summary-overview');
+  overview.textContent = summary?.overview || '';
+  overview.hidden = !summary?.overview;
+  byId('ai-summary-consensus').replaceChildren(...(summary?.consensus || []).map(item => createAiSummaryItem(item, sourcesById, round, state.sources.length)));
+  byId('ai-summary-consensus-section').hidden = !summary?.consensus.length;
+  byId('ai-summary-unique').replaceChildren(...(summary?.unique || []).map(item => createAiSummaryItem(item, sourcesById, round, state.sources.length)));
+  byId('ai-summary-unique-section').hidden = !summary?.unique?.length;
+  byId('ai-summary-disagreements').replaceChildren(...(summary?.disagreements || []).map(item => createAiSummaryDisagreement(item, sourcesById, round, state.sources.length)));
+  byId('ai-summary-disagreements-section').hidden = !summary?.disagreements.length;
+  // Shown blocks fade in one after another (see .ai-summary-reveal).
+  [...result.querySelectorAll('.ai-summary-reveal:not([hidden]), .ai-summary-consensus > li, .ai-summary-disagreement')]
+    .forEach((element, index) => element.style.setProperty('--ai-summary-index', String(index)));
 
   const missing = byId('ai-summary-missing');
   const showMissing = state.missing.length > 0 && ['running', 'done', 'error'].includes(state.status);
@@ -4135,7 +4468,12 @@ async function copyAiSummary() {
   const text = formatSummaryText(
     aiSummaryState.summary,
     sourceId => getAiSummarySourceLabel(sourcesById.get(sourceId), round),
-    { disagreementsTitle: getLocalizedText('aiSummaryDisagreements', 'Disagreements') }
+    {
+      verdictTitle: getLocalizedText('aiSummaryVerdict', 'Verdict'),
+      consensusTitle: getLocalizedText('aiSummaryConsensus', 'Agreed'),
+      uniqueTitle: getLocalizedText('aiSummaryUnique', 'Unique insights'),
+      disagreementsTitle: getLocalizedText('aiSummaryDisagreements', 'Disagreements')
+    }
   );
   try {
     await navigator.clipboard.writeText(text);
@@ -4148,6 +4486,8 @@ async function copyAiSummary() {
 function setupAiSummary() {
   document.getElementById('ai-summary-btn')?.addEventListener('click', toggleAiSummaryDrawer);
   document.getElementById('close-ai-summary-drawer')?.addEventListener('click', closeAiSummaryDrawer);
+  document.getElementById('ai-summary-expand-btn')?.addEventListener('click', toggleAiSummaryExpanded);
+  document.getElementById('ai-summary-drawer')?.addEventListener('click', handleAiSummaryDrawerClick);
   document.getElementById('ai-summary-copy-btn')?.addEventListener('click', () => { void copyAiSummary(); });
   document.getElementById('ai-summary-rerun-btn')?.addEventListener('click', () => {
     const roundId = aiSummaryState.roundId || latestAnswerRoundId;
@@ -4160,6 +4500,30 @@ function setupAiSummary() {
       closeAiSummaryDrawer();
       document.getElementById('ai-summary-btn')?.focus();
     }
+  });
+  // A click anywhere else closes the drawer. The button toggles it itself.
+  document.addEventListener('pointerdown', (event) => {
+    if (!isAiSummaryDrawerOpen()) return;
+    const target = event.target;
+    if (target instanceof Node && (document.getElementById('ai-summary-drawer')?.contains(target)
+      || document.getElementById('ai-summary-btn')?.contains(target))) {
+      return;
+    }
+    closeAiSummaryDrawer();
+  }, true);
+  // Clicks inside a panel never reach this page; the page loses focus to the
+  // panel's frame instead. The frame must be under the pointer, so a panel
+  // that focuses itself does not close the drawer.
+  window.addEventListener('blur', () => {
+    setTimeout(() => {
+      const active = document.activeElement;
+      if (isAiSummaryDrawerOpen() && active?.tagName === 'IFRAME' && active.matches(':hover')) {
+        closeAiSummaryDrawer();
+      }
+    }, 0);
+  });
+  document.getElementById('ai-summary-btn')?.addEventListener('animationend', (event) => {
+    if (event.animationName === 'ai-summary-absorb') event.currentTarget.classList.remove('ai-summary-absorb');
   });
 }
 
@@ -4692,8 +5056,12 @@ async function renderPromptList(searchQuery = '') {
       return;
     }
 
+    const editLabel = escapeHtml(getLocalizedText('btnEdit', 'Edit'));
     promptList.innerHTML = prompts.slice(0, 30).map(prompt => `
-      <div class="prompt-item-modal" data-id="${prompt.id}">
+      <div class="prompt-item-modal${prompt.isFavorite ? ' is-favorite' : ''}" data-id="${prompt.id}">
+        <button type="button" class="prompt-item-edit" title="${editLabel}" aria-label="${editLabel}">
+          <span class="material-symbols-outlined">edit</span>
+        </button>
         ${prompt.isFavorite ? '<div class="prompt-item-favorite"><span class="material-symbols-outlined filled">star</span></div>' : ''}
         <div class="prompt-item-modal-title">${escapeHtml(prompt.title)}</div>
         <div class="prompt-item-modal-preview">${escapeHtml(prompt.content.substring(0, 150))}${prompt.content.length > 150 ? '...' : ''}</div>
@@ -4721,6 +5089,11 @@ async function renderPromptList(searchQuery = '') {
         }
       });
       
+      item.querySelector('.prompt-item-edit')?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        openPromptEditor(parseInt(item.dataset.id));
+      });
+
       // Double click to edit
       item.addEventListener('dblclick', async () => {
         const promptId = parseInt(item.dataset.id);
@@ -4881,6 +5254,11 @@ function setupEventListeners() {
   document.getElementById('dismiss-new-chat-status-btn').addEventListener('click', () => {
     clearTimeout(newChatStatusHideTimerId);
     document.getElementById('new-chat-status-row').hidden = true;
+  });
+  document.getElementById('dismiss-ai-ready-status-btn').addEventListener('click', () => {
+    clearTimeout(readyStatusHideTimerId);
+    isReadyStatusDismissed = true;
+    document.getElementById('ai-ready-status-row').hidden = true;
   });
 
   // Temporary Chat button
@@ -5144,6 +5522,7 @@ function setupEventListeners() {
   
   // New Prompt button
   document.getElementById('new-prompt-btn')?.addEventListener('click', () => openPromptEditor());
+  document.getElementById('restore-mode-prompts-btn')?.addEventListener('click', restoreModePrompts);
 
   // Prompt Editor Modal outside click
   document.getElementById('prompt-editor-modal')?.addEventListener('click', (e) => {
@@ -5173,6 +5552,9 @@ function resizeTextarea() {
   const overflow = Math.max(0, height - restHeight);
   inputBar?.style.setProperty('--composer-overflow', `${overflow}px`);
   inputBar?.classList.toggle('composer-expanded', overflow > 0);
+  // Every change to the question (typing, sending, clearing, restoring a draft)
+  // resizes the textarea, so the appended-instruction preview follows here.
+  composerControls?.refreshPromptGhost();
 }
 
 // ===== Modal Functions =====
@@ -5194,6 +5576,19 @@ function openPromptModal() {
   const modal = document.getElementById('prompt-modal');
   modal.style.display = 'flex';
   loadPromptLibrary();
+}
+
+// Adds back built-in modes that were deleted; the modes still there keep their edits.
+async function restoreModePrompts() {
+  try {
+    const added = await restoreDefaultModePrompts({ getAllPrompts, savePrompt, tr: getLocalizedText });
+    showToast(added ? `Restored ${added} built-in mode${added === 1 ? '' : 's'}` : 'All built-in modes are already in your library');
+    await loadPromptLibrary();
+    await composerControls?.refreshPromptModes();
+  } catch (error) {
+    console.warn('Could not restore the built-in modes', error);
+    showToast('Could not restore the built-in modes');
+  }
 }
 
 function closePromptModal() {
@@ -5400,7 +5795,7 @@ function showToast(message) {
 // ===== Prompt Editor Functions =====
 
 // 打开提示词编辑器（新增或编辑）
-function openPromptEditor(promptId = null) {
+function openPromptEditor(promptId = null, { asMode = false } = {}) {
   currentEditingPromptId = promptId;
   const modal = document.getElementById('prompt-editor-modal');
   const title = document.getElementById('prompt-editor-title');
@@ -5417,9 +5812,16 @@ function openPromptEditor(promptId = null) {
     title.textContent = 'New Prompt';
     deleteBtn.style.display = 'none';
     clearPromptEditor();
+    if (asMode) {
+      // New from the composer's mode menu: listed there once saved.
+      title.textContent = getLocalizedText('promptModeNew', 'New mode');
+      document.getElementById('prompt-is-mode-input').checked = true;
+      document.getElementById('prompt-category-input').value = getLocalizedText('promptModeCategory', 'Modes');
+    }
   }
 
   modal.style.display = 'flex';
+  document.getElementById('prompt-title-input')?.focus();
 }
 
 // 加载提示词数据到编辑器
@@ -5507,6 +5909,32 @@ async function deletePromptFromEditor() {
       console.error('Error deleting prompt:', error);
       showToast('Failed to delete prompt');
     }
+  }
+}
+
+// The sample libraries Options could import, in every shipped language.
+async function loadSamplePromptLibraries() {
+  const paths = ['data/prompt-libraries/default-prompts.json', 'data/prompt-libraries/default-prompts-zh_CN.json'];
+  const libraries = await Promise.all(paths.map(async path => {
+    const response = await fetch(chrome.runtime.getURL(path));
+    if (!response.ok) throw new Error(`Could not read ${path}`);
+    const data = await response.json();
+    return Array.isArray(data) ? data : (data?.prompts || []);
+  }));
+  return libraries.flat();
+}
+
+// Deletes a mode from the composer's mode menu; the menu re-reads the library.
+async function deleteModePrompt(prompt) {
+  const message = getLocalizedText('promptModeDeleteConfirm', 'Delete the mode "$1"?', [prompt.title]);
+  if (!confirm(message)) return;
+  try {
+    await deletePrompt(prompt.id);
+    showToast(getLocalizedText('promptModeDeleted', 'Mode deleted'));
+    if (document.getElementById('prompt-modal')?.style.display === 'flex') await renderPromptList();
+  } catch (error) {
+    console.error('Error deleting mode prompt:', error);
+    showToast('Failed to delete prompt');
   }
 }
 

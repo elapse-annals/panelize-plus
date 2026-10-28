@@ -1,5 +1,48 @@
 # Changelog
 
+## 2.33.0 - 2026-10-28
+- "Import Default Prompts" in Options now adds only the built-in prompt modes (Concise, Learning, Challenge, Brainstorm) that your library lacks, instead of the 70 sample prompts.
+- Sample prompts imported again after the earlier cleanup are removed once more. As before, only samples still exactly as shipped go; prompts you edited or favorited stay.
+- Each card in the Prompt Library has an Edit button in its top-right corner, shown on hover or keyboard focus. Clicking a card still inserts the prompt.
+
+## 2.32.0 - 2026-10-28
+- In Auto mode, typing the start of a trigger word such as `/st` shows the rest (`udy`) faded at the caret, followed by a quiet "Tab · Learning" hint. Press Tab to complete it to `/study ` and keep typing; without a suggestion, Tab moves focus as before. Suggestions appear only at the end of a line and follow the mode menu's order.
+
+## 2.31.0 - 2026-10-28
+- The AI summary drawer now sits between the toolbar and the composer instead of covering them, and is wider: 560px normally and up to 1080px when expanded.
+- Summary text is easier to read: larger type and line spacing, one point per row with its AIs on a quiet row below instead of mixed into the sentence, and no more whole paragraphs in bold. A point every summarized AI backs shows one "All N AIs" badge instead of a chip per AI.
+- Disagreements now list only positions that contradict each other. A point some AIs simply did not mention is not a disagreement; it goes to the new Unique insights section with the AIs that raised it. Each position is one row followed by the AIs that hold it.
+- Summary text no longer shows stand-in ids such as S1 or S2: the AI is asked not to write them, cited ids in brackets are removed, and any left are replaced by the AI's name.
+
+## 2.30.0 - 2026-10-28
+- The AI summary drawer no longer widens when the pointer passes over it; hovering only makes it solid. Click anywhere in it (outside its buttons and source chips) to widen it, and click again to narrow it. The new Expand button in its header does the same and works from the keyboard. The cursor shows which way a click goes, selecting text does not toggle the width, and the drawer keeps its width when you close and reopen it.
+
+## 2.29.0 - 2026-10-28
+- In the AI summary, consensus points and disagreement positions backed by at least 80% of the summarized AIs are shown in bold with a stronger highlight.
+
+## 2.28.0 - 2026-10-28
+- The AI summary is laid out as verdict, agreement and disagreement: for a yes-or-no or which-is-better question it states the answer first, then lists what the AIs agree on, then each disagreement with up to three positions side by side, each citing its AIs. Copy uses the same sections. Summaries made before still show.
+- The AI summary drawer widens while you hover over it or work in it, and has a cleaner look in light and dark themes.
+- The drawer grows out of the AI summary button when it opens and shrinks back into it when it closes. Clicking anywhere outside it, including inside a panel, closes it. With reduced motion turned on, it opens and closes without animation.
+
+## 2.28.0 - 2026-10-28
+- Sending no longer waits for every AI: once 80% of them are ready (rounded up), Send All and Fill work again. AIs still loading are skipped; a text question reaches each of them once it is ready, and with files attached they join Retry Failed.
+- The Prompt Library button and the prompt-mode menu now sit together at the start of the composer row.
+- The prompt-mode menu is a proper menu: Default, Auto, then Concise, Learning, Challenge and Brainstorm, followed by your own modes. Each mode has Edit and Delete, and New mode opens the editor with "Prompt mode" already checked. A mode listed twice in the library shows once.
+- The Auto hint lists each mode's first trigger word only, such as `/brief Concise · /study Learning`.
+- The sample prompts added by an earlier "Import default library" are removed once, so the library starts from the prompt modes. Prompts you edited, favorited or wrote yourself stay; Options can still import the samples again.
+
+## 2.27.0 - 2026-10-28
+- Panelize now shows whether the AIs are ready when the page opens, when you add or switch a panel, and when a new temporary chat reloads panels: a status above the composer counts the AIs whose question box has loaded and names the ones still loading. In blind mode it shows counts only.
+- Sending is paused until every AI is ready, like when new chats are starting: Send All and Fill look unavailable, and Enter keeps your draft and explains why. An AI that has not shown its question box after 20 seconds (for example when signed out) stops holding sending and is listed as not ready.
+
+## 2.26.0 - 2026-10-28
+- The AI summary drawer is translucent so the panels stay visible behind it; it turns solid while you hover over it.
+- Once a round finishes, the AI summary button rings to remind you, if an API is set up. The ring clears when you open the summary.
+- Prompt Library has a "Restore built-in modes" button that adds back built-in modes you deleted, such as Learning or Brainstorm. Modes are read from the library only, so edits there apply to the prompt-mode menu right away.
+- Auto mode also matches trigger words that touch Chinese text or punctuation, such as `/study，` or `问题/study`. Paths and URLs such as `https://x.com/study` still do not match.
+- The composer shows a faded one-line preview of the instruction that will be appended, right where your question ends, and in Auto mode strikes through the trigger words that are removed, so you can see what the AIs receive. The preview never changes the input's height and does not take pointer input.
+
 ## 2.25.0 - 2026-10-28
 - New AI summary: once every AI in a round finishes answering, Panelize can merge their answers into one summary through an OpenAI-compatible API you set up in Options (API base URL, API key and model). Each point and disagreement shows chips naming the AIs it came from; clicking a chip scrolls to that panel. In blind mode the chips number the panels instead of naming them, and the API sees the same anonymous labels.
 - The summary opens in a side drawer from the new AI summary toolbar button (Mod+Alt+Y by default), which can also re-run it and copy it with its sources. Automatic summaries are off until you turn on "Summarize when all answers are done". For AIs whose answer was not captured when it finished, the drawer reads their last answer when you open or re-run it; ones that still cannot be read are listed as not included.

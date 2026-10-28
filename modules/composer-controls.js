@@ -16,7 +16,7 @@ import {
   requestProviderTierState,
   runProviderTierBatch
 } from './provider-tiers.js';
-import { AUTO_PROMPT_MODE, normalizePromptTriggers, resolvePromptModeForText, selectModePrompts } from './prompt-modes.js';
+import { AUTO_PROMPT_MODE, describePromptSend, findPromptTriggerCompletion, normalizePromptTriggers, resolvePromptModeForText, selectModePrompts } from './prompt-modes.js';
 
 const DEFAULT_TIER = 'default';
 const ACTION_LABELS = {
@@ -106,7 +106,10 @@ export async function setupComposerControls({
   toggleWideContent = () => {},
   scrollPanels = () => {},
   jumpToPanel = () => {},
-  loadModePrompts = async () => []
+  loadModePrompts = async () => [],
+  editModePrompt = () => {},
+  deleteModePrompt = async () => {},
+  newModePrompt = () => {}
 }) {
   const byId = id => document.getElementById(id);
   if (!byId('composer-shell')) return null;
@@ -425,54 +428,248 @@ export async function setupComposerControls({
     return promptMode === AUTO_PROMPT_MODE;
   }
 
-  // "/study Learning · /brief Concise" for the modes that have triggers.
+  // "/brief Concise · /study Learning": each mode's first trigger word only,
+  // so the hint stays one short line.
   function describeTriggers() {
     return modePrompts
       .map(prompt => {
-        const triggers = normalizePromptTriggers(prompt.triggers);
-        return triggers.length ? `${triggers.join(' ')} ${prompt.title}` : '';
+        const [trigger] = normalizePromptTriggers(prompt.triggers);
+        return trigger ? `${trigger} ${prompt.title}` : '';
       })
       .filter(Boolean)
       .join(' · ');
   }
 
-  // The options mirror the library's mode prompts after the page's own
-  // Default and Auto options.
-  function renderPromptModeOptions(select) {
-    const keys = modePrompts.map(prompt => prompt.modeKey);
-    const fixedCount = [...select.options].filter(option => option.value === '' || option.value === AUTO_PROMPT_MODE).length;
-    const current = [...select.options].slice(fixedCount);
-    const unchanged = current.length === keys.length && current.every((option, index) =>
-      option.value === keys[index] && option.textContent === modePrompts[index].title);
-    if (unchanged) return;
-    current.forEach(option => option.remove());
-    select.append(...modePrompts.map(prompt => {
-      const option = document.createElement('option');
-      option.value = prompt.modeKey;
-      option.textContent = prompt.title;
-      return option;
-    }));
+  function createModeOption(value, name, hint) {
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = 'prompt-mode-option';
+    option.dataset.mode = value;
+    option.setAttribute('role', 'menuitemradio');
+    const nameEl = document.createElement('span');
+    nameEl.className = 'prompt-mode-option-name';
+    nameEl.textContent = name;
+    const hintEl = document.createElement('span');
+    hintEl.className = 'prompt-mode-option-hint';
+    hintEl.textContent = hint;
+    option.append(nameEl, hintEl);
+    return option;
   }
 
-  // The select stays quiet until a mode is picked; then it takes the same soft
-  // accent as pressed composer buttons so the appended instruction is visible.
+  function createModeAction(action, icon, title, prompt) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `prompt-mode-action prompt-mode-${action}`;
+    button.dataset.promptId = String(prompt.id);
+    button.title = title;
+    button.setAttribute('aria-label', `${title}: ${prompt.title}`);
+    button.append(icon);
+    return button;
+  }
+
+  // Default and Auto, then each library mode with edit and delete, then New mode.
+  function renderPromptModeMenu(list) {
+    const rows = [
+      createModeOption('', tr('promptModeDefault', 'Default'), tr(...PROMPT_MODE_DEFAULT_HINT)),
+      createModeOption(AUTO_PROMPT_MODE, tr(...PROMPT_MODE_AUTO_LABEL), tr(...PROMPT_MODE_AUTO_HINT))
+    ].map(option => {
+      const row = document.createElement('div');
+      row.className = 'prompt-mode-row';
+      row.append(option);
+      return row;
+    });
+    modePrompts.forEach(prompt => {
+      const [trigger] = normalizePromptTriggers(prompt.triggers);
+      const row = document.createElement('div');
+      row.className = 'prompt-mode-row';
+      row.append(
+        createModeOption(prompt.modeKey, prompt.title,
+          [trigger, truncate(prompt.content, PROMPT_MODE_PLACEHOLDER_LENGTH)].filter(Boolean).join('  ')),
+        createModeAction('edit', materialIcon('edit'), tr('promptModeEdit', 'Edit'), prompt),
+        createModeAction('delete', materialIcon('delete'), tr('promptModeDelete', 'Delete'), prompt)
+      );
+      rows.push(row);
+    });
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'prompt-mode-new';
+    const addIcon = materialIcon('add');
+    const addLabel = document.createElement('span');
+    addLabel.textContent = tr('promptModeNew', 'New mode');
+    add.append(addIcon, addLabel);
+    list.replaceChildren(...rows, add);
+  }
+
+  // The menu button stays quiet until a mode is picked; then it takes the
+  // same soft accent as pressed composer buttons so the appended instruction
+  // is visible.
   function renderPromptMode() {
-    const select = byId('prompt-mode-select');
-    if (!select) return;
-    renderPromptModeOptions(select);
+    const button = byId('prompt-mode-btn');
+    const list = byId('prompt-mode-list');
+    if (!button || !list) return;
+    renderPromptModeMenu(list);
     const mode = currentModePrompt();
     const auto = isAutoMode();
-    select.value = auto ? AUTO_PROMPT_MODE : (mode ? mode.modeKey : '');
+    const value = auto ? AUTO_PROMPT_MODE : (mode ? mode.modeKey : '');
+    button.dataset.mode = value;
+    list.querySelectorAll('.prompt-mode-option').forEach(option => {
+      option.setAttribute('aria-checked', String(option.dataset.mode === value));
+    });
+    const name = auto ? tr(...PROMPT_MODE_AUTO_LABEL) : (mode ? mode.title : tr('promptModeDefault', 'Default'));
+    byId('prompt-mode-label').textContent = name;
     const label = tr('composerPromptModeLabel', 'Prompt mode');
-    const heading = auto ? `${label}: ${tr(...PROMPT_MODE_AUTO_LABEL)}` : (mode ? `${label}: ${mode.title}` : label);
+    const heading = auto || mode ? `${label}: ${name}` : label;
     const triggers = auto ? describeTriggers() : '';
     const hint = auto
       ? [tr(...PROMPT_MODE_AUTO_HINT), triggers].filter(Boolean).join('\n')
       : (mode ? truncate(mode.content, PROMPT_MODE_HINT_LENGTH) : tr(...PROMPT_MODE_DEFAULT_HINT));
-    select.title = `${heading}\n${hint}`;
-    select.setAttribute('aria-label', heading);
-    select.closest('.prompt-mode-control')?.setAttribute('data-active', String(Boolean(mode || auto)));
+    button.title = `${heading}\n${hint}`;
+    button.setAttribute('aria-label', heading);
+    button.closest('.prompt-mode-control')?.setAttribute('data-active', String(Boolean(mode || auto)));
     updateInputPlaceholder(keyboard.getBindings());
+    renderPromptGhost();
+  }
+
+  async function choosePromptMode(value) {
+    promptMode = toModeKey(value);
+    renderPromptMode();
+    await saveSetting('selectedPromptMode', promptMode);
+  }
+
+  function isPromptModeMenuOpen() {
+    return byId('prompt-mode-list')?.hidden === false;
+  }
+
+  function openPromptModeMenu() {
+    const list = byId('prompt-mode-list');
+    if (!list) return;
+    closeTierMenu();
+    renderPromptMode();
+    list.hidden = false;
+    byId('prompt-mode-btn').setAttribute('aria-expanded', 'true');
+    const options = [...list.querySelectorAll('.prompt-mode-option')];
+    (options.find(option => option.getAttribute('aria-checked') === 'true') || options[0])?.focus({ preventScroll: true });
+  }
+
+  function closePromptModeMenu({ restoreFocus = false } = {}) {
+    const list = byId('prompt-mode-list');
+    if (!list || list.hidden) return;
+    list.hidden = true;
+    byId('prompt-mode-btn').setAttribute('aria-expanded', 'false');
+    if (restoreFocus) byId('prompt-mode-btn').focus({ preventScroll: true });
+  }
+
+  async function handlePromptModeMenuClick(event) {
+    const target = event.target.closest?.('button');
+    if (!target) return;
+    const restoreFocus = event.detail === 0;
+    if (target.classList.contains('prompt-mode-option')) {
+      closePromptModeMenu({ restoreFocus });
+      await choosePromptMode(target.dataset.mode);
+      return;
+    }
+    const prompt = modePrompts.find(candidate => String(candidate.id) === target.dataset.promptId);
+    if (target.classList.contains('prompt-mode-new')) {
+      closePromptModeMenu();
+      newModePrompt();
+    } else if (prompt && target.classList.contains('prompt-mode-edit')) {
+      closePromptModeMenu();
+      editModePrompt(prompt);
+    } else if (prompt && target.classList.contains('prompt-mode-delete')) {
+      closePromptModeMenu({ restoreFocus: true });
+      await deleteModePrompt(prompt);
+      await refreshPromptModes();
+    }
+  }
+
+  // Auto mode's trigger word being typed at the caret ("/st" → "/study"),
+  // offered only while the composer has focus and nothing is selected.
+  function currentTriggerCompletion() {
+    const input = byId('unified-input');
+    if (!input || !isAutoMode() || document.activeElement !== input) return null;
+    if (input.selectionStart !== input.selectionEnd) return null;
+    return findPromptTriggerCompletion(input.value, input.selectionStart, modePrompts);
+  }
+
+  // "udy" in place, then a quiet "Tab · Learning" naming the key and the mode.
+  function completionSpans(completion) {
+    const rest = document.createElement('span');
+    rest.className = 'prompt-ghost-completion';
+    rest.textContent = completion.rest;
+    const hint = document.createElement('span');
+    hint.className = 'prompt-ghost-completion-hint';
+    hint.textContent = tr('composerTriggerCompletionHint', 'Tab · $1', [completion.prompt.title]);
+    return [rest, hint];
+  }
+
+  // Tab accepts the completion; otherwise Tab moves focus as usual.
+  function acceptTriggerCompletion(event) {
+    if (event.key !== 'Tab' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+    if (event.isComposing || event.keyCode === 229) return;
+    const completion = currentTriggerCompletion();
+    if (!completion) return;
+    event.preventDefault();
+    const input = byId('unified-input');
+    const space = /\s/.test(input.value[completion.end] || '') ? '' : ' ';
+    input.setRangeText(`${completion.trigger}${space}`, completion.start, completion.end, 'end');
+    // multi-panel.js resizes on input, which also re-renders the ghost.
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    renderPromptGhost();
+  }
+
+  // Shows what the AIs get under the question: Auto's removed trigger words and
+  // the appended instruction. It mirrors the textarea and never resizes it.
+  // A trigger word being typed gets its completion inline at the caret.
+  function renderPromptGhost() {
+    const ghost = byId('prompt-ghost');
+    const input = byId('unified-input');
+    if (!ghost || !input) return;
+    const segments = describePromptSend(input.value, {
+      auto: isAutoMode(),
+      instruction: currentModePrompt()?.content ?? null,
+      modePrompts
+    });
+    const completion = currentTriggerCompletion();
+    const suffix = segments?.find(segment => segment.kind === 'suffix');
+    const spans = [];
+    let offset = 0;
+    for (const segment of (segments || [{ kind: 'text', value: input.value }]).filter(item => item !== suffix)) {
+      const parts = completion && completion.end > offset && completion.end <= offset + segment.value.length
+        ? [segment.value.slice(0, completion.end - offset), segment.value.slice(completion.end - offset)]
+        : [segment.value];
+      parts.forEach((value, index) => {
+        if (index > 0) spans.push(...completionSpans(completion));
+        if (!value) return;
+        const span = document.createElement('span');
+        span.textContent = value;
+        if (segment.kind === 'removed') span.className = 'prompt-ghost-removed';
+        spans.push(span);
+      });
+      offset += segment.value.length;
+    }
+    ghost.replaceChildren(...spans);
+    ghost.hidden = !segments && !completion;
+    ghost.style.right = `${input.offsetWidth - input.clientWidth}px`;
+    if (suffix) {
+      // Sent after a blank line, but previewed as one line from where the
+      // question ends (or the next line when little room is left), so it
+      // shows in the resting one-line composer without wrapping the text.
+      const end = document.createElement('span');
+      end.textContent = '​';
+      ghost.append(end);
+      const preview = document.createElement('span');
+      preview.className = 'prompt-ghost-suffix';
+      preview.textContent = suffix.value.replace(/\s+/g, ' ').trim();
+      const style = getComputedStyle(ghost);
+      const padLeft = parseFloat(style.paddingLeft) || 0;
+      const lineHeight = parseFloat(style.lineHeight) || end.offsetHeight;
+      const nextLineFits = end.offsetTop + 2 * lineHeight <= input.clientHeight + input.scrollTop;
+      const wrap = ghost.clientWidth - end.offsetLeft < 160 && nextLineFits;
+      preview.style.left = `${wrap ? padLeft : end.offsetLeft + 8}px`;
+      preview.style.top = `${wrap ? end.offsetTop + lineHeight : end.offsetTop}px`;
+      ghost.append(preview);
+    }
+    ghost.scrollTop = input.scrollTop;
   }
 
   // Re-reads the library; edits there (in this page or another) show up here.
@@ -594,6 +791,7 @@ export async function setupComposerControls({
   function openTierMenu() {
     const menu = byId('provider-tier-controls');
     if (!menu) return;
+    closePromptModeMenu();
     renderTierState();
     menu.hidden = false;
     byId('tier-menu-btn').setAttribute('aria-expanded', 'true');
@@ -746,15 +944,48 @@ export async function setupComposerControls({
   });
   document.addEventListener('pointerdown', event => {
     if (isTierMenuOpen() && !event.target.closest?.('.tier-menu')) closeTierMenu();
+    if (isPromptModeMenuOpen() && !event.target.closest?.('.prompt-mode-control')) closePromptModeMenu();
   }, true);
   document.addEventListener('click', showShortcutBubble, true);
   byId('unified-input').addEventListener('focus', pulse);
   byId('provider-sort-btn').addEventListener('click', toggleSort);
-  // Only Default is in the page; the mode options come from the library.
-  byId('prompt-mode-select').addEventListener('change', async event => {
-    promptMode = toModeKey(event.target.value);
-    renderPromptMode();
-    await saveSetting('selectedPromptMode', promptMode);
+  // The menu is built from the library on each render; one listener serves
+  // its options, edit, delete and New mode.
+  byId('prompt-mode-btn').addEventListener('click', () => {
+    if (isPromptModeMenuOpen()) closePromptModeMenu({ restoreFocus: true });
+    else openPromptModeMenu();
+  });
+  byId('prompt-mode-btn').addEventListener('keydown', event => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    openPromptModeMenu();
+  });
+  byId('prompt-mode-list').addEventListener('click', event => { void handlePromptModeMenuClick(event); });
+  byId('prompt-mode-list').addEventListener('keydown', event => {
+    if (event.key === 'Escape' || event.key === 'Tab') {
+      if (event.key === 'Escape') event.preventDefault();
+      closePromptModeMenu({ restoreFocus: event.key === 'Escape' });
+      return;
+    }
+    if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const items = [...byId('prompt-mode-list').querySelectorAll('button')];
+    const index = items.indexOf(document.activeElement);
+    const count = items.length;
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? count - 1
+      : (index + (event.key === 'ArrowDown' ? 1 : count - 1)) % count;
+    items[next]?.focus();
+  });
+  byId('unified-input').addEventListener('scroll', () => {
+    const ghost = byId('prompt-ghost');
+    if (ghost) ghost.scrollTop = byId('unified-input').scrollTop;
+  });
+  // The completion follows the caret, which can move without an input event.
+  byId('unified-input').addEventListener('keydown', acceptTriggerCompletion);
+  byId('unified-input').addEventListener('focus', renderPromptGhost);
+  byId('unified-input').addEventListener('blur', renderPromptGhost);
+  document.addEventListener('selectionchange', () => {
+    if (document.activeElement === byId('unified-input')) renderPromptGhost();
   });
   window.addEventListener('focus', () => { void refreshPromptModes(); });
   document.addEventListener('visibilitychange', () => {
@@ -886,8 +1117,19 @@ export async function setupComposerControls({
       instruction: currentModePrompt()?.content ?? null,
       modePrompts
     }),
-    refreshPromptModes
+    refreshPromptModes,
+    refreshPromptGhost: renderPromptGhost
   };
+}
+
+// Icon names are passed as literals so tests/material-symbols-font.test.js
+// can check them against the bundled font subset.
+function materialIcon(name) {
+  const icon = document.createElement('span');
+  icon.className = 'material-symbols-outlined';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = name;
+  return icon;
 }
 
 function toModeKey(value) {
