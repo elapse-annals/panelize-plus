@@ -1488,7 +1488,7 @@
     "message": "Ideen"
   },
   "promptModeCompete": {
-    "message": "Wettbewerb"
+    "message": "Herausforderung"
   },
   "promptModeDefaultHint": {
     "message": "Es wird nichts ergänzt; jede KI antwortet auf ihre Art"
@@ -1503,7 +1503,7 @@
     "message": "Ideenanweisung ergänzen: viele Blickwinkel, kein frühes Urteil"
   },
   "promptModeCompeteHint": {
-    "message": "Wettbewerbsanweisung ergänzen: im direkten Vergleich gewinnen"
+    "message": "Herausforderungs-Anweisung ergänzen: im direkten Vergleich gewinnen"
   },
   "promptModeSuffix_learning": {
     "message": "Antworte wie eine Lehrkraft: Nenne zuerst das Kernergebnis, erkläre dann die Grundlagen Schritt für Schritt mit Beispielen und stelle am Ende 1–2 Fragen, die mein Verständnis prüfen."
@@ -1516,5 +1516,35 @@
   },
   "promptModeSuffix_compete": {
     "message": "Du antwortest parallel zu mehreren anderen KIs und die Antworten werden direkt verglichen. Gib die genaueste, gehaltvollste und nützlichste Antwort, die dir möglich ist."
+  },
+  "composerPlaceholderAppend": {
+    "message": "Ergänzt: $1"
+  },
+  "promptModeCategory": {
+    "message": "Modi"
+  },
+  "promptModeBadge": {
+    "message": "Modus"
+  },
+  "promptIsModeLabel": {
+    "message": "Prompt-Modus: im Modusmenü anzeigen und an jede Frage anhängen"
+  },
+  "promptModeAuto": {
+    "message": "Automatisch"
+  },
+  "promptModeAutoHint": {
+    "message": "Fügt einen Modus nur hinzu, wenn die Frage sein Auslösewort enthält, etwa /study"
+  },
+  "composerPlaceholderTriggers": {
+    "message": "Automatisch: $1"
+  },
+  "promptTriggersLabel": {
+    "message": "Auslösewörter (automatischer Modus)"
+  },
+  "promptTriggersPlaceholder": {
+    "message": "z. B. /study, /learn"
+  },
+  "promptTriggersHint": {
+    "message": "Steht der Modus im Eingabefeld auf Automatisch, wendet eines dieser Wörter in einer Frage diesen Modus nur für diese Sendung an. Das Wort selbst wird nicht gesendet. Nur Prompts, die als Modus markiert sind, nutzen sie."
   }
 }

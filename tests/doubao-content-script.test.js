@@ -337,6 +337,27 @@ describe('doubao content script integration', () => {
     expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('never clicks the create-project control for Doubao New Chat', () => {
+    window.happyDOM.setURL('https://www.doubao.com/chat/123456');
+    document.body.innerHTML = `
+      <div id="flow_chat_sidebar">
+        <div class="cursor-pointer" id="new-project">新建项目</div>
+      </div>
+      <button type="button" aria-label="新建项目" id="new-project-button">+</button>
+    `;
+    const projectRow = document.getElementById('new-project');
+    const projectButton = document.getElementById('new-project-button');
+    [projectRow, projectButton].forEach(markVisible);
+    const clickSpy = vi.fn();
+    projectRow.addEventListener('click', clickSpy);
+    projectButton.addEventListener('click', clickSpy);
+
+    dispatchMultiPanelMessage({ type: 'NEW_CHAT', context: 'multi-panel' });
+
+    expect(clickSpy).not.toHaveBeenCalled();
+    expect(window.location.href).toBe('https://www.doubao.com/chat/');
+  });
+
   describe('narrow panel overlays', () => {
     beforeEach(() => {
       window.sessionStorage.clear();

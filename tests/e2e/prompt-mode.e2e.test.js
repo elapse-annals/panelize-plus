@@ -32,6 +32,7 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
       await select.selectOption('concise');
       await expect(control).toHaveAttribute('data-active', 'true');
       await expect(select).toHaveAttribute('title', /Prompt mode: Concise/);
+      await expect(page.locator('#unified-input')).toHaveAttribute('placeholder', new RegExp(`Appends: ${CONCISE_INSTRUCTION}`));
       await expect.poll(() => extension.serviceWorker.evaluate(async () =>
         (await chrome.storage.sync.get('selectedPromptMode')).selectedPromptMode
       )).toBe('concise');
@@ -54,6 +55,62 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
       expect(sent.startsWith('Explain closures')).toBe(true);
       expect(sent).toContain(CONCISE_INSTRUCTION);
       await expect(select).toHaveValue('concise');
+    } finally {
+      await extension.close();
+    }
+  });
+
+  test('Auto applies a mode only when its trigger word is typed and drops the word', async () => {
+    const extension = await launchExtension({ viewport: { width: 1280, height: 800 } });
+    try {
+      const page = await openChatgptPanel(extension);
+      const select = page.locator('#prompt-mode-select');
+      await select.selectOption('auto');
+      await expect(page.locator('.prompt-mode-control')).toHaveAttribute('data-active', 'true');
+      await expect(page.locator('#unified-input')).toHaveAttribute('placeholder', /Auto: \/study/);
+
+      const editor = page.frameLocator('iframe')
+        .locator('[data-composer-placement="thread"] [data-composer-markdown]');
+      await page.locator('#unified-input').fill('/brief Explain closures');
+      await page.locator('#fill-input-btn').click();
+      await expect.poll(async () => editor.innerText())
+        .toMatch(new RegExp(`^Explain closures\\s*\\n+\\s*${CONCISE_INSTRUCTION}`));
+      expect(await editor.innerText()).not.toContain('/brief');
+    } finally {
+      await extension.close();
+    }
+  });
+
+  test('lists the built-in modes and library prompts marked as modes', async () => {
+    const extension = await launchExtension({ viewport: { width: 1280, height: 800 } });
+    try {
+      const page = await openChatgptPanel(extension);
+      const select = page.locator('#prompt-mode-select');
+      await expect(select.locator('option')).toHaveText(['Default', 'Auto', 'Learning', 'Concise', 'Brainstorm', 'Challenge']);
+
+      await page.locator('#prompt-library-btn').click();
+      await page.locator('#new-prompt-btn').click();
+      await page.locator('#prompt-title-input').fill('Plain prompt');
+      await page.locator('#prompt-content-input').fill('Not a mode.');
+      await page.locator('#save-prompt-btn').click();
+      await page.locator('#new-prompt-btn').click();
+      await page.locator('#prompt-title-input').fill('Pirate');
+      await page.locator('#prompt-content-input').fill('Answer like a pirate.');
+      await page.locator('#prompt-is-mode-input').check();
+      await page.locator('#save-prompt-btn').click();
+      await page.locator('#close-prompt-modal').click();
+      await expect(page.locator('#prompt-modal')).toBeHidden();
+
+      await expect(select.locator('option')).toHaveText(['Default', 'Auto', 'Learning', 'Concise', 'Brainstorm', 'Challenge', 'Pirate']);
+      await select.selectOption({ label: 'Pirate' });
+      await expect(page.locator('#unified-input')).toHaveAttribute('placeholder', /Appends: Answer like a pirate\./);
+
+      await page.locator('#unified-input').fill('Explain closures');
+      await page.locator('#send-all-btn').click();
+      await expect.poll(async () => (await readFixture(page))?.sends).toBe(1);
+      const sent = (await readFixture(page)).sentTexts[0];
+      expect(sent.startsWith('Explain closures')).toBe(true);
+      expect(sent).toContain('Answer like a pirate.');
     } finally {
       await extension.close();
     }

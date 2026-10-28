@@ -2946,6 +2946,39 @@ html.snapshot-hide-cursor *::after {
   color: #aaa;
 }
 
+.prompt-item-category.prompt-item-mode {
+  background: #e3f2fd;
+  color: #1976d2;
+  margin-right: 4px;
+}
+
+[data-theme="dark"] .prompt-item-category.prompt-item-mode {
+  background: #1a3a5a;
+  color: #64b5f6;
+}
+
+.prompt-item-category.prompt-item-trigger {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.prompt-triggers-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #666;
+}
+
+[data-theme="dark"] .prompt-triggers-hint {
+  color: #aaa;
+}
+
+.form-group label.prompt-is-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+  cursor: pointer;
+}
+
 [data-theme="dark"] .prompt-variable-tag {
   background: #1a3a5a;
   color: #64b5f6;

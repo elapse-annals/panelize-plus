@@ -596,8 +596,12 @@
       'button[data-test-id="new-conversation-button"]',
       'a[href="/chat/"]',
       'a[href="/chat"]',
-      'button[aria-label*="New"]',
-      'button[aria-label*="新建"]'
+      // The header control shown while the sidebar is collapsed.
+      '[data-testid*="create_conversation"]',
+      'button[aria-label*="新对话"]',
+      'button[aria-label*="新建对话"]',
+      'button[aria-label*="New chat"]',
+      'button[aria-label*="New Chat"]'
     ],
     'qwen-cn': [
       '#new-nav-tab-wrapper [data-session-switch-target="new-chat"]',
@@ -2524,6 +2528,15 @@
     }, 300);
   }
 
+  // Doubao's sidebar and composer also offer "新建项目" / "New project", which
+  // opens the create-project dialog instead of a new chat.
+  const DOUBAO_PROJECT_KEYWORDS = ['项目', 'project'];
+
+  function isDoubaoProjectControl(element) {
+    const text = getElementAccessibleText(element);
+    return DOUBAO_PROJECT_KEYWORDS.some(keyword => text.includes(keyword));
+  }
+
   // Doubao and others name a fresh conversation "新对话", so a history link
   // with that title must not count as the new-chat control.
   function isRootNewChatLinkCandidate(element) {
@@ -2554,7 +2567,8 @@
     // otherwise load the new-chat URL instead of opening the drawer.
     const isDoubao = provider === 'doubao';
     const acceptCandidate = isDoubao
-      ? element => isSameOriginNewChatCandidate(element) && isElementUncovered(element)
+      ? element => isSameOriginNewChatCandidate(element) && !isDoubaoProjectControl(element) &&
+        isElementUncovered(element)
       : isSameOriginNewChatCandidate;
 
     // Try to find and click button
@@ -2574,7 +2588,7 @@
         if (!isSameOriginNewChatCandidate(elem)) {
           continue;
         }
-        if (isDoubao && (!isVisibleElement(elem) || !isElementUncovered(elem))) {
+        if (isDoubao && (!isVisibleElement(elem) || isDoubaoProjectControl(elem) || !isElementUncovered(elem))) {
           continue;
         }
 

@@ -1488,7 +1488,7 @@
     "message": "Brainstorming"
   },
   "promptModeCompete": {
-    "message": "Compétitif"
+    "message": "Défi"
   },
   "promptModeDefaultHint": {
     "message": "Rien n'est ajouté ; chaque IA répond à sa façon"
@@ -1503,7 +1503,7 @@
     "message": "Ajouter une consigne de brainstorming : plusieurs angles, sans verdict hâtif"
   },
   "promptModeCompeteHint": {
-    "message": "Ajouter une consigne compétitive : viser la meilleure réponse en comparaison"
+    "message": "Ajouter une consigne de défi : viser la meilleure réponse en comparaison"
   },
   "promptModeSuffix_learning": {
     "message": "Réponds comme un enseignant : donne d'abord la conclusion essentielle, explique ensuite le raisonnement étape par étape avec des exemples, et termine par 1 à 2 questions pour vérifier ma compréhension."
@@ -1516,5 +1516,35 @@
   },
   "promptModeSuffix_compete": {
     "message": "Tu réponds en même temps que plusieurs autres IA et les réponses seront comparées côte à côte. Donne la réponse la plus exacte, la plus éclairante et la plus utile dont tu es capable."
+  },
+  "composerPlaceholderAppend": {
+    "message": "Ajoute : $1"
+  },
+  "promptModeCategory": {
+    "message": "Modes"
+  },
+  "promptModeBadge": {
+    "message": "Mode"
+  },
+  "promptIsModeLabel": {
+    "message": "Mode de prompt : afficher dans le menu des modes et ajouter à chaque question"
+  },
+  "promptModeAuto": {
+    "message": "Auto"
+  },
+  "promptModeAutoHint": {
+    "message": "Ajoute un mode seulement si la question contient son mot déclencheur, comme /study"
+  },
+  "composerPlaceholderTriggers": {
+    "message": "Auto : $1"
+  },
+  "promptTriggersLabel": {
+    "message": "Mots déclencheurs (mode Auto)"
+  },
+  "promptTriggersPlaceholder": {
+    "message": "ex. : /study, /learn"
+  },
+  "promptTriggersHint": {
+    "message": "Quand le mode de la zone de saisie est sur Auto, taper l'un de ces mots dans une question applique ce mode à cet envoi uniquement. Le mot lui-même n'est pas envoyé. Seuls les prompts marqués comme modes les utilisent."
   }
 }

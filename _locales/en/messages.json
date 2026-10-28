@@ -1503,7 +1503,7 @@
     "message": "Brainstorm"
   },
   "promptModeCompete": {
-    "message": "Competitive"
+    "message": "Challenge"
   },
   "promptModeDefaultHint": {
     "message": "Nothing is added; each AI answers in its own way"
@@ -1518,7 +1518,7 @@
     "message": "Append a brainstorm instruction: many varied angles, no early verdict"
   },
   "promptModeCompeteHint": {
-    "message": "Append a competitive instruction: aim to win the side-by-side comparison"
+    "message": "Append a challenge instruction: aim to win the side-by-side comparison"
   },
   "promptModeSuffix_learning": {
     "message": "Answer as a teacher: give the core conclusion first, then explain the reasoning step by step with examples, and finish with 1–2 questions that check my understanding."
@@ -1531,5 +1531,35 @@
   },
   "promptModeSuffix_compete": {
     "message": "You are answering this alongside several other AIs and the answers will be compared side by side. Give the most accurate, insightful and useful answer you can."
+  },
+  "composerPlaceholderAppend": {
+    "message": "Appends: $1"
+  },
+  "promptModeCategory": {
+    "message": "Modes"
+  },
+  "promptModeBadge": {
+    "message": "Mode"
+  },
+  "promptIsModeLabel": {
+    "message": "Prompt mode: list in the composer's mode menu and append to every question"
+  },
+  "promptModeAuto": {
+    "message": "Auto"
+  },
+  "promptModeAutoHint": {
+    "message": "Adds a mode only when the question has its trigger word, such as /study"
+  },
+  "composerPlaceholderTriggers": {
+    "message": "Auto: $1"
+  },
+  "promptTriggersLabel": {
+    "message": "Trigger words (Auto mode)"
+  },
+  "promptTriggersPlaceholder": {
+    "message": "e.g., /study, /learn"
+  },
+  "promptTriggersHint": {
+    "message": "With the composer's mode set to Auto, typing one of these words in a question applies this mode to that send only. The word itself is not sent. Only prompts marked as modes use them."
   }
 }

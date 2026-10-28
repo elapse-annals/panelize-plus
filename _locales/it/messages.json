@@ -1488,7 +1488,7 @@
     "message": "Brainstorming"
   },
   "promptModeCompete": {
-    "message": "Competitivo"
+    "message": "Sfida"
   },
   "promptModeDefaultHint": {
     "message": "Non viene aggiunto nulla; ogni IA risponde a modo suo"
@@ -1503,7 +1503,7 @@
     "message": "Aggiungi un'istruzione di brainstorming: molti angoli, nessun verdetto affrettato"
   },
   "promptModeCompeteHint": {
-    "message": "Aggiungi un'istruzione competitiva: puntare a vincere il confronto"
+    "message": "Aggiungi un'istruzione di sfida: puntare a vincere il confronto"
   },
   "promptModeSuffix_learning": {
     "message": "Rispondi come un insegnante: dai prima la conclusione principale, spiega poi il ragionamento passo per passo con esempi e chiudi con 1–2 domande per verificare la mia comprensione."
@@ -1516,5 +1516,35 @@
   },
   "promptModeSuffix_compete": {
     "message": "Stai rispondendo insieme a diverse altre IA e le risposte saranno confrontate fianco a fianco. Fornisci la risposta più accurata, acuta e utile che puoi."
+  },
+  "composerPlaceholderAppend": {
+    "message": "Aggiunge: $1"
+  },
+  "promptModeCategory": {
+    "message": "Modalità"
+  },
+  "promptModeBadge": {
+    "message": "Modalità"
+  },
+  "promptIsModeLabel": {
+    "message": "Modalità prompt: mostra nel menu delle modalità e aggiungi a ogni domanda"
+  },
+  "promptModeAuto": {
+    "message": "Automatica"
+  },
+  "promptModeAutoHint": {
+    "message": "Aggiunge una modalità solo quando la domanda contiene la sua parola chiave, come /study"
+  },
+  "composerPlaceholderTriggers": {
+    "message": "Automatica: $1"
+  },
+  "promptTriggersLabel": {
+    "message": "Parole chiave (modalità automatica)"
+  },
+  "promptTriggersPlaceholder": {
+    "message": "es. /study, /learn"
+  },
+  "promptTriggersHint": {
+    "message": "Con la modalità della casella impostata su Automatica, scrivere una di queste parole in una domanda applica questa modalità solo a quell'invio. La parola non viene inviata. La usano solo i prompt contrassegnati come modalità."
   }
 }

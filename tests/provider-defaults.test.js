@@ -18,10 +18,10 @@ describe('provider defaults', () => {
       'doubao',
       'yuanbao',
       'grok',
-      'qwen-global',
       'zai-global',
       'google',
       'chatglm',
+      'qwen-global',
     ]);
   });
 

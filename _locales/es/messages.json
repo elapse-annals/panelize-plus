@@ -1488,7 +1488,7 @@
     "message": "Lluvia de ideas"
   },
   "promptModeCompete": {
-    "message": "Competitivo"
+    "message": "Desafío"
   },
   "promptModeDefaultHint": {
     "message": "No se añade nada; cada IA responde a su manera"
@@ -1503,7 +1503,7 @@
     "message": "Añadir una instrucción de lluvia de ideas: muchos enfoques, sin veredicto previo"
   },
   "promptModeCompeteHint": {
-    "message": "Añadir una instrucción competitiva: destacar en la comparación"
+    "message": "Añadir una instrucción de desafío: destacar en la comparación"
   },
   "promptModeSuffix_learning": {
     "message": "Responde como un profesor: da primero la conclusión principal, explica después el razonamiento paso a paso con ejemplos y termina con 1 o 2 preguntas para comprobar mi comprensión."
@@ -1516,5 +1516,35 @@
   },
   "promptModeSuffix_compete": {
     "message": "Estás respondiendo junto a otras IA y las respuestas se compararán en paralelo. Da la respuesta más precisa, lúcida y útil que puedas."
+  },
+  "composerPlaceholderAppend": {
+    "message": "Añade: $1"
+  },
+  "promptModeCategory": {
+    "message": "Modos"
+  },
+  "promptModeBadge": {
+    "message": "Modo"
+  },
+  "promptIsModeLabel": {
+    "message": "Modo de prompt: mostrar en el menú de modos y añadir a cada pregunta"
+  },
+  "promptModeAuto": {
+    "message": "Automático"
+  },
+  "promptModeAutoHint": {
+    "message": "Añade un modo solo cuando la pregunta contiene su palabra clave, como /study"
+  },
+  "composerPlaceholderTriggers": {
+    "message": "Automático: $1"
+  },
+  "promptTriggersLabel": {
+    "message": "Palabras clave (modo automático)"
+  },
+  "promptTriggersPlaceholder": {
+    "message": "p. ej., /study, /learn"
+  },
+  "promptTriggersHint": {
+    "message": "Con el modo del cuadro de texto en Automático, escribir una de estas palabras en una pregunta aplica este modo solo a ese envío. La palabra no se envía. Solo la usan los prompts marcados como modo."
   }
 }

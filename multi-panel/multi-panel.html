@@ -183,6 +183,7 @@
             <span class="material-symbols-outlined" aria-hidden="true">psychology</span>
             <select id="prompt-mode-select" class="composer-control prompt-mode-select" data-i18n-aria="composerPromptModeLabel" aria-label="Prompt mode">
               <option value="" data-i18n="promptModeDefault">Default</option>
+              <option value="auto" data-i18n="promptModeAuto">Auto</option>
             </select>
           </label>
         </div>
@@ -639,6 +640,14 @@
           <div class="form-group">
             <label for="prompt-tags-input">Tags (comma separated)</label>
             <input type="text" id="prompt-tags-input" placeholder="e.g., writing, creative, blog">
+          </div>
+          <div class="form-group">
+            <label class="prompt-is-mode-toggle"><input type="checkbox" id="prompt-is-mode-input"><span data-i18n="promptIsModeLabel">Prompt mode: list in the composer's mode menu and append to every question</span></label>
+          </div>
+          <div class="form-group">
+            <label for="prompt-triggers-input" data-i18n="promptTriggersLabel">Trigger words (Auto mode)</label>
+            <input type="text" id="prompt-triggers-input" data-i18n-placeholder="promptTriggersPlaceholder" placeholder="e.g., /study, /learn">
+            <p class="prompt-triggers-hint" data-i18n="promptTriggersHint">With the composer's mode set to Auto, typing one of these words in a question applies this mode to that send only. The word itself is not sent. Only prompts marked as modes use them.</p>
           </div>
         </div>
         <div class="modal-footer">

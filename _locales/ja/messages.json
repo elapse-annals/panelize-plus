@@ -1488,7 +1488,7 @@
     "message": "アイデア出し"
   },
   "promptModeCompete": {
-    "message": "競争"
+    "message": "挑戦"
   },
   "promptModeDefaultHint": {
     "message": "何も追加せず、各 AI が独自の形式で回答します"
@@ -1503,7 +1503,7 @@
     "message": "発想用の指示を追加：多角的に、結論を急がない"
   },
   "promptModeCompeteHint": {
-    "message": "競争用の指示を追加：並列比較で勝つ回答を狙う"
+    "message": "挑戦用の指示を追加：並列比較で勝つ回答を狙う"
   },
   "promptModeSuffix_learning": {
     "message": "教師のように回答してください。まず核心となる結論を示し、その後に例を交えて原理を順を追って説明し、最後に理解を確認する質問を 1〜2 個挙げてください。"
@@ -1516,5 +1516,35 @@
   },
   "promptModeSuffix_compete": {
     "message": "この質問には他の複数の AI も同時に回答しており、回答は並べて比較されます。あなたが出せる最も正確で洞察に富み、実用的な回答を示してください。"
+  },
+  "composerPlaceholderAppend": {
+    "message": "追加：$1"
+  },
+  "promptModeCategory": {
+    "message": "モード"
+  },
+  "promptModeBadge": {
+    "message": "モード"
+  },
+  "promptIsModeLabel": {
+    "message": "プロンプトモード：入力欄のモードメニューに表示し、すべての質問に追加する"
+  },
+  "promptModeAuto": {
+    "message": "自動"
+  },
+  "promptModeAutoHint": {
+    "message": "質問にトリガー語（/study など）があるときだけモードを追加します"
+  },
+  "composerPlaceholderTriggers": {
+    "message": "自動: $1"
+  },
+  "promptTriggersLabel": {
+    "message": "トリガー語（自動モード）"
+  },
+  "promptTriggersPlaceholder": {
+    "message": "例: /study, /learn"
+  },
+  "promptTriggersHint": {
+    "message": "入力欄のモードが「自動」のとき、質問にこれらの語を入力すると、その送信だけこのモードを使います。語そのものは送信されません。モードとして登録したプロンプトでのみ有効です。"
   }
 }

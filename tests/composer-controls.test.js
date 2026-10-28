@@ -655,20 +655,51 @@ describe('composer control async state', () => {
 
 describe('prompt mode control', () => {
   const promptSelect = () => document.getElementById('prompt-mode-select');
+  const modePrompts = () => [
+    { id: 1, title: 'Learning', content: 'Teach me.', isMode: true, modeKey: 'learning', createdAt: 1 },
+    { id: 2, title: 'Concise', content: 'Be brief.', isMode: true, modeKey: 'concise', createdAt: 2 },
+    { id: 3, title: 'Not a mode', content: 'Plain prompt.', isMode: false, modeKey: '', createdAt: 3 },
+    { id: 4, title: 'Challenge', content: 'Win the comparison.', isMode: true, modeKey: 'compete', createdAt: 4 }
+  ];
+  const setupWithModes = (prompts = modePrompts()) => {
+    const loadModePrompts = vi.fn(async () => prompts);
+    return setupControls([], { loadModePrompts }).then(controls => ({ controls, loadModePrompts }));
+  };
+  const optionLabels = () => [...promptSelect().options].map(option => option.textContent);
+
+  it('lists only the library prompts marked as modes after Default and Auto', async () => {
+    await setupWithModes();
+
+    expect([...promptSelect().options].map(option => option.value)).toEqual(['', 'auto', 'learning', 'concise', 'compete']);
+    expect(optionLabels().slice(2)).toEqual(['Learning', 'Concise', 'Challenge']);
+  });
 
   it('starts on the saved mode and marks the select as active', async () => {
     settingsState.selectedPromptMode = 'concise';
-    const controls = await setupControls([]);
+    const { controls } = await setupWithModes();
 
     expect(promptSelect().value).toBe('concise');
-    expect(controls.getPromptMode()).toBe('concise');
+    expect(controls.getPromptMode()).toBe('Be brief.');
     expect(promptSelect().closest('.prompt-mode-control').dataset.active).toBe('true');
-    expect(promptSelect().title).toBe('Prompt mode: Concise\nAppend a concise instruction: conclusion and key points only');
+    expect(promptSelect().title).toBe('Prompt mode: Concise\nBe brief.');
   });
 
-  it('starts on Default when nothing or an unknown mode is saved', async () => {
+  it('shows the appended instruction in the input placeholder', async () => {
+    settingsState.selectedPromptMode = 'concise';
+    await setupWithModes();
+    const input = document.getElementById('unified-input');
+
+    expect(input.placeholder).toContain('Appends: Be brief.');
+
+    promptSelect().value = '';
+    promptSelect().dispatchEvent(new Event('change', { bubbles: true }));
+    await flushMicrotasks();
+    expect(input.placeholder).not.toContain('Appends:');
+  });
+
+  it('starts on Default when nothing or a missing mode is saved', async () => {
     settingsState.selectedPromptMode = 'verbose';
-    const controls = await setupControls([]);
+    const { controls } = await setupWithModes();
 
     expect(promptSelect().value).toBe('');
     expect(controls.getPromptMode()).toBeNull();
@@ -676,21 +707,21 @@ describe('prompt mode control', () => {
     expect(promptSelect().title).toBe('Prompt mode\nNothing is added; each AI answers in its own way');
   });
 
-  it('saves the chosen mode and reports it', async () => {
-    const controls = await setupControls([]);
-    promptSelect().value = 'brainstorm';
+  it('saves the chosen mode and reports its instruction', async () => {
+    const { controls } = await setupWithModes();
+    promptSelect().value = 'compete';
     promptSelect().dispatchEvent(new Event('change', { bubbles: true }));
     await flushMicrotasks();
 
-    expect(mocks.saveSetting).toHaveBeenCalledWith('selectedPromptMode', 'brainstorm');
-    expect(controls.getPromptMode()).toBe('brainstorm');
+    expect(mocks.saveSetting).toHaveBeenCalledWith('selectedPromptMode', 'compete');
+    expect(controls.getPromptMode()).toBe('Win the comparison.');
     expect(promptSelect().closest('.prompt-mode-control').dataset.active).toBe('true');
-    expect(promptSelect().title).toContain('Prompt mode: Brainstorm');
+    expect(promptSelect().title).toContain('Prompt mode: Challenge');
   });
 
   it('clears the mode when Default is picked again', async () => {
     settingsState.selectedPromptMode = 'learning';
-    const controls = await setupControls([]);
+    const { controls } = await setupWithModes();
 
     promptSelect().value = '';
     promptSelect().dispatchEvent(new Event('change', { bubbles: true }));
@@ -701,12 +732,86 @@ describe('prompt mode control', () => {
     expect(promptSelect().closest('.prompt-mode-control').dataset.active).toBe('false');
   });
 
+  it('follows library edits and falls back to Default when the mode is gone', async () => {
+    settingsState.selectedPromptMode = 'concise';
+    const prompts = modePrompts();
+    const { controls } = await setupWithModes(prompts);
+
+    prompts[1].content = 'Shorter, please.';
+    prompts[1].title = 'Short';
+    await controls.refreshPromptModes();
+    expect(controls.getPromptMode()).toBe('Shorter, please.');
+    expect(optionLabels()).toContain('Short');
+
+    prompts[1].isMode = false;
+    await controls.refreshPromptModes();
+    expect(optionLabels()).not.toContain('Short');
+    expect(promptSelect().value).toBe('');
+    expect(controls.getPromptMode()).toBeNull();
+    expect(mocks.saveSetting).not.toHaveBeenCalledWith('selectedPromptMode', null);
+  });
+
+  it('re-reads the library when the page regains focus', async () => {
+    const { loadModePrompts } = await setupWithModes();
+    loadModePrompts.mockClear();
+
+    window.dispatchEvent(new Event('focus'));
+    await flushMicrotasks();
+
+    expect(loadModePrompts).toHaveBeenCalledOnce();
+  });
+
+  it('keeps Default only when the library cannot be read', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const controls = await setupControls([], { loadModePrompts: vi.fn().mockRejectedValue(new Error('idb')) });
+
+    expect(optionLabels()).toHaveLength(2);
+    expect(controls.getPromptMode()).toBeNull();
+  });
+
+  describe('Auto mode', () => {
+    const triggerPrompts = () => modePrompts().map(prompt => ({
+      ...prompt,
+      triggers: { learning: ['/study'], concise: ['/brief'], compete: [] }[prompt.modeKey]
+    }));
+
+    it('adds nothing until a trigger word is typed, then applies that mode to the send', async () => {
+      settingsState.selectedPromptMode = 'auto';
+      const { controls } = await setupWithModes(triggerPrompts());
+
+      expect(promptSelect().value).toBe('auto');
+      expect(controls.getPromptMode()).toBeNull();
+      expect(controls.resolvePromptMode('Explain closures')).toEqual({ text: 'Explain closures', instruction: null, prompts: [] });
+      const resolved = controls.resolvePromptMode('/study Explain closures');
+      expect(resolved.text).toBe('Explain closures');
+      expect(resolved.instruction).toBe('Teach me.');
+      expect(controls.resolvePromptMode('/BRIEF why /study').instruction).toBe('Teach me.\n\nBe brief.');
+    });
+
+    it('marks the select active and lists the trigger words', async () => {
+      settingsState.selectedPromptMode = 'auto';
+      await setupWithModes(triggerPrompts());
+
+      expect(promptSelect().closest('.prompt-mode-control').dataset.active).toBe('true');
+      expect(promptSelect().title).toContain('Prompt mode: Auto');
+      expect(promptSelect().title).toContain('/study Learning · /brief Concise');
+      expect(document.getElementById('unified-input').placeholder).toContain('Auto: /study Learning · /brief Concise');
+    });
+
+    it('keeps trigger words as typed outside Auto mode', async () => {
+      settingsState.selectedPromptMode = 'concise';
+      const { controls } = await setupWithModes(triggerPrompts());
+
+      expect(controls.resolvePromptMode('/study Explain')).toEqual({ text: '/study Explain', instruction: 'Be brief.', prompts: [] });
+    });
+  });
+
   it('follows a mode saved in another window', async () => {
-    const controls = await setupControls([]);
+    const { controls } = await setupWithModes();
 
     getStorageChangeListener()({ selectedPromptMode: { newValue: 'compete' } }, 'sync');
 
-    expect(controls.getPromptMode()).toBe('compete');
+    expect(controls.getPromptMode()).toBe('Win the comparison.');
     expect(promptSelect().value).toBe('compete');
 
     getStorageChangeListener()({ selectedPromptMode: { newValue: null } }, 'local');

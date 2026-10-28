@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.24.0 - 2026-10-28
+- The prompt-mode menu has a new Auto choice: nothing is added unless the question contains a mode's trigger word, and then that mode applies to this send only. Typing `/study` uses Learning, `/brief` Concise, `/brainstorm` Brainstorm and `/challenge` Challenge; several trigger words combine their modes. The trigger word is removed from the question the AIs, answer stats and snapshots see.
+- Prompt Library prompts marked as modes now have a Trigger words field, and the list shows each mode's trigger words. Built-in modes already in your library get their default trigger words once; trigger words are kept in prompt export and import.
+
+## 2.23.0 - 2026-10-28
+- Default settings follow the maintainer's preferred setup: Qwen (global) moves to the end of the default enabled providers, and wide content is off by default.
+
+## 2.22.1 - 2026-10-28
+- New Chat on Doubao no longer opens the Create Project dialog: project controls are skipped, and when the sidebar is collapsed it uses the header's new-chat control or loads a new chat page.
+
+## 2.22.0 - 2026-10-28
+- Prompt modes now live in the Prompt Library: Learning, Concise, Brainstorm and Challenge are added there once as prompts marked as modes, and you can edit their wording, delete them or mark any prompt as a mode. The mode menu lists only prompts marked as modes.
+- With a mode selected, the question box's placeholder shows the instruction that will be appended.
+- The Competitive mode is renamed Challenge (竞争 → 挑战). A mode chosen before this update stays selected.
+
 ## 2.21.1 - 2026-10-28
 - Send All with images or files attached now sends: each AI gets the attachments and the question and then sends, waiting until its upload finishes, instead of stopping after filling the question box. Fill still only fills. AIs that cannot take a file still get the text without sending, and retrying them sends once their files are in.
 

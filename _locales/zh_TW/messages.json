@@ -1482,7 +1482,7 @@
     "message": "腦力激盪"
   },
   "promptModeCompete": {
-    "message": "競爭"
+    "message": "挑戰"
   },
   "promptModeDefaultHint": {
     "message": "不附加內容，各 AI 依自己的方式回答"
@@ -1497,7 +1497,7 @@
     "message": "附加腦力激盪指令：多角度、不急於下結論"
   },
   "promptModeCompeteHint": {
-    "message": "附加競爭指令：讓回答在多 AI 比較中勝出"
+    "message": "附加挑戰指令：讓回答在多 AI 比較中勝出"
   },
   "promptModeSuffix_learning": {
     "message": "請以教學方式回答：先給出核心結論，再循序漸進解釋原理，配合例子，並在最後提出 1–2 個檢驗理解的問題。"
@@ -1510,5 +1510,35 @@
   },
   "promptModeSuffix_compete": {
     "message": "你正在與其他多個 AI 同時回答這個問題，回答將被直接比較。請給出你能做到的最準確、最有洞見、最實用的回答。"
+  },
+  "composerPlaceholderAppend": {
+    "message": "附加：$1"
+  },
+  "promptModeCategory": {
+    "message": "模式"
+  },
+  "promptModeBadge": {
+    "message": "模式"
+  },
+  "promptIsModeLabel": {
+    "message": "提示詞模式：在輸入框的模式選單中列出，並附加到每個問題後"
+  },
+  "promptModeAuto": {
+    "message": "自動"
+  },
+  "promptModeAutoHint": {
+    "message": "僅當問題中包含觸發詞（如 /study）時才附加對應模式"
+  },
+  "composerPlaceholderTriggers": {
+    "message": "自動：$1"
+  },
+  "promptTriggersLabel": {
+    "message": "觸發詞（自動模式）"
+  },
+  "promptTriggersPlaceholder": {
+    "message": "例如：/study, /learn"
+  },
+  "promptTriggersHint": {
+    "message": "輸入框的模式設為「自動」時，在問題中輸入其中一個觸發詞，本次傳送會暫時使用此模式，觸發詞本身不會送出。僅對標記為模式的提示詞生效。"
   }
 }

@@ -1265,6 +1265,15 @@ function validatePromptStructure(prompt) {
   if (prompt.isFavorite !== undefined && typeof prompt.isFavorite !== 'boolean') {
     errors.push('"isFavorite" should be boolean');
   }
+  if (prompt.isMode !== undefined && typeof prompt.isMode !== 'boolean') {
+    errors.push('"isMode" should be boolean');
+  }
+  if (prompt.modeKey !== undefined && typeof prompt.modeKey !== 'string') {
+    errors.push('"modeKey" should be string');
+  }
+  if (prompt.triggers !== undefined && (!Array.isArray(prompt.triggers) || prompt.triggers.some(trigger => typeof trigger !== 'string'))) {
+    errors.push('"triggers" should be an array of strings');
+  }
   if (prompt.useCount !== undefined && typeof prompt.useCount !== 'number') {
     errors.push('"useCount" should be number');
   }
@@ -1301,6 +1310,8 @@ Required fields:
 
 Optional fields:
 - isFavorite (boolean, default: false)
+- isMode (boolean, default: false; true lists it in the composer's prompt-mode menu)
+- triggers (array of strings, default: []; words like "/study" that apply the mode to one send in Auto mode)
 - useCount (number, default: 0)
 - lastUsed (number or null, default: null)
 

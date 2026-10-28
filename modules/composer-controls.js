@@ -16,7 +16,7 @@ import {
   requestProviderTierState,
   runProviderTierBatch
 } from './provider-tiers.js';
-import { PROMPT_MODES, getPromptMode, isPromptMode } from './prompt-modes.js';
+import { AUTO_PROMPT_MODE, normalizePromptTriggers, resolvePromptModeForText, selectModePrompts } from './prompt-modes.js';
 
 const DEFAULT_TIER = 'default';
 const ACTION_LABELS = {
@@ -51,6 +51,10 @@ const ACTION_LABELS = {
   toggleOpenMode: ['composerToggleOpenMode', 'Switch between tab and popup window']
 };
 const PROMPT_MODE_DEFAULT_HINT = ['promptModeDefaultHint', 'Nothing is added; each AI answers in its own way'];
+const PROMPT_MODE_HINT_LENGTH = 120;
+const PROMPT_MODE_PLACEHOLDER_LENGTH = 40;
+const PROMPT_MODE_AUTO_LABEL = ['promptModeAuto', 'Auto'];
+const PROMPT_MODE_AUTO_HINT = ['promptModeAutoHint', 'Adds a mode only when the question has its trigger word, such as /study'];
 // What a button does, shown on the tooltip's second line.
 const ACTION_HINTS = {
   send: ['composerSendHint', 'Fill every panel with the question and send it'],
@@ -100,7 +104,8 @@ export async function setupComposerControls({
   isBlindMode = () => false,
   toggleWideContent = () => {},
   scrollPanels = () => {},
-  jumpToPanel = () => {}
+  jumpToPanel = () => {},
+  loadModePrompts = async () => []
 }) {
   const byId = id => document.getElementById(id);
   if (!byId('composer-shell')) return null;
@@ -110,7 +115,10 @@ export async function setupComposerControls({
   let selectedTier = PROVIDER_TIER_IDS.includes(settings.selectedProviderTier) ? settings.selectedProviderTier : null;
   let tierRecipeOverrides = settings.providerTierRecipes || null;
   let sortMode = settings.providerSortMode;
-  let promptMode = isPromptMode(settings.selectedPromptMode) ? settings.selectedPromptMode : null;
+  // The saved modeKey; it may name a mode this device's library lacks, which
+  // then reads as Default without overwriting the synced choice.
+  let promptMode = toModeKey(settings.selectedPromptMode);
+  let modePrompts = [];
   let bindings = settings.keyboardShortcutBindings || {};
   let shortcutsEnabled = settings.pageShortcutsEnabled !== false;
   let draftBindings = {};
@@ -408,19 +416,72 @@ export async function setupComposerControls({
     notify(tr('composerSortUpdated', 'Order applies to AI menus and the next startup.'));
   }
 
+  function currentModePrompt() {
+    return modePrompts.find(prompt => prompt.modeKey === promptMode) || null;
+  }
+
+  function isAutoMode() {
+    return promptMode === AUTO_PROMPT_MODE;
+  }
+
+  // "/study Learning · /brief Concise" for the modes that have triggers.
+  function describeTriggers() {
+    return modePrompts
+      .map(prompt => {
+        const triggers = normalizePromptTriggers(prompt.triggers);
+        return triggers.length ? `${triggers.join(' ')} ${prompt.title}` : '';
+      })
+      .filter(Boolean)
+      .join(' · ');
+  }
+
+  // The options mirror the library's mode prompts after the page's own
+  // Default and Auto options.
+  function renderPromptModeOptions(select) {
+    const keys = modePrompts.map(prompt => prompt.modeKey);
+    const fixedCount = [...select.options].filter(option => option.value === '' || option.value === AUTO_PROMPT_MODE).length;
+    const current = [...select.options].slice(fixedCount);
+    const unchanged = current.length === keys.length && current.every((option, index) =>
+      option.value === keys[index] && option.textContent === modePrompts[index].title);
+    if (unchanged) return;
+    current.forEach(option => option.remove());
+    select.append(...modePrompts.map(prompt => {
+      const option = document.createElement('option');
+      option.value = prompt.modeKey;
+      option.textContent = prompt.title;
+      return option;
+    }));
+  }
+
   // The select stays quiet until a mode is picked; then it takes the same soft
   // accent as pressed composer buttons so the appended instruction is visible.
   function renderPromptMode() {
     const select = byId('prompt-mode-select');
     if (!select) return;
-    select.value = promptMode || '';
+    renderPromptModeOptions(select);
+    const mode = currentModePrompt();
+    const auto = isAutoMode();
+    select.value = auto ? AUTO_PROMPT_MODE : (mode ? mode.modeKey : '');
     const label = tr('composerPromptModeLabel', 'Prompt mode');
-    const mode = getPromptMode(promptMode);
-    const heading = mode ? `${label}: ${tr(mode.labelKey, mode.label)}` : label;
-    const hint = mode ? tr(mode.hintKey, mode.hint) : tr(...PROMPT_MODE_DEFAULT_HINT);
+    const heading = auto ? `${label}: ${tr(...PROMPT_MODE_AUTO_LABEL)}` : (mode ? `${label}: ${mode.title}` : label);
+    const triggers = auto ? describeTriggers() : '';
+    const hint = auto
+      ? [tr(...PROMPT_MODE_AUTO_HINT), triggers].filter(Boolean).join('\n')
+      : (mode ? truncate(mode.content, PROMPT_MODE_HINT_LENGTH) : tr(...PROMPT_MODE_DEFAULT_HINT));
     select.title = `${heading}\n${hint}`;
     select.setAttribute('aria-label', heading);
-    select.closest('.prompt-mode-control')?.setAttribute('data-active', String(Boolean(promptMode)));
+    select.closest('.prompt-mode-control')?.setAttribute('data-active', String(Boolean(mode || auto)));
+    updateInputPlaceholder(keyboard.getBindings());
+  }
+
+  // Re-reads the library; edits there (in this page or another) show up here.
+  async function refreshPromptModes() {
+    try {
+      modePrompts = selectModePrompts(await loadModePrompts());
+    } catch (error) {
+      console.warn('Prompt modes unavailable', error);
+    }
+    renderPromptMode();
   }
 
   function isAnyModalOpen() {
@@ -499,7 +560,12 @@ export async function setupComposerControls({
     if (fillShortcut) keys.push(tr('composerPlaceholderFill', '$1 fill only', [fillShortcut]));
     const focusShortcut = shortcutsEnabled ? formatShortcutForTooltip(active.focusInput) : '';
     const prefix = focusShortcut ? `${focusShortcut}  ` : '';
-    input.placeholder = `${prefix}${tr('composerInputPlaceholder', 'Enter your question to send to all AI providers...')}  ${keys.join(' · ')}`;
+    const mode = currentModePrompt();
+    const triggers = isAutoMode() ? describeTriggers() : '';
+    const appended = mode
+      ? `  ${tr('composerPlaceholderAppend', 'Appends: $1', [truncate(mode.content, PROMPT_MODE_PLACEHOLDER_LENGTH)])}`
+      : (triggers ? `  ${tr('composerPlaceholderTriggers', 'Auto: $1', [truncate(triggers, PROMPT_MODE_PLACEHOLDER_LENGTH * 2)])}` : '');
+    input.placeholder = `${prefix}${tr('composerInputPlaceholder', 'Enter your question to send to all AI providers...')}${appended}  ${keys.join(' · ')}`;
   }
 
   function openDialog(id) {
@@ -683,17 +749,15 @@ export async function setupComposerControls({
   document.addEventListener('click', showShortcutBubble, true);
   byId('unified-input').addEventListener('focus', pulse);
   byId('provider-sort-btn').addEventListener('click', toggleSort);
-  // Only Default is in the page; the mode options come from PROMPT_MODES.
-  byId('prompt-mode-select').append(...PROMPT_MODES.map(mode => {
-    const option = document.createElement('option');
-    option.value = mode.id;
-    option.textContent = tr(mode.labelKey, mode.label);
-    return option;
-  }));
+  // Only Default is in the page; the mode options come from the library.
   byId('prompt-mode-select').addEventListener('change', async event => {
-    promptMode = isPromptMode(event.target.value) ? event.target.value : null;
+    promptMode = toModeKey(event.target.value);
     renderPromptMode();
     await saveSetting('selectedPromptMode', promptMode);
+  });
+  window.addEventListener('focus', () => { void refreshPromptModes(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void refreshPromptModes();
   });
   byId('tier-details-btn').addEventListener('click', () => { renderTierState(); openDialog('tier-details-modal'); });
   byId('retry-tier-btn').addEventListener('click', retryTier);
@@ -752,8 +816,7 @@ export async function setupComposerControls({
     keyboard.update({ bindings, enabled: shortcutsEnabled && !isAnyModalOpen() });
     if (changes.providerSortMode) { sortMode = changes.providerSortMode.newValue; renderSortMode(); }
     if (changes.selectedPromptMode) {
-      const next = changes.selectedPromptMode.newValue;
-      promptMode = isPromptMode(next) ? next : null;
+      promptMode = toModeKey(changes.selectedPromptMode.newValue);
       renderPromptMode();
     }
     if (changes.providerTierRecipes) {
@@ -793,7 +856,7 @@ export async function setupComposerControls({
     updateTooltips();
   }).catch(() => {});
   renderSortMode();
-  renderPromptMode();
+  await refreshPromptModes();
   renderTierState();
   void refreshStates();
   getPanels().forEach(panelLoaded);
@@ -813,8 +876,26 @@ export async function setupComposerControls({
     refreshStates,
     refreshTooltips: updateTooltips,
     isTierBusy: () => tierBusy || pendingDesiredTier !== undefined,
-    getPromptMode: () => promptMode
+    // The selected mode's instruction, or null for Default and Auto.
+    getPromptMode: () => currentModePrompt()?.content ?? null,
+    // The text and instruction for one send: Auto removes the trigger words
+    // it finds and uses their modes; other modes keep the text as typed.
+    resolvePromptMode: text => resolvePromptModeForText(text, {
+      auto: isAutoMode(),
+      instruction: currentModePrompt()?.content ?? null,
+      modePrompts
+    }),
+    refreshPromptModes
   };
+}
+
+function toModeKey(value) {
+  return typeof value === 'string' && value ? value : null;
+}
+
+function truncate(value, length) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  return text.length > length ? `${text.slice(0, length - 1)}…` : text;
 }
 
 function isAllowedPanelOrigin(panel, origin) {

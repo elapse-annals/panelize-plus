@@ -96,7 +96,8 @@ import {
   savePrompt,
   updatePrompt,
   deletePrompt,
-  getPrompt
+  getPrompt,
+  getModePrompts
 } from '../modules/prompt-manager.js';
 import {
   applyPanelFitScale,
@@ -129,7 +130,7 @@ import { setupComposerControls } from '../modules/composer-controls.js';
 import { formatShortcutForTooltip, matchesShortcut } from '../modules/keyboard-shortcuts.js';
 import { runNewChatBatch } from '../modules/new-chat-actions.js';
 import { shuffleOrder, syncDisplayOrder } from '../modules/blind-shuffle.js';
-import { applyPromptMode, getPromptModeSuffix } from '../modules/prompt-modes.js';
+import { applyPromptMode, ensureDefaultModePrompts, ensureDefaultModeTriggers, normalizePromptTriggers } from '../modules/prompt-modes.js';
 
 
 // ===== State Management =====
@@ -353,6 +354,13 @@ async function init() {
   setupShareSnapshot();
   setupAnswerStats();
   setupAnswerLog();
+  // Built-in modes join the library once; failure leaves Default only.
+  await ensureDefaultModePrompts({
+    getAllPrompts, savePrompt, storage: chrome.storage?.local, tr: getLocalizedText
+  }).catch(error => console.warn('Could not add the built-in prompt modes', error));
+  await ensureDefaultModeTriggers({
+    getAllPrompts, updatePrompt, storage: chrome.storage?.local
+  }).catch(error => console.warn('Could not add the built-in mode trigger words', error));
   composerControls = await setupComposerControls({
     getPanels: () => getDisplayedPanels(),
     send: () => broadcastMessage(document.getElementById('unified-input').value, true),
@@ -368,7 +376,8 @@ async function init() {
     text: getLocalizedText,
     notify: showToast,
     getPanelName: getPanelDisplayName,
-    isBlindMode: () => isBlindModeEnabled
+    isBlindMode: () => isBlindModeEnabled,
+    loadModePrompts: getModePrompts
   });
   updatePageStyleButtons();
   updateTemporaryChatButtonState();
@@ -1374,7 +1383,7 @@ async function loadSettings() {
       openMode: 'tab',
       googleProviderMode: DEFAULT_GOOGLE_PROVIDER_MODE,
       blindModeEnabled: false,
-      wideContentEnabled: true,
+      wideContentEnabled: false,
       providerNotes: null,
       answerCompleteNotificationEnabled: true
     });
@@ -2312,7 +2321,7 @@ function setFillRetryState(panelIds) {
   updateFillRetryButton();
 }
 
-export async function broadcastMessage(text, autoSubmit = true) {
+export async function broadcastMessage(typedText, autoSubmit = true) {
   if (isNewChatBusy) {
     // The draft and textarea stay untouched so the user can keep typing.
     showToast(getLocalizedText('composerSendBlockedNewChat', 'New conversations are starting. Your draft is kept; send when they are ready.'));
@@ -2338,8 +2347,17 @@ export async function broadcastMessage(text, autoSubmit = true) {
     autoSubmit
   });
   const { isFillAction, shouldAutoSubmit, waitForActionResult } = broadcastParams;
+  // Auto mode removes the trigger words (say /study) it finds and uses their
+  // modes for this send; the trimmed question is what stats and snapshots keep.
+  const resolvedMode = composerControls?.resolvePromptMode?.(typedText)
+    ?? { text: typedText, instruction: composerControls?.getPromptMode() ?? null };
+  const text = resolvedMode.text;
 
   try {
+    if (typedText.trim() && !text.trim() && !hasImages) {
+      showToast('Please enter a message or attach a file');
+      return;
+    }
     if (!text.trim() && !hasImages) {
       // If input is empty and autoSubmit is true, just trigger send buttons
       if (autoSubmit) {
@@ -2355,13 +2373,13 @@ export async function broadcastMessage(text, autoSubmit = true) {
     // Files sent without text get the instruction on its own.
     const promptMode = hasImages && hasFailedPanels && pendingFillPromptMode !== undefined
       ? pendingFillPromptMode
-      : composerControls?.getPromptMode() ?? null;
+      : resolvedMode.instruction;
     if (hasImages) {
       pendingFillPromptMode = promptMode;
     }
     const panelText = text.trim()
-      ? applyPromptMode(text, promptMode, getLocalizedText)
-      : getPromptModeSuffix(promptMode, getLocalizedText) || text;
+      ? applyPromptMode(text, promptMode)
+      : promptMode || text;
 
     // Filling focuses each provider's composer too. Keep the unified input
     // focused, or the next Enter lands in one panel and sends only there.
@@ -4318,6 +4336,8 @@ async function renderPromptList(searchQuery = '') {
         <div class="prompt-item-modal-title">${escapeHtml(prompt.title)}</div>
         <div class="prompt-item-modal-preview">${escapeHtml(prompt.content.substring(0, 150))}${prompt.content.length > 150 ? '...' : ''}</div>
         <div class="prompt-item-meta-row">
+          ${prompt.isMode ? `<span class="prompt-item-category prompt-item-mode">${escapeHtml(getLocalizedText('promptModeBadge', 'Mode'))}</span>` : ''}
+          ${prompt.isMode ? normalizePromptTriggers(prompt.triggers).map(trigger => `<span class="prompt-item-category prompt-item-trigger">${escapeHtml(trigger)}</span>`).join('') : ''}
           ${prompt.category ? `<span class="prompt-item-category">${escapeHtml(prompt.category)}</span>` : ''}
           ${prompt.variables && prompt.variables.length > 0 ? `
             <div class="prompt-item-variables">
@@ -5049,6 +5069,8 @@ async function loadPromptForEditing(promptId) {
       document.getElementById('prompt-content-input').value = prompt.content || '';
       document.getElementById('prompt-category-input').value = prompt.category || '';
       document.getElementById('prompt-tags-input').value = prompt.tags ? prompt.tags.join(', ') : '';
+      document.getElementById('prompt-is-mode-input').checked = prompt.isMode === true;
+      document.getElementById('prompt-triggers-input').value = normalizePromptTriggers(prompt.triggers).join(', ');
     }
   } catch (error) {
     console.error('Error loading prompt for editing:', error);
@@ -5062,6 +5084,8 @@ function clearPromptEditor() {
   document.getElementById('prompt-content-input').value = '';
   document.getElementById('prompt-category-input').value = '';
   document.getElementById('prompt-tags-input').value = '';
+  document.getElementById('prompt-is-mode-input').checked = false;
+  document.getElementById('prompt-triggers-input').value = '';
 }
 
 // 关闭编辑器
@@ -5076,6 +5100,8 @@ async function savePromptFromEditor() {
   const content = document.getElementById('prompt-content-input').value.trim();
   const category = document.getElementById('prompt-category-input').value.trim();
   const tagsStr = document.getElementById('prompt-tags-input').value.trim();
+  const isMode = document.getElementById('prompt-is-mode-input').checked;
+  const triggers = normalizePromptTriggers(document.getElementById('prompt-triggers-input').value);
 
   if (!title || !content) {
     alert('Title and content are required');
@@ -5084,7 +5110,7 @@ async function savePromptFromEditor() {
 
   const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : [];
 
-  const promptData = { title, content, category, tags };
+  const promptData = { title, content, category, tags, isMode, triggers };
 
   try {
     if (currentEditingPromptId) {
@@ -5097,6 +5123,7 @@ async function savePromptFromEditor() {
 
     closePromptEditor();
     await renderPromptList();
+    await composerControls?.refreshPromptModes();
   } catch (error) {
     console.error('Error saving prompt:', error);
     showToast('Failed to save prompt');
@@ -5113,6 +5140,7 @@ async function deletePromptFromEditor() {
       showToast('Prompt deleted');
       closePromptEditor();
       await renderPromptList();
+      await composerControls?.refreshPromptModes();
     } catch (error) {
       console.error('Error deleting prompt:', error);
       showToast('Failed to delete prompt');

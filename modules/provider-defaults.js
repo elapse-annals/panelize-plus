@@ -23,10 +23,10 @@ export const DEFAULT_PROVIDER_IDS = [
   'doubao',
   'yuanbao',
   'grok',
-  'qwen-global',
   'zai-global',
   'google',
   'chatglm',
+  'qwen-global',
 ];
 
 export const DEFAULT_PROVIDER_ORDER = [

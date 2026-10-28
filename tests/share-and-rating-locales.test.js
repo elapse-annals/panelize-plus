@@ -128,7 +128,17 @@ const FEATURE_KEYS = [
   'promptModeSuffix_learning',
   'promptModeSuffix_concise',
   'promptModeSuffix_brainstorm',
-  'promptModeSuffix_compete'
+  'promptModeSuffix_compete',
+  'promptModeCategory',
+  'promptModeBadge',
+  'promptIsModeLabel',
+  'composerPlaceholderAppend',
+  'promptModeAuto',
+  'promptModeAutoHint',
+  'composerPlaceholderTriggers',
+  'promptTriggersLabel',
+  'promptTriggersPlaceholder',
+  'promptTriggersHint'
 ];
 
 const locales = readdirSync(LOCALES_DIR);
@@ -162,7 +172,8 @@ describe('share and rating strings', () => {
       shareCurrentViewOnly: ['$1'],
       shareOutOfViewNote: ['$1'],
       shareShortcutHint: ['$1'],
-      shareProgressStep: ['$1', '$2']
+      shareProgressStep: ['$1', '$2'],
+      composerPlaceholderAppend: ['$1']
     };
     locales.forEach((locale) => {
       const messages = JSON.parse(readFileSync(resolve(LOCALES_DIR, locale, 'messages.json'), 'utf8'));

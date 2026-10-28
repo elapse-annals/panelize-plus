@@ -1482,7 +1482,7 @@
     "message": "头脑风暴"
   },
   "promptModeCompete": {
-    "message": "竞争"
+    "message": "挑战"
   },
   "promptModeDefaultHint": {
     "message": "不追加内容，各 AI 按自己的方式回答"
@@ -1497,7 +1497,7 @@
     "message": "追加头脑风暴指令：多角度、不急于下结论"
   },
   "promptModeCompeteHint": {
-    "message": "追加竞争指令：让回答在多 AI 比较中胜出"
+    "message": "追加挑战指令：让回答在多 AI 比较中胜出"
   },
   "promptModeSuffix_learning": {
     "message": "请以教学方式回答：先给出核心结论，再循序渐进解释原理，配合例子，并在最后提出 1–2 个检验理解的问题。"
@@ -1510,5 +1510,35 @@
   },
   "promptModeSuffix_compete": {
     "message": "你正在与其他多个 AI 同时回答这个问题，回答将被直接比较。请给出你能做到的最准确、最有洞见、最实用的回答。"
+  },
+  "composerPlaceholderAppend": {
+    "message": "追加：$1"
+  },
+  "promptModeCategory": {
+    "message": "模式"
+  },
+  "promptModeBadge": {
+    "message": "模式"
+  },
+  "promptIsModeLabel": {
+    "message": "提示词模式：在输入框的模式菜单中列出，并追加到每个问题后"
+  },
+  "promptModeAuto": {
+    "message": "自动"
+  },
+  "promptModeAutoHint": {
+    "message": "仅当问题中包含触发词（如 /study）时才追加对应模式"
+  },
+  "composerPlaceholderTriggers": {
+    "message": "自动：$1"
+  },
+  "promptTriggersLabel": {
+    "message": "触发词（自动模式）"
+  },
+  "promptTriggersPlaceholder": {
+    "message": "例如：/study, /learn"
+  },
+  "promptTriggersHint": {
+    "message": "输入框的模式设为“自动”时，在问题中输入其中一个触发词，本次发送会临时使用此模式，触发词本身不会发送。仅对标记为模式的提示词生效。"
   }
 }

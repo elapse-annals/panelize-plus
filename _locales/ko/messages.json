@@ -1488,7 +1488,7 @@
     "message": "브레인스토밍"
   },
   "promptModeCompete": {
-    "message": "경쟁"
+    "message": "도전"
   },
   "promptModeDefaultHint": {
     "message": "아무것도 덧붙이지 않고 각 AI가 평소 방식으로 답합니다"
@@ -1503,7 +1503,7 @@
     "message": "브레인스토밍 지시를 덧붙입니다: 여러 각도, 성급한 결론 없이"
   },
   "promptModeCompeteHint": {
-    "message": "경쟁 지시를 덧붙입니다: 나란히 비교에서 앞서는 답"
+    "message": "도전 지시를 덧붙입니다: 나란히 비교에서 앞서는 답"
   },
   "promptModeSuffix_learning": {
     "message": "선생님처럼 답해 주세요. 먼저 핵심 결론을 제시한 뒤 예시를 곁들여 원리를 단계적으로 설명하고, 마지막에 이해를 확인하는 질문을 1~2개 덧붙여 주세요."
@@ -1516,5 +1516,35 @@
   },
   "promptModeSuffix_compete": {
     "message": "이 질문에는 다른 여러 AI도 동시에 답하고 있으며 답변은 나란히 비교됩니다. 가장 정확하고 통찰력 있으며 실용적인 답을 제시해 주세요."
+  },
+  "composerPlaceholderAppend": {
+    "message": "추가: $1"
+  },
+  "promptModeCategory": {
+    "message": "모드"
+  },
+  "promptModeBadge": {
+    "message": "모드"
+  },
+  "promptIsModeLabel": {
+    "message": "프롬프트 모드: 입력창의 모드 메뉴에 표시하고 모든 질문에 덧붙입니다"
+  },
+  "promptModeAuto": {
+    "message": "자동"
+  },
+  "promptModeAutoHint": {
+    "message": "질문에 트리거 단어(/study 등)가 있을 때만 모드를 추가합니다"
+  },
+  "composerPlaceholderTriggers": {
+    "message": "자동: $1"
+  },
+  "promptTriggersLabel": {
+    "message": "트리거 단어(자동 모드)"
+  },
+  "promptTriggersPlaceholder": {
+    "message": "예: /study, /learn"
+  },
+  "promptTriggersHint": {
+    "message": "입력창의 모드가 자동이면 질문에 이 단어 중 하나를 입력할 때 그 전송에만 이 모드가 적용됩니다. 단어 자체는 전송되지 않습니다. 모드로 표시한 프롬프트에서만 사용됩니다."
   }
 }

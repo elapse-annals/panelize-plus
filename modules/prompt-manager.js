@@ -1,6 +1,8 @@
 // T028: Prompt Manager with IndexedDB operations
 // Handles CRUD operations for prompts in the Prompt Library
 
+import { createModeKey, normalizePromptTriggers, selectModePrompts } from './prompt-modes.js';
+
 const DB_NAME = 'SmarterPanelDB';
 const DB_VERSION = 5;  // Upgraded to remove conversations store
 const PROMPTS_STORE = 'prompts';
@@ -12,6 +14,7 @@ const MAX_CONTENT_LENGTH = 50000;
 const MAX_CATEGORY_LENGTH = 50;
 const MAX_TAG_LENGTH = 30;
 const MAX_TAGS_COUNT = 20;
+const MAX_MODE_KEY_LENGTH = 64;
 
 let db = null;
 
@@ -137,6 +140,11 @@ export async function savePrompt(promptData) {
       : [],
     variables: Array.isArray(promptData.variables) ? promptData.variables : [],
     isFavorite: Boolean(promptData.isFavorite),
+    // Mode prompts are listed in the composer's prompt-mode menu by modeKey.
+    isMode: promptData.isMode === true,
+    modeKey: sanitizeString(promptData.modeKey, MAX_MODE_KEY_LENGTH) || (promptData.isMode === true ? createModeKey() : ''),
+    // Words like /study that apply this mode to one send in Auto mode.
+    triggers: normalizePromptTriggers(promptData.triggers),
     createdAt: promptData.createdAt || Date.now(),
     lastUsed: promptData.lastUsed || null,
     useCount: promptData.useCount || 0
@@ -193,12 +201,19 @@ export async function updatePrompt(id, updates) {
       }
 
       const updatedPrompt = { ...prompt, ...updates, id };
+      if (updatedPrompt.isMode === true && !updatedPrompt.modeKey) updatedPrompt.modeKey = createModeKey();
+      if (updates.triggers !== undefined) updatedPrompt.triggers = normalizePromptTriggers(updates.triggers);
       const putRequest = store.put(updatedPrompt);
       wrapRequest(putRequest, () => updatedPrompt).then(resolve).catch(reject);
     };
 
     getRequest.onerror = () => reject(getRequest.error);
   }));
+}
+
+// Prompts marked as modes, in the order the prompt-mode menu lists them
+export async function getModePrompts() {
+  return selectModePrompts(await getAllPrompts());
 }
 
 // T034: Delete prompt

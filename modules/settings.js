@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS = {
   selectedPromptMode: null,  // Instruction appended to the question every AI receives; null appends nothing
   providerTierRecipes: null,  // User overrides of DEFAULT_TIER_RECIPES, keyed by provider then tier; null uses the built-in mapping
   blindModeEnabled: false,  // Panels show anonymous labels and provider pages share one neutral style
-  wideContentEnabled: true,  // Provider pages are laid out wider than their panel and scaled to fit
+  wideContentEnabled: false,  // Provider pages are laid out wider than their panel and scaled to fit
   startupProviders: DEFAULT_STARTUP_PROVIDER_IDS,  // Provider IDs opened when Multi-Panel starts; null opens the first ones that fit the layout
   defaultProvider: 'chatgpt',
   lastSelectedProvider: 'chatgpt',
