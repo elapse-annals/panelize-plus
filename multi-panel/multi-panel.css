@@ -1210,21 +1210,83 @@ body {
 .composer-divider { width: 1px; height: 14px; background: #e4e6ee; }
 /* New Chat lives in the toolbar; the composer copy stays for its shortcut wiring. */
 #composer-new-chat-btn { display: none; }
-.tier-controls { display: inline-flex; gap: 2px; background: #f3f4f8; padding: 2px; border-radius: 8px; }
+.tier-menu { position: relative; display: inline-flex; }
+/* Levels open above the trigger: the composer sits at the bottom of the page. */
+.tier-menu-list {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  z-index: 30;
+  min-width: 250px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid #e1e3ec;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(30, 42, 70, .16);
+}
+.tier-menu-list[hidden] { display: none; }
 .tier-option {
   position: relative;
-  padding: 1px 6px;
-  min-height: 20px;
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  grid-template-areas: "check name key" "check hint hint";
+  column-gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 5px 8px;
   border: none;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
-  color: #657087;
+  color: #3f4658;
   font: inherit;
   font-size: 12px;
+  text-align: left;
   cursor: pointer;
 }
-.tier-option[aria-checked="true"] { color: #574681; background: #fff; box-shadow: 0 1px 4px #26253d15; }
-.tier-option:hover { color: #574681; }
+.tier-option::before { content: ''; grid-area: check; }
+.tier-option[data-requested="true"]::before { content: '✓'; color: var(--composer-accent-ink, #574681); font-weight: 600; }
+.tier-option[data-requested="true"][aria-checked="false"]::before { opacity: .5; }
+.tier-option:hover, .tier-option:focus-visible { background: #f3f2f9; color: #574681; }
+.tier-option-name { grid-area: name; font-weight: 500; }
+.tier-option-hint { grid-area: hint; color: #8a90a0; font-size: 11px; line-height: 1.35; }
+.tier-option-key, .shortcut-bubble kbd {
+  font-family: inherit;
+  font-size: 11px;
+  color: #6d7485;
+  padding: 0 5px;
+  border: 1px solid #dfe2ea;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: #fafbfd;
+}
+.tier-option-key { grid-area: key; }
+.tier-option-key:empty { display: none; }
+.tier-menu-btn .tier-menu-caret { font-size: 14px; margin-left: -2px; }
+/* Mouse clicks on a button show its keyboard shortcut once, briefly. */
+.shortcut-bubble {
+  position: fixed;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #2d2a3e;
+  color: #f1eefc;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(20, 18, 40, .25);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .15s ease, transform .15s ease;
+}
+.shortcut-bubble[data-visible="true"] { opacity: 1; transform: none; }
+.shortcut-bubble kbd { color: #fff; background: #47425e; border-color: #5d5778; }
+.shortcut-hinted { outline: 2px solid #9d8fd6 !important; outline-offset: 2px; border-radius: 6px; }
 .composer-status, .composer-result-row { font-size: 12px; color: #6d7485; }
 /* Floats above the composer so a status never takes height from the input. */
 .composer-result-row {
@@ -3293,7 +3355,7 @@ html.snapshot-hide-cursor *::after {
 /* Control row: equal heights so the divider, levels and status line up. */
 #input-bar .composer-controls-left { gap: 4px 6px; }
 #input-bar .composer-control { min-height: 26px; }
-#input-bar .tier-option { min-height: 22px; padding: 1px 6px; transition: background-color .15s ease, color .15s ease, box-shadow .15s ease; }
+#input-bar .tier-menu-btn { position: relative; transition: background-color .15s ease, color .15s ease, box-shadow .15s ease; }
 /* AI mode mapping: a small, light "i" keeps the control row quiet. */
 #input-bar .tier-details-btn {
   min-width: 18px;
@@ -3333,43 +3395,27 @@ html.snapshot-hide-cursor *::after {
   background: #f1eef9;
 }
 #input-bar .prompt-mode-select:focus-visible { outline: 2px solid #8a79b5; outline-offset: 2px; }
-/* Confirmed level: solid accent. Requested but not yet confirmed on every AI
-   (or switching): outlined, matching the "x/y switched · mixed" status. */
-#input-bar .tier-option[aria-checked="true"] {
-  color: #fff;
-  background: var(--composer-accent);
-  box-shadow: 0 1px 3px rgba(80, 64, 150, .3);
-}
-#input-bar .tier-option[data-requested="true"][aria-checked="false"] {
-  color: var(--composer-accent-ink);
-  background: #fff;
-  box-shadow: inset 0 0 0 1px #9d8fd6;
-}
-[data-theme="dark"] #input-bar .tier-option[data-requested="true"][aria-checked="false"] {
-  background: #2f2a3a;
-  box-shadow: inset 0 0 0 1px #8e7fd0;
-}
-#input-bar .tier-option[data-requested="true"]:disabled { opacity: .75; }
-#input-bar .tier-option[aria-checked="true"]:hover { color: #fff; }
-/* Each level keeps a distinct resting appearance after the short switch
-   effect: teal streak, blue halo, then violet starlight. */
-#input-bar .composer-shell[data-tier] .tier-option[data-requested="true"]:not([data-tier="default"]) {
+/* The trigger carries the chosen level. Requested but not yet confirmed on
+   every AI (or switching): outlined, matching the "x/y switched · mixed"
+   status; confirmed: solid. Each level keeps a distinct resting appearance
+   after the short switch effect: teal streak, blue halo, violet starlight. */
+#input-bar .composer-shell[data-tier]:not([data-tier="default"]) .tier-menu-btn {
   position: relative;
   color: var(--tier-ink);
   background: color-mix(in srgb, var(--tier-color) 9%, #fff);
   box-shadow: inset 0 0 0 1px var(--tier-color), 0 0 9px var(--tier-glow);
 }
-#input-bar .composer-shell[data-tier-state="confirmed"] .tier-option[data-requested="true"]:not([data-tier="default"]) {
+#input-bar .composer-shell[data-tier-state="confirmed"]:not([data-tier="default"]) .tier-menu-btn {
   color: #fff;
   background: var(--tier-color);
   box-shadow: 0 1px 5px var(--tier-glow);
 }
-#input-bar .composer-shell[data-tier="deep"][data-tier-state="confirmed"] .tier-option[data-requested="true"] {
+#input-bar .composer-shell[data-tier="deep"][data-tier-state="confirmed"] .tier-menu-btn {
   background: radial-gradient(circle at 18% 28%, #fff 0 1px, transparent 1.5px),
     radial-gradient(circle at 78% 72%, #f4d3ff 0 1px, transparent 1.5px),
     linear-gradient(110deg, #6945ce, #a756e3);
 }
-.composer-shell[data-tier-state="switching"] .tier-option[data-requested="true"]::after {
+.composer-shell[data-tier-state="switching"] .tier-menu-btn::after {
   content: '';
   position: absolute;
   left: 25%;
@@ -3382,7 +3428,7 @@ html.snapshot-hide-cursor *::after {
 [data-theme="dark"] .composer-shell[data-tier="fast"] { --tier-ink: #89e4e0; }
 [data-theme="dark"] .composer-shell[data-tier="balanced"] { --tier-ink: #accbff; }
 [data-theme="dark"] .composer-shell[data-tier="deep"] { --tier-ink: #dfbaff; }
-[data-theme="dark"] #input-bar .composer-shell[data-tier-state]:not([data-tier-state="confirmed"]) .tier-option[data-requested="true"]:not([data-tier="default"]) {
+[data-theme="dark"] #input-bar .composer-shell[data-tier-state]:not([data-tier-state="confirmed"]):not([data-tier="default"]) .tier-menu-btn {
   color: var(--tier-ink);
   background: color-mix(in srgb, var(--tier-color) 18%, #26262b);
 }
@@ -3400,11 +3446,12 @@ html.snapshot-hide-cursor *::after {
 [data-theme="dark"] .composer-shell { --composer-edge: #41414e; background: #26262b; box-shadow: 0 3px 16px #0001; }
 [data-theme="dark"] .composer-shell:focus-within { --composer-edge: #6e6588; }
 [data-theme="dark"] .composer-control, [data-theme="dark"] .tier-option { color: #b4b2c2; }
+[data-theme="dark"] .tier-menu-list { background: #26262b; border-color: #41414e; box-shadow: 0 8px 28px #0008; }
+[data-theme="dark"] .tier-option:hover, [data-theme="dark"] .tier-option:focus-visible { background: #393344; color: #d2c5f4; }
+[data-theme="dark"] .tier-option[data-requested="true"]::before { color: #d2c5f4; }
+[data-theme="dark"] .tier-option-hint { color: #8d8a9c; }
+[data-theme="dark"] .tier-option-key { color: #b4b2c2; background: #1e1e24; border-color: #43414e; }
 [data-theme="dark"] .composer-control:hover, [data-theme="dark"] .composer-control[aria-pressed="true"] { color: #d2c5f4; background: #393344; }
-[data-theme="dark"] .tier-controls { background: #1e1e24; }
-[data-theme="dark"] .tier-option[aria-checked="true"] { color: #e0d5ff; background: #44394f; }
-[data-theme="dark"] #input-bar .tier-option[aria-checked="true"] { color: #fff; background: var(--composer-accent); }
-[data-theme="dark"] #input-bar .tier-option[data-requested="true"][aria-checked="false"] { color: var(--composer-accent-ink); }
 [data-theme="dark"] #input-bar .tier-details-btn { color: #75798a; }
 [data-theme="dark"] #input-bar .tier-details-btn:hover { color: #c9c6d6; }
 [data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] { color: #d2c5f4; }
@@ -3429,12 +3476,12 @@ html.snapshot-hide-cursor *::after {
   #composer-new-chat-btn > span:not(.material-symbols-outlined),
   #provider-sort-label,
   #input-bar .composer-status { display: none; }
-  #input-bar .tier-option { padding: 1px 8px; }
+  #tier-menu-label { display: none; }
   #input-bar .composer-controls-left { gap: 4px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .app-title-plus { animation: none; }
-  .composer-shell, .composer-control, .tier-option, #input-bar .tier-option { transition: none; }
+  .composer-shell, .composer-control, .tier-option, #input-bar .tier-menu-btn, .shortcut-bubble { transition: none; }
   .composer-shell.composer-pulse::before { animation: none; }
   .composer-shell.composer-pulse:not([data-tier="default"])::after { animation: none; }
 }

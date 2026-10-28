@@ -1430,6 +1430,36 @@
   "composerTierDeepHint": {
     "message": "Porta tutte le IA alla modalità di ragionamento più profonda"
   },
+  "composerTierMenu": {
+    "message": "Scegli il livello di ragionamento"
+  },
+  "composerTemporaryChat": {
+    "message": "Chat temporanea"
+  },
+  "composerBlindMode": {
+    "message": "Modalità cieca"
+  },
+  "composerShareSnapshot": {
+    "message": "Condividi istantanea"
+  },
+  "composerOpenSettings": {
+    "message": "Impostazioni"
+  },
+  "composerClearAll": {
+    "message": "Cancella tutti gli input"
+  },
+  "composerAttachFiles": {
+    "message": "Carica immagini o file"
+  },
+  "composerAddPanel": {
+    "message": "Aggiungi pannello"
+  },
+  "composerToggleToolbar": {
+    "message": "Comprimi o espandi la barra"
+  },
+  "composerToggleOpenMode": {
+    "message": "Passa tra scheda e finestra popup"
+  },
   "composerImageUploadTitle": {
     "message": "Carica immagini o file\nAllega immagini o file da inviare a tutte le IA (puoi anche incollarli o trascinarli)"
   },

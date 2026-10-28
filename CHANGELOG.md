@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.21.1 - 2026-10-28
+- Send All with images or files attached now sends: each AI gets the attachments and the question and then sends, waiting until its upload finishes, instead of stopping after filling the question box. Fill still only fills. AIs that cannot take a file still get the text without sending, and retrying them sends once their files are in.
+
+## 2.21.0 - 2026-10-28
+- The reasoning level is now one button that shows the current level and opens a menu of Default, Fast, Balanced and Deep, each with what it does and its shortcut. Default has its own shortcut too.
+- Every toolbar and composer button now has a keyboard shortcut and shows it on hover. New shortcuts open Answer stats, Answer log, Settings and Keyboard shortcuts, toggle temporary chat, blind mode and the toolbar, share a snapshot, clear inputs, attach files, add a panel and choose a layout; all can be changed or cleared. Shortcuts you set earlier keep their keys.
+- Clicking a button with the mouse briefly shows its shortcut above it.
+- Typing right after Panelize opens no longer ends up in an AI panel: when a loading page grabs focus, the keys it catches go to the question box instead, and Enter is never sent there. Clicking a panel still lets you type in it.
+
 ## 2.20.1 - 2026-10-27
 - Answer notifications only appear when you have switched away from Panelize, and clicking one returns to the Panelize page that asked the question even when several are open. They never name the AI of a blind question, and they are removed when that page closes.
 - A prompt mode now also applies when you send files without text, and retrying the panels that failed a file fill keeps the mode the fill started with.

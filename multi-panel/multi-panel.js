@@ -158,6 +158,8 @@ const broadcastGate = createBroadcastGate();
 let fillActionRequestCounter = 0;
 let fillPayloadRevision = 0;
 let loadingPanelIds = new Set(); // Track iframes still loading, used for focus protection
+const panelFocusGuardIds = new Map(); // panelId -> requestId of its active focus guard
+let panelFocusGuardCounter = 0;
 let newChatFocusRestoreTimerIds = [];
 let focusRestoreGeneration = 0; // Bumped on every cancel so queued refocus frames are dropped
 let isRestoringFocusAfterNewChat = false;
@@ -272,6 +274,10 @@ const MULTI_PANEL_PROVIDER_STATUS_CONTEXT = 'multi-panel-provider-status';
 const PANELIZE_PROVIDER_BUSY = 'PANELIZE_PROVIDER_BUSY';
 const PANELIZE_PROVIDER_IDLE = 'PANELIZE_PROVIDER_IDLE';
 const PANELIZE_PROVIDER_USER_INTERACTION = 'PANELIZE_PROVIDER_USER_INTERACTION';
+const PANELIZE_FOCUS_GUARD = 'PANELIZE_FOCUS_GUARD';
+const PANELIZE_FORWARD_KEYS = 'PANELIZE_FORWARD_KEYS';
+// How long a freshly loaded panel hands keys it steals back to the question box.
+const PANEL_FOCUS_GUARD_MS = 8000;
 const PANELIZE_TEMP_CHAT_ENABLED = 'PANELIZE_TEMP_CHAT_ENABLED';
 const PANELIZE_PROVIDER_LOCATION = 'PANELIZE_PROVIDER_LOCATION';
 const PANELIZE_PAGE_WIDTH = 'PANELIZE_PAGE_WIDTH';
@@ -999,6 +1005,60 @@ function finishNewChatFocusRestore(requestId) {
   scheduleNewChatFocusRestore([0, 400, 1000, 1500, 2000, 3000], { stopAtEnd: true });
 }
 
+// A loading page may autofocus its own input while the user types in the
+// question box. The panel sends those keys back (PANELIZE_FORWARD_KEYS) until
+// the user clicks in it. Only started while the question box (or nothing)
+// has focus, so a panel the user is working in is never guarded.
+function startPanelFocusGuard(panel) {
+  const active = document.activeElement;
+  if (active !== document.getElementById('unified-input') && active !== document.body && active) {
+    return;
+  }
+  panelFocusGuardCounter += 1;
+  const requestId = `focus-guard-${Date.now()}-${panelFocusGuardCounter}`;
+  panelFocusGuardIds.set(panel.id, requestId);
+  setTimeout(() => {
+    if (panelFocusGuardIds.get(panel.id) === requestId) panelFocusGuardIds.delete(panel.id);
+  }, PANEL_FOCUS_GUARD_MS);
+  panel.iframe.contentWindow?.postMessage({
+    type: PANELIZE_FOCUS_GUARD,
+    context: 'multi-panel',
+    active: true,
+    requestId,
+    durationMs: PANEL_FOCUS_GUARD_MS
+  }, '*');
+}
+
+function stopPanelFocusGuards() {
+  panelFocusGuardIds.forEach((requestId, panelId) => {
+    panels.find(panel => panel.id === panelId)?.iframe?.contentWindow?.postMessage({
+      type: PANELIZE_FOCUS_GUARD, context: 'multi-panel', active: false, requestId
+    }, '*');
+  });
+  panelFocusGuardIds.clear();
+}
+
+// Keys a guarded panel caught are typed into the question box at the caret;
+// '\b' deletes like Backspace.
+function insertForwardedKeys(keys) {
+  const input = document.getElementById('unified-input');
+  if (!input || isFocusInOpenModal()) {
+    return;
+  }
+  for (const key of keys) {
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    if (key === '\b') {
+      if (start !== end) input.setRangeText('', start, end, 'end');
+      else if (start > 0) input.setRangeText('', start - 1, start, 'end');
+    } else {
+      input.setRangeText(key, start, end, 'end');
+    }
+  }
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  focusUnifiedInput({ force: true });
+}
+
 // The click that moved focus into the panel also blurred the unified input,
 // and the restore pulled focus back before the provider's USER_INTERACTION
 // message arrived. Return focus to the panel the user actually chose.
@@ -1180,7 +1240,19 @@ function handleProviderStatusMessage(event) {
       } else if (data.requestId === activeNewChatFocusRequestId) {
         cancelUnifiedInputFocusRestore();
         returnFocusToPanel(panel);
+      } else if (data.requestId === panelFocusGuardIds.get(panel.id)) {
+        // The user chose this panel: stop pulling focus back to the question box.
+        panelFocusGuardIds.delete(panel.id);
+        stopPanelFocusGuards();
+        loadingPanelIds.clear();
+        returnFocusToPanel(panel);
       }
+      break;
+    case PANELIZE_FORWARD_KEYS:
+      if (data.requestId !== panelFocusGuardIds.get(panel.id) || typeof data.keys !== 'string') {
+        return;
+      }
+      insertForwardedKeys(data.keys.slice(0, 2000));
       break;
     case PANELIZE_RESPONSE_TIMING:
       handleAnswerTimingMessage(panel, data);
@@ -1697,12 +1769,13 @@ function createPanel(providerId, { frameUrl = getProviderFrameUrl(providerId), b
 
   // Handle iframe load
   // Grace period after load to catch AI pages that auto-focus after JS init
-  const LOAD_GRACE_PERIOD = 3000;
+  const LOAD_GRACE_PERIOD = 5000;
   loadingPanelIds.add(panelId);
   iframe.addEventListener('load', () => {
     loadingEl.classList.add('hidden');
     const panel = panels.find(p => p.id === panelId);
     if (panel) {
+      startPanelFocusGuard(panel);
       postPageStyleToPanel(panel);
       composerControls?.panelLoaded(panel);
     }
@@ -2390,13 +2463,16 @@ export async function broadcastMessage(text, autoSubmit = true) {
       const totalCount = panels.length;
       const { successfulCount, failedCount } = summary;
 
+      const doneLabel = shouldAutoSubmit ? 'Sent to' : 'Filled';
       if (summary.allSucceeded) {
-        statusEl.textContent = `Filled ${successfulCount} input${successfulCount > 1 ? 's' : ''}`;
+        statusEl.textContent = shouldAutoSubmit
+          ? `Sent to ${successfulCount} AI${successfulCount > 1 ? 's' : ''}`
+          : `Filled ${successfulCount} input${successfulCount > 1 ? 's' : ''}`;
         statusEl.className = 'send-status success';
         setFillRetryState([]);
         pendingFillImageIdsByPanel.clear();
       } else if (successfulCount > 0) {
-        statusEl.textContent = `Filled ${successfulCount}/${totalCount}; ${failedCount} failed`;
+        statusEl.textContent = `${doneLabel} ${successfulCount}/${totalCount}; ${failedCount} failed`;
         statusEl.className = 'send-status partial';
         setFillRetryState(summary.failedPanelIds);
       } else {
@@ -2419,9 +2495,22 @@ export async function broadcastMessage(text, autoSubmit = true) {
         console.warn('[Multi-Panel] Image fill failed for panels:', failedPanels);
       }
 
+      // Panels that filled in this round have sent too when Send All asked
+      // for it; failed panels keep the payload for the next retry.
+      const roundPanelIds = new Set(
+        normalizedResults.filter(result => result?.ok).map(result => result.panelId)
+      );
+      if (shouldAutoSubmit && roundPanelIds.size > 0) {
+        recordSendForRatingPrompt();
+        startAnswerRound(requestId, text, sentAt, panels.filter(panel => roundPanelIds.has(panel.id)));
+        pendingFilledPromptText = '';
+      }
+
       if (successfulCount > 0) {
         rememberSnapshotPrompt(text);
-        pendingFilledPromptText = text;
+        if (!shouldAutoSubmit) {
+          pendingFilledPromptText = text;
+        }
       }
 
       if (shouldClearFillPayload(summary)) {

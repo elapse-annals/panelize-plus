@@ -21,6 +21,7 @@ test('ChatGPT mode switching changes and verifies a three-stop reasoning slider'
       ['deep', 'High', '2'],
       ['balanced', 'Medium', '1']
     ]) {
+      await page.locator('#tier-menu-btn').click();
       await page.locator(`.tier-option[data-tier="${tier}"]`).click();
       await expect.poll(() => frame.evaluate(() => window.__fixture.model)).toBe(label);
       await expect(slider).toHaveValue(value);

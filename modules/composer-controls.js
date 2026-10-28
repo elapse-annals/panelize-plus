@@ -34,7 +34,21 @@ const ACTION_LABELS = {
   scrollPanelsStart: ['composerScrollPanelsStart', 'Scroll to first panel'],
   scrollPanelsEnd: ['composerScrollPanelsEnd', 'Scroll to last panel'],
   ...Object.fromEntries(Array.from({ length: 9 }, (_, index) =>
-    [`jumpPanel${index + 1}`, ['composerJumpPanel', 'Go to panel $1', [String(index + 1)]]]))
+    [`jumpPanel${index + 1}`, ['composerJumpPanel', 'Go to panel $1', [String(index + 1)]]])),
+  tierDefault: ['composerTierDefault', 'Default'],
+  toggleTemporaryChat: ['composerTemporaryChat', 'Temporary chat'],
+  toggleBlindMode: ['composerBlindMode', 'Blind mode'],
+  openAnswerStats: ['answerStatsButtonTitle', 'Answer stats'],
+  openAnswerLog: ['answerLogButtonTitle', 'Answer log'],
+  shareSnapshot: ['composerShareSnapshot', 'Share snapshot'],
+  openSettings: ['composerOpenSettings', 'Settings'],
+  clearInputs: ['composerClearAll', 'Clear all inputs'],
+  attachFiles: ['composerAttachFiles', 'Upload images or files'],
+  addPanel: ['composerAddPanel', 'Add panel'],
+  toggleToolbar: ['composerToggleToolbar', 'Collapse or expand toolbar'],
+  openKeyboardShortcuts: ['composerShortcuts', 'Keyboard shortcuts'],
+  openTierMenu: ['composerTierMenu', 'Choose reasoning level'],
+  toggleOpenMode: ['composerToggleOpenMode', 'Switch between tab and popup window']
 };
 const PROMPT_MODE_DEFAULT_HINT = ['promptModeDefaultHint', 'Nothing is added; each AI answers in its own way'];
 // What a button does, shown on the tooltip's second line.
@@ -45,7 +59,8 @@ const ACTION_HINTS = {
   togglePromptLibrary: ['composerPromptLibraryHint', 'Pick a saved prompt to insert'],
   tierFast: ['composerTierFastHint', 'Switch every AI to its fastest mode'],
   tierBalanced: ['composerTierBalancedHint', 'Switch every AI to a balanced mode'],
-  tierDeep: ['composerTierDeepHint', 'Switch every AI to its deepest reasoning mode']
+  tierDeep: ['composerTierDeepHint', 'Switch every AI to its deepest reasoning mode'],
+  tierDefault: ['composerTierDefaultHint', "Keep each AI's current setting"]
 };
 const BUTTON_ACTIONS = {
   'send-all-btn': 'send', 'fill-input-btn': 'fill',
@@ -54,8 +69,27 @@ const BUTTON_ACTIONS = {
   'provider-sort-btn': 'togglePopularSort',
   'wide-content-btn': 'toggleWideContent',
   'scroll-panels-start-btn': 'scrollPanelsStart',
-  'scroll-panels-end-btn': 'scrollPanelsEnd'
+  'scroll-panels-end-btn': 'scrollPanelsEnd',
+  'tier-menu-btn': 'openTierMenu'
 };
+// Buttons whose page title already names them (and may explain them on a
+// second line); the shortcut is added to that title's first line.
+const TITLED_BUTTON_ACTIONS = {
+  'temporary-chat-btn': 'toggleTemporaryChat', 'blind-mode-btn': 'toggleBlindMode',
+  'answer-stats-btn': 'openAnswerStats', 'answer-log-btn': 'openAnswerLog',
+  'share-snapshot-btn': 'shareSnapshot', 'settings-btn': 'openSettings',
+  'clear-all-btn': 'clearInputs', 'image-upload-btn': 'attachFiles',
+  'add-panel-btn': 'addPanel', 'toggle-toolbar-btn': 'toggleToolbar',
+  'expand-toolbar-btn': 'toggleToolbar', 'keyboard-shortcuts-btn': 'openKeyboardShortcuts',
+  'toggle-open-mode-btn': 'toggleOpenMode'
+};
+// Actions a shortcut performs by clicking the page's own button, so the
+// handlers in multi-panel.js stay the only implementation.
+const CLICK_ACTIONS = Object.entries(TITLED_BUTTON_ACTIONS).reduce((actions, [id, action]) => {
+  if (action !== 'openKeyboardShortcuts') (actions[action] ||= []).push(id);
+  return actions;
+}, {});
+const SHORTCUT_BUBBLE_MS = 1600;
 
 /** UI orchestration stays here; provider operations retain their own verified
  * request/result contracts and do not have access to the unified draft. */
@@ -172,6 +206,9 @@ export async function setupComposerControls({
     shell.dataset.tierState = switching ? 'switching' : !displayedTier ? 'default'
       : allMatched ? 'confirmed' : 'mixed';
     byId('provider-tier-controls').setAttribute('aria-busy', String(switching));
+    const menuLabel = byId('tier-menu-label');
+    if (menuLabel) menuLabel.textContent = displayedTier ? tierName(displayedTier) : label('tierDefault');
+    const active = keyboard.getBindings();
     document.querySelectorAll('.tier-option').forEach(button => {
       // Default leaves every AI on its own setting, so it needs no confirmation.
       const isDefault = button.dataset.tier === DEFAULT_TIER;
@@ -181,6 +218,8 @@ export async function setupComposerControls({
       // the queued one and is applied as soon as the current operation settles.
       button.disabled = false;
       button.dataset.requested = String(requested);
+      const key = button.querySelector('.tier-option-key');
+      if (key) key.textContent = shortcutsEnabled ? formatShortcutForTooltip(active[button.dataset.shortcutAction]) : '';
     });
     const status = byId('tier-status');
     if (switching) status.textContent = tr('composerSwitching', 'Switching…');
@@ -394,8 +433,13 @@ export async function setupComposerControls({
       send, fill, newConversation, focusInput, togglePromptLibrary: openPromptLibrary,
       toggleLayout: openLayout, togglePopularSort: toggleSort, toggleWideContent,
       tierFast: () => requestTier('fast'), tierBalanced: () => requestTier('balanced'), tierDeep: () => requestTier('deep'),
-      scrollPanelsStart: () => scrollPanels('start'), scrollPanelsEnd: () => scrollPanels('end')
+      scrollPanelsStart: () => scrollPanels('start'), scrollPanelsEnd: () => scrollPanels('end'),
+      tierDefault: () => requestTier(null), openTierMenu: () => toggleTierMenu(),
+      openKeyboardShortcuts: openShortcutsDialog
     };
+    if (CLICK_ACTIONS[action]) {
+      actions[action] = () => CLICK_ACTIONS[action].map(byId).find(isUsableButton)?.click();
+    }
     const jump = /^jumpPanel([1-9])$/.exec(action);
     if (jump) actions[action] = () => jumpToPanel(Number(jump[1]));
     Promise.resolve(actions[action]?.()).catch(() => notify(tr('composerNotConfirmed', 'Not confirmed')));
@@ -427,6 +471,18 @@ export async function setupComposerControls({
       button.title = hint ? `${heading}\n${hint}` : heading;
       button.setAttribute('aria-label', heading);
     });
+    Object.entries(TITLED_BUTTON_ACTIONS).forEach(([id, action]) => {
+      const button = byId(id);
+      if (!button) return;
+      button.dataset.shortcutAction = action;
+      button.dataset.baseTitle ??= button.title || label(action);
+      const [name, ...rest] = button.dataset.baseTitle.split('\n');
+      const shortcut = shortcutsEnabled ? formatShortcutForTooltip(active[action]) : '';
+      const heading = shortcut ? `${name} (${shortcut})` : name;
+      button.title = [heading, ...rest].join('\n');
+      button.setAttribute('aria-label', heading);
+    });
+    if (byId('tier-menu-btn')) renderTierState();
     updateInputPlaceholder(active);
   }
 
@@ -458,6 +514,92 @@ export async function setupComposerControls({
     keyboard.setEnabled(shortcutsEnabled);
     if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
     returnFocus = null;
+  }
+
+  function isUsableButton(button) {
+    return Boolean(button) && !button.disabled && !button.hidden && !button.closest('[hidden], .hidden');
+  }
+
+  function isTierMenuOpen() {
+    return byId('provider-tier-controls')?.hidden === false;
+  }
+
+  function openTierMenu() {
+    const menu = byId('provider-tier-controls');
+    if (!menu) return;
+    renderTierState();
+    menu.hidden = false;
+    byId('tier-menu-btn').setAttribute('aria-expanded', 'true');
+    const options = [...menu.querySelectorAll('.tier-option')];
+    (options.find(option => option.dataset.requested === 'true') || options[0])?.focus({ preventScroll: true });
+  }
+
+  function closeTierMenu({ restoreFocus = false } = {}) {
+    const menu = byId('provider-tier-controls');
+    if (!menu || menu.hidden) return;
+    menu.hidden = true;
+    byId('tier-menu-btn').setAttribute('aria-expanded', 'false');
+    if (restoreFocus) byId('tier-menu-btn').focus({ preventScroll: true });
+  }
+
+  function toggleTierMenu() {
+    if (isTierMenuOpen()) closeTierMenu({ restoreFocus: true });
+    else openTierMenu();
+  }
+
+  let bubbleTimer;
+  let hintedButton = null;
+  // A mouse click on a button with a shortcut shows that shortcut next to it.
+  // Keyboard activation (detail 0) and the clicks shortcuts make themselves
+  // (untrusted) do not, since the user already used the keyboard.
+  function showShortcutBubble(event) {
+    if (!event.isTrusted || event.detail === 0 || !shortcutsEnabled) return;
+    const button = event.target.closest?.('[data-shortcut-action]');
+    if (!button || button.disabled) return;
+    const shortcut = formatShortcutForTooltip(keyboard.getBindings()[button.dataset.shortcutAction]);
+    if (!shortcut) return;
+    const anchor = button.classList.contains('tier-option') ? byId('tier-menu-btn') : button;
+    let bubble = byId('shortcut-bubble');
+    if (!bubble) {
+      bubble = document.createElement('div');
+      bubble.id = 'shortcut-bubble';
+      bubble.className = 'shortcut-bubble';
+      bubble.setAttribute('aria-hidden', 'true');
+      document.body.append(bubble);
+    }
+    const key = document.createElement('kbd');
+    key.textContent = shortcut;
+    bubble.replaceChildren(key);
+    bubble.dataset.visible = 'false';
+    // Measure after the menu or toolbar has settled from this click.
+    requestAnimationFrame(() => {
+      if (!anchor.isConnected) return;
+      const rect = anchor.getBoundingClientRect();
+      const width = bubble.offsetWidth;
+      const height = bubble.offsetHeight;
+      const left = Math.min(Math.max(8, rect.left + rect.width / 2 - width / 2), window.innerWidth - width - 8);
+      const top = rect.top - height - 8 >= 8 ? rect.top - height - 8 : rect.bottom + 8;
+      bubble.style.left = `${Math.max(8, left)}px`;
+      bubble.style.top = `${top}px`;
+      bubble.dataset.visible = 'true';
+      hintedButton?.classList.remove('shortcut-hinted');
+      hintedButton = anchor;
+      anchor.classList.add('shortcut-hinted');
+    });
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => {
+      bubble.dataset.visible = 'false';
+      hintedButton?.classList.remove('shortcut-hinted');
+      hintedButton = null;
+    }, SHORTCUT_BUBBLE_MS);
+  }
+
+  function openShortcutsDialog() {
+    draftBindings = keyboard.getBindings();
+    byId('page-shortcuts-enabled').checked = shortcutsEnabled;
+    byId('keyboard-shortcuts-error').textContent = '';
+    renderShortcutFields();
+    openDialog('keyboard-shortcuts-modal');
   }
 
   function renderShortcutFields() {
@@ -509,18 +651,36 @@ export async function setupComposerControls({
   }
 
   document.querySelectorAll('.tier-option').forEach(button => {
-    button.addEventListener('click', () => requestTier(button.dataset.tier === DEFAULT_TIER ? null : button.dataset.tier));
+    button.addEventListener('click', event => {
+      requestTier(button.dataset.tier === DEFAULT_TIER ? null : button.dataset.tier);
+      closeTierMenu({ restoreFocus: event.detail === 0 });
+    });
     button.addEventListener('keydown', event => {
-      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      if (event.key === 'Escape' || event.key === 'Tab') {
+        if (event.key === 'Escape') event.preventDefault();
+        closeTierMenu({ restoreFocus: event.key === 'Escape' });
+        return;
+      }
+      if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
       const options = [...document.querySelectorAll('.tier-option')];
       const index = options.indexOf(button);
       const count = options.length;
       const next = event.key === 'Home' ? 0 : event.key === 'End' ? count - 1
-        : (index + (event.key === 'ArrowRight' ? 1 : count - 1)) % count;
+        : (index + (event.key === 'ArrowDown' ? 1 : count - 1)) % count;
       options[next]?.focus();
     });
   });
+  byId('tier-menu-btn')?.addEventListener('click', toggleTierMenu);
+  byId('tier-menu-btn')?.addEventListener('keydown', event => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    openTierMenu();
+  });
+  document.addEventListener('pointerdown', event => {
+    if (isTierMenuOpen() && !event.target.closest?.('.tier-menu')) closeTierMenu();
+  }, true);
+  document.addEventListener('click', showShortcutBubble, true);
   byId('unified-input').addEventListener('focus', pulse);
   byId('provider-sort-btn').addEventListener('click', toggleSort);
   // Only Default is in the page; the mode options come from PROMPT_MODES.
@@ -538,13 +698,7 @@ export async function setupComposerControls({
   byId('tier-details-btn').addEventListener('click', () => { renderTierState(); openDialog('tier-details-modal'); });
   byId('retry-tier-btn').addEventListener('click', retryTier);
   byId('refresh-tier-state-btn').addEventListener('click', () => refreshStates());
-  byId('keyboard-shortcuts-btn').addEventListener('click', () => {
-    draftBindings = keyboard.getBindings();
-    byId('page-shortcuts-enabled').checked = shortcutsEnabled;
-    byId('keyboard-shortcuts-error').textContent = '';
-    renderShortcutFields();
-    openDialog('keyboard-shortcuts-modal');
-  });
+  byId('keyboard-shortcuts-btn').addEventListener('click', openShortcutsDialog);
   byId('reset-keyboard-shortcuts').addEventListener('click', () => {
     draftBindings = { ...DEFAULT_KEYBOARD_SHORTCUT_BINDINGS };
     byId('page-shortcuts-enabled').checked = true;

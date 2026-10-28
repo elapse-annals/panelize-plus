@@ -20,7 +20,21 @@ export const KEYBOARD_SHORTCUT_ACTIONS = Object.freeze({
   JUMP_PANEL_6: 'jumpPanel6',
   JUMP_PANEL_7: 'jumpPanel7',
   JUMP_PANEL_8: 'jumpPanel8',
-  JUMP_PANEL_9: 'jumpPanel9'
+  JUMP_PANEL_9: 'jumpPanel9',
+  TIER_DEFAULT: 'tierDefault',
+  TOGGLE_TEMPORARY_CHAT: 'toggleTemporaryChat',
+  TOGGLE_BLIND_MODE: 'toggleBlindMode',
+  OPEN_ANSWER_STATS: 'openAnswerStats',
+  OPEN_ANSWER_LOG: 'openAnswerLog',
+  SHARE_SNAPSHOT: 'shareSnapshot',
+  OPEN_SETTINGS: 'openSettings',
+  CLEAR_INPUTS: 'clearInputs',
+  ATTACH_FILES: 'attachFiles',
+  ADD_PANEL: 'addPanel',
+  TOGGLE_TOOLBAR: 'toggleToolbar',
+  OPEN_KEYBOARD_SHORTCUTS: 'openKeyboardShortcuts',
+  OPEN_TIER_MENU: 'openTierMenu',
+  TOGGLE_OPEN_MODE: 'toggleOpenMode'
 });
 
 export const DEFAULT_KEYBOARD_SHORTCUT_BINDINGS = Object.freeze({
@@ -34,7 +48,7 @@ export const DEFAULT_KEYBOARD_SHORTCUT_BINDINGS = Object.freeze({
   [KEYBOARD_SHORTCUT_ACTIONS.TIER_BALANCED]: 'Mod+Alt+2',
   [KEYBOARD_SHORTCUT_ACTIONS.TIER_DEEP]: 'Mod+Alt+3',
   [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_PROMPT_LIBRARY]: null,
-  [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_LAYOUT]: null,
+  [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_LAYOUT]: 'Mod+Alt+G',
   [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_POPULAR_SORT]: null,
   [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_WIDE_CONTENT]: 'Mod+Alt+W',
   // Cmd+Option+Left/Right switch tabs on macOS, so use the < and > keys.
@@ -49,7 +63,25 @@ export const DEFAULT_KEYBOARD_SHORTCUT_BINDINGS = Object.freeze({
   [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_6]: 'Ctrl+Shift+6',
   [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_7]: 'Ctrl+Shift+7',
   [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_8]: 'Ctrl+Shift+8',
-  [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_9]: 'Ctrl+Shift+9'
+  [KEYBOARD_SHORTCUT_ACTIONS.JUMP_PANEL_9]: 'Ctrl+Shift+9',
+  // Later additions avoid Cmd+Option combos taken on macOS Chrome or the
+  // system: B bookmarks, C/I/J/U developer tools and source, L downloads,
+  // D Dock, H hide others and M minimize all.
+  [KEYBOARD_SHORTCUT_ACTIONS.TIER_DEFAULT]: 'Mod+Alt+0',
+  [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_TEMPORARY_CHAT]: 'Mod+Alt+T',
+  [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_BLIND_MODE]: 'Mod+Alt+X',
+  [KEYBOARD_SHORTCUT_ACTIONS.OPEN_ANSWER_STATS]: 'Mod+Alt+S',
+  [KEYBOARD_SHORTCUT_ACTIONS.OPEN_ANSWER_LOG]: 'Mod+Alt+R',
+  [KEYBOARD_SHORTCUT_ACTIONS.SHARE_SNAPSHOT]: 'Mod+Alt+P',
+  [KEYBOARD_SHORTCUT_ACTIONS.OPEN_SETTINGS]: 'Mod+Alt+O',
+  [KEYBOARD_SHORTCUT_ACTIONS.CLEAR_INPUTS]: 'Mod+Alt+Backspace',
+  [KEYBOARD_SHORTCUT_ACTIONS.ATTACH_FILES]: 'Mod+Alt+A',
+  [KEYBOARD_SHORTCUT_ACTIONS.ADD_PANEL]: 'Mod+Alt+Equal',
+  [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_TOOLBAR]: 'Mod+Alt+E',
+  [KEYBOARD_SHORTCUT_ACTIONS.OPEN_KEYBOARD_SHORTCUTS]: 'Mod+Alt+Slash',
+  [KEYBOARD_SHORTCUT_ACTIONS.OPEN_TIER_MENU]: null,
+  // Switching the open mode reloads Panelize, so it has no default key.
+  [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_OPEN_MODE]: null
 });
 
 const ACTION_IDS = Object.freeze(Object.values(KEYBOARD_SHORTCUT_ACTIONS));
@@ -349,24 +381,30 @@ function normalizeBindings(bindings) {
   const overrides = bindings && typeof bindings === 'object' ? bindings : {};
   const resolved = {};
   const occupied = new Set();
+  const isCustom = actionId => Object.prototype.hasOwnProperty.call(overrides, actionId);
 
-  for (const actionId of ACTION_IDS) {
-    let binding = DEFAULT_KEYBOARD_SHORTCUT_BINDINGS[actionId];
-    if (Object.prototype.hasOwnProperty.call(overrides, actionId)) {
-      const supplied = overrides[actionId];
-      if (supplied === null || supplied === '') {
-        binding = null;
-      } else {
-        const normalized = normalizeShortcutBinding(supplied);
-        binding = normalized && validateShortcutBinding(normalized) ? normalized : null;
+  // Custom bindings claim their keys first, so a default added in a later
+  // version never takes a combination the user already assigned.
+  for (const custom of [true, false]) {
+    for (const actionId of ACTION_IDS) {
+      if (isCustom(actionId) !== custom) continue;
+      let binding = DEFAULT_KEYBOARD_SHORTCUT_BINDINGS[actionId];
+      if (custom) {
+        const supplied = overrides[actionId];
+        if (supplied === null || supplied === '') {
+          binding = null;
+        } else {
+          const normalized = normalizeShortcutBinding(supplied);
+          binding = normalized && validateShortcutBinding(normalized) ? normalized : null;
+        }
       }
-    }
 
-    if (binding && occupied.has(binding)) binding = null;
-    if (binding) occupied.add(binding);
-    resolved[actionId] = binding;
+      if (binding && occupied.has(binding)) binding = null;
+      if (binding) occupied.add(binding);
+      resolved[actionId] = binding;
+    }
   }
-  return resolved;
+  return Object.fromEntries(ACTION_IDS.map(actionId => [actionId, resolved[actionId]]));
 }
 
 /**

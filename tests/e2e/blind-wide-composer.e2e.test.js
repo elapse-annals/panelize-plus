@@ -166,6 +166,7 @@ test.describe('Blind mode, wide content and composer overhang', () => {
       await chatgpt.locator('[data-tier-option="balanced"]').click();
       await expect.poll(() => chatgpt.evaluate(() => window.__fixture.isolationRefreshed)).toBe(true);
       // Model controls keep their dimensions and portal menus remain usable.
+      await page.locator('#tier-menu-btn').click();
       await page.locator('.tier-option[data-tier="deep"]').click();
       await expect.poll(() => page.frames().find(frame => frame.url().includes('chatgpt.com'))
         .evaluate(() => window.__fixture.model)).toBe('High');

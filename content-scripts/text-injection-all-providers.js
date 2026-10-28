@@ -19,6 +19,9 @@
   const PANELIZE_TEMP_CHAT_ENABLED = 'PANELIZE_TEMP_CHAT_ENABLED';
   const PANELIZE_PROVIDER_LOCATION = 'PANELIZE_PROVIDER_LOCATION';
   const PANELIZE_RESTORE_USER_FOCUS = 'PANELIZE_RESTORE_USER_FOCUS';
+  const PANELIZE_FOCUS_GUARD = 'PANELIZE_FOCUS_GUARD';
+  const PANELIZE_FORWARD_KEYS = 'PANELIZE_FORWARD_KEYS';
+  const FOCUS_GUARD_MAX_MS = 15000;
   const PANELIZE_SNAPSHOT_PREPARE = 'PANELIZE_SNAPSHOT_PREPARE';
   const PANELIZE_SNAPSHOT_SCROLL = 'PANELIZE_SNAPSHOT_SCROLL';
   const PANELIZE_SNAPSHOT_RESTORE = 'PANELIZE_SNAPSHOT_RESTORE';
@@ -1238,6 +1241,85 @@
     }
 
     multiPanelUserInteractionTracking = null;
+  }
+
+  let hostFocusGuard = null;
+
+  function stopHostFocusGuard() {
+    const guard = hostFocusGuard;
+    if (!guard) {
+      return;
+    }
+    hostFocusGuard = null;
+    clearTimeout(guard.timeoutId);
+    flushHostFocusGuardKeys(guard);
+    window.removeEventListener('keydown', guard.keydownHandler, true);
+    document.removeEventListener('pointerdown', guard.pointerHandler, true);
+  }
+
+  function flushHostFocusGuardKeys(guard) {
+    clearTimeout(guard.flushId);
+    guard.flushId = null;
+    if (!guard.keys || window.parent === window) {
+      return;
+    }
+    window.parent.postMessage({
+      type: PANELIZE_FORWARD_KEYS,
+      requestId: guard.requestId,
+      provider: guard.provider,
+      keys: guard.keys,
+      context: MULTI_PANEL_PROVIDER_STATUS_CONTEXT
+    }, '*');
+    guard.keys = '';
+  }
+
+  // While the host's question box has focus and this page loads, the page may
+  // autofocus its own input. Until the user clicks in this frame, keys that
+  // land here belong to the host: they are sent back instead of typed here.
+  // Enter is dropped so a stolen Enter can never send in this panel; IME
+  // composition is left alone.
+  function startHostFocusGuard(requestId, durationMs) {
+    stopHostFocusGuard();
+    const provider = detectProvider();
+    if (!requestId || !provider) {
+      return;
+    }
+    const guard = { requestId, provider, keys: '', flushId: null, timeoutId: null };
+    guard.keydownHandler = (event) => {
+      if (hostFocusGuard !== guard || !event.isTrusted || event.isComposing || event.keyCode === 229
+        || event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+      let key;
+      if (event.key === 'Backspace') key = '\b';
+      else if (event.key === 'Enter') key = '';
+      else if (typeof event.key === 'string' && event.key.length === 1) key = event.key;
+      else return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!key) {
+        return;
+      }
+      guard.keys += key;
+      if (!guard.flushId) {
+        guard.flushId = setTimeout(() => flushHostFocusGuardKeys(guard), 0);
+      }
+    };
+    guard.pointerHandler = (event) => {
+      if (hostFocusGuard !== guard || !event.isTrusted) {
+        return;
+      }
+      stopHostFocusGuard();
+      rememberUserFocus();
+      postMultiPanelProviderStatus(PANELIZE_PROVIDER_USER_INTERACTION, requestId, 'user-interaction', provider);
+    };
+    window.addEventListener('keydown', guard.keydownHandler, true);
+    document.addEventListener('pointerdown', guard.pointerHandler, true);
+    const duration = Math.min(Math.max(Number(durationMs) || 0, 0), FOCUS_GUARD_MAX_MS);
+    guard.timeoutId = setTimeout(() => {
+      if (hostFocusGuard === guard) stopHostFocusGuard();
+    }, duration);
+    hostFocusGuard = guard;
   }
 
   // pointerOnly ignores keys: while the host restores focus, keys that land
@@ -3085,16 +3167,50 @@
     return typeof currentText === 'string' && currentText.endsWith(text);
   }
 
+  // Providers keep Send disabled while an attachment is still uploading, so
+  // a send after an attachment fill keeps trying until the control enables.
+  const SEND_READY_POLL_MS = 400;
+  const SEND_READY_TIMEOUT_MS = 20000;
+
+  async function clickSendButtonWhenReady(provider, providerMode = null) {
+    const deadline = Date.now() + SEND_READY_TIMEOUT_MS;
+    while (true) {
+      if (clickSendButton(provider, providerMode)) {
+        return true;
+      }
+      if (Date.now() >= deadline) {
+        console.warn('[Text Injection] Send button did not become ready for', provider);
+        return false;
+      }
+      await sleep(SEND_READY_POLL_MS);
+    }
+  }
+
   function injectText(
     provider,
     text,
     autoSubmit,
     providerMode = null,
-    { skipIfAlreadyPresent = false } = {}
+    { skipIfAlreadyPresent = false, waitForSendReady = false } = {}
   ) {
+    const scheduleSend = () => {
+      const delay = SLOW_COMPOSER_PROVIDERS.has(provider) ? 800 : 500;
+      setTimeout(() => {
+        if (waitForSendReady) {
+          clickSendButtonWhenReady(provider, providerMode);
+        } else {
+          clickSendButton(provider, providerMode);
+        }
+      }, delay);
+    };
+
     if (provider === 'google') {
       const input = findGoogleInput(providerMode);
       if (skipIfAlreadyPresent && inputEndsWithText(input, text)) {
+        // A retry finds the text from the earlier fill; it still has to send.
+        if (autoSubmit) {
+          scheduleSend();
+        }
         return true;
       }
       return handleGoogleTextInjection(text, autoSubmit, providerMode);
@@ -3108,6 +3224,10 @@
     for (const element of findProviderInputs(provider)) {
       if (!element) continue;
       if (skipIfAlreadyPresent && inputEndsWithText(element, text)) {
+        // A retry finds the text from the earlier fill; it still has to send.
+        if (autoSubmit) {
+          scheduleSend();
+        }
         return true;
       }
       const success = injectTextIntoElement(element, text, provider);
@@ -3115,8 +3235,7 @@
         console.log('[Text Injection] Text injected via injectText helper for', provider);
         if (autoSubmit) {
           // Use longer delay for providers whose composer state updates asynchronously
-          const delay = SLOW_COMPOSER_PROVIDERS.has(provider) ? 800 : 500;
-          setTimeout(() => clickSendButton(provider, providerMode), delay);
+          scheduleSend();
         }
         return true;
       }
@@ -3141,8 +3260,9 @@
 
     if (provider === 'google' && providerMode === GOOGLE_PROVIDER_MODE_SEARCH) {
       console.warn('[Image Injection] Google Search mode does not support image injection, falling back to text only');
+      // The text is filled but not sent: sending would drop the attachments.
       if (text && text.trim()) {
-        handleGoogleTextInjection(text, autoSubmit, providerMode);
+        handleGoogleTextInjection(text, false, providerMode);
       }
       return createImageInjectionFailure(IMAGE_INJECTION_REASONS.UNSUPPORTED, []);
     }
@@ -3150,8 +3270,9 @@
     if (!PROVIDER_IMAGE_SUPPORT[provider]) {
       console.warn('[Image Injection] Provider does not support images:', provider);
       // For providers that don't support images, just inject text
+      // The text is filled but not sent: sending would drop the attachments.
       if (text) {
-        injectText(provider, text, autoSubmit, providerMode);
+        injectText(provider, text, false, providerMode);
       }
       return createImageInjectionFailure(IMAGE_INJECTION_REASONS.UNSUPPORTED, []);
     }
@@ -3163,7 +3284,7 @@
           text,
           autoSubmit,
           providerMode,
-          { skipIfAlreadyPresent: true }
+          { skipIfAlreadyPresent: true, waitForSendReady: true }
         );
         return textInjected
           ? createImageInjectionSuccess([])
@@ -3228,7 +3349,7 @@
           text,
           autoSubmit && allImagesInjected,
           providerMode,
-          { skipIfAlreadyPresent: retry }
+          { skipIfAlreadyPresent: retry, waitForSendReady: true }
         );
       } else if (autoSubmit) {
         if (!allImagesInjected) {
@@ -3241,7 +3362,7 @@
         }
         // If no text but autoSubmit is true, click send button
         await sleep(300);
-        clickSendButton(provider, providerMode);
+        clickSendButtonWhenReady(provider, providerMode);
       }
 
       if (!allImagesInjected) {
@@ -4700,6 +4821,15 @@
 
     if (event.data.type === PANELIZE_RESTORE_USER_FOCUS && event.data.context === 'multi-panel') {
       restoreUserFocus();
+      return;
+    }
+
+    if (event.data.type === PANELIZE_FOCUS_GUARD && event.data.context === 'multi-panel') {
+      if (event.source !== window.parent || window.parent === window) {
+        return;
+      }
+      if (event.data.active) startHostFocusGuard(event.data.requestId, event.data.durationMs);
+      else if (!event.data.requestId || hostFocusGuard?.requestId === event.data.requestId) stopHostFocusGuard();
       return;
     }
 

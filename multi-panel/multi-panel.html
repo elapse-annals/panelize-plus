@@ -145,11 +145,34 @@
             <span data-i18n="composerNewChat">New conversation</span>
           </button>
           <span class="composer-divider" aria-hidden="true"></span>
-          <div id="provider-tier-controls" class="tier-controls" role="radiogroup" data-i18n-aria="composerTierLabel" aria-label="AI reasoning level">
-            <button type="button" class="tier-option" data-tier="default" role="radio" aria-checked="true" data-i18n="composerTierDefault" data-i18n-title="composerTierDefaultHint" title="Keep each AI's current setting">Default</button>
-            <button type="button" class="tier-option" data-tier="fast" data-shortcut-action="tierFast" role="radio" aria-checked="false" data-i18n="composerTierFast">Fast</button>
-            <button type="button" class="tier-option" data-tier="balanced" data-shortcut-action="tierBalanced" role="radio" aria-checked="false" data-i18n="composerTierBalanced">Balanced</button>
-            <button type="button" class="tier-option" data-tier="deep" data-shortcut-action="tierDeep" role="radio" aria-checked="false" data-i18n="composerTierDeep">Deep</button>
+          <div class="tier-menu">
+            <button type="button" id="tier-menu-btn" class="composer-control tier-menu-btn" data-shortcut-action="openTierMenu" aria-haspopup="menu" aria-expanded="false" aria-controls="provider-tier-controls">
+              <span class="material-symbols-outlined" aria-hidden="true">bolt</span>
+              <span id="tier-menu-label">Default</span>
+              <span class="material-symbols-outlined tier-menu-caret" aria-hidden="true">expand_more</span>
+            </button>
+            <div id="provider-tier-controls" class="tier-menu-list" role="menu" data-i18n-aria="composerTierLabel" aria-label="AI reasoning level" hidden>
+            <button type="button" class="tier-option" data-tier="default" data-shortcut-action="tierDefault" role="menuitemradio" aria-checked="true">
+              <span class="tier-option-name" data-i18n="composerTierDefault">Default</span>
+              <kbd class="tier-option-key"></kbd>
+              <span class="tier-option-hint" data-i18n="composerTierDefaultHint">Keep each AI's current setting</span>
+            </button>
+            <button type="button" class="tier-option" data-tier="fast" data-shortcut-action="tierFast" role="menuitemradio" aria-checked="false">
+              <span class="tier-option-name" data-i18n="composerTierFast">Fast</span>
+              <kbd class="tier-option-key"></kbd>
+              <span class="tier-option-hint" data-i18n="composerTierFastHint">Switch every AI to its fastest mode</span>
+            </button>
+            <button type="button" class="tier-option" data-tier="balanced" data-shortcut-action="tierBalanced" role="menuitemradio" aria-checked="false">
+              <span class="tier-option-name" data-i18n="composerTierBalanced">Balanced</span>
+              <kbd class="tier-option-key"></kbd>
+              <span class="tier-option-hint" data-i18n="composerTierBalancedHint">Switch every AI to a balanced mode</span>
+            </button>
+            <button type="button" class="tier-option" data-tier="deep" data-shortcut-action="tierDeep" role="menuitemradio" aria-checked="false">
+              <span class="tier-option-name" data-i18n="composerTierDeep">Deep</span>
+              <kbd class="tier-option-key"></kbd>
+              <span class="tier-option-hint" data-i18n="composerTierDeepHint">Switch every AI to its deepest reasoning mode</span>
+            </button>
+            </div>
           </div>
           <button id="tier-details-btn" class="composer-control tier-details-btn" data-i18n-title="composerTierDetailsTitle" title="View AI mode mapping">
             <span class="material-symbols-outlined" aria-hidden="true">info</span>

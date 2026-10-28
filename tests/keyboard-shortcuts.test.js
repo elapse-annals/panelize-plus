@@ -33,7 +33,7 @@ afterEach(() => {
 });
 
 describe('keyboard shortcut bindings', () => {
-  it('defines the requested default actions without taking prompt, layout or sort keys', () => {
+  it('defines the requested default actions without taking prompt or sort keys', () => {
     expect(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS).toEqual({
       send: 'Mod+Enter',
       fill: 'Mod+Shift+Enter',
@@ -43,7 +43,7 @@ describe('keyboard shortcut bindings', () => {
       tierBalanced: 'Mod+Alt+2',
       tierDeep: 'Mod+Alt+3',
       togglePromptLibrary: null,
-      toggleLayout: null,
+      toggleLayout: 'Mod+Alt+G',
       togglePopularSort: null,
       toggleWideContent: 'Mod+Alt+W',
       scrollPanelsStart: 'Mod+Alt+Comma',
@@ -56,9 +56,33 @@ describe('keyboard shortcut bindings', () => {
       jumpPanel6: 'Ctrl+Shift+6',
       jumpPanel7: 'Ctrl+Shift+7',
       jumpPanel8: 'Ctrl+Shift+8',
-      jumpPanel9: 'Ctrl+Shift+9'
+      jumpPanel9: 'Ctrl+Shift+9',
+      tierDefault: 'Mod+Alt+0',
+      toggleTemporaryChat: 'Mod+Alt+T',
+      toggleBlindMode: 'Mod+Alt+X',
+      openAnswerStats: 'Mod+Alt+S',
+      openAnswerLog: 'Mod+Alt+R',
+      shareSnapshot: 'Mod+Alt+P',
+      openSettings: 'Mod+Alt+O',
+      clearInputs: 'Mod+Alt+Backspace',
+      attachFiles: 'Mod+Alt+A',
+      addPanel: 'Mod+Alt+Equal',
+      toggleToolbar: 'Mod+Alt+E',
+      openKeyboardShortcuts: 'Mod+Alt+Slash',
+      openTierMenu: null,
+      toggleOpenMode: null
     });
     expect(KEYBOARD_SHORTCUT_ACTIONS.SEND).toBe('send');
+    const assigned = Object.values(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS).filter(Boolean);
+    expect(new Set(assigned).size).toBe(assigned.length);
+    assigned.forEach(binding => expect(validateShortcutBinding(binding)).toBe(true));
+  });
+
+  it('keeps a custom binding when a newer default uses the same keys', () => {
+    const controller = setupKeyboardShortcuts({ target: window, bindings: { scrollPanelsEnd: 'Mod+Alt+T' } });
+    expect(controller.getBindings()).toMatchObject({ scrollPanelsEnd: 'Mod+Alt+T', toggleTemporaryChat: null });
+    expect(Object.keys(controller.getBindings())).toEqual(Object.keys(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS));
+    controller.destroy();
   });
 
   it('normalizes aliases and rejects malformed or browser-reserved combinations', () => {

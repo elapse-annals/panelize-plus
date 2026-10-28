@@ -242,6 +242,7 @@ test.describe('Composer controls browser fixtures', () => {
 
       await page.locator('#unified-input').fill('Keep this composer draft');
       await uploadPixel(page);
+      await page.locator('#tier-menu-btn').click();
       await page.locator('.tier-option[data-tier="deep"]').click();
       await expect.poll(async () => (await readFixture(page, 'https://chatgpt.com/'))?.model).toBe('High');
       const deepseekFrame = page.frameLocator('iframe[src*="chat.deepseek.com"]');
@@ -309,6 +310,7 @@ test.describe('Composer controls browser fixtures', () => {
       await page.locator('#input-bar').screenshot({ path: testInfo.outputPath('composer-light.png') });
       const levelColors = [];
       for (const tier of ['fast', 'balanced', 'deep']) {
+        await page.locator('#tier-menu-btn').click();
         await page.locator(`.tier-option[data-tier="${tier}"]`).click();
         await expect(page.locator('#composer-shell')).toHaveAttribute('data-tier', tier);
         await expect(page.locator('#composer-shell')).toHaveAttribute('data-tier-state', 'confirmed');
@@ -325,6 +327,7 @@ test.describe('Composer controls browser fixtures', () => {
       await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
       await page.locator('#input-bar').screenshot({ path: testInfo.outputPath('composer-dark.png') });
       for (const tier of ['fast', 'balanced', 'deep']) {
+        await page.locator('#tier-menu-btn').click();
         await page.locator(`.tier-option[data-tier="${tier}"]`).click();
         await expect(page.locator('#composer-shell')).toHaveAttribute('data-tier-state', 'confirmed');
         await page.locator('#input-bar').screenshot({ path: testInfo.outputPath(`composer-dark-${tier}.png`), animations: 'disabled' });
@@ -332,7 +335,7 @@ test.describe('Composer controls browser fixtures', () => {
 
       await page.setViewportSize({ width: 390, height: 844 });
       await expect(page.locator('#composer-new-chat-btn')).toBeHidden();
-      await expect(page.locator('.tier-option[data-tier="deep"]')).toBeVisible();
+      await expect(page.locator('#tier-menu-btn')).toBeVisible();
       await page.locator('#input-bar').screenshot({ path: testInfo.outputPath('composer-narrow.png') });
 
       await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -345,6 +348,7 @@ test.describe('Composer controls browser fixtures', () => {
       await page.locator('#unified-input').evaluate(input => input.blur());
       await page.locator('#unified-input').focus();
       await expect(page.locator('#composer-shell')).not.toHaveClass(/composer-pulse/);
+      await page.locator('#tier-menu-btn').click();
       await page.locator('.tier-option[data-tier="fast"]').click();
       await expect(page.locator('#composer-shell')).toHaveAttribute('data-tier-state', 'confirmed');
       expect(await page.locator('#composer-shell').evaluate(shell =>

@@ -1430,6 +1430,36 @@
   "composerTierDeepHint": {
     "message": "すべての AI を最も深い推論モードに切り替え"
   },
+  "composerTierMenu": {
+    "message": "推論レベルを選択"
+  },
+  "composerTemporaryChat": {
+    "message": "一時チャット"
+  },
+  "composerBlindMode": {
+    "message": "ブラインドモード"
+  },
+  "composerShareSnapshot": {
+    "message": "スナップショットを共有"
+  },
+  "composerOpenSettings": {
+    "message": "設定"
+  },
+  "composerClearAll": {
+    "message": "すべての入力をクリア"
+  },
+  "composerAttachFiles": {
+    "message": "画像またはファイルをアップロード"
+  },
+  "composerAddPanel": {
+    "message": "パネルを追加"
+  },
+  "composerToggleToolbar": {
+    "message": "ツールバーを折りたたむ/展開"
+  },
+  "composerToggleOpenMode": {
+    "message": "タブとポップアップウィンドウを切り替え"
+  },
   "composerImageUploadTitle": {
     "message": "画像またはファイルをアップロード\nすべての AI に送る画像やファイルを添付（貼り付けやドラッグも可）"
   },

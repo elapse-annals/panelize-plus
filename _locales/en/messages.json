@@ -1445,6 +1445,36 @@
   "composerTierDeepHint": {
     "message": "Switch every AI to its deepest reasoning mode"
   },
+  "composerTierMenu": {
+    "message": "Choose reasoning level"
+  },
+  "composerTemporaryChat": {
+    "message": "Temporary chat"
+  },
+  "composerBlindMode": {
+    "message": "Blind mode"
+  },
+  "composerShareSnapshot": {
+    "message": "Share snapshot"
+  },
+  "composerOpenSettings": {
+    "message": "Settings"
+  },
+  "composerClearAll": {
+    "message": "Clear all inputs"
+  },
+  "composerAttachFiles": {
+    "message": "Upload images or files"
+  },
+  "composerAddPanel": {
+    "message": "Add panel"
+  },
+  "composerToggleToolbar": {
+    "message": "Collapse or expand toolbar"
+  },
+  "composerToggleOpenMode": {
+    "message": "Switch between tab and popup window"
+  },
   "composerImageUploadTitle": {
     "message": "Upload images or files\nAttach images or files to send to every AI (pasting or dropping also works)"
   },

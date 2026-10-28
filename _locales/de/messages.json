@@ -1430,6 +1430,36 @@
   "composerTierDeepHint": {
     "message": "Alle KIs auf ihren gründlichsten Denkmodus stellen"
   },
+  "composerTierMenu": {
+    "message": "Denkstufe wählen"
+  },
+  "composerTemporaryChat": {
+    "message": "Temporärer Chat"
+  },
+  "composerBlindMode": {
+    "message": "Blindmodus"
+  },
+  "composerShareSnapshot": {
+    "message": "Snapshot teilen"
+  },
+  "composerOpenSettings": {
+    "message": "Einstellungen"
+  },
+  "composerClearAll": {
+    "message": "Alle Eingaben löschen"
+  },
+  "composerAttachFiles": {
+    "message": "Bilder oder Dateien hochladen"
+  },
+  "composerAddPanel": {
+    "message": "Panel hinzufügen"
+  },
+  "composerToggleToolbar": {
+    "message": "Symbolleiste ein- oder ausklappen"
+  },
+  "composerToggleOpenMode": {
+    "message": "Zwischen Tab und Popup-Fenster wechseln"
+  },
   "composerImageUploadTitle": {
     "message": "Bilder oder Dateien hochladen\nBilder oder Dateien für alle KIs anhängen (Einfügen oder Hineinziehen geht auch)"
   },

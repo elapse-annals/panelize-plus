@@ -354,16 +354,77 @@ describe('composer control async state', () => {
     expect(mocks.runProviderTierBatch).not.toHaveBeenCalled();
   });
 
-  it('moves focus across all four reasoning levels with the arrow keys', async () => {
+  it('opens the reasoning levels from a trigger that names the current level', async () => {
+    settingsState.selectedProviderTier = 'balanced';
     await setupControls([]);
+    const trigger = document.getElementById('tier-menu-btn');
+    const menu = document.getElementById('provider-tier-controls');
     const options = [...document.querySelectorAll('.tier-option')];
     expect(options.map(option => option.dataset.tier)).toEqual(['default', 'fast', 'balanced', 'deep']);
+    expect(document.getElementById('tier-menu-label').textContent).toBe('Balanced');
+    expect(menu.hidden).toBe(true);
+    expect(options[3].querySelector('.tier-option-key').textContent)
+      .toBe(formatShortcutForTooltip(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS.tierDeep));
 
-    options[0].focus();
-    options[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    trigger.click();
+    expect(menu.hidden).toBe(false);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement).toBe(options[2]);
+    options[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     expect(document.activeElement).toBe(options[3]);
-    options[3].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    options[3].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     expect(document.activeElement).toBe(options[0]);
+    options[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(menu.hidden).toBe(true);
+    expect(document.activeElement).toBe(trigger);
+
+    trigger.click();
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    expect(menu.hidden).toBe(true);
+
+    trigger.click();
+    options[0].click();
+    await flushMicrotasks();
+    expect(menu.hidden).toBe(true);
+    expect(document.getElementById('tier-menu-label').textContent).toBe('Default');
+  });
+
+  it('selects Default with its shortcut', async () => {
+    settingsState.selectedProviderTier = 'deep';
+    await setupControls([]);
+    const mac = /mac/i.test(navigator.platform);
+    const event = new KeyboardEvent('keydown', {
+      key: '0', code: 'Digit0', ctrlKey: !mac, metaKey: mac, altKey: true, bubbles: true, cancelable: true
+    });
+    // happy-dom reports Ctrl+Alt as AltGraph; a real keyboard does not.
+    Object.defineProperty(event, 'getModifierState', { value: () => false });
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await flushMicrotasks();
+    expect(document.getElementById('composer-shell').dataset.tier).toBe('default');
+  });
+
+  it('shows a button\'s shortcut only after a mouse click', async () => {
+    await setupControls([]);
+    const send = document.getElementById('send-all-btn');
+    const click = (detail, trusted) => {
+      const event = new MouseEvent('click', { bubbles: true, detail });
+      Object.defineProperty(event, 'isTrusted', { value: trusted });
+      send.dispatchEvent(event);
+    };
+    click(0, true);
+    click(1, false);
+    expect(document.getElementById('shortcut-bubble')).toBeNull();
+
+    click(1, true);
+    const bubble = document.getElementById('shortcut-bubble');
+    expect(bubble.textContent).toBe(formatShortcutForTooltip(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS.send));
+    vi.advanceTimersByTime(20);
+    expect(bubble.dataset.visible).toBe('true');
+    expect(send.classList.contains('shortcut-hinted')).toBe(true);
+    vi.advanceTimersByTime(1600);
+    expect(bubble.dataset.visible).toBe('false');
+    expect(send.classList.contains('shortcut-hinted')).toBe(false);
   });
 
   it('keeps the latest external tier request queued while another tier batch is busy', async () => {
@@ -538,7 +599,7 @@ describe('composer control async state', () => {
   });
 
   it('shows the send and fill shortcuts in the placeholder and describes buttons in tooltips', async () => {
-    await setupControls([]);
+    const controlsApi = await setupControls([]);
     const fillShortcut = formatShortcutForTooltip(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS.fill);
     const input = document.getElementById('unified-input');
     const focusShortcut = formatShortcutForTooltip(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS.focusInput);
@@ -550,6 +611,11 @@ describe('composer control async state', () => {
     expect(send.title).toBe(`Send to all (${formatShortcutForTooltip(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS.send)})\nFill every panel with the question and send it`);
     expect(send.getAttribute('aria-label')).not.toContain('\n');
     expect(document.querySelector('[data-tier="deep"]').title).toContain('Switch every AI to its deepest reasoning mode');
+    const clear = document.getElementById('clear-all-btn');
+    clear.dataset.baseTitle = "Clear all inputs\nClear this box, its images and every panel's input";
+    controlsApi.refreshTooltips();
+    expect(clear.title).toBe(`Clear all inputs (${formatShortcutForTooltip(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS.clearInputs)})\nClear this box, its images and every panel's input`);
+    expect(clear.getAttribute('aria-label')).not.toContain('\n');
 
     document.getElementById('keyboard-shortcuts-btn').click();
     document.getElementById('page-shortcuts-enabled').checked = false;

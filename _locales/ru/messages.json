@@ -1430,6 +1430,36 @@
   "composerTierDeepHint": {
     "message": "Переключить все ИИ в режим самого глубокого рассуждения"
   },
+  "composerTierMenu": {
+    "message": "Выбрать уровень рассуждения"
+  },
+  "composerTemporaryChat": {
+    "message": "Временный чат"
+  },
+  "composerBlindMode": {
+    "message": "Слепой режим"
+  },
+  "composerShareSnapshot": {
+    "message": "Поделиться снимком"
+  },
+  "composerOpenSettings": {
+    "message": "Настройки"
+  },
+  "composerClearAll": {
+    "message": "Очистить все поля"
+  },
+  "composerAttachFiles": {
+    "message": "Загрузить изображения или файлы"
+  },
+  "composerAddPanel": {
+    "message": "Добавить панель"
+  },
+  "composerToggleToolbar": {
+    "message": "Свернуть или развернуть панель инструментов"
+  },
+  "composerToggleOpenMode": {
+    "message": "Переключить вкладку и всплывающее окно"
+  },
   "composerImageUploadTitle": {
     "message": "Загрузить изображения или файлы\nПрикрепить изображения или файлы для всех ИИ (можно и вставить или перетащить)"
   },

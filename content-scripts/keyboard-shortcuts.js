@@ -24,7 +24,21 @@
     'jumpPanel6',
     'jumpPanel7',
     'jumpPanel8',
-    'jumpPanel9'
+    'jumpPanel9',
+    'tierDefault',
+    'toggleTemporaryChat',
+    'toggleBlindMode',
+    'openAnswerStats',
+    'openAnswerLog',
+    'shareSnapshot',
+    'openSettings',
+    'clearInputs',
+    'attachFiles',
+    'addPanel',
+    'toggleToolbar',
+    'openKeyboardShortcuts',
+    'openTierMenu',
+    'toggleOpenMode'
   ];
   const DEFAULT_BINDINGS = {
     send: 'Mod+Enter',
@@ -35,7 +49,7 @@
     tierBalanced: 'Mod+Alt+2',
     tierDeep: 'Mod+Alt+3',
     togglePromptLibrary: null,
-    toggleLayout: null,
+    toggleLayout: 'Mod+Alt+G',
     togglePopularSort: null,
     toggleWideContent: 'Mod+Alt+W',
     scrollPanelsStart: 'Mod+Alt+Comma',
@@ -48,7 +62,21 @@
     jumpPanel6: 'Ctrl+Shift+6',
     jumpPanel7: 'Ctrl+Shift+7',
     jumpPanel8: 'Ctrl+Shift+8',
-    jumpPanel9: 'Ctrl+Shift+9'
+    jumpPanel9: 'Ctrl+Shift+9',
+    tierDefault: 'Mod+Alt+0',
+    toggleTemporaryChat: 'Mod+Alt+T',
+    toggleBlindMode: 'Mod+Alt+X',
+    openAnswerStats: 'Mod+Alt+S',
+    openAnswerLog: 'Mod+Alt+R',
+    shareSnapshot: 'Mod+Alt+P',
+    openSettings: 'Mod+Alt+O',
+    clearInputs: 'Mod+Alt+Backspace',
+    attachFiles: 'Mod+Alt+A',
+    addPanel: 'Mod+Alt+Equal',
+    toggleToolbar: 'Mod+Alt+E',
+    openKeyboardShortcuts: 'Mod+Alt+Slash',
+    openTierMenu: null,
+    toggleOpenMode: null
   };
   const MODIFIERS = new Map([
     ['ctrl', 'Ctrl'], ['control', 'Ctrl'],
@@ -188,22 +216,27 @@
     const supplied = overrides && typeof overrides === 'object' ? overrides : {};
     const resolved = {};
     const occupied = new Set();
-    for (const actionId of ACTION_IDS) {
-      let binding = DEFAULT_BINDINGS[actionId];
-      if (Object.prototype.hasOwnProperty.call(supplied, actionId)) {
-        const value = supplied[actionId];
-        if (value === null || value === '') {
-          binding = null;
-        } else {
-          const parsed = parseBinding(value);
-          binding = parsed.valid && parsed.binding && !isReservedBinding(parsed.binding) ? parsed.binding : null;
+    const isCustom = actionId => Object.prototype.hasOwnProperty.call(supplied, actionId);
+    // Custom bindings claim their keys before defaults (matches the host).
+    for (const custom of [true, false]) {
+      for (const actionId of ACTION_IDS) {
+        if (isCustom(actionId) !== custom) continue;
+        let binding = DEFAULT_BINDINGS[actionId];
+        if (custom) {
+          const value = supplied[actionId];
+          if (value === null || value === '') {
+            binding = null;
+          } else {
+            const parsed = parseBinding(value);
+            binding = parsed.valid && parsed.binding && !isReservedBinding(parsed.binding) ? parsed.binding : null;
+          }
         }
+        if (binding && occupied.has(binding)) binding = null;
+        if (binding) occupied.add(binding);
+        resolved[actionId] = binding;
       }
-      if (binding && occupied.has(binding)) binding = null;
-      if (binding) occupied.add(binding);
-      resolved[actionId] = binding;
     }
-    return resolved;
+    return Object.fromEntries(ACTION_IDS.map(actionId => [actionId, resolved[actionId]]));
   }
 
   function eventKey(event) {

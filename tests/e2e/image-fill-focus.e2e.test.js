@@ -38,7 +38,7 @@ function renderGeminiFixture() {
 </html>`;
 }
 
-test('Enter fill with an image keeps focus, so the next Enter sends every panel', async ({}, testInfo) => {
+test('Enter with an image attaches it, sends every panel and keeps focus', async ({}, testInfo) => {
   test.setTimeout(60000);
   const extension = await launchExtension({ viewport: { width: 1280, height: 800 } });
   try {
@@ -70,20 +70,14 @@ test('Enter fill with an image keeps focus, so the next Enter sends every panel'
     await page.keyboard.type('describe this');
     await page.keyboard.press('Enter');
 
-    // The first Enter only fills when images are attached.
+    // One Enter attaches the image, fills the text and sends in every panel.
     await expect.poll(async () => (await readFixture('gemini.google.com'))?.pastedImages).toBe(1);
-    const geminiEditor = page.frameLocator('iframe[src*="gemini"]').locator('.ql-editor');
-    await expect(geminiEditor).toHaveText('describe this');
-    await expect(page.locator('#send-status')).toHaveText('Filled 2 inputs');
-    await page.waitForTimeout(500);
-
-    expect(await activeElementLabel()).toBe('unified-input');
-
-    await page.keyboard.press('Enter');
-
+    await expect(page.locator('#send-status')).toHaveText('Sent to 2 AIs');
     await expect.poll(async () => (await readFixture('gemini.google.com'))?.sentTexts)
       .toEqual(['describe this']);
     await expect.poll(async () => (await readFixture('chatgpt.com'))?.sends).toBe(1);
+    await page.waitForTimeout(500);
+    expect(await activeElementLabel()).toBe('unified-input');
     await page.screenshot({ path: testInfo.outputPath('image-fill-focus.png'), fullPage: true });
   } finally {
     await extension.close();
@@ -105,8 +99,11 @@ test('clicking into a panel after an image fill keeps focus there', async () => 
       name: 'pixel.png', mimeType: 'image/png', buffer: PNG_BYTES,
     });
     await page.locator('#unified-input').fill('describe this');
-    await page.locator('#unified-input').press('Enter');
+    // Fill attaches and fills without sending.
+    await page.locator('#fill-input-btn').click();
     await expect(page.locator('#send-status')).toHaveText('Filled 1 input');
+    await expect.poll(() => page.frames().find(frame => frame.url().startsWith('https://gemini.google.com/'))
+      ?.evaluate(() => window.__fixture.sentTexts.length)).toBe(0);
 
     // The focus restore timers keep running after the fill; a click in the
     // panel must stop them.

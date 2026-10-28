@@ -1430,6 +1430,36 @@
   "composerTierDeepHint": {
     "message": "모든 AI를 가장 깊은 추론 모드로 전환"
   },
+  "composerTierMenu": {
+    "message": "추론 수준 선택"
+  },
+  "composerTemporaryChat": {
+    "message": "임시 채팅"
+  },
+  "composerBlindMode": {
+    "message": "블라인드 모드"
+  },
+  "composerShareSnapshot": {
+    "message": "스냅샷 공유"
+  },
+  "composerOpenSettings": {
+    "message": "설정"
+  },
+  "composerClearAll": {
+    "message": "모든 입력 지우기"
+  },
+  "composerAttachFiles": {
+    "message": "이미지 또는 파일 업로드"
+  },
+  "composerAddPanel": {
+    "message": "패널 추가"
+  },
+  "composerToggleToolbar": {
+    "message": "도구 모음 접기/펼치기"
+  },
+  "composerToggleOpenMode": {
+    "message": "탭과 팝업 창 전환"
+  },
   "composerImageUploadTitle": {
     "message": "이미지 또는 파일 업로드\n모든 AI에 보낼 이미지나 파일 첨부(붙여넣기나 끌어다 놓기도 가능)"
   },

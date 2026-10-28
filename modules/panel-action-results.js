@@ -318,7 +318,9 @@ export function getPanelBroadcastActionParams({ hasImages = false, hasFailedPane
   const isFillAction = Boolean(hasImages || hasFailedPanels);
   return {
     isFillAction,
-    shouldAutoSubmit: isFillAction ? false : autoSubmit,
+    // Send All with attachments still waits for each panel's fill result,
+    // then the panel sends once its attachments are in. Fill only fills.
+    shouldAutoSubmit: autoSubmit,
     messageType: isFillAction ? 'INJECT_TEXT_WITH_IMAGES' : 'INJECT_TEXT',
     waitForActionResult: isFillAction
   };

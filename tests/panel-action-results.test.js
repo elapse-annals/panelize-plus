@@ -299,11 +299,25 @@ describe('getPanelBroadcastActionParams & determinePanelMessageType', () => {
     });
     expect(params).toEqual({
       isFillAction: true,
-      shouldAutoSubmit: false,
+      shouldAutoSubmit: true,
       messageType: 'INJECT_TEXT_WITH_IMAGES',
       waitForActionResult: true,
     });
     expect(determinePanelMessageType({ isFillAction: params.isFillAction })).toBe('INJECT_TEXT_WITH_IMAGES');
+  });
+
+  it('keeps image fills unsent for Fill Input Boxes', () => {
+    const params = getPanelBroadcastActionParams({
+      hasImages: true,
+      hasFailedPanels: false,
+      autoSubmit: false,
+    });
+    expect(params).toEqual({
+      isFillAction: true,
+      shouldAutoSubmit: false,
+      messageType: 'INJECT_TEXT_WITH_IMAGES',
+      waitForActionResult: true,
+    });
   });
 
   it('returns fill action parameters during text-only retry when hasFailedPanels is true', () => {

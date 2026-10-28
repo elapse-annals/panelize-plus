@@ -1430,6 +1430,36 @@
   "composerTierDeepHint": {
     "message": "Passer toutes les IA à leur mode de raisonnement le plus poussé"
   },
+  "composerTierMenu": {
+    "message": "Choisir le niveau de raisonnement"
+  },
+  "composerTemporaryChat": {
+    "message": "Discussion temporaire"
+  },
+  "composerBlindMode": {
+    "message": "Mode aveugle"
+  },
+  "composerShareSnapshot": {
+    "message": "Partager une capture"
+  },
+  "composerOpenSettings": {
+    "message": "Paramètres"
+  },
+  "composerClearAll": {
+    "message": "Effacer toutes les saisies"
+  },
+  "composerAttachFiles": {
+    "message": "Importer des images ou fichiers"
+  },
+  "composerAddPanel": {
+    "message": "Ajouter un panneau"
+  },
+  "composerToggleToolbar": {
+    "message": "Réduire ou développer la barre"
+  },
+  "composerToggleOpenMode": {
+    "message": "Basculer entre onglet et fenêtre contextuelle"
+  },
   "composerImageUploadTitle": {
     "message": "Importer des images ou des fichiers\nJoindre des images ou des fichiers pour toutes les IA (le collage ou le glisser-déposer fonctionne aussi)"
   },

@@ -1424,6 +1424,36 @@
   "composerTierDeepHint": {
     "message": "把所有 AI 切换到最深推理模式"
   },
+  "composerTierMenu": {
+    "message": "选择推理档位"
+  },
+  "composerTemporaryChat": {
+    "message": "临时对话"
+  },
+  "composerBlindMode": {
+    "message": "盲评模式"
+  },
+  "composerShareSnapshot": {
+    "message": "分享截图"
+  },
+  "composerOpenSettings": {
+    "message": "设置"
+  },
+  "composerClearAll": {
+    "message": "清空全部输入"
+  },
+  "composerAttachFiles": {
+    "message": "上传图片或文件"
+  },
+  "composerAddPanel": {
+    "message": "添加面板"
+  },
+  "composerToggleToolbar": {
+    "message": "收起或展开工具栏"
+  },
+  "composerToggleOpenMode": {
+    "message": "在标签页和弹出窗口间切换"
+  },
   "composerImageUploadTitle": {
     "message": "上传图片或文件\n附加图片或文件发送给所有 AI（也可直接粘贴或拖入）"
   },
