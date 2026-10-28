@@ -196,6 +196,29 @@ header p {
   left: 26px;
 }
 
+.ai-summary-input {
+  width: 260px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  color: inherit;
+}
+
+.ai-summary-input:focus {
+  outline: none;
+  border-color: #1a73e8;
+}
+
+[data-theme="dark"] .ai-summary-input {
+  background-color: #2d2d2d;
+  border-color: #555;
+  color: #e0e0e0;
+}
+
 /* Select Dropdown */
 select {
   padding: 8px 36px 8px 12px;

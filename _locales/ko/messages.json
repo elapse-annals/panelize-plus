@@ -1546,5 +1546,116 @@
   },
   "promptTriggersHint": {
     "message": "입력창의 모드가 자동이면 질문에 이 단어 중 하나를 입력할 때 그 전송에만 이 모드가 적용됩니다. 단어 자체는 전송되지 않습니다. 모드로 표시한 프롬프트에서만 사용됩니다."
+  },
+  "aiSummaryButtonTitle": {
+    "message": "AI 요약"
+  },
+  "aiSummaryTitle": {
+    "message": "AI 요약"
+  },
+  "aiSummaryCopy": {
+    "message": "요약 복사"
+  },
+  "aiSummaryRerun": {
+    "message": "다시 요약"
+  },
+  "aiSummaryOpenSettings": {
+    "message": "AI 요약 설정"
+  },
+  "aiSummaryDisagreements": {
+    "message": "의견 차이"
+  },
+  "aiSummaryCollecting": {
+    "message": "답변을 읽는 중…"
+  },
+  "aiSummaryRunning": {
+    "message": "답변 $1개를 요약하는 중…"
+  },
+  "aiSummaryIdle": {
+    "message": "답변을 기다리는 중입니다. '다시 요약'을 눌러 지금 요약할 수 있습니다."
+  },
+  "aiSummaryNoRound": {
+    "message": "여러 AI에게 질문한 뒤 여기에서 답변을 요약하세요."
+  },
+  "aiSummaryNoAnswers": {
+    "message": "아직 패널에서 답변을 읽을 수 없습니다."
+  },
+  "aiSummaryNotConfigured": {
+    "message": "답변을 요약하려면 설정에서 OpenAI 호환 API를 설정하세요."
+  },
+  "aiSummaryNoPermission": {
+    "message": "Panelize가 API 사이트에 접근할 수 없습니다. 설정의 '저장 및 테스트'로 허용하세요."
+  },
+  "aiSummaryFailed": {
+    "message": "요약 실패: $1"
+  },
+  "aiSummaryMissing": {
+    "message": "포함되지 않음(답변을 읽을 수 없음): $1"
+  },
+  "aiSummaryJumpToPanel": {
+    "message": "이 패널로 이동"
+  },
+  "aiSummaryCopied": {
+    "message": "요약을 복사했습니다"
+  },
+  "sectionAiSummary": {
+    "message": "AI 요약"
+  },
+  "descAiSummary": {
+    "message": "OpenAI 호환 API로 모든 AI의 답변을 하나로 요약합니다. 각 요점에는 출처 AI가 표시됩니다."
+  },
+  "labelAiSummaryBaseUrl": {
+    "message": "API 기본 URL"
+  },
+  "descAiSummaryBaseUrl": {
+    "message": "예: https://api.openai.com/v1. /chat/completions가 없으면 자동으로 붙입니다."
+  },
+  "labelAiSummaryApiKey": {
+    "message": "API 키"
+  },
+  "descAiSummaryApiKey": {
+    "message": "이 기기에만 저장되며 동기화하거나 내보내지 않습니다."
+  },
+  "labelAiSummaryModel": {
+    "message": "모델"
+  },
+  "descAiSummaryModel": {
+    "message": "API가 사용하는 모델 이름(예: gpt-4o-mini, deepseek-chat)."
+  },
+  "labelAiSummaryAuto": {
+    "message": "모든 답변이 끝나면 자동으로 요약"
+  },
+  "descAiSummaryAuto": {
+    "message": "끄면 툴바의 AI 요약 버튼으로만 요약합니다"
+  },
+  "labelAiSummarySave": {
+    "message": "저장 및 테스트"
+  },
+  "descAiSummarySave": {
+    "message": "API 사이트 접근 권한을 요청한 뒤 짧은 테스트 요청을 보냅니다"
+  },
+  "btnAiSummarySave": {
+    "message": "저장 및 테스트"
+  },
+  "msgAiSummaryAutoEnabled": {
+    "message": "자동 AI 요약 켜짐"
+  },
+  "msgAiSummaryAutoDisabled": {
+    "message": "자동 AI 요약 꺼짐"
+  },
+  "msgAiSummaryIncomplete": {
+    "message": "API 기본 URL, API 키, 모델을 입력하세요"
+  },
+  "msgAiSummaryPermissionDenied": {
+    "message": "API 사이트 접근이 허용되지 않았습니다. 설정은 저장했습니다"
+  },
+  "msgAiSummaryTesting": {
+    "message": "API 테스트 중…"
+  },
+  "msgAiSummaryTestOk": {
+    "message": "API가 작동합니다. 설정을 저장했습니다"
+  },
+  "msgAiSummaryTestFailed": {
+    "message": "API 테스트 실패: $1"
   }
 }

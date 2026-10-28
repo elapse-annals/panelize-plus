@@ -1546,5 +1546,116 @@
   },
   "promptTriggersHint": {
     "message": "Когда режим в поле ввода — «Авто», одно из этих слов в вопросе применяет этот режим только к этой отправке. Само слово не отправляется. Работает только для промптов, отмеченных как режим."
+  },
+  "aiSummaryButtonTitle": {
+    "message": "ИИ-сводка"
+  },
+  "aiSummaryTitle": {
+    "message": "ИИ-сводка"
+  },
+  "aiSummaryCopy": {
+    "message": "Копировать сводку"
+  },
+  "aiSummaryRerun": {
+    "message": "Составить заново"
+  },
+  "aiSummaryOpenSettings": {
+    "message": "Настроить ИИ-сводку"
+  },
+  "aiSummaryDisagreements": {
+    "message": "Разногласия"
+  },
+  "aiSummaryCollecting": {
+    "message": "Чтение ответов…"
+  },
+  "aiSummaryRunning": {
+    "message": "Составляется сводка по ответам: $1…"
+  },
+  "aiSummaryIdle": {
+    "message": "Ожидание ответов. Нажмите «Составить заново», чтобы составить сводку сейчас."
+  },
+  "aiSummaryNoRound": {
+    "message": "Задайте вопрос нескольким ИИ и составьте здесь сводку их ответов."
+  },
+  "aiSummaryNoAnswers": {
+    "message": "Пока не удалось прочитать ни одного ответа из панелей."
+  },
+  "aiSummaryNotConfigured": {
+    "message": "Настройте OpenAI-совместимый API в настройках, чтобы составлять сводки."
+  },
+  "aiSummaryNoPermission": {
+    "message": "У Panelize нет доступа к сайту API. Разрешите его кнопкой «Сохранить и проверить» в настройках."
+  },
+  "aiSummaryFailed": {
+    "message": "Не удалось составить сводку: $1"
+  },
+  "aiSummaryMissing": {
+    "message": "Не включены (ответ не прочитан): $1"
+  },
+  "aiSummaryJumpToPanel": {
+    "message": "Перейти к этой панели"
+  },
+  "aiSummaryCopied": {
+    "message": "Сводка скопирована"
+  },
+  "sectionAiSummary": {
+    "message": "ИИ-сводка"
+  },
+  "descAiSummary": {
+    "message": "Объединяет ответы всех ИИ в одну сводку через OpenAI-совместимый API. У каждого пункта указаны ИИ, из которых он взят."
+  },
+  "labelAiSummaryBaseUrl": {
+    "message": "Базовый URL API"
+  },
+  "descAiSummaryBaseUrl": {
+    "message": "Например https://api.openai.com/v1. /chat/completions добавляется, если его нет."
+  },
+  "labelAiSummaryApiKey": {
+    "message": "Ключ API"
+  },
+  "descAiSummaryApiKey": {
+    "message": "Хранится только на этом устройстве; не синхронизируется и не экспортируется."
+  },
+  "labelAiSummaryModel": {
+    "message": "Модель"
+  },
+  "descAiSummaryModel": {
+    "message": "Имя модели, которое ожидает API, например gpt-4o-mini или deepseek-chat."
+  },
+  "labelAiSummaryAuto": {
+    "message": "Составлять сводку, когда все ответы готовы"
+  },
+  "descAiSummaryAuto": {
+    "message": "Выкл.: только по кнопке «ИИ-сводка» на панели инструментов"
+  },
+  "labelAiSummarySave": {
+    "message": "Сохранить и проверить"
+  },
+  "descAiSummarySave": {
+    "message": "Запрашивает доступ к сайту API, затем отправляет короткий тестовый запрос"
+  },
+  "btnAiSummarySave": {
+    "message": "Сохранить и проверить"
+  },
+  "msgAiSummaryAutoEnabled": {
+    "message": "Автоматическая ИИ-сводка включена"
+  },
+  "msgAiSummaryAutoDisabled": {
+    "message": "Автоматическая ИИ-сводка выключена"
+  },
+  "msgAiSummaryIncomplete": {
+    "message": "Введите базовый URL API, ключ API и модель"
+  },
+  "msgAiSummaryPermissionDenied": {
+    "message": "Доступ к сайту API не разрешён; настройки сохранены"
+  },
+  "msgAiSummaryTesting": {
+    "message": "Проверка API…"
+  },
+  "msgAiSummaryTestOk": {
+    "message": "API работает; настройки сохранены"
+  },
+  "msgAiSummaryTestFailed": {
+    "message": "Проверка API не удалась: $1"
   }
 }

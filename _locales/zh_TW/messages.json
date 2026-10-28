@@ -1540,5 +1540,116 @@
   },
   "promptTriggersHint": {
     "message": "輸入框的模式設為「自動」時，在問題中輸入其中一個觸發詞，本次傳送會暫時使用此模式，觸發詞本身不會送出。僅對標記為模式的提示詞生效。"
+  },
+  "aiSummaryButtonTitle": {
+    "message": "AI 彙整"
+  },
+  "aiSummaryTitle": {
+    "message": "AI 彙整"
+  },
+  "aiSummaryCopy": {
+    "message": "複製彙整"
+  },
+  "aiSummaryRerun": {
+    "message": "重新彙整"
+  },
+  "aiSummaryOpenSettings": {
+    "message": "設定 AI 彙整"
+  },
+  "aiSummaryDisagreements": {
+    "message": "分歧點"
+  },
+  "aiSummaryCollecting": {
+    "message": "正在讀取回答…"
+  },
+  "aiSummaryRunning": {
+    "message": "正在彙整 $1 個回答…"
+  },
+  "aiSummaryIdle": {
+    "message": "正在等待回答。點擊「重新彙整」可立即彙整。"
+  },
+  "aiSummaryNoRound": {
+    "message": "向多個 AI 提問後，在這裡彙整它們的回答。"
+  },
+  "aiSummaryNoAnswers": {
+    "message": "暫時無法從面板讀取到回答。"
+  },
+  "aiSummaryNotConfigured": {
+    "message": "請先在設定中配置 OpenAI 相容 API，才能彙整回答。"
+  },
+  "aiSummaryNoPermission": {
+    "message": "Panelize 無權存取該 API 網站。請在設定中點擊「儲存並測試」授權。"
+  },
+  "aiSummaryFailed": {
+    "message": "彙整失敗：$1"
+  },
+  "aiSummaryMissing": {
+    "message": "未納入（無法讀取回答）：$1"
+  },
+  "aiSummaryJumpToPanel": {
+    "message": "跳到該面板"
+  },
+  "aiSummaryCopied": {
+    "message": "已複製彙整"
+  },
+  "sectionAiSummary": {
+    "message": "AI 彙整"
+  },
+  "descAiSummary": {
+    "message": "透過 OpenAI 相容 API 將所有 AI 的回答合併為一份彙整，每個要點都標註來自哪些 AI。"
+  },
+  "labelAiSummaryBaseUrl": {
+    "message": "API 位址"
+  },
+  "descAiSummaryBaseUrl": {
+    "message": "例如 https://api.openai.com/v1，缺少 /chat/completions 時會自動補上。"
+  },
+  "labelAiSummaryApiKey": {
+    "message": "API Key"
+  },
+  "descAiSummaryApiKey": {
+    "message": "只儲存在本機，不會同步或匯出。"
+  },
+  "labelAiSummaryModel": {
+    "message": "模型"
+  },
+  "descAiSummaryModel": {
+    "message": "API 使用的模型名稱，例如 gpt-4o-mini 或 deepseek-chat。"
+  },
+  "labelAiSummaryAuto": {
+    "message": "所有回答完成後自動彙整"
+  },
+  "descAiSummaryAuto": {
+    "message": "關閉時只在點擊工具列的 AI 彙整按鈕時彙整"
+  },
+  "labelAiSummarySave": {
+    "message": "儲存並測試"
+  },
+  "descAiSummarySave": {
+    "message": "先請求存取該 API 網站的權限，再傳送一個簡短的測試請求"
+  },
+  "btnAiSummarySave": {
+    "message": "儲存並測試"
+  },
+  "msgAiSummaryAutoEnabled": {
+    "message": "已開啟自動 AI 彙整"
+  },
+  "msgAiSummaryAutoDisabled": {
+    "message": "已關閉自動 AI 彙整"
+  },
+  "msgAiSummaryIncomplete": {
+    "message": "請填寫 API 位址、API Key 和模型"
+  },
+  "msgAiSummaryPermissionDenied": {
+    "message": "未允許存取該 API 網站；設定已儲存"
+  },
+  "msgAiSummaryTesting": {
+    "message": "正在測試 API…"
+  },
+  "msgAiSummaryTestOk": {
+    "message": "API 可用；設定已儲存"
+  },
+  "msgAiSummaryTestFailed": {
+    "message": "API 測試失敗：$1"
   }
 }

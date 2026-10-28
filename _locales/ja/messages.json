@@ -1546,5 +1546,116 @@
   },
   "promptTriggersHint": {
     "message": "入力欄のモードが「自動」のとき、質問にこれらの語を入力すると、その送信だけこのモードを使います。語そのものは送信されません。モードとして登録したプロンプトでのみ有効です。"
+  },
+  "aiSummaryButtonTitle": {
+    "message": "AI まとめ"
+  },
+  "aiSummaryTitle": {
+    "message": "AI まとめ"
+  },
+  "aiSummaryCopy": {
+    "message": "まとめをコピー"
+  },
+  "aiSummaryRerun": {
+    "message": "もう一度まとめる"
+  },
+  "aiSummaryOpenSettings": {
+    "message": "AI まとめを設定"
+  },
+  "aiSummaryDisagreements": {
+    "message": "意見の相違"
+  },
+  "aiSummaryCollecting": {
+    "message": "回答を読み取っています…"
+  },
+  "aiSummaryRunning": {
+    "message": "$1 件の回答をまとめています…"
+  },
+  "aiSummaryIdle": {
+    "message": "回答を待っています。「もう一度まとめる」で今すぐまとめられます。"
+  },
+  "aiSummaryNoRound": {
+    "message": "複数の AI に質問すると、ここで回答をまとめられます。"
+  },
+  "aiSummaryNoAnswers": {
+    "message": "パネルからまだ回答を読み取れません。"
+  },
+  "aiSummaryNotConfigured": {
+    "message": "回答をまとめるには、設定で OpenAI 互換 API を設定してください。"
+  },
+  "aiSummaryNoPermission": {
+    "message": "Panelize は API のサイトにアクセスできません。設定の「保存してテスト」で許可してください。"
+  },
+  "aiSummaryFailed": {
+    "message": "まとめに失敗しました：$1"
+  },
+  "aiSummaryMissing": {
+    "message": "含まれていません（回答を読み取れません）：$1"
+  },
+  "aiSummaryJumpToPanel": {
+    "message": "このパネルへ移動"
+  },
+  "aiSummaryCopied": {
+    "message": "まとめをコピーしました"
+  },
+  "sectionAiSummary": {
+    "message": "AI まとめ"
+  },
+  "descAiSummary": {
+    "message": "OpenAI 互換 API で全 AI の回答を 1 つにまとめます。各ポイントには出典の AI が表示されます。"
+  },
+  "labelAiSummaryBaseUrl": {
+    "message": "API ベース URL"
+  },
+  "descAiSummaryBaseUrl": {
+    "message": "例：https://api.openai.com/v1。/chat/completions がなければ自動で付けます。"
+  },
+  "labelAiSummaryApiKey": {
+    "message": "API キー"
+  },
+  "descAiSummaryApiKey": {
+    "message": "この端末にのみ保存され、同期やエクスポートはされません。"
+  },
+  "labelAiSummaryModel": {
+    "message": "モデル"
+  },
+  "descAiSummaryModel": {
+    "message": "API が受け付けるモデル名（例：gpt-4o-mini、deepseek-chat）。"
+  },
+  "labelAiSummaryAuto": {
+    "message": "すべての回答が終わったら自動でまとめる"
+  },
+  "descAiSummaryAuto": {
+    "message": "オフ：ツールバーの AI まとめボタンでのみまとめます"
+  },
+  "labelAiSummarySave": {
+    "message": "保存してテスト"
+  },
+  "descAiSummarySave": {
+    "message": "API のサイトへのアクセスを求めてから、短いテストリクエストを送ります"
+  },
+  "btnAiSummarySave": {
+    "message": "保存してテスト"
+  },
+  "msgAiSummaryAutoEnabled": {
+    "message": "自動 AI まとめをオンにしました"
+  },
+  "msgAiSummaryAutoDisabled": {
+    "message": "自動 AI まとめをオフにしました"
+  },
+  "msgAiSummaryIncomplete": {
+    "message": "API ベース URL、API キー、モデルを入力してください"
+  },
+  "msgAiSummaryPermissionDenied": {
+    "message": "API のサイトへのアクセスが許可されませんでした。設定は保存しました"
+  },
+  "msgAiSummaryTesting": {
+    "message": "API をテストしています…"
+  },
+  "msgAiSummaryTestOk": {
+    "message": "API は動作しています。設定を保存しました"
+  },
+  "msgAiSummaryTestFailed": {
+    "message": "API テストに失敗しました：$1"
   }
 }

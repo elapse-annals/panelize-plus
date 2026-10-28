@@ -1546,5 +1546,116 @@
   },
   "promptTriggersHint": {
     "message": "Quand le mode de la zone de saisie est sur Auto, taper l'un de ces mots dans une question applique ce mode à cet envoi uniquement. Le mot lui-même n'est pas envoyé. Seuls les prompts marqués comme modes les utilisent."
+  },
+  "aiSummaryButtonTitle": {
+    "message": "Synthèse IA"
+  },
+  "aiSummaryTitle": {
+    "message": "Synthèse IA"
+  },
+  "aiSummaryCopy": {
+    "message": "Copier la synthèse"
+  },
+  "aiSummaryRerun": {
+    "message": "Refaire la synthèse"
+  },
+  "aiSummaryOpenSettings": {
+    "message": "Configurer la synthèse IA"
+  },
+  "aiSummaryDisagreements": {
+    "message": "Désaccords"
+  },
+  "aiSummaryCollecting": {
+    "message": "Lecture des réponses…"
+  },
+  "aiSummaryRunning": {
+    "message": "Synthèse de $1 réponses…"
+  },
+  "aiSummaryIdle": {
+    "message": "En attente des réponses. Utilisez Refaire la synthèse pour la lancer maintenant."
+  },
+  "aiSummaryNoRound": {
+    "message": "Posez une question à plusieurs IA, puis synthétisez leurs réponses ici."
+  },
+  "aiSummaryNoAnswers": {
+    "message": "Aucune réponse n'a encore pu être lue dans les panneaux."
+  },
+  "aiSummaryNotConfigured": {
+    "message": "Configurez une API compatible OpenAI dans les paramètres pour synthétiser les réponses."
+  },
+  "aiSummaryNoPermission": {
+    "message": "Panelize n'a pas accès au site de l'API. Utilisez Enregistrer et tester dans les paramètres pour l'autoriser."
+  },
+  "aiSummaryFailed": {
+    "message": "Échec de la synthèse : $1"
+  },
+  "aiSummaryMissing": {
+    "message": "Non incluses (réponse illisible) : $1"
+  },
+  "aiSummaryJumpToPanel": {
+    "message": "Aller à ce panneau"
+  },
+  "aiSummaryCopied": {
+    "message": "Synthèse copiée"
+  },
+  "sectionAiSummary": {
+    "message": "Synthèse IA"
+  },
+  "descAiSummary": {
+    "message": "Fusionne les réponses de toutes les IA en une synthèse via une API compatible OpenAI. Chaque point indique les IA dont il provient."
+  },
+  "labelAiSummaryBaseUrl": {
+    "message": "URL de base de l'API"
+  },
+  "descAiSummaryBaseUrl": {
+    "message": "Par exemple https://api.openai.com/v1. /chat/completions est ajouté s'il manque."
+  },
+  "labelAiSummaryApiKey": {
+    "message": "Clé d'API"
+  },
+  "descAiSummaryApiKey": {
+    "message": "Conservée sur cet appareil uniquement ; jamais synchronisée ni exportée."
+  },
+  "labelAiSummaryModel": {
+    "message": "Modèle"
+  },
+  "descAiSummaryModel": {
+    "message": "Le nom du modèle attendu par l'API, comme gpt-4o-mini ou deepseek-chat."
+  },
+  "labelAiSummaryAuto": {
+    "message": "Synthétiser quand toutes les réponses sont terminées"
+  },
+  "descAiSummaryAuto": {
+    "message": "Désactivé : synthèse uniquement via le bouton Synthèse IA de la barre d'outils"
+  },
+  "labelAiSummarySave": {
+    "message": "Enregistrer et tester"
+  },
+  "descAiSummarySave": {
+    "message": "Demande l'accès au site de l'API, puis envoie une courte requête de test"
+  },
+  "btnAiSummarySave": {
+    "message": "Enregistrer et tester"
+  },
+  "msgAiSummaryAutoEnabled": {
+    "message": "Synthèse IA automatique activée"
+  },
+  "msgAiSummaryAutoDisabled": {
+    "message": "Synthèse IA automatique désactivée"
+  },
+  "msgAiSummaryIncomplete": {
+    "message": "Saisissez l'URL de base, la clé d'API et le modèle"
+  },
+  "msgAiSummaryPermissionDenied": {
+    "message": "Accès au site de l'API refusé ; paramètres enregistrés"
+  },
+  "msgAiSummaryTesting": {
+    "message": "Test de l'API…"
+  },
+  "msgAiSummaryTestOk": {
+    "message": "L'API fonctionne ; paramètres enregistrés"
+  },
+  "msgAiSummaryTestFailed": {
+    "message": "Échec du test de l'API : $1"
   }
 }

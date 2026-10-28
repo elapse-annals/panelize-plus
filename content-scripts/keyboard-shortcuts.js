@@ -38,7 +38,8 @@
     'toggleToolbar',
     'openKeyboardShortcuts',
     'openTierMenu',
-    'toggleOpenMode'
+    'toggleOpenMode',
+    'openAiSummary'
   ];
   const DEFAULT_BINDINGS = {
     send: 'Mod+Enter',
@@ -76,7 +77,8 @@
     toggleToolbar: 'Mod+Alt+E',
     openKeyboardShortcuts: 'Mod+Alt+Slash',
     openTierMenu: null,
-    toggleOpenMode: null
+    toggleOpenMode: null,
+    openAiSummary: 'Mod+Alt+Y'
   };
   const MODIFIERS = new Map([
     ['ctrl', 'Ctrl'], ['control', 'Ctrl'],

@@ -25,6 +25,9 @@ const DEFAULT_SETTINGS = {
   openMode: 'tab',  // 'tab' or 'popup'
   shareWatermarkEnabled: true,  // Adds the "Compared with Panelize" strip to shared snapshots
   answerCompleteNotificationEnabled: true,  // System notification when the first AI in a round finishes answering
+  aiSummaryAutoEnabled: false,  // Summarize every round once all its AIs finish answering
+  aiSummaryBaseUrl: '',  // OpenAI-compatible API base URL for the AI summary; the API key stays in chrome.storage.local
+  aiSummaryModel: '',
   enterKeyBehavior: {
     enabled: true,
     preset: 'default',  // 'default', 'swapped', 'slack', 'discord', 'custom'

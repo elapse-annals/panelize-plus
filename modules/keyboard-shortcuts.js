@@ -34,7 +34,8 @@ export const KEYBOARD_SHORTCUT_ACTIONS = Object.freeze({
   TOGGLE_TOOLBAR: 'toggleToolbar',
   OPEN_KEYBOARD_SHORTCUTS: 'openKeyboardShortcuts',
   OPEN_TIER_MENU: 'openTierMenu',
-  TOGGLE_OPEN_MODE: 'toggleOpenMode'
+  TOGGLE_OPEN_MODE: 'toggleOpenMode',
+  OPEN_AI_SUMMARY: 'openAiSummary'
 });
 
 export const DEFAULT_KEYBOARD_SHORTCUT_BINDINGS = Object.freeze({
@@ -81,7 +82,8 @@ export const DEFAULT_KEYBOARD_SHORTCUT_BINDINGS = Object.freeze({
   [KEYBOARD_SHORTCUT_ACTIONS.OPEN_KEYBOARD_SHORTCUTS]: 'Mod+Alt+Slash',
   [KEYBOARD_SHORTCUT_ACTIONS.OPEN_TIER_MENU]: null,
   // Switching the open mode reloads Panelize, so it has no default key.
-  [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_OPEN_MODE]: null
+  [KEYBOARD_SHORTCUT_ACTIONS.TOGGLE_OPEN_MODE]: null,
+  [KEYBOARD_SHORTCUT_ACTIONS.OPEN_AI_SUMMARY]: 'Mod+Alt+Y'
 });
 
 const ACTION_IDS = Object.freeze(Object.values(KEYBOARD_SHORTCUT_ACTIONS));

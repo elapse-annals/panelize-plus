@@ -1540,5 +1540,116 @@
   },
   "promptTriggersHint": {
     "message": "输入框的模式设为“自动”时，在问题中输入其中一个触发词，本次发送会临时使用此模式，触发词本身不会发送。仅对标记为模式的提示词生效。"
+  },
+  "aiSummaryButtonTitle": {
+    "message": "AI 汇总"
+  },
+  "aiSummaryTitle": {
+    "message": "AI 汇总"
+  },
+  "aiSummaryCopy": {
+    "message": "复制汇总"
+  },
+  "aiSummaryRerun": {
+    "message": "重新汇总"
+  },
+  "aiSummaryOpenSettings": {
+    "message": "设置 AI 汇总"
+  },
+  "aiSummaryDisagreements": {
+    "message": "分歧点"
+  },
+  "aiSummaryCollecting": {
+    "message": "正在读取回答…"
+  },
+  "aiSummaryRunning": {
+    "message": "正在汇总 $1 个回答…"
+  },
+  "aiSummaryIdle": {
+    "message": "正在等待回答。点击“重新汇总”可立即汇总。"
+  },
+  "aiSummaryNoRound": {
+    "message": "向多个 AI 提问后，在这里汇总它们的回答。"
+  },
+  "aiSummaryNoAnswers": {
+    "message": "暂时无法从面板读取到回答。"
+  },
+  "aiSummaryNotConfigured": {
+    "message": "请先在设置中配置 OpenAI 兼容 API，才能汇总回答。"
+  },
+  "aiSummaryNoPermission": {
+    "message": "Panelize 无权访问该 API 站点。请在设置中点击“保存并测试”授权。"
+  },
+  "aiSummaryFailed": {
+    "message": "汇总失败：$1"
+  },
+  "aiSummaryMissing": {
+    "message": "未纳入（无法读取回答）：$1"
+  },
+  "aiSummaryJumpToPanel": {
+    "message": "跳转到该面板"
+  },
+  "aiSummaryCopied": {
+    "message": "已复制汇总"
+  },
+  "sectionAiSummary": {
+    "message": "AI 汇总"
+  },
+  "descAiSummary": {
+    "message": "通过 OpenAI 兼容 API 将所有 AI 的回答合并为一份汇总，每个要点都标注来自哪些 AI。"
+  },
+  "labelAiSummaryBaseUrl": {
+    "message": "API 地址"
+  },
+  "descAiSummaryBaseUrl": {
+    "message": "例如 https://api.openai.com/v1，缺少 /chat/completions 时会自动补上。"
+  },
+  "labelAiSummaryApiKey": {
+    "message": "API Key"
+  },
+  "descAiSummaryApiKey": {
+    "message": "只保存在本机，不会同步或导出。"
+  },
+  "labelAiSummaryModel": {
+    "message": "模型"
+  },
+  "descAiSummaryModel": {
+    "message": "API 使用的模型名，例如 gpt-4o-mini 或 deepseek-chat。"
+  },
+  "labelAiSummaryAuto": {
+    "message": "所有回答完成后自动汇总"
+  },
+  "descAiSummaryAuto": {
+    "message": "关闭时只在点击工具栏的 AI 汇总按钮时汇总"
+  },
+  "labelAiSummarySave": {
+    "message": "保存并测试"
+  },
+  "descAiSummarySave": {
+    "message": "先请求访问该 API 站点的权限，再发送一个简短的测试请求"
+  },
+  "btnAiSummarySave": {
+    "message": "保存并测试"
+  },
+  "msgAiSummaryAutoEnabled": {
+    "message": "已开启自动 AI 汇总"
+  },
+  "msgAiSummaryAutoDisabled": {
+    "message": "已关闭自动 AI 汇总"
+  },
+  "msgAiSummaryIncomplete": {
+    "message": "请填写 API 地址、API Key 和模型"
+  },
+  "msgAiSummaryPermissionDenied": {
+    "message": "未允许访问该 API 站点；设置已保存"
+  },
+  "msgAiSummaryTesting": {
+    "message": "正在测试 API…"
+  },
+  "msgAiSummaryTestOk": {
+    "message": "API 可用；设置已保存"
+  },
+  "msgAiSummaryTestFailed": {
+    "message": "API 测试失败：$1"
   }
 }

@@ -23,6 +23,11 @@ import {
 } from '../modules/google-mode.js';
 import { applyTheme } from '../modules/theme-manager.js';
 import {
+  AI_SUMMARY_API_KEY_STORAGE_KEY,
+  getSummaryOriginPattern,
+  requestSummary
+} from '../modules/ai-summary.js';
+import {
   getAllPrompts,
   exportPrompts,
   importPrompts,
@@ -323,6 +328,8 @@ async function loadSettings() {
   if (answerCompleteNotificationToggle) {
     answerCompleteNotificationToggle.checked = settings.answerCompleteNotificationEnabled !== false;
   }
+
+  loadAiSummarySettings(settings);
 
   // Enter key behavior settings
   const enterBehavior = settings.enterKeyBehavior || {
@@ -1049,6 +1056,14 @@ function setupEventListeners() {
     });
   }
 
+  // AI summary
+  document.getElementById('ai-summary-auto-toggle')?.addEventListener('change', async (e) => {
+    const enabled = e.target.checked;
+    await saveSetting('aiSummaryAutoEnabled', enabled);
+    showStatus('success', enabled ? t('msgAiSummaryAutoEnabled') : t('msgAiSummaryAutoDisabled'));
+  });
+  document.getElementById('ai-summary-save-btn')?.addEventListener('click', saveAndTestAiSummary);
+
   const providerSortModeSelect = document.getElementById('provider-sort-mode-select');
   if (providerSortModeSelect) {
     providerSortModeSelect.addEventListener('change', async (event) => {
@@ -1185,6 +1200,67 @@ async function resetSettingsOnly() {
     showStatus('success', t('msgSettingsReset'));
   } catch (error) {
     showStatus('error', t('msgResetSettingsFailed'));
+  }
+}
+
+async function loadAiSummarySettings(settings) {
+  const baseUrlInput = document.getElementById('ai-summary-base-url');
+  if (!baseUrlInput) {
+    return;
+  }
+  baseUrlInput.value = settings.aiSummaryBaseUrl || '';
+  document.getElementById('ai-summary-model').value = settings.aiSummaryModel || '';
+  document.getElementById('ai-summary-auto-toggle').checked = settings.aiSummaryAutoEnabled === true;
+  try {
+    const stored = await chrome.storage.local.get({ [AI_SUMMARY_API_KEY_STORAGE_KEY]: '' });
+    document.getElementById('ai-summary-api-key').value = stored[AI_SUMMARY_API_KEY_STORAGE_KEY] || '';
+  } catch (error) {
+    console.warn('Failed to load the AI summary API key:', error);
+  }
+}
+
+async function saveAndTestAiSummary() {
+  const result = document.getElementById('ai-summary-test-result');
+  const button = document.getElementById('ai-summary-save-btn');
+  const config = {
+    baseUrl: document.getElementById('ai-summary-base-url').value.trim(),
+    apiKey: document.getElementById('ai-summary-api-key').value.trim(),
+    model: document.getElementById('ai-summary-model').value.trim()
+  };
+  const originPattern = getSummaryOriginPattern(config.baseUrl);
+  if (!originPattern || !config.apiKey || !config.model) {
+    result.textContent = t('msgAiSummaryIncomplete');
+    showStatus('error', t('msgAiSummaryIncomplete'));
+    return;
+  }
+
+  // The permission prompt needs the click's user gesture, so ask first.
+  let granted = false;
+  try {
+    granted = await chrome.permissions.request({ origins: [originPattern] });
+  } catch (error) {
+    console.warn('AI summary permission request failed:', error);
+  }
+
+  await saveSettings({ aiSummaryBaseUrl: config.baseUrl, aiSummaryModel: config.model });
+  await chrome.storage.local.set({ [AI_SUMMARY_API_KEY_STORAGE_KEY]: config.apiKey });
+  if (!granted) {
+    result.textContent = t('msgAiSummaryPermissionDenied');
+    showStatus('error', t('msgAiSummaryPermissionDenied'));
+    return;
+  }
+
+  button.disabled = true;
+  result.textContent = t('msgAiSummaryTesting');
+  try {
+    await requestSummary({ config, messages: [{ role: 'user', content: 'Reply with OK.' }], timeoutMs: 30000 });
+    result.textContent = t('msgAiSummaryTestOk');
+    showStatus('success', t('msgAiSummaryTestOk'));
+  } catch (error) {
+    result.textContent = t('msgAiSummaryTestFailed', [error?.message || String(error)]);
+    showStatus('error', t('msgAiSummaryTestFailed', [error?.message || String(error)]));
+  } finally {
+    button.disabled = false;
   }
 }
 

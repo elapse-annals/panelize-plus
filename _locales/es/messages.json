@@ -1546,5 +1546,116 @@
   },
   "promptTriggersHint": {
     "message": "Con el modo del cuadro de texto en Automático, escribir una de estas palabras en una pregunta aplica este modo solo a ese envío. La palabra no se envía. Solo la usan los prompts marcados como modo."
+  },
+  "aiSummaryButtonTitle": {
+    "message": "Resumen IA"
+  },
+  "aiSummaryTitle": {
+    "message": "Resumen IA"
+  },
+  "aiSummaryCopy": {
+    "message": "Copiar resumen"
+  },
+  "aiSummaryRerun": {
+    "message": "Resumir de nuevo"
+  },
+  "aiSummaryOpenSettings": {
+    "message": "Configurar el resumen IA"
+  },
+  "aiSummaryDisagreements": {
+    "message": "Desacuerdos"
+  },
+  "aiSummaryCollecting": {
+    "message": "Leyendo las respuestas…"
+  },
+  "aiSummaryRunning": {
+    "message": "Resumiendo $1 respuestas…"
+  },
+  "aiSummaryIdle": {
+    "message": "Esperando las respuestas. Usa Resumir de nuevo para resumir ahora."
+  },
+  "aiSummaryNoRound": {
+    "message": "Envía una pregunta a varias IA y resume aquí sus respuestas."
+  },
+  "aiSummaryNoAnswers": {
+    "message": "Aún no se pudo leer ninguna respuesta de los paneles."
+  },
+  "aiSummaryNotConfigured": {
+    "message": "Configura una API compatible con OpenAI en Ajustes para resumir respuestas."
+  },
+  "aiSummaryNoPermission": {
+    "message": "Panelize no tiene acceso al sitio de la API. Usa Guardar y probar en Ajustes para permitirlo."
+  },
+  "aiSummaryFailed": {
+    "message": "Error al resumir: $1"
+  },
+  "aiSummaryMissing": {
+    "message": "No incluidas (no se pudo leer la respuesta): $1"
+  },
+  "aiSummaryJumpToPanel": {
+    "message": "Ir a este panel"
+  },
+  "aiSummaryCopied": {
+    "message": "Resumen copiado"
+  },
+  "sectionAiSummary": {
+    "message": "Resumen IA"
+  },
+  "descAiSummary": {
+    "message": "Combina las respuestas de todas las IA en un resumen mediante una API compatible con OpenAI. Cada punto indica de qué IA proviene."
+  },
+  "labelAiSummaryBaseUrl": {
+    "message": "URL base de la API"
+  },
+  "descAiSummaryBaseUrl": {
+    "message": "Por ejemplo https://api.openai.com/v1. Se añade /chat/completions si falta."
+  },
+  "labelAiSummaryApiKey": {
+    "message": "Clave de API"
+  },
+  "descAiSummaryApiKey": {
+    "message": "Solo se guarda en este dispositivo; nunca se sincroniza ni se exporta."
+  },
+  "labelAiSummaryModel": {
+    "message": "Modelo"
+  },
+  "descAiSummaryModel": {
+    "message": "El nombre del modelo que espera la API, como gpt-4o-mini o deepseek-chat."
+  },
+  "labelAiSummaryAuto": {
+    "message": "Resumir cuando terminen todas las respuestas"
+  },
+  "descAiSummaryAuto": {
+    "message": "Desactivado: solo resume con el botón Resumen IA de la barra"
+  },
+  "labelAiSummarySave": {
+    "message": "Guardar y probar"
+  },
+  "descAiSummarySave": {
+    "message": "Pide acceso al sitio de la API y luego envía una breve solicitud de prueba"
+  },
+  "btnAiSummarySave": {
+    "message": "Guardar y probar"
+  },
+  "msgAiSummaryAutoEnabled": {
+    "message": "Resumen IA automático activado"
+  },
+  "msgAiSummaryAutoDisabled": {
+    "message": "Resumen IA automático desactivado"
+  },
+  "msgAiSummaryIncomplete": {
+    "message": "Introduce la URL base, la clave de API y el modelo"
+  },
+  "msgAiSummaryPermissionDenied": {
+    "message": "No se permitió el acceso al sitio de la API; ajustes guardados"
+  },
+  "msgAiSummaryTesting": {
+    "message": "Probando la API…"
+  },
+  "msgAiSummaryTestOk": {
+    "message": "La API funciona; ajustes guardados"
+  },
+  "msgAiSummaryTestFailed": {
+    "message": "Falló la prueba de la API: $1"
   }
 }

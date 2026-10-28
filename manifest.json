@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
   "short_name": "Panelize",
-  "version": "2.24.0",
+  "version": "2.25.0",
   "description": "__MSG_extensionDescription__",
   "default_locale": "en",
   "permissions": [
@@ -47,7 +47,10 @@
     "https://studio.stepfun.com/*",
     "https://app.agnes-ai.com/*",
     "https://aistudio.tencent.com/*",
-    "https://api.hunyuan.tencent.com/*"
+    "https://api.hunyuan.tencent.com/*",
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js",

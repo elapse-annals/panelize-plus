@@ -70,7 +70,8 @@ describe('keyboard shortcut bindings', () => {
       toggleToolbar: 'Mod+Alt+E',
       openKeyboardShortcuts: 'Mod+Alt+Slash',
       openTierMenu: null,
-      toggleOpenMode: null
+      toggleOpenMode: null,
+      openAiSummary: 'Mod+Alt+Y'
     });
     expect(KEYBOARD_SHORTCUT_ACTIONS.SEND).toBe('send');
     const assigned = Object.values(DEFAULT_KEYBOARD_SHORTCUT_BINDINGS).filter(Boolean);

@@ -1561,5 +1561,116 @@
   },
   "promptTriggersHint": {
     "message": "With the composer's mode set to Auto, typing one of these words in a question applies this mode to that send only. The word itself is not sent. Only prompts marked as modes use them."
+  },
+  "aiSummaryButtonTitle": {
+    "message": "AI summary"
+  },
+  "aiSummaryTitle": {
+    "message": "AI summary"
+  },
+  "aiSummaryCopy": {
+    "message": "Copy summary"
+  },
+  "aiSummaryRerun": {
+    "message": "Summarize again"
+  },
+  "aiSummaryOpenSettings": {
+    "message": "Set up the AI summary"
+  },
+  "aiSummaryDisagreements": {
+    "message": "Disagreements"
+  },
+  "aiSummaryCollecting": {
+    "message": "Reading the answers…"
+  },
+  "aiSummaryRunning": {
+    "message": "Summarizing $1 answers…"
+  },
+  "aiSummaryIdle": {
+    "message": "Waiting for the answers. Use Summarize again to summarize now."
+  },
+  "aiSummaryNoRound": {
+    "message": "Send a question to several AIs, then summarize their answers here."
+  },
+  "aiSummaryNoAnswers": {
+    "message": "No answer could be read from the panels yet."
+  },
+  "aiSummaryNotConfigured": {
+    "message": "Set up an OpenAI-compatible API in Settings to summarize answers."
+  },
+  "aiSummaryNoPermission": {
+    "message": "Panelize has no access to the API site. Use Save and test in Settings to allow it."
+  },
+  "aiSummaryFailed": {
+    "message": "Summary failed: $1"
+  },
+  "aiSummaryMissing": {
+    "message": "Not included (answer could not be read): $1"
+  },
+  "aiSummaryJumpToPanel": {
+    "message": "Go to this panel"
+  },
+  "aiSummaryCopied": {
+    "message": "Summary copied"
+  },
+  "sectionAiSummary": {
+    "message": "AI Summary"
+  },
+  "descAiSummary": {
+    "message": "Merge every AI's answer into one summary through an OpenAI-compatible API. Each point names the AIs it came from."
+  },
+  "labelAiSummaryBaseUrl": {
+    "message": "API base URL"
+  },
+  "descAiSummaryBaseUrl": {
+    "message": "For example https://api.openai.com/v1. /chat/completions is added when missing."
+  },
+  "labelAiSummaryApiKey": {
+    "message": "API key"
+  },
+  "descAiSummaryApiKey": {
+    "message": "Kept on this device only; never synced or exported."
+  },
+  "labelAiSummaryModel": {
+    "message": "Model"
+  },
+  "descAiSummaryModel": {
+    "message": "The model name the API expects, such as gpt-4o-mini or deepseek-chat."
+  },
+  "labelAiSummaryAuto": {
+    "message": "Summarize when all answers are done"
+  },
+  "descAiSummaryAuto": {
+    "message": "Off: summarize only with the AI summary button in the toolbar"
+  },
+  "labelAiSummarySave": {
+    "message": "Save and test"
+  },
+  "descAiSummarySave": {
+    "message": "Asks for access to the API's site, then sends a short test request"
+  },
+  "btnAiSummarySave": {
+    "message": "Save and test"
+  },
+  "msgAiSummaryAutoEnabled": {
+    "message": "Automatic AI summary on"
+  },
+  "msgAiSummaryAutoDisabled": {
+    "message": "Automatic AI summary off"
+  },
+  "msgAiSummaryIncomplete": {
+    "message": "Enter the API base URL, API key and model"
+  },
+  "msgAiSummaryPermissionDenied": {
+    "message": "Access to the API site was not allowed; settings saved"
+  },
+  "msgAiSummaryTesting": {
+    "message": "Testing the API…"
+  },
+  "msgAiSummaryTestOk": {
+    "message": "The API works; settings saved"
+  },
+  "msgAiSummaryTestFailed": {
+    "message": "API test failed: $1"
   }
 }

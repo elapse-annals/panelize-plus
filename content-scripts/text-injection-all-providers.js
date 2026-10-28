@@ -16,6 +16,10 @@
   const PANELIZE_PROVIDER_USER_INTERACTION = 'PANELIZE_PROVIDER_USER_INTERACTION';
   const PANELIZE_RESPONSE_TIMING = 'PANELIZE_RESPONSE_TIMING';
   const PANELIZE_ANSWER_ENGAGEMENT = 'PANELIZE_ANSWER_ENGAGEMENT';
+  const PANELIZE_GET_ANSWER_TEXT = 'PANELIZE_GET_ANSWER_TEXT';
+  const PANELIZE_ANSWER_TEXT = 'PANELIZE_ANSWER_TEXT';
+  // Longest answer text sent to Multi-Panel for the AI summary.
+  const ANSWER_TEXT_MAX_LENGTH = 20000;
   const PANELIZE_TEMP_CHAT_ENABLED = 'PANELIZE_TEMP_CHAT_ENABLED';
   const PANELIZE_PROVIDER_LOCATION = 'PANELIZE_PROVIDER_LOCATION';
   const PANELIZE_RESTORE_USER_FOCUS = 'PANELIZE_RESTORE_USER_FOCUS';
@@ -1582,19 +1586,54 @@
     return tracking.state;
   }
 
+  function readAnswerText(answer) {
+    const text = String(answer?.innerText || answer?.textContent || '').trim();
+    return text.length <= ANSWER_TEXT_MAX_LENGTH ? text : `${text.slice(0, ANSWER_TEXT_MAX_LENGTH - 1)}…`;
+  }
+
   function postResponseTiming(tracking, phase, at) {
     if (window.parent === window) {
       return;
     }
 
-    window.parent.postMessage({
+    const message = {
       type: PANELIZE_RESPONSE_TIMING,
       requestId: tracking.requestId,
       provider: tracking.provider,
       phase,
       at,
       context: MULTI_PANEL_PROVIDER_STATUS_CONTEXT
-    }, '*');
+    };
+    // A finished answer carries its text for the AI summary, sent only to the
+    // extension page so no other embedder can read it.
+    const hasAnswer = phase === 'complete' || (phase === 'timeout' && tracking.firstOutputAt);
+    const text = hasAnswer && MULTI_PANEL_EXTENSION_ORIGIN ? readAnswerText(tracking.state.answer) : '';
+    if (text) {
+      window.parent.postMessage({ ...message, text }, MULTI_PANEL_EXTENSION_ORIGIN);
+      return;
+    }
+    window.parent.postMessage(message, '*');
+  }
+
+  // Replies with the provider's last answer, for an AI summary asked for after
+  // the timing finished or for a provider whose timing missed the answer.
+  function handleAnswerTextRequest(event) {
+    const { data } = event;
+    if (!MULTI_PANEL_EXTENSION_ORIGIN || window.parent === window
+      || event.source !== window.parent || event.origin !== MULTI_PANEL_EXTENSION_ORIGIN
+      || typeof data.requestId !== 'string' || !data.requestId || data.requestId.length > 160) {
+      return;
+    }
+    const provider = detectProvider();
+    const answerSelector = RESPONSE_TIMING_PROVIDERS[provider]?.answerSelector;
+    const answers = answerSelector ? document.querySelectorAll(answerSelector) : [];
+    window.parent.postMessage({
+      type: PANELIZE_ANSWER_TEXT,
+      requestId: data.requestId,
+      provider,
+      text: answers.length > 0 ? readAnswerText(answers[answers.length - 1]) : '',
+      context: MULTI_PANEL_PROVIDER_STATUS_CONTEXT
+    }, MULTI_PANEL_EXTENSION_ORIGIN);
   }
 
   function stopResponseTiming(phase = null) {
@@ -4835,6 +4874,11 @@
 
     if (event.data.type === PANELIZE_RESTORE_USER_FOCUS && event.data.context === 'multi-panel') {
       restoreUserFocus();
+      return;
+    }
+
+    if (event.data.type === PANELIZE_GET_ANSWER_TEXT && event.data.context === 'multi-panel') {
+      handleAnswerTextRequest(event);
       return;
     }
 

@@ -48,7 +48,8 @@ const ACTION_LABELS = {
   toggleToolbar: ['composerToggleToolbar', 'Collapse or expand toolbar'],
   openKeyboardShortcuts: ['composerShortcuts', 'Keyboard shortcuts'],
   openTierMenu: ['composerTierMenu', 'Choose reasoning level'],
-  toggleOpenMode: ['composerToggleOpenMode', 'Switch between tab and popup window']
+  toggleOpenMode: ['composerToggleOpenMode', 'Switch between tab and popup window'],
+  openAiSummary: ['aiSummaryButtonTitle', 'AI summary']
 };
 const PROMPT_MODE_DEFAULT_HINT = ['promptModeDefaultHint', 'Nothing is added; each AI answers in its own way'];
 const PROMPT_MODE_HINT_LENGTH = 120;
@@ -85,7 +86,7 @@ const TITLED_BUTTON_ACTIONS = {
   'clear-all-btn': 'clearInputs', 'image-upload-btn': 'attachFiles',
   'add-panel-btn': 'addPanel', 'toggle-toolbar-btn': 'toggleToolbar',
   'expand-toolbar-btn': 'toggleToolbar', 'keyboard-shortcuts-btn': 'openKeyboardShortcuts',
-  'toggle-open-mode-btn': 'toggleOpenMode'
+  'toggle-open-mode-btn': 'toggleOpenMode', 'ai-summary-btn': 'openAiSummary'
 };
 // Actions a shortcut performs by clicking the page's own button, so the
 // handlers in multi-panel.js stay the only implementation.

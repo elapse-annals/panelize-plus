@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.25.0 - 2026-10-28
+- New AI summary: once every AI in a round finishes answering, Panelize can merge their answers into one summary through an OpenAI-compatible API you set up in Options (API base URL, API key and model). Each point and disagreement shows chips naming the AIs it came from; clicking a chip scrolls to that panel. In blind mode the chips number the panels instead of naming them, and the API sees the same anonymous labels.
+- The summary opens in a side drawer from the new AI summary toolbar button (Mod+Alt+Y by default), which can also re-run it and copy it with its sources. Automatic summaries are off until you turn on "Summarize when all answers are done". For AIs whose answer was not captured when it finished, the drawer reads their last answer when you open or re-run it; ones that still cannot be read are listed as not included.
+- The API key stays on this device only and is never synced or exported. "Save and test" asks for access to the API's site only, and answer texts stay in memory and are not added to answer stats.
+
 ## 2.24.0 - 2026-10-28
 - The prompt-mode menu has a new Auto choice: nothing is added unless the question contains a mode's trigger word, and then that mode applies to this send only. Typing `/study` uses Learning, `/brief` Concise, `/brainstorm` Brainstorm and `/challenge` Challenge; several trigger words combine their modes. The trigger word is removed from the question the AIs, answer stats and snapshots see.
 - Prompt Library prompts marked as modes now have a Trigger words field, and the list shows each mode's trigger words. Built-in modes already in your library get their default trigger words once; trigger words are kept in prompt export and import.

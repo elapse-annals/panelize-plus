@@ -77,6 +77,9 @@
         <button id="answer-log-btn" class="toolbar-btn" data-i18n-title="answerLogButtonTitle" data-i18n-aria="answerLogButtonTitle" title="Answer log" aria-label="Answer log">
           <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
         </button>
+        <button id="ai-summary-btn" class="toolbar-btn" data-i18n-title="aiSummaryButtonTitle" data-i18n-aria="aiSummaryButtonTitle" title="AI summary" aria-label="AI summary" aria-expanded="false" aria-controls="ai-summary-drawer">
+          <span class="material-symbols-outlined" aria-hidden="true">description</span>
+        </button>
         <button id="share-snapshot-btn" class="toolbar-btn" data-i18n-title="shareButtonTitle" title="Share a snapshot of this comparison">
           <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>
           <span class="btn-text" data-i18n="shareButtonText">Share</span>
@@ -726,6 +729,36 @@
         </div>
       </div>
     </div>
+
+    <!-- AI Summary Drawer -->
+    <aside id="ai-summary-drawer" class="ai-summary-drawer" hidden aria-labelledby="ai-summary-title">
+      <div class="modal-header">
+        <h3 id="ai-summary-title" data-i18n="aiSummaryTitle">AI summary</h3>
+        <div class="modal-header-actions">
+          <button class="header-action-btn" id="ai-summary-copy-btn" data-i18n-title="aiSummaryCopy" data-i18n-aria="aiSummaryCopy" title="Copy summary" aria-label="Copy summary" disabled>
+            <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
+          </button>
+          <button class="header-action-btn" id="ai-summary-rerun-btn" data-i18n-title="aiSummaryRerun" data-i18n-aria="aiSummaryRerun" title="Summarize again" aria-label="Summarize again">
+            <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+          </button>
+          <button class="close-btn" id="close-ai-summary-drawer" data-i18n-title="shareDialogClose" data-i18n-aria="shareDialogClose" title="Close" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body ai-summary-body">
+        <p id="ai-summary-question" class="ai-summary-question" hidden></p>
+        <p id="ai-summary-status" class="ai-summary-status" role="status"></p>
+        <button type="button" class="btn-secondary" id="ai-summary-settings-btn" data-i18n="aiSummaryOpenSettings" hidden>Set up the AI summary</button>
+        <div id="ai-summary-result" hidden>
+          <p id="ai-summary-overview" class="ai-summary-overview"></p>
+          <ul id="ai-summary-points" class="ai-summary-list"></ul>
+          <h4 id="ai-summary-disagreements-title" class="ai-summary-subtitle" data-i18n="aiSummaryDisagreements" hidden>Disagreements</h4>
+          <ul id="ai-summary-disagreements" class="ai-summary-list"></ul>
+        </div>
+        <p id="ai-summary-missing" class="ai-summary-missing" hidden></p>
+      </div>
+    </aside>
 
     <!-- Answer Log Modal -->
     <div id="answer-log-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="answer-log-modal-title">

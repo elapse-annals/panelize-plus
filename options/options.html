@@ -173,6 +173,67 @@
         </div>
       </section>
 
+      <!-- AI Summary -->
+      <section class="section">
+        <h2 class="section-title" data-i18n="sectionAiSummary">AI Summary</h2>
+        <p style="font-size: 14px; color: #666; margin-bottom: 16px;" data-i18n="descAiSummary">
+          Merge every AI's answer into one summary through an OpenAI-compatible API. Each point names the AIs it came from.
+        </p>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label" data-i18n="labelAiSummaryBaseUrl">API base URL</div>
+            <div class="setting-description" data-i18n="descAiSummaryBaseUrl">For example https://api.openai.com/v1. /chat/completions is added when missing.</div>
+          </div>
+          <div class="setting-control">
+            <input type="url" id="ai-summary-base-url" class="ai-summary-input" placeholder="https://api.openai.com/v1" autocomplete="off" spellcheck="false" />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label" data-i18n="labelAiSummaryApiKey">API key</div>
+            <div class="setting-description" data-i18n="descAiSummaryApiKey">Kept on this device only; never synced or exported.</div>
+          </div>
+          <div class="setting-control">
+            <input type="password" id="ai-summary-api-key" class="ai-summary-input" autocomplete="off" spellcheck="false" />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label" data-i18n="labelAiSummaryModel">Model</div>
+            <div class="setting-description" data-i18n="descAiSummaryModel">The model name the API expects, such as gpt-4o-mini or deepseek-chat.</div>
+          </div>
+          <div class="setting-control">
+            <input type="text" id="ai-summary-model" class="ai-summary-input" placeholder="gpt-4o-mini" autocomplete="off" spellcheck="false" />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label" data-i18n="labelAiSummaryAuto">Summarize when all answers are done</div>
+            <div class="setting-description" data-i18n="descAiSummaryAuto">Off: summarize only with the AI summary button in the toolbar</div>
+          </div>
+          <div class="setting-control">
+            <label class="switch">
+              <input type="checkbox" id="ai-summary-auto-toggle" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-label" data-i18n="labelAiSummarySave">Save and test</div>
+            <div class="setting-description" id="ai-summary-test-result" data-i18n="descAiSummarySave">Asks for access to the API's site, then sends a short test request</div>
+          </div>
+          <div class="setting-control">
+            <button class="btn btn-secondary" id="ai-summary-save-btn" data-i18n="btnAiSummarySave">Save and test</button>
+          </div>
+        </div>
+      </section>
+
       <!-- T052-T053: Provider Settings -->
       <section class="section">
         <h2 class="section-title" data-i18n="sectionProviders">AI Providers</h2>

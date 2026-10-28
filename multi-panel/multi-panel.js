@@ -124,6 +124,16 @@ import {
   toggleRoundRejection
 } from '../modules/answer-stats.js';
 import { renderAnswerStatsTable } from '../modules/answer-stats-view.js';
+import {
+  AI_SUMMARY_API_KEY_STORAGE_KEY,
+  buildSummaryMessages,
+  formatSummaryText,
+  getSummaryOriginPattern,
+  isRoundReadyForSummary,
+  isSummaryConfigured,
+  parseSummaryResponse,
+  requestSummary
+} from '../modules/ai-summary.js';
 import { filterAnswerLogRounds, getAnswerLogProviderIds, renderAnswerLog } from '../modules/answer-log.js';
 import { createPointerGuard, createPointerTracker } from '../modules/pointer-guard.js';
 import { setupComposerControls } from '../modules/composer-controls.js';
@@ -284,6 +294,10 @@ const PANELIZE_PROVIDER_LOCATION = 'PANELIZE_PROVIDER_LOCATION';
 const PANELIZE_PAGE_WIDTH = 'PANELIZE_PAGE_WIDTH';
 const PANELIZE_RESPONSE_TIMING = 'PANELIZE_RESPONSE_TIMING';
 const PANELIZE_ANSWER_ENGAGEMENT = 'PANELIZE_ANSWER_ENGAGEMENT';
+const PANELIZE_GET_ANSWER_TEXT = 'PANELIZE_GET_ANSWER_TEXT';
+const PANELIZE_ANSWER_TEXT = 'PANELIZE_ANSWER_TEXT';
+// How long a summary asked for by hand waits for panels to report their answer.
+const AI_SUMMARY_COLLECT_TIMEOUT_MS = 1500;
 const PANELIZE_PAGE_STYLE = 'PANELIZE_PAGE_STYLE';
 const MAX_IN_MEMORY_ANSWER_ROUNDS = 20;
 const ANSWER_STATS_RECENT_LIMIT = 20;
@@ -354,6 +368,7 @@ async function init() {
   setupShareSnapshot();
   setupAnswerStats();
   setupAnswerLog();
+  setupAiSummary();
   // Built-in modes join the library once; failure leaves Default only.
   await ensureDefaultModePrompts({
     getAllPrompts, savePrompt, storage: chrome.storage?.local, tr: getLocalizedText
@@ -808,6 +823,8 @@ function registerStorageChangeListener() {
     if (changes.answerCompleteNotificationEnabled) {
       isAnswerCompleteNotificationEnabled = changes.answerCompleteNotificationEnabled.newValue !== false;
     }
+
+    applyAiSummaryConfigChanges(changes, areaName);
 
     if (changes.blindModeEnabled || changes.wideContentEnabled) {
       setPageStyleModes({
@@ -1269,6 +1286,9 @@ function handleProviderStatusMessage(event) {
     case PANELIZE_ANSWER_ENGAGEMENT:
       handleAnswerEngagementMessage(panel, data);
       break;
+    case PANELIZE_ANSWER_TEXT:
+      handleAnswerTextMessage(panel, data);
+      break;
     case PANELIZE_TEMP_CHAT_ENABLED:
       if (!tempChatPendingPanelIds.has(panel.id)) {
         return;
@@ -1385,7 +1405,10 @@ async function loadSettings() {
       blindModeEnabled: false,
       wideContentEnabled: false,
       providerNotes: null,
-      answerCompleteNotificationEnabled: true
+      answerCompleteNotificationEnabled: true,
+      aiSummaryAutoEnabled: false,
+      aiSummaryBaseUrl: '',
+      aiSummaryModel: ''
     });
 
     providerNotes = settings.providerNotes || {};
@@ -1393,6 +1416,10 @@ async function loadSettings() {
     isBlindModeEnabled = settings.blindModeEnabled === true;
     isWideContentEnabled = settings.wideContentEnabled === true;
     isAnswerCompleteNotificationEnabled = settings.answerCompleteNotificationEnabled !== false;
+    aiSummaryConfig.autoEnabled = settings.aiSummaryAutoEnabled === true;
+    aiSummaryConfig.baseUrl = settings.aiSummaryBaseUrl || '';
+    aiSummaryConfig.model = settings.aiSummaryModel || '';
+    void loadAiSummaryApiKey();
     document.body.classList.toggle('blind-mode', isBlindModeEnabled);
     document.body.classList.toggle('wide-content', isWideContentEnabled);
     currentOpenMode = settings.openMode || 'tab';
@@ -2244,6 +2271,7 @@ async function setPageStyleModes({ blind = isBlindModeEnabled, wide = isWideCont
       closeAnswerStatsModal();
       closeAnswerLogModal();
     }
+    renderAiSummary();
     showToast(isBlindModeEnabled
       ? getLocalizedText('blindModeOn', 'Blind mode on: AI names are hidden')
       : getLocalizedText('blindModeOff', 'Blind mode off: AI names are shown'));
@@ -3778,12 +3806,18 @@ function startAnswerRound(requestId, text, sentAt, roundPanels) {
   latestAnswerRoundId = round.id;
   persistAnswerRound(round);
   updateZoomedAnswer();
+  answerQuestionsByRound.set(round.id, text || '');
+  answerTextsByRound.set(round.id, new Map());
 
   // Older rounds stay in storage; their panels have moved on.
   while (answerRounds.size > MAX_IN_MEMORY_ANSWER_ROUNDS) {
-    answerRounds.delete(answerRounds.keys().next().value);
+    const oldestRoundId = answerRounds.keys().next().value;
+    answerRounds.delete(oldestRoundId);
+    answerQuestionsByRound.delete(oldestRoundId);
+    answerTextsByRound.delete(oldestRoundId);
   }
   updateAnswerFeedbackButtons();
+  startAiSummaryRound(round.id);
 }
 
 function handleAnswerTimingMessage(panel, data) {
@@ -3792,6 +3826,9 @@ function handleAnswerTimingMessage(panel, data) {
     return;
   }
 
+  if (typeof data.text === 'string' && data.text.trim()) {
+    answerTextsByRound.get(round.id)?.set(panel.id, data.text);
+  }
   const nextRound = applyTimingEvent(round, panel.id, data.phase, data.at);
   if (nextRound) {
     persistAnswerRound(nextRound);
@@ -3799,6 +3836,331 @@ function handleAnswerTimingMessage(panel, data) {
       showAnswerCompleteNotification(panel, nextRound);
     }
   }
+  maybeAutoSummarize(round.id);
+}
+
+// ===== AI Summary =====
+// Answer texts stay in memory only; answer stats never store them.
+const answerTextsByRound = new Map();
+const answerQuestionsByRound = new Map();
+const aiSummaryConfig = { autoEnabled: false, baseUrl: '', model: '', apiKey: '' };
+const autoSummarizedRoundIds = new Set();
+const pendingAnswerTextRequests = new Map();
+// status: 'idle', 'collecting', 'running', 'done' or 'error'.
+let aiSummaryState = { roundId: null, status: 'idle', sources: [], missing: [], summary: null, error: '', needsSetup: false };
+let aiSummaryController = null;
+
+async function loadAiSummaryApiKey() {
+  try {
+    const stored = await chrome.storage.local.get({ [AI_SUMMARY_API_KEY_STORAGE_KEY]: '' });
+    aiSummaryConfig.apiKey = stored[AI_SUMMARY_API_KEY_STORAGE_KEY] || '';
+  } catch (error) {
+    console.warn('[Multi-Panel] Failed to load the AI summary API key:', error);
+  }
+}
+
+function applyAiSummaryConfigChanges(changes, areaName) {
+  if (areaName === 'local' && changes[AI_SUMMARY_API_KEY_STORAGE_KEY]) {
+    aiSummaryConfig.apiKey = changes[AI_SUMMARY_API_KEY_STORAGE_KEY].newValue || '';
+  }
+  if (changes.aiSummaryAutoEnabled) aiSummaryConfig.autoEnabled = changes.aiSummaryAutoEnabled.newValue === true;
+  if (changes.aiSummaryBaseUrl) aiSummaryConfig.baseUrl = changes.aiSummaryBaseUrl.newValue || '';
+  if (changes.aiSummaryModel) aiSummaryConfig.model = changes.aiSummaryModel.newValue || '';
+}
+
+function isAiSummaryDrawerOpen() {
+  return document.getElementById('ai-summary-drawer')?.hidden === false;
+}
+
+function openAiSummaryDrawer() {
+  const drawer = document.getElementById('ai-summary-drawer');
+  if (!drawer) return;
+  drawer.hidden = false;
+  document.getElementById('ai-summary-btn')?.setAttribute('aria-expanded', 'true');
+  renderAiSummary();
+}
+
+function closeAiSummaryDrawer() {
+  const drawer = document.getElementById('ai-summary-drawer');
+  if (!drawer) return;
+  drawer.hidden = true;
+  document.getElementById('ai-summary-btn')?.setAttribute('aria-expanded', 'false');
+}
+
+function toggleAiSummaryDrawer() {
+  if (isAiSummaryDrawerOpen()) {
+    closeAiSummaryDrawer();
+    return;
+  }
+  openAiSummaryDrawer();
+  // Summarize the latest round unless it is already summarized or running.
+  if (latestAnswerRoundId && (aiSummaryState.roundId !== latestAnswerRoundId
+    || ['idle', 'error'].includes(aiSummaryState.status))) {
+    void runAiSummary(latestAnswerRoundId, { collect: true });
+  }
+}
+
+// A new question replaces the summary of the previous one.
+function startAiSummaryRound(roundId) {
+  aiSummaryController?.abort();
+  aiSummaryController = null;
+  aiSummaryState = { roundId, status: 'idle', sources: [], missing: [], summary: null, error: '', needsSetup: false };
+  renderAiSummary();
+}
+
+function maybeAutoSummarize(roundId) {
+  const round = answerRounds.get(roundId);
+  if (!aiSummaryConfig.autoEnabled || roundId !== latestAnswerRoundId || autoSummarizedRoundIds.has(roundId)
+    || !isSummaryConfigured(aiSummaryConfig) || !isRoundReadyForSummary(round, getRoundAnswerTexts(round))) {
+    return;
+  }
+  autoSummarizedRoundIds.add(roundId);
+  openAiSummaryDrawer();
+  void runAiSummary(roundId);
+}
+
+// Texts of the panels still showing the round's answer.
+function getRoundAnswerTexts(round) {
+  const texts = new Map();
+  const stored = answerTextsByRound.get(round?.id);
+  panels.forEach(panel => {
+    const text = stored?.get(panel.id);
+    if (text && isPanelInAnswerRound(round, panel)) texts.set(panel.id, text);
+  });
+  return texts;
+}
+
+function handleAnswerTextMessage(panel, data) {
+  const request = pendingAnswerTextRequests.get(data.requestId);
+  if (!request || request.panelId !== panel.id) {
+    return;
+  }
+  pendingAnswerTextRequests.delete(data.requestId);
+  request.resolve(typeof data.text === 'string' ? data.text.trim() : '');
+}
+
+function requestPanelAnswerText(panel) {
+  const requestId = `ai-summary-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return new Promise(resolve => {
+    pendingAnswerTextRequests.set(requestId, { panelId: panel.id, resolve });
+    setTimeout(() => {
+      if (pendingAnswerTextRequests.delete(requestId)) resolve('');
+    }, AI_SUMMARY_COLLECT_TIMEOUT_MS);
+    panel.iframe?.contentWindow?.postMessage({
+      type: PANELIZE_GET_ANSWER_TEXT,
+      requestId,
+      context: 'multi-panel'
+    }, '*');
+  });
+}
+
+// Asks panels whose timing missed the answer for their last answer.
+async function collectRoundAnswerTexts(round) {
+  const texts = getRoundAnswerTexts(round);
+  const missingPanels = panels.filter(panel => isPanelInAnswerRound(round, panel) && !texts.has(panel.id));
+  const replies = await Promise.all(missingPanels.map(requestPanelAnswerText));
+  missingPanels.forEach((panel, index) => {
+    if (replies[index]) {
+      texts.set(panel.id, replies[index]);
+      answerTextsByRound.get(round.id)?.set(panel.id, replies[index]);
+    }
+  });
+  return texts;
+}
+
+function isAiSummaryRoundBlind(round) {
+  return round?.blind === true || isBlindModeEnabled;
+}
+
+// Source labels follow the on-screen order. Blind rounds number the panels
+// instead of naming them, so the summary never reveals an AI.
+function getAiSummarySourceLabel(source, round) {
+  if (isAiSummaryRoundBlind(round)) {
+    return `${getLocalizedText('blindPanelLabel', 'Anonymous model')} ${source.position}`;
+  }
+  const panel = panels.find(candidate => candidate.id === source.panelId);
+  return panel ? getPanelDisplayName(panel, { blind: false }) : source.panelId;
+}
+
+function getRoundSummaryPanels(round) {
+  return getDisplayedPanels()
+    .map((panel, index) => ({ panel, position: index + 1 }))
+    .filter(({ panel }) => isPanelInAnswerRound(round, panel));
+}
+
+async function runAiSummary(roundId, { collect = false } = {}) {
+  const round = answerRounds.get(roundId);
+  if (!round) {
+    return;
+  }
+  aiSummaryController?.abort();
+  const controller = new AbortController();
+  aiSummaryController = controller;
+  const isCurrent = () => aiSummaryController === controller;
+  const setState = (state) => {
+    if (!isCurrent()) return;
+    aiSummaryState = { roundId, sources: [], missing: [], summary: null, error: '', needsSetup: false, ...state };
+    renderAiSummary();
+  };
+
+  if (!isSummaryConfigured(aiSummaryConfig)) {
+    setState({ status: 'error', needsSetup: true, error: getLocalizedText('aiSummaryNotConfigured', 'Set up an OpenAI-compatible API in Settings to summarize answers.') });
+    return;
+  }
+
+  setState({ status: 'collecting' });
+  const texts = collect ? await collectRoundAnswerTexts(round) : getRoundAnswerTexts(round);
+  if (!isCurrent()) return;
+
+  const sources = [];
+  const missing = [];
+  getRoundSummaryPanels(round).forEach(({ panel, position }) => {
+    const source = { panelId: panel.id, position, sourceId: `S${sources.length + 1}` };
+    if (texts.get(panel.id)) {
+      sources.push(source);
+    } else {
+      missing.push({ ...source, sourceId: '' });
+    }
+  });
+  if (sources.length === 0) {
+    setState({ status: 'error', missing, error: getLocalizedText('aiSummaryNoAnswers', 'No answer could be read from the panels yet.') });
+    return;
+  }
+
+  try {
+    const granted = await chrome.permissions.contains({ origins: [getSummaryOriginPattern(aiSummaryConfig.baseUrl)] });
+    if (!granted) {
+      setState({ status: 'error', needsSetup: true, missing, error: getLocalizedText('aiSummaryNoPermission', 'Panelize has no access to the API site. Use Save and test in Settings to allow it.') });
+      return;
+    }
+  } catch (error) {
+    console.warn('[Multi-Panel] Could not check AI summary access:', error);
+  }
+
+  setState({ status: 'running', sources, missing });
+  try {
+    const messages = buildSummaryMessages({
+      question: answerQuestionsByRound.get(roundId) || round.promptSummary,
+      answers: sources.map(source => ({
+        sourceId: source.sourceId,
+        label: getAiSummarySourceLabel(source, round),
+        text: texts.get(source.panelId)
+      })),
+      language: getSnapshotLocale()
+    });
+    const content = await requestSummary({ config: aiSummaryConfig, messages, signal: controller.signal });
+    const summary = parseSummaryResponse(content, sources.map(source => source.sourceId));
+    setState({ status: 'done', sources, missing, summary });
+  } catch (error) {
+    if (controller.signal.aborted && !isCurrent()) return;
+    console.warn('[Multi-Panel] AI summary failed:', error);
+    setState({
+      status: 'error',
+      sources,
+      missing,
+      error: getLocalizedText('aiSummaryFailed', 'Summary failed: $1', [error?.message || String(error)])
+    });
+  } finally {
+    if (isCurrent()) aiSummaryController = null;
+  }
+}
+
+function createAiSummaryItem(item, sourcesById, round) {
+  const li = document.createElement('li');
+  li.append(document.createTextNode(item.text));
+  item.sources.forEach(sourceId => {
+    const source = sourcesById.get(sourceId);
+    if (!source) return;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'ai-summary-source';
+    chip.textContent = getAiSummarySourceLabel(source, round);
+    chip.title = getLocalizedText('aiSummaryJumpToPanel', 'Go to this panel');
+    chip.addEventListener('click', () => jumpToPanel(source.position));
+    li.append(chip);
+  });
+  return li;
+}
+
+function renderAiSummary() {
+  const drawer = document.getElementById('ai-summary-drawer');
+  if (!drawer || drawer.hidden) {
+    return;
+  }
+  const byId = id => document.getElementById(id);
+  const state = aiSummaryState;
+  const round = state.roundId ? answerRounds.get(state.roundId) : null;
+
+  const question = byId('ai-summary-question');
+  question.textContent = round?.promptSummary || '';
+  question.hidden = !round?.promptSummary;
+
+  const status = byId('ai-summary-status');
+  status.classList.toggle('error', state.status === 'error');
+  const statusText = {
+    idle: round
+      ? getLocalizedText('aiSummaryIdle', 'Waiting for the answers. Use Summarize again to summarize now.')
+      : getLocalizedText('aiSummaryNoRound', 'Send a question to several AIs, then summarize their answers here.'),
+    collecting: getLocalizedText('aiSummaryCollecting', 'Reading the answers…'),
+    running: getLocalizedText('aiSummaryRunning', 'Summarizing $1 answers…', [String(state.sources.length)]),
+    done: '',
+    error: state.error
+  };
+  status.textContent = statusText[state.status] ?? '';
+  byId('ai-summary-settings-btn').hidden = !state.needsSetup;
+  byId('ai-summary-rerun-btn').disabled = !round || state.status === 'collecting' || state.status === 'running';
+  byId('ai-summary-copy-btn').disabled = state.status !== 'done';
+
+  const result = byId('ai-summary-result');
+  const summary = state.status === 'done' ? state.summary : null;
+  result.hidden = !summary;
+  const sourcesById = new Map(state.sources.map(source => [source.sourceId, source]));
+  byId('ai-summary-overview').textContent = summary?.overview || '';
+  byId('ai-summary-points').replaceChildren(...(summary?.points || []).map(item => createAiSummaryItem(item, sourcesById, round)));
+  byId('ai-summary-disagreements').replaceChildren(...(summary?.disagreements || []).map(item => createAiSummaryItem(item, sourcesById, round)));
+  byId('ai-summary-disagreements-title').hidden = !summary?.disagreements.length;
+
+  const missing = byId('ai-summary-missing');
+  const showMissing = state.missing.length > 0 && ['running', 'done', 'error'].includes(state.status);
+  missing.hidden = !showMissing;
+  missing.textContent = showMissing
+    ? getLocalizedText('aiSummaryMissing', 'Not included (answer could not be read): $1', [state.missing.map(source => getAiSummarySourceLabel(source, round)).join(', ')])
+    : '';
+}
+
+async function copyAiSummary() {
+  const round = answerRounds.get(aiSummaryState.roundId);
+  if (aiSummaryState.status !== 'done' || !aiSummaryState.summary) return;
+  const sourcesById = new Map(aiSummaryState.sources.map(source => [source.sourceId, source]));
+  const text = formatSummaryText(
+    aiSummaryState.summary,
+    sourceId => getAiSummarySourceLabel(sourcesById.get(sourceId), round),
+    { disagreementsTitle: getLocalizedText('aiSummaryDisagreements', 'Disagreements') }
+  );
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(getLocalizedText('aiSummaryCopied', 'Summary copied'));
+  } catch (error) {
+    console.warn('[Multi-Panel] Failed to copy the AI summary:', error);
+  }
+}
+
+function setupAiSummary() {
+  document.getElementById('ai-summary-btn')?.addEventListener('click', toggleAiSummaryDrawer);
+  document.getElementById('close-ai-summary-drawer')?.addEventListener('click', closeAiSummaryDrawer);
+  document.getElementById('ai-summary-copy-btn')?.addEventListener('click', () => { void copyAiSummary(); });
+  document.getElementById('ai-summary-rerun-btn')?.addEventListener('click', () => {
+    const roundId = aiSummaryState.roundId || latestAnswerRoundId;
+    if (roundId) void runAiSummary(roundId, { collect: true });
+  });
+  document.getElementById('ai-summary-settings-btn')?.addEventListener('click', () => chrome.runtime.openOptionsPage());
+  document.getElementById('ai-summary-drawer')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeAiSummaryDrawer();
+      document.getElementById('ai-summary-btn')?.focus();
+    }
+  });
 }
 
 // ===== Answer complete notification =====

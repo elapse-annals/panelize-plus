@@ -6,7 +6,8 @@ const LOCALES_DIR = resolve(process.cwd(), '_locales');
 
 // Strings added for the store rating prompt, the share snapshot, panel focus,
 // the panel resize handles, the answer stats, blind mode, wide content, the
-// reasoning level mapping, answer complete notifications and prompt modes.
+// reasoning level mapping, answer complete notifications, prompt modes and
+// the AI summary.
 const FEATURE_KEYS = [
   'ratingPromptMessage',
   'ratingPromptRate',
@@ -138,7 +139,44 @@ const FEATURE_KEYS = [
   'composerPlaceholderTriggers',
   'promptTriggersLabel',
   'promptTriggersPlaceholder',
-  'promptTriggersHint'
+  'promptTriggersHint',
+  'aiSummaryButtonTitle',
+  'aiSummaryTitle',
+  'aiSummaryCopy',
+  'aiSummaryRerun',
+  'aiSummaryOpenSettings',
+  'aiSummaryDisagreements',
+  'aiSummaryCollecting',
+  'aiSummaryRunning',
+  'aiSummaryIdle',
+  'aiSummaryNoRound',
+  'aiSummaryNoAnswers',
+  'aiSummaryNotConfigured',
+  'aiSummaryNoPermission',
+  'aiSummaryFailed',
+  'aiSummaryMissing',
+  'aiSummaryJumpToPanel',
+  'aiSummaryCopied',
+  'sectionAiSummary',
+  'descAiSummary',
+  'labelAiSummaryBaseUrl',
+  'descAiSummaryBaseUrl',
+  'labelAiSummaryApiKey',
+  'descAiSummaryApiKey',
+  'labelAiSummaryModel',
+  'descAiSummaryModel',
+  'labelAiSummaryAuto',
+  'descAiSummaryAuto',
+  'labelAiSummarySave',
+  'descAiSummarySave',
+  'btnAiSummarySave',
+  'msgAiSummaryAutoEnabled',
+  'msgAiSummaryAutoDisabled',
+  'msgAiSummaryIncomplete',
+  'msgAiSummaryPermissionDenied',
+  'msgAiSummaryTesting',
+  'msgAiSummaryTestOk',
+  'msgAiSummaryTestFailed'
 ];
 
 const locales = readdirSync(LOCALES_DIR);
@@ -173,7 +211,11 @@ describe('share and rating strings', () => {
       shareOutOfViewNote: ['$1'],
       shareShortcutHint: ['$1'],
       shareProgressStep: ['$1', '$2'],
-      composerPlaceholderAppend: ['$1']
+      composerPlaceholderAppend: ['$1'],
+      aiSummaryRunning: ['$1'],
+      aiSummaryFailed: ['$1'],
+      aiSummaryMissing: ['$1'],
+      msgAiSummaryTestFailed: ['$1']
     };
     locales.forEach((locale) => {
       const messages = JSON.parse(readFileSync(resolve(LOCALES_DIR, locale, 'messages.json'), 'utf8'));

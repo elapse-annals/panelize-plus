@@ -1546,5 +1546,116 @@
   },
   "promptTriggersHint": {
     "message": "Con la modalità della casella impostata su Automatica, scrivere una di queste parole in una domanda applica questa modalità solo a quell'invio. La parola non viene inviata. La usano solo i prompt contrassegnati come modalità."
+  },
+  "aiSummaryButtonTitle": {
+    "message": "Riepilogo IA"
+  },
+  "aiSummaryTitle": {
+    "message": "Riepilogo IA"
+  },
+  "aiSummaryCopy": {
+    "message": "Copia riepilogo"
+  },
+  "aiSummaryRerun": {
+    "message": "Riepiloga di nuovo"
+  },
+  "aiSummaryOpenSettings": {
+    "message": "Configura il riepilogo IA"
+  },
+  "aiSummaryDisagreements": {
+    "message": "Disaccordi"
+  },
+  "aiSummaryCollecting": {
+    "message": "Lettura delle risposte…"
+  },
+  "aiSummaryRunning": {
+    "message": "Riepilogo di $1 risposte…"
+  },
+  "aiSummaryIdle": {
+    "message": "In attesa delle risposte. Usa Riepiloga di nuovo per riepilogare ora."
+  },
+  "aiSummaryNoRound": {
+    "message": "Invia una domanda a più IA, poi riepiloga qui le loro risposte."
+  },
+  "aiSummaryNoAnswers": {
+    "message": "Non è ancora stato possibile leggere alcuna risposta dai pannelli."
+  },
+  "aiSummaryNotConfigured": {
+    "message": "Configura un'API compatibile con OpenAI nelle impostazioni per riepilogare le risposte."
+  },
+  "aiSummaryNoPermission": {
+    "message": "Panelize non ha accesso al sito dell'API. Usa Salva e prova nelle impostazioni per consentirlo."
+  },
+  "aiSummaryFailed": {
+    "message": "Riepilogo non riuscito: $1"
+  },
+  "aiSummaryMissing": {
+    "message": "Non incluse (risposta non leggibile): $1"
+  },
+  "aiSummaryJumpToPanel": {
+    "message": "Vai a questo pannello"
+  },
+  "aiSummaryCopied": {
+    "message": "Riepilogo copiato"
+  },
+  "sectionAiSummary": {
+    "message": "Riepilogo IA"
+  },
+  "descAiSummary": {
+    "message": "Unisce le risposte di tutte le IA in un riepilogo tramite un'API compatibile con OpenAI. Ogni punto indica le IA da cui proviene."
+  },
+  "labelAiSummaryBaseUrl": {
+    "message": "URL di base dell'API"
+  },
+  "descAiSummaryBaseUrl": {
+    "message": "Ad esempio https://api.openai.com/v1. /chat/completions viene aggiunto se manca."
+  },
+  "labelAiSummaryApiKey": {
+    "message": "Chiave API"
+  },
+  "descAiSummaryApiKey": {
+    "message": "Salvata solo su questo dispositivo; mai sincronizzata né esportata."
+  },
+  "labelAiSummaryModel": {
+    "message": "Modello"
+  },
+  "descAiSummaryModel": {
+    "message": "Il nome del modello previsto dall'API, come gpt-4o-mini o deepseek-chat."
+  },
+  "labelAiSummaryAuto": {
+    "message": "Riepiloga quando tutte le risposte sono pronte"
+  },
+  "descAiSummaryAuto": {
+    "message": "Disattivato: riepiloga solo con il pulsante Riepilogo IA nella barra"
+  },
+  "labelAiSummarySave": {
+    "message": "Salva e prova"
+  },
+  "descAiSummarySave": {
+    "message": "Chiede l'accesso al sito dell'API, poi invia una breve richiesta di prova"
+  },
+  "btnAiSummarySave": {
+    "message": "Salva e prova"
+  },
+  "msgAiSummaryAutoEnabled": {
+    "message": "Riepilogo IA automatico attivo"
+  },
+  "msgAiSummaryAutoDisabled": {
+    "message": "Riepilogo IA automatico disattivato"
+  },
+  "msgAiSummaryIncomplete": {
+    "message": "Inserisci URL di base, chiave API e modello"
+  },
+  "msgAiSummaryPermissionDenied": {
+    "message": "Accesso al sito dell'API non consentito; impostazioni salvate"
+  },
+  "msgAiSummaryTesting": {
+    "message": "Prova dell'API in corso…"
+  },
+  "msgAiSummaryTestOk": {
+    "message": "L'API funziona; impostazioni salvate"
+  },
+  "msgAiSummaryTestFailed": {
+    "message": "Prova dell'API non riuscita: $1"
   }
 }

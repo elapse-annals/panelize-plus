@@ -1546,5 +1546,116 @@
   },
   "promptTriggersHint": {
     "message": "Steht der Modus im Eingabefeld auf Automatisch, wendet eines dieser Wörter in einer Frage diesen Modus nur für diese Sendung an. Das Wort selbst wird nicht gesendet. Nur Prompts, die als Modus markiert sind, nutzen sie."
+  },
+  "aiSummaryButtonTitle": {
+    "message": "KI-Zusammenfassung"
+  },
+  "aiSummaryTitle": {
+    "message": "KI-Zusammenfassung"
+  },
+  "aiSummaryCopy": {
+    "message": "Zusammenfassung kopieren"
+  },
+  "aiSummaryRerun": {
+    "message": "Erneut zusammenfassen"
+  },
+  "aiSummaryOpenSettings": {
+    "message": "KI-Zusammenfassung einrichten"
+  },
+  "aiSummaryDisagreements": {
+    "message": "Abweichungen"
+  },
+  "aiSummaryCollecting": {
+    "message": "Antworten werden gelesen…"
+  },
+  "aiSummaryRunning": {
+    "message": "$1 Antworten werden zusammengefasst…"
+  },
+  "aiSummaryIdle": {
+    "message": "Warte auf die Antworten. Mit „Erneut zusammenfassen“ jetzt zusammenfassen."
+  },
+  "aiSummaryNoRound": {
+    "message": "Stelle mehreren KIs eine Frage und fasse ihre Antworten hier zusammen."
+  },
+  "aiSummaryNoAnswers": {
+    "message": "Aus den Panels konnte noch keine Antwort gelesen werden."
+  },
+  "aiSummaryNotConfigured": {
+    "message": "Richte in den Einstellungen eine OpenAI-kompatible API ein, um Antworten zusammenzufassen."
+  },
+  "aiSummaryNoPermission": {
+    "message": "Panelize hat keinen Zugriff auf die API-Seite. Erlaube ihn in den Einstellungen mit „Speichern und testen“."
+  },
+  "aiSummaryFailed": {
+    "message": "Zusammenfassung fehlgeschlagen: $1"
+  },
+  "aiSummaryMissing": {
+    "message": "Nicht enthalten (Antwort nicht lesbar): $1"
+  },
+  "aiSummaryJumpToPanel": {
+    "message": "Zu diesem Panel"
+  },
+  "aiSummaryCopied": {
+    "message": "Zusammenfassung kopiert"
+  },
+  "sectionAiSummary": {
+    "message": "KI-Zusammenfassung"
+  },
+  "descAiSummary": {
+    "message": "Fasst die Antworten aller KIs über eine OpenAI-kompatible API zusammen. Jeder Punkt nennt die KIs, von denen er stammt."
+  },
+  "labelAiSummaryBaseUrl": {
+    "message": "API-Basis-URL"
+  },
+  "descAiSummaryBaseUrl": {
+    "message": "Zum Beispiel https://api.openai.com/v1. /chat/completions wird ergänzt, wenn es fehlt."
+  },
+  "labelAiSummaryApiKey": {
+    "message": "API-Schlüssel"
+  },
+  "descAiSummaryApiKey": {
+    "message": "Nur auf diesem Gerät gespeichert, nie synchronisiert oder exportiert."
+  },
+  "labelAiSummaryModel": {
+    "message": "Modell"
+  },
+  "descAiSummaryModel": {
+    "message": "Der Modellname, den die API erwartet, z. B. gpt-4o-mini oder deepseek-chat."
+  },
+  "labelAiSummaryAuto": {
+    "message": "Zusammenfassen, wenn alle Antworten fertig sind"
+  },
+  "descAiSummaryAuto": {
+    "message": "Aus: nur mit der Schaltfläche KI-Zusammenfassung in der Symbolleiste"
+  },
+  "labelAiSummarySave": {
+    "message": "Speichern und testen"
+  },
+  "descAiSummarySave": {
+    "message": "Fragt nach Zugriff auf die API-Seite und sendet dann eine kurze Testanfrage"
+  },
+  "btnAiSummarySave": {
+    "message": "Speichern und testen"
+  },
+  "msgAiSummaryAutoEnabled": {
+    "message": "Automatische KI-Zusammenfassung an"
+  },
+  "msgAiSummaryAutoDisabled": {
+    "message": "Automatische KI-Zusammenfassung aus"
+  },
+  "msgAiSummaryIncomplete": {
+    "message": "Gib API-Basis-URL, API-Schlüssel und Modell ein"
+  },
+  "msgAiSummaryPermissionDenied": {
+    "message": "Zugriff auf die API-Seite nicht erlaubt; Einstellungen gespeichert"
+  },
+  "msgAiSummaryTesting": {
+    "message": "API wird getestet…"
+  },
+  "msgAiSummaryTestOk": {
+    "message": "Die API funktioniert; Einstellungen gespeichert"
+  },
+  "msgAiSummaryTestFailed": {
+    "message": "API-Test fehlgeschlagen: $1"
   }
 }
