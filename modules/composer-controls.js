@@ -16,7 +16,16 @@ import {
   requestProviderTierState,
   runProviderTierBatch
 } from './provider-tiers.js';
-import { AUTO_PROMPT_MODE, describePromptSend, findPromptTriggerCompletion, normalizePromptTriggers, resolvePromptModeForText, selectModePrompts } from './prompt-modes.js';
+import {
+  AUTO_PROMPT_MODE,
+  describePromptSend,
+  findPromptTriggerCompletion,
+  getPromptAiContent,
+  getPromptDisplayContent,
+  normalizePromptTriggers,
+  resolvePromptModeForText,
+  selectModePrompts
+} from './prompt-modes.js';
 
 const DEFAULT_TIER = 'default';
 const ACTION_LABELS = {
@@ -484,7 +493,7 @@ export async function setupComposerControls({
       row.className = 'prompt-mode-row';
       row.append(
         createModeOption(prompt.modeKey, prompt.title,
-          [trigger, truncate(prompt.content, PROMPT_MODE_PLACEHOLDER_LENGTH)].filter(Boolean).join('  ')),
+          [trigger, truncate(getPromptDisplayContent(prompt), PROMPT_MODE_PLACEHOLDER_LENGTH)].filter(Boolean).join('  ')),
         createModeAction('edit', materialIcon('edit'), tr('promptModeEdit', 'Edit'), prompt),
         createModeAction('delete', materialIcon('delete'), tr('promptModeDelete', 'Delete'), prompt)
       );
@@ -522,7 +531,7 @@ export async function setupComposerControls({
     const triggers = auto ? describeTriggers() : '';
     const hint = auto
       ? [tr(...PROMPT_MODE_AUTO_HINT), triggers].filter(Boolean).join('\n')
-      : (mode ? truncate(mode.content, PROMPT_MODE_HINT_LENGTH) : tr(...PROMPT_MODE_DEFAULT_HINT));
+      : (mode ? truncate(getPromptDisplayContent(mode), PROMPT_MODE_HINT_LENGTH) : tr(...PROMPT_MODE_DEFAULT_HINT));
     button.title = `${heading}\n${hint}`;
     button.setAttribute('aria-label', heading);
     button.closest('.prompt-mode-control')?.setAttribute('data-active', String(Boolean(mode || auto)));
@@ -624,9 +633,13 @@ export async function setupComposerControls({
     const ghost = byId('prompt-ghost');
     const input = byId('unified-input');
     if (!ghost || !input) return;
+    const mode = currentModePrompt();
+    // The preview shows the mode's display text (Chinese first); the send uses
+    // the AI text, which Auto mode collects from the matched modes.
     const segments = describePromptSend(input.value, {
       auto: isAutoMode(),
-      instruction: currentModePrompt()?.content ?? null,
+      instruction: getPromptAiContent(mode) || null,
+      displayInstruction: getPromptDisplayContent(mode),
       modePrompts
     });
     const completion = currentTriggerCompletion();
@@ -761,7 +774,7 @@ export async function setupComposerControls({
     const mode = currentModePrompt();
     const triggers = isAutoMode() ? describeTriggers() : '';
     const appended = mode
-      ? `  ${tr('composerPlaceholderAppend', 'Appends: $1', [truncate(mode.content, PROMPT_MODE_PLACEHOLDER_LENGTH)])}`
+      ? `  ${tr('composerPlaceholderAppend', 'Appends: $1', [truncate(getPromptDisplayContent(mode), PROMPT_MODE_PLACEHOLDER_LENGTH)])}`
       : (triggers ? `  ${tr('composerPlaceholderTriggers', 'Auto: $1', [truncate(triggers, PROMPT_MODE_PLACEHOLDER_LENGTH * 2)])}` : '');
     input.placeholder = `${prefix}${tr('composerInputPlaceholder', 'Enter your question to send to all AI providers...')}${appended}  ${keys.join(' · ')}`;
   }
@@ -1108,13 +1121,14 @@ export async function setupComposerControls({
     refreshStates,
     refreshTooltips: updateTooltips,
     isTierBusy: () => tierBusy || pendingDesiredTier !== undefined,
-    // The selected mode's instruction, or null for Default and Auto.
-    getPromptMode: () => currentModePrompt()?.content ?? null,
+    // The selected mode's instruction for the AIs (English first), or null for
+    // Default and Auto.
+    getPromptMode: () => getPromptAiContent(currentModePrompt()) || null,
     // The text and instruction for one send: Auto removes the trigger words
     // it finds and uses their modes; other modes keep the text as typed.
     resolvePromptMode: text => resolvePromptModeForText(text, {
       auto: isAutoMode(),
-      instruction: currentModePrompt()?.content ?? null,
+      instruction: getPromptAiContent(currentModePrompt()),
       modePrompts
     }),
     refreshPromptModes,

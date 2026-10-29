@@ -18,7 +18,10 @@ const PROVIDER_ALLOWED_HOSTS = {
   'meta-ai': new Set(['www.meta.ai']),
   stepfun: new Set(['studio.stepfun.com']),
   agnes: new Set(['app.agnes-ai.com']),
-  'hy-aistudio': new Set(['aistudio.tencent.com'])
+  'hy-aistudio': new Set(['aistudio.tencent.com']),
+  perplexity: new Set(['www.perplexity.ai']),
+  copilot: new Set(['copilot.com', 'copilot.microsoft.com']),
+  wenxin: new Set(['wenxin.baidu.com'])
 };
 
 const QWEN_GLOBAL_NON_CONVERSATION_IDS = new Set(['new-chat', 'new-branch', 'guest']);
@@ -112,6 +115,9 @@ export function isProviderCurrentUrl(providerId, rawUrl) {
     case 'stepfun':
     case 'agnes':
     case 'hy-aistudio':
+    case 'perplexity':
+    case 'copilot':
+    case 'wenxin':
       // No verified stable conversation URL yet.
       return false;
     default:

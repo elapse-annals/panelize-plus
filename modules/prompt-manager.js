@@ -52,12 +52,21 @@ function sanitizeString(str, maxLength) {
 function validatePromptData(promptData) {
   const errors = [];
 
-  if (typeof promptData.content !== 'string' || promptData.content.trim().length === 0) {
+  // One text is enough: `content` is what the app shows, `contentEn` is what
+  // the AIs receive instead of it when set.
+  const content = typeof promptData.content === 'string' ? promptData.content.trim() : '';
+  const contentEn = typeof promptData.contentEn === 'string' ? promptData.contentEn.trim() : '';
+
+  if (!content && !contentEn) {
     errors.push('Prompt content is required');
   }
 
   if (promptData.content && promptData.content.length > MAX_CONTENT_LENGTH) {
     errors.push(`Prompt content must be less than ${MAX_CONTENT_LENGTH} characters`);
+  }
+
+  if (promptData.contentEn && promptData.contentEn.length > MAX_CONTENT_LENGTH) {
+    errors.push(`Prompt content (English) must be less than ${MAX_CONTENT_LENGTH} characters`);
   }
 
   if (promptData.title && promptData.title.length > MAX_TITLE_LENGTH) {
@@ -134,6 +143,9 @@ export async function savePrompt(promptData) {
   const prompt = {
     title: sanitizeString(promptData.title || 'Untitled Prompt', MAX_TITLE_LENGTH),
     content: sanitizeString(promptData.content, MAX_CONTENT_LENGTH),
+    // Sent to the AIs instead of `content` when set; empty keeps every
+    // existing display and send path on `content`.
+    contentEn: sanitizeString(promptData.contentEn, MAX_CONTENT_LENGTH),
     category: sanitizeString(promptData.category || 'General', MAX_CATEGORY_LENGTH),
     tags: Array.isArray(promptData.tags)
       ? promptData.tags.slice(0, MAX_TAGS_COUNT).map(tag => sanitizeString(tag, MAX_TAG_LENGTH)).filter(t => t)
@@ -274,7 +286,7 @@ function wrapRequest(request, mapper) {
   });
 }
 
-// T035: Search prompts by text (title or content)
+// T035: Search prompts by text (title, either content, or tags)
 export async function searchPrompts(searchText) {
   await ensureDb();
 
@@ -284,6 +296,8 @@ export async function searchPrompts(searchText) {
   return allPrompts.filter(prompt =>
     prompt.title.toLowerCase().includes(lowerSearch) ||
     prompt.content.toLowerCase().includes(lowerSearch) ||
+    // Prompts saved before the English text existed have no `contentEn`.
+    prompt.contentEn?.toLowerCase().includes(lowerSearch) ||
     prompt.tags.some(tag => tag.toLowerCase().includes(lowerSearch))
   );
 }

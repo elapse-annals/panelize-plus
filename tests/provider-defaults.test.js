@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_PROVIDER_IDS,
+  DEFAULT_PROVIDER_ORDER,
+  DEFAULT_STARTUP_PROVIDER_IDS,
   DOUBAO_MIGRATION_PROVIDER_IDS,
   LEGACY_DEFAULT_PROVIDER_IDS,
   migrateEnabledProvidersOnUpdate,
@@ -23,6 +25,16 @@ describe('provider defaults', () => {
       'chatglm',
       'qwen-global',
     ]);
+  });
+
+  it('orders new optional providers last without enabling or auto-starting them', () => {
+    const optionalProviderIds = ['perplexity', 'copilot', 'wenxin'];
+
+    expect(DEFAULT_PROVIDER_ORDER.slice(-optionalProviderIds.length)).toEqual(optionalProviderIds);
+    for (const providerId of optionalProviderIds) {
+      expect(DEFAULT_PROVIDER_IDS).not.toContain(providerId);
+      expect(DEFAULT_STARTUP_PROVIDER_IDS).not.toContain(providerId);
+    }
   });
 
   it('appends doubao to the legacy list for the update migration', () => {

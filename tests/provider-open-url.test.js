@@ -62,12 +62,22 @@ describe('provider open URL helpers', () => {
     expect(isProviderCurrentUrl('meta-ai', 'https://meta.ai/prompt/abc123')).toBe(false);
     expect(isProviderCurrentUrl('stepfun', 'https://studio.stepfun.com/chat/abc123')).toBe(false);
     expect(isProviderCurrentUrl('agnes', 'https://app.agnes-ai.com/chat/abc123')).toBe(false);
+    expect(isProviderCurrentUrl('perplexity', 'https://www.perplexity.ai/search/abc123')).toBe(false);
+    expect(isProviderCurrentUrl('copilot', 'https://copilot.com/chats/abc123')).toBe(false);
+    expect(isProviderCurrentUrl('copilot', 'https://copilot.microsoft.com/chats/abc123')).toBe(false);
+    expect(isProviderCurrentUrl('wenxin', 'https://wenxin.baidu.com/chat/abc123')).toBe(false);
     expect(isProviderAllowedUrl('stepfun', 'https://studio.stepfun.com/')).toBe(true);
     expect(isProviderAllowedUrl('agnes', 'https://app.agnes-ai.com/')).toBe(true);
     expect(isProviderAllowedUrl('agnes', 'https://evil.example/')).toBe(false);
     expect(isProviderCurrentUrl('hy-aistudio', 'https://aistudio.tencent.com/chat/abc123')).toBe(false);
     expect(isProviderAllowedUrl('hy-aistudio', 'https://aistudio.tencent.com/')).toBe(true);
     expect(isProviderAllowedUrl('hy-aistudio', 'https://yuanbao.tencent.com/')).toBe(false);
+    expect(isProviderAllowedUrl('perplexity', 'https://www.perplexity.ai/')).toBe(true);
+    expect(isProviderAllowedUrl('copilot', 'https://copilot.com/chat')).toBe(true);
+    expect(isProviderAllowedUrl('copilot', 'https://copilot.microsoft.com/chat')).toBe(true);
+    expect(isProviderAllowedUrl('wenxin', 'https://wenxin.baidu.com/')).toBe(true);
+    expect(isProviderAllowedUrl('wenxin', 'https://yiyan.baidu.com/')).toBe(false);
+    expect(isProviderAllowedUrl('copilot', 'https://evil.example/chat')).toBe(false);
   });
 
   it('opens the reported current URL when it is valid', () => {
@@ -91,5 +101,14 @@ describe('provider open URL helpers', () => {
       'https://aistudio.xiaomimimo.com/#/chat/abc123'
     );
     expect(getProviderOpenUrl(getProviderById('meta-ai'), 'https://www.meta.ai/')).toBe('https://www.meta.ai/');
+    expect(getProviderOpenUrl(getProviderById('perplexity'), 'https://www.perplexity.ai/search/abc123')).toBe(
+      'https://www.perplexity.ai/'
+    );
+    expect(getProviderOpenUrl(getProviderById('copilot'), 'https://copilot.microsoft.com/chats/abc123')).toBe(
+      'https://copilot.com/chat'
+    );
+    expect(getProviderOpenUrl(getProviderById('wenxin'), 'https://wenxin.baidu.com/chat/abc123')).toBe(
+      'https://wenxin.baidu.com/'
+    );
   });
 });

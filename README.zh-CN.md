@@ -54,7 +54,7 @@ Panelize 是一个免费、开源的 Chrome / Edge 扩展：一次输入，同�
 
 ### 一次提问，同时对比
 
-在统一输入框中输入一次内容，就能同时发送到 ChatGPT、Claude、Gemini、Grok、Doubao、DeepSeek、Kimi、Qwen、Zhipu (China)、Z.ai (Global)、元宝、MiMo、Meta AI、阶跃 StepFun、Agnes、腾讯混元 Hy AI Studio、Google。
+在统一输入框中输入一次内容，就能同时发送到 ChatGPT、Claude、Gemini、Grok、Doubao、DeepSeek、Kimi、Qwen、Zhipu (China)、Z.ai (Global)、元宝、MiMo、Meta AI、阶跃 StepFun、Agnes、腾讯混元 Hy AI Studio、Perplexity、Copilot、文心、Google。
 
 ### 灵活布局
 
@@ -100,7 +100,12 @@ Panelize 是一个免费、开源的 Chrome / Edge 扩展：一次输入，同�
 - StepFun
 - Agnes
 - Hy AI Studio
+- Perplexity
+- Copilot
+- 文心
 - Google
+
+Perplexity、Copilot 和文心是可选平台，需要在设置中启用并授予对应的网站访问权限。三个站点登录后的输入框和发送控件均已在真实网页中核实；受 Cloudflare 验证和 Microsoft 登录要求影响，Perplexity、Copilot 的内嵌发送仍未验证。文心已于 2026-10-28 通过真实网站的内嵌、填充、Send All 和 Enter 发送验证。三者暂不支持图片附件。
 
 <p align="center">
   <img src="assets/screenshots/settings.png" alt="设置与平台管理" width="700">
@@ -187,7 +192,6 @@ Panelize 是一个免费、开源的 Chrome / Edge 扩展：一次输入，同�
 
 - 🐛 提交 Bug
 - 💡 提出功能建议
-- 🌍 参与更多语言翻译
 - 🔧 提交 Pull Request
 
 ---

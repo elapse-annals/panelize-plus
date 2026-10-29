@@ -54,7 +54,7 @@ Panelize は、1つのプロンプトを ChatGPT、Claude、Gemini、Grok、Deep
 
 ### 1回の入力で同時送信
 
-統一入力欄から ChatGPT / Claude / Gemini / Grok / Doubao / DeepSeek / Kimi / Qwen / Zhipu (China) / Z.ai (Global) / Yuanbao / MiMo / Meta AI / StepFun / Agnes / Hy AI Studio / Google へ同時に送信できます。
+統一入力欄から ChatGPT / Claude / Gemini / Grok / Doubao / DeepSeek / Kimi / Qwen / Zhipu (China) / Z.ai (Global) / Yuanbao / MiMo / Meta AI / StepFun / Agnes / Hy AI Studio / Perplexity / Copilot / Wenxin / Google へ同時に送信できます。
 
 ### 柔軟なレイアウト
 
@@ -100,7 +100,12 @@ API キー不要。通常どおり各 AI サービスにログインしていれ
 - StepFun
 - Agnes
 - Hy AI Studio
+- Perplexity
+- Copilot
+- Wenxin
 - Google
+
+Perplexity、Copilot、Wenxin は任意のプロバイダーです。設定で有効にして、各サイトへのアクセスを許可してください。3サービスのログイン後の入力欄と送信コントロールは実際のページで確認しました。Perplexity と Copilot は Cloudflare 検証と Microsoft サインインのため、埋め込みでの送信は未検証です。Wenxin の埋め込み、テキスト入力、Send All と Enter による送信は 2026-10-28 に実環境で確認しました。この3サービスの画像添付は無効です。
 
 <p align="center">
   <img src="assets/screenshots/settings.png" alt="Settings & Providers" width="700">

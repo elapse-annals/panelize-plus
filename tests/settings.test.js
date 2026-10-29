@@ -31,6 +31,7 @@ describe('settings module', () => {
         enabledProviders: ['chatgpt', 'claude'],
         defaultProvider: 'chatgpt',
         theme: 'dark',
+        language: 'en',
       };
 
       chrome.storage.sync.get.mockResolvedValue(mockSettings);
@@ -48,6 +49,14 @@ describe('settings module', () => {
       const result = await getSettings();
 
       expect(chrome.storage.local.get).toHaveBeenCalled();
+    });
+
+    it('defaults to Chinese and normalizes retired language preferences', async () => {
+      expect((await getSettings()).language).toBe('zh_CN');
+      for (const language of [null, 'zh_TW', 'ja', 'de', 'invalid']) {
+        chrome.storage.sync.get.mockResolvedValue({ language, theme: 'dark' });
+        expect(await getSettings()).toEqual({ language: 'zh_CN', theme: 'dark' });
+      }
     });
 
     it('should show the watermark on shared images by default', async () => {
@@ -166,6 +175,11 @@ describe('settings module', () => {
   });
 
   describe('importSettings', () => {
+    it('normalizes an imported retired language while preserving other preferences', async () => {
+      await importSettings({ language: 'ja', theme: 'dark' });
+      expect(chrome.storage.sync.set).toHaveBeenCalledWith({ language: 'zh_CN', theme: 'dark' });
+    });
+
     it('should import valid settings', async () => {
       const settings = {
         theme: 'dark',
@@ -211,7 +225,7 @@ describe('settings module', () => {
 
       const result = await exportSettings();
 
-      expect(result).toEqual(mockSettings);
+      expect(result).toEqual({ ...mockSettings, language: 'zh_CN' });
     });
   });
 });

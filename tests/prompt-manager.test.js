@@ -1,8 +1,9 @@
 // Tests for Prompt Manager - Validation and Security
 // NOTE: Full IndexedDB integration tests require fake-indexeddb package
 // These tests focus on critical validation that prevents XSS and data corruption
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
+  initPromptDB,
   savePrompt,
   importPrompts,
   importDefaultLibrary
@@ -32,6 +33,70 @@ describe('prompt-manager input validation', () => {
       await expect(savePrompt({})).rejects.toThrow(
         'Prompt content is required'
       );
+    });
+  });
+
+  describe('English content', () => {
+    it('should accept a prompt that only has English content', async () => {
+      await expect(savePrompt({ contentEn: 'Answer as a teacher.' })).rejects.not.toThrow(
+        'Prompt content is required'
+      );
+    });
+
+    it('should reject a prompt with neither text', async () => {
+      await expect(savePrompt({ content: '', contentEn: '   ' })).rejects.toThrow(
+        'Prompt content is required'
+      );
+      await expect(savePrompt({ content: '   ', contentEn: null })).rejects.toThrow(
+        'Prompt content is required'
+      );
+    });
+
+    it('should reject English content exceeding 50000 characters', async () => {
+      await expect(
+        savePrompt({ content: 'valid', contentEn: 'a'.repeat(50001) })
+      ).rejects.toThrow('Prompt content (English) must be less than 50000 characters');
+    });
+
+    it('should save the English text next to the Chinese one', async () => {
+      const added = [];
+      const originalOpen = indexedDB.open;
+      // The setup mock never opens a database; this one accepts the write so
+      // the stored record can be inspected.
+      indexedDB.open = vi.fn(() => {
+        const request = {
+          result: {
+            objectStoreNames: [],
+            onclose: null,
+            transaction: () => ({
+              objectStore: () => ({
+                add: record => {
+                  added.push(record);
+                  const write = { result: 1, error: null, onsuccess: null, onerror: null };
+                  setTimeout(() => write.onsuccess?.(), 0);
+                  return write;
+                }
+              })
+            })
+          },
+          onsuccess: null,
+          onerror: null,
+          onupgradeneeded: null
+        };
+        setTimeout(() => request.onsuccess?.({ target: request }), 0);
+        return request;
+      });
+
+      try {
+        await initPromptDB();
+        await savePrompt({ title: 'Teacher', content: ' 像老师一样回答。 ', contentEn: ' Answer as a teacher. ' });
+      } finally {
+        indexedDB.open = originalOpen;
+        await initPromptDB();
+      }
+
+      expect(added).toHaveLength(1);
+      expect(added[0]).toMatchObject({ content: '像老师一样回答。', contentEn: 'Answer as a teacher.' });
     });
   });
 

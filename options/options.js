@@ -40,7 +40,8 @@ import {
   loadVersionInfo,
   checkForUpdates
 } from '../modules/version-checker.js';
-import { t, translatePage, getCurrentLanguage, initializeLanguage } from '../modules/i18n.js';
+import { t, translatePage, initializeLanguage } from '../modules/i18n.js';
+import { normalizeLocale } from '../modules/locale.js';
 import {
   DEFAULT_TIER_RECIPES,
   PROVIDER_TIER_IDS,
@@ -126,19 +127,6 @@ function renderGoogleModeSelectMarkup(currentMode, isEnabled) {
   `;
 }
 
-// Helper function to get browser's current language in our supported format
-function getCurrentBrowserLanguage() {
-  const browserLang = getCurrentLanguage();
-  // Map browser language codes to our supported locales
-  if (browserLang.startsWith('zh')) {
-    if (browserLang.includes('TW') || browserLang.includes('HK') || browserLang.includes('Hant')) {
-      return 'zh_TW';
-    }
-    return 'zh_CN';
-  }
-  return 'en';
-}
-
 function getEnabledProvidersOrDefault(settings) {
   if (settings.enabledProviders && Array.isArray(settings.enabledProviders)) {
     return [...settings.enabledProviders];
@@ -181,18 +169,10 @@ function getExtensionResourceUrl(path) {
 function getPromptGuidePath(locale) {
   const guidePaths = {
     en: 'data/prompt-libraries/guide.en.html',
-    zh_CN: 'data/prompt-libraries/guide.zh_CN.html',
-    zh_TW: 'data/prompt-libraries/guide.zh_TW.html',
-    ko: 'data/prompt-libraries/guide.ko.html',
-    ja: 'data/prompt-libraries/guide.ja.html',
-    es: 'data/prompt-libraries/guide.es.html',
-    fr: 'data/prompt-libraries/guide.fr.html',
-    de: 'data/prompt-libraries/guide.de.html',
-    it: 'data/prompt-libraries/guide.it.html',
-    ru: 'data/prompt-libraries/guide.ru.html'
+    zh_CN: 'data/prompt-libraries/guide.zh_CN.html'
   };
 
-  return guidePaths[locale] || guidePaths.en;
+  return guidePaths[normalizeLocale(locale)];
 }
 
 function setupShortcutHelpers() {
@@ -291,7 +271,7 @@ async function loadSettings() {
   document.getElementById('theme-select').value = settings.theme || 'auto';
 
   // Language
-  const currentLanguage = settings.language || getCurrentBrowserLanguage();
+  const currentLanguage = settings.language;
   document.getElementById('language-select').value = currentLanguage;
 
   const keyboardShortcutEnabled = settings.keyboardShortcutEnabled !== false;
@@ -927,7 +907,7 @@ function setupEventListeners() {
   // Custom prompt guide and template
   document.getElementById('open-custom-prompt-guide')?.addEventListener('click', async () => {
     const settings = await getSettings();
-    const locale = settings.language || getCurrentBrowserLanguage();
+    const locale = settings.language;
     const guidePath = getPromptGuidePath(locale);
     const url = getExtensionResourceUrl(guidePath);
     window.open(url, '_blank', 'noopener');
@@ -1274,8 +1254,14 @@ function validatePromptStructure(prompt) {
   if (!prompt.title || typeof prompt.title !== 'string') {
     errors.push('Missing or invalid "title" (string)');
   }
-  if (!prompt.content || typeof prompt.content !== 'string') {
+  // Either text alone is a complete prompt: `content` is shown in the app,
+  // `contentEn` is sent to the AIs instead of it.
+  if ((!prompt.content || typeof prompt.content !== 'string') &&
+      (!prompt.contentEn || typeof prompt.contentEn !== 'string')) {
     errors.push('Missing or invalid "content" (string)');
+  }
+  if (prompt.contentEn !== undefined && typeof prompt.contentEn !== 'string') {
+    errors.push('"contentEn" should be string');
   }
   if (!prompt.category || typeof prompt.category !== 'string') {
     errors.push('Missing or invalid "category" (string)');
@@ -1322,6 +1308,7 @@ function getPromptStructureExample() {
   {
     "title": "Short descriptive title",
     "content": "Full prompt text. Use {variables} for placeholders.",
+    "contentEn": "Optional English text sent to the AIs instead of content.",
     "category": "Category name",
     "tags": ["tag1", "tag2"],
     "variables": ["variable1", "variable2"],
@@ -1333,12 +1320,13 @@ function getPromptStructureExample() {
 
 Required fields:
 - title (string)
-- content (string)
+- content (string, or contentEn when the prompt has no Chinese text)
 - category (string)
 - tags (array of strings)
 - variables (array of strings)
 
 Optional fields:
+- contentEn (string, default: ""; sent to the AIs instead of content when set)
 - isFavorite (boolean, default: false)
 - isMode (boolean, default: false; true lists it in the composer's prompt-mode menu)
 - triggers (array of strings, default: []; words like "/study" that apply the mode to one send in Auto mode)

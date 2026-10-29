@@ -122,6 +122,9 @@
     if (host === 'meta.ai' || host === 'www.meta.ai') return 'meta-ai';
     if (host === 'studio.stepfun.com') return 'stepfun';
     if (host === 'app.agnes-ai.com') return 'agnes';
+    if (host === 'perplexity.ai' || host.endsWith('.perplexity.ai')) return 'perplexity';
+    if (host === 'copilot.com' || host.endsWith('.copilot.com') || host === 'copilot.microsoft.com') return 'copilot';
+    if (host === 'wenxin.baidu.com') return 'wenxin';
     if (host === 'aistudio.tencent.com') return 'hy-aistudio';
     return null;
   }

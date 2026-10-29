@@ -137,6 +137,59 @@ describe('optional provider access', () => {
         condition: { urlFilter: 'https://aistudio.tencent.com/*', resourceTypes: ['sub_frame'] },
       },
     });
+    expect(OPTIONAL_PROVIDER_CONFIGS.perplexity).toMatchObject({
+      origins: ['https://www.perplexity.ai/*'],
+      contentScript: {
+        id: 'perplexity-scripts',
+        matches: ['https://www.perplexity.ai/*'],
+      },
+      frameRule: {
+        id: 1010,
+        condition: { urlFilter: 'https://www.perplexity.ai/*', resourceTypes: ['sub_frame'] },
+      },
+    });
+    expect(OPTIONAL_PROVIDER_CONFIGS.copilot).toMatchObject({
+      origins: [
+        'https://copilot.com/*',
+        'https://copilot.microsoft.com/*',
+        'https://login.microsoftonline.com/*',
+        'https://login.live.com/*',
+      ],
+      contentScript: {
+        id: 'copilot-scripts',
+        matches: ['https://copilot.com/*', 'https://copilot.microsoft.com/*'],
+      },
+      frameRule: {
+        id: 1011,
+        condition: {
+          requestDomains: [
+            'copilot.com',
+            'copilot.microsoft.com',
+            'login.microsoftonline.com',
+            'login.live.com',
+          ],
+          // Other sites must not be able to frame Microsoft sign-in.
+          initiatorDomains: expect.arrayContaining([
+            'copilot.com',
+            'copilot.microsoft.com',
+            'login.microsoftonline.com',
+            'login.live.com',
+          ]),
+          resourceTypes: ['sub_frame'],
+        },
+      },
+    });
+    expect(OPTIONAL_PROVIDER_CONFIGS.wenxin).toMatchObject({
+      origins: ['https://wenxin.baidu.com/*'],
+      contentScript: {
+        id: 'wenxin-scripts',
+        matches: ['https://wenxin.baidu.com/*'],
+      },
+      frameRule: {
+        id: 1012,
+        condition: { urlFilter: 'https://wenxin.baidu.com/*', resourceTypes: ['sub_frame'] },
+      },
+    });
   });
 
   it('lets the MiMo panel frame its Xiaomi Account sign-in page', () => {
@@ -259,6 +312,24 @@ describe('optional provider access', () => {
       'content-scripts/page-style.js',
       'content-scripts/focus-toggle.js',
     ]);
+    for (const providerId of ['perplexity', 'copilot', 'wenxin']) {
+      expect(OPTIONAL_PROVIDER_CONFIGS[providerId].contentScript.js).toEqual([
+        'content-scripts/button-finder-utils.js',
+        'content-scripts/enter-behavior-utils.js',
+        `content-scripts/enter-behavior-${providerId}.js`,
+        'content-scripts/text-injection-all-providers.js',
+        'content-scripts/keyboard-shortcuts.js',
+        'content-scripts/provider-tiers.js',
+        'content-scripts/page-style.js',
+        'content-scripts/focus-toggle.js',
+      ]);
+    }
+    expect(OPTIONAL_PROVIDER_CONFIGS.copilot.contentScript.matches).not.toContain(
+      'https://login.microsoftonline.com/*'
+    );
+    expect(OPTIONAL_PROVIDER_CONFIGS.copilot.contentScript.matches).not.toContain(
+      'https://login.live.com/*'
+    );
   });
 
   it('requests only the selected provider origin', async () => {
@@ -271,12 +342,19 @@ describe('optional provider access', () => {
 
   it('requests the origins of several providers in one prompt', async () => {
     await expect(
-      requestOptionalProvidersPermission(['qwen-global', 'chatgpt', 'zai-global', 'qwen-global'])
+      requestOptionalProvidersPermission([
+        'qwen-global', 'chatgpt', 'zai-global', 'perplexity', 'copilot', 'wenxin', 'qwen-global',
+      ])
     ).resolves.toBe(true);
 
     expect(chrome.permissions.request).toHaveBeenCalledTimes(1);
     expect(chrome.permissions.request).toHaveBeenCalledWith({
-      origins: ['https://chat.qwen.ai/*', 'https://auth.qwen.ai/*', 'https://chat.z.ai/*'],
+      origins: [
+        'https://chat.qwen.ai/*', 'https://auth.qwen.ai/*', 'https://chat.z.ai/*',
+        'https://www.perplexity.ai/*', 'https://copilot.com/*', 'https://copilot.microsoft.com/*',
+        'https://login.microsoftonline.com/*', 'https://login.live.com/*',
+        'https://wenxin.baidu.com/*',
+      ],
     });
   });
 
@@ -347,23 +425,32 @@ describe('optional provider access', () => {
 
   it('never overwrites synced provider preferences when this device lacks permission', async () => {
     chrome.storage.sync.get.mockResolvedValue({
-      enabledProviders: ['chatgpt', 'qwen-cn'],
+      enabledProviders: ['chatgpt', 'qwen-cn', 'perplexity', 'copilot', 'wenxin'],
     });
     chrome.scripting.getRegisteredContentScripts.mockResolvedValue([
       { id: 'qwen-cn-scripts' },
+      { id: 'perplexity-scripts' },
+      { id: 'copilot-scripts' },
+      { id: 'wenxin-scripts' },
     ]);
     chrome.declarativeNetRequest.getDynamicRules.mockResolvedValue([
       { id: 1001 },
+      { id: 1010 },
+      { id: 1011 },
+      { id: 1012 },
     ]);
 
+    await expect(filterProvidersWithGrantedAccess([
+      'chatgpt', 'perplexity', 'copilot', 'wenxin',
+    ])).resolves.toEqual(['chatgpt']);
     await reconcileOptionalProviderAccess();
 
     expect(chrome.storage.sync.set).not.toHaveBeenCalled();
     expect(chrome.scripting.unregisterContentScripts).toHaveBeenCalledWith({
-      ids: ['qwen-cn-scripts'],
+      ids: ['qwen-cn-scripts', 'perplexity-scripts', 'copilot-scripts', 'wenxin-scripts'],
     });
     expect(chrome.declarativeNetRequest.updateDynamicRules).toHaveBeenCalledWith({
-      removeRuleIds: [1001],
+      removeRuleIds: [1001, 1010, 1011, 1012],
       addRules: [],
     });
   });
@@ -412,6 +499,9 @@ describe('optional provider access', () => {
       { id: 'stepfun-scripts' },
       { id: 'agnes-scripts' },
       { id: 'hy-aistudio-scripts' },
+      { id: 'perplexity-scripts' },
+      { id: 'copilot-scripts' },
+      { id: 'wenxin-scripts' },
       { id: 'unrelated-script' },
     ]);
     chrome.declarativeNetRequest.getDynamicRules.mockResolvedValue([
@@ -424,6 +514,9 @@ describe('optional provider access', () => {
       { id: 1007 },
       { id: 1008 },
       { id: 1009 },
+      { id: 1010 },
+      { id: 1011 },
+      { id: 1012 },
       { id: 9999 },
     ]);
 
@@ -441,10 +534,13 @@ describe('optional provider access', () => {
         'stepfun-scripts',
         'agnes-scripts',
         'hy-aistudio-scripts',
+        'perplexity-scripts',
+        'copilot-scripts',
+        'wenxin-scripts',
       ],
     });
     expect(chrome.declarativeNetRequest.updateDynamicRules).toHaveBeenCalledWith({
-      removeRuleIds: [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009],
+      removeRuleIds: [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012],
       addRules: [],
     });
   });
@@ -499,5 +595,32 @@ describe('optional provider access', () => {
     expect(chrome.scripting.updateContentScripts).not.toHaveBeenCalled();
     expect(chrome.scripting.unregisterContentScripts).not.toHaveBeenCalled();
     expect(chrome.declarativeNetRequest.updateDynamicRules).not.toHaveBeenCalled();
+  });
+  it('registers and removes the Perplexity page script with the provider', async () => {
+    chrome.permissions.contains.mockResolvedValue(true);
+
+    await syncOptionalProviderAccess(['perplexity']);
+
+    expect(chrome.scripting.registerContentScripts).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'perplexity-scripts' }),
+      expect.objectContaining({
+        id: 'perplexity-page-scripts',
+        matches: ['https://www.perplexity.ai/*'],
+        js: ['content-scripts/perplexity-no-service-worker.js'],
+        runAt: 'document_start',
+        allFrames: true,
+        world: 'MAIN',
+      }),
+    ]);
+
+    chrome.scripting.getRegisteredContentScripts.mockResolvedValue([
+      { id: 'perplexity-scripts' },
+      { id: 'perplexity-page-scripts' },
+    ]);
+    await syncOptionalProviderAccess([]);
+
+    expect(chrome.scripting.unregisterContentScripts).toHaveBeenCalledWith({
+      ids: ['perplexity-scripts', 'perplexity-page-scripts'],
+    });
   });
 });

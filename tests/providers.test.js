@@ -14,7 +14,7 @@ describe('providers module', () => {
 
   describe('PROVIDERS constant', () => {
     it('should contain all expected providers', () => {
-      expect(PROVIDERS).toHaveLength(18);
+      expect(PROVIDERS).toHaveLength(21);
       const providerIds = PROVIDERS.map((p) => p.id);
       expect(providerIds).toEqual([
         'chatgpt',
@@ -35,6 +35,9 @@ describe('providers module', () => {
         'stepfun',
         'agnes',
         'hy-aistudio',
+        'perplexity',
+        'copilot',
+        'wenxin',
       ]);
     });
 
@@ -103,6 +106,32 @@ describe('providers module', () => {
         icon: '/icons/providers/hy-aistudio.png',
         iconDark: '/icons/providers/dark/hy-aistudio.png',
         optionalOrigins: ['https://aistudio.tencent.com/*', 'https://api.hunyuan.tencent.com/*'],
+      });
+      expect(getProviderById('perplexity')).toMatchObject({
+        name: 'Perplexity',
+        url: 'https://www.perplexity.ai/',
+        icon: '/icons/providers/perplexity.png',
+        iconDark: '/icons/providers/dark/perplexity.png',
+        optionalOrigins: ['https://www.perplexity.ai/*'],
+      });
+      expect(getProviderById('copilot')).toMatchObject({
+        name: 'Copilot',
+        url: 'https://copilot.com/',
+        icon: '/icons/providers/copilot.png',
+        iconDark: '/icons/providers/dark/copilot.png',
+        optionalOrigins: [
+          'https://copilot.com/*',
+          'https://copilot.microsoft.com/*',
+          'https://login.microsoftonline.com/*',
+          'https://login.live.com/*',
+        ],
+      });
+      expect(getProviderById('wenxin')).toMatchObject({
+        name: '文心',
+        url: 'https://wenxin.baidu.com/',
+        icon: '/icons/providers/wenxin.png',
+        iconDark: '/icons/providers/dark/wenxin.png',
+        optionalOrigins: ['https://wenxin.baidu.com/*'],
       });
     });
 

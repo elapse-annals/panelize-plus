@@ -10,7 +10,7 @@
  * the conversation is unchanged because only the outgoing message carries it.
  */
 
-// Menu and seed order (Concise, Learning, Challenge, Brainstorm), with each
+// Menu and seed order (Concise, Learning, Challenge, Brainstorm, Deep thinking), with each
 // built-in mode's locale keys and English fallbacks.
 // `id` becomes the seeded prompt's modeKey, which also matches the
 // selectedPromptMode values saved before modes moved into the library.
@@ -26,7 +26,10 @@ export const PROMPT_MODES = [
     triggers: ['/challenge', '/compete'] },
   { id: 'brainstorm', labelKey: 'promptModeBrainstorm', label: 'Brainstorm',
     hintKey: 'promptModeBrainstormHint', hint: 'Append a brainstorm instruction: many varied angles, no early verdict',
-    triggers: ['/brainstorm', '/idea'] }
+    triggers: ['/brainstorm', '/idea'] },
+  { id: 'deep', labelKey: 'promptModeDeep', label: 'Deep thinking',
+    hintKey: 'promptModeDeepHint', hint: 'Append a reasoning instruction: break down, verify, show the steps',
+    triggers: ['/think', '/deep'] }
 ];
 
 // The composer's Auto choice: no mode by default, but a mode prompt's trigger
@@ -37,6 +40,10 @@ export const PROMPT_MODE_IDS = PROMPT_MODES.map(mode => mode.id);
 
 // chrome.storage.local, not sync: the library lives in this device's IndexedDB.
 export const PROMPT_MODES_SEEDED_KEY = 'promptModesSeeded';
+// Tracks which built-ins were offered, so later additions can be seeded without
+// restoring built-ins a user deleted.
+export const PROMPT_MODES_SEEDED_IDS_KEY = 'promptModesSeededIds';
+const LEGACY_PROMPT_MODE_IDS = ['concise', 'learning', 'compete', 'brainstorm'];
 // Built-in modes seeded before trigger words existed get their defaults once.
 export const PROMPT_MODE_TRIGGERS_SEEDED_KEY = 'promptModeTriggersSeeded';
 
@@ -50,7 +57,8 @@ const PROMPT_MODE_SUFFIX_FALLBACKS = {
   learning: 'Answer as a teacher: give the core conclusion first, then explain the reasoning step by step with examples, and finish with 1–2 questions that check my understanding.',
   concise: 'Be as concise as possible: give the conclusion and the key points only, and skip preamble, pleasantries and repetition.',
   brainstorm: 'Brainstorm: offer several different angles, as varied and even as bold as you can, briefly note the pros and cons of each, and do not rush to a verdict.',
-  compete: 'You are answering this alongside several other AIs and the answers will be compared side by side. Give the most accurate, insightful and useful answer you can.'
+  compete: 'You are answering this alongside several other AIs and the answers will be compared side by side. Give the most accurate, insightful and useful answer you can.',
+  deep: 'Think step by step: break the problem down, identify assumptions, analyze root causes, compare options and verify in reverse; before the final conclusion, list your reasoning steps in detail and state any uncertainty.'
 };
 
 /** @param {string} mode */
@@ -83,13 +91,43 @@ export function getPromptModeSuffix(mode, tr = null) {
  * the instruction on its own instead.
  *
  * @param {string} text - The question as the user typed it.
- * @param {string | null | undefined} instruction - The mode prompt's content.
+ * @param {string | null | undefined} instruction - The mode prompt's text for the AIs.
  * @returns {string}
  */
 export function applyPromptMode(text, instruction) {
   if (typeof text !== 'string' || !text.trim()) return text;
   if (typeof instruction !== 'string' || !instruction.trim()) return text;
   return `${text}\n\n${instruction}`;
+}
+
+// Trimmed prompt text, '' for a missing or non-string field. Prompts saved
+// before `contentEn` existed have none, so both helpers fall back to the other.
+function promptText(prompt, field) {
+  const value = prompt?.[field];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/**
+ * The text shown for a prompt in the library, the mode menu, the placeholder
+ * and the send preview: the Chinese `content` first, the English `contentEn`
+ * when there is none.
+ *
+ * @param {{ content?: string, contentEn?: string } | null | undefined} prompt
+ * @returns {string}
+ */
+export function getPromptDisplayContent(prompt) {
+  return promptText(prompt, 'content') || promptText(prompt, 'contentEn');
+}
+
+/**
+ * The text sent to the AIs for a prompt: the English `contentEn` first, the
+ * Chinese `content` when there is none.
+ *
+ * @param {{ content?: string, contentEn?: string } | null | undefined} prompt
+ * @returns {string}
+ */
+export function getPromptAiContent(prompt) {
+  return promptText(prompt, 'contentEn') || promptText(prompt, 'content');
 }
 
 /**
@@ -202,8 +240,8 @@ export function findPromptTriggerCompletion(text, caret, modePrompts) {
 
 /**
  * The text and instruction one send uses. Auto mode looks for trigger words
- * and appends the matched modes' instructions; any other mode passes `text`
- * through with `instruction`.
+ * and appends the matched modes' instructions in the text the AIs receive
+ * (English first); any other mode passes `text` through with `instruction`.
  *
  * @param {string} text
  * @param {{ auto?: boolean, instruction?: string | null, modePrompts?: Array<object> }} options
@@ -212,25 +250,32 @@ export function findPromptTriggerCompletion(text, caret, modePrompts) {
 export function resolvePromptModeForText(text, { auto = false, instruction = null, modePrompts = [] } = {}) {
   if (!auto) return { text, instruction: instruction || null, prompts: [] };
   const detected = detectPromptModeTriggers(text, modePrompts);
-  const combined = detected.prompts.map(prompt => prompt.content.trim()).filter(Boolean).join('\n\n');
+  const combined = detected.prompts.map(getPromptAiContent).filter(Boolean).join('\n\n');
   return { text: detected.text, instruction: combined || null, prompts: detected.prompts };
 }
 
 /**
  * What the composer previews under the question: the typed text with the
  * trigger words Auto mode removes marked, then the instruction that follows
- * it. Mirrors resolvePromptModeForText, so the preview matches the send.
+ * it. Mirrors resolvePromptModeForText, so the preview matches the send, but
+ * shows each instruction as the library shows it (Chinese first).
  * Returns null when nothing is appended or nothing would be sent.
  *
  * @param {string} text
- * @param {{ auto?: boolean, instruction?: string | null, modePrompts?: Array<object> }} options
+ * @param {{ auto?: boolean, instruction?: string | null, displayInstruction?: string | null,
+ *   modePrompts?: Array<object> }} options
  * @returns {Array<{ kind: 'text' | 'removed' | 'suffix', value: string }> | null}
  */
-export function describePromptSend(text, { auto = false, instruction = null, modePrompts = [] } = {}) {
+export function describePromptSend(text, { auto = false, instruction = null, displayInstruction, modePrompts = [] } = {}) {
   if (typeof text !== 'string' || !text.trim()) return null;
   const resolved = resolvePromptModeForText(text, { auto, instruction, modePrompts });
   const matches = auto ? findPromptModeMatches(text, modePrompts) : [];
   if (!resolved.text.trim() || (!resolved.instruction && !matches.length)) return null;
+  // Auto collects the matched modes' instructions again, in display form; a
+  // single mode previews `displayInstruction`, or the sent text when absent.
+  const suffix = auto
+    ? resolved.prompts.map(getPromptDisplayContent).filter(Boolean).join('\n\n')
+    : (displayInstruction ?? instruction);
   const segments = [];
   let cursor = 0;
   for (const match of matches) {
@@ -239,7 +284,7 @@ export function describePromptSend(text, { auto = false, instruction = null, mod
     cursor = match.end;
   }
   if (cursor < text.length) segments.push({ kind: 'text', value: text.slice(cursor) });
-  if (resolved.instruction) segments.push({ kind: 'suffix', value: `\n\n${resolved.instruction}` });
+  if (resolved.instruction) segments.push({ kind: 'suffix', value: `\n\n${suffix || resolved.instruction}` });
   return segments;
 }
 
@@ -256,7 +301,8 @@ function builtInModeRank(prompt) {
 /**
  * Library prompts marked as modes, in menu order: the built-in modes in
  * PROMPT_MODES order, then the user's own modes oldest first. A modeKey listed
- * twice (say after an import) shows once, as its oldest prompt.
+ * twice (say after an import) shows once, as its oldest prompt. A mode needs
+ * only one of its two texts, since the AIs receive the English one when set.
  *
  * @param {Array<object>} prompts
  * @returns {Array<object>}
@@ -265,7 +311,7 @@ export function selectModePrompts(prompts) {
   const byAge = (a, b) => (a.createdAt || 0) - (b.createdAt || 0) || (a.id || 0) - (b.id || 0);
   const seen = new Set();
   return (Array.isArray(prompts) ? prompts : [])
-    .filter(prompt => prompt?.isMode === true && prompt.modeKey && typeof prompt.content === 'string' && prompt.content.trim())
+    .filter(prompt => prompt?.isMode === true && prompt.modeKey && getPromptAiContent(prompt))
     .sort(byAge)
     .filter(prompt => !seen.has(prompt.modeKey) && seen.add(prompt.modeKey))
     .sort((a, b) => builtInModeRank(a) - builtInModeRank(b) || byAge(a, b));
@@ -311,9 +357,9 @@ export async function restoreDefaultModePrompts({ getAllPrompts, savePrompt, tr 
 }
 
 /**
- * Adds the built-in modes to the library once per device. Modes the user
- * deleted stay deleted, and a library that already holds a built-in (from an
- * import, say) does not get a second copy.
+ * Adds newly introduced built-in modes to the library once per device. Modes
+ * the user deleted stay deleted, and a library that already holds a built-in
+ * (from an import, say) does not get a second copy.
  *
  * @param {{ getAllPrompts: () => Promise<object[]>, savePrompt: (data: object) => Promise<unknown>,
  *   storage?: { get: Function, set: Function }, tr?: Function }} options
@@ -321,11 +367,31 @@ export async function restoreDefaultModePrompts({ getAllPrompts, savePrompt, tr 
  */
 export async function ensureDefaultModePrompts({ getAllPrompts, savePrompt, storage, tr = null }) {
   if (!storage?.get || !storage?.set) return false;
-  const stored = await storage.get(PROMPT_MODES_SEEDED_KEY);
-  if (stored?.[PROMPT_MODES_SEEDED_KEY]) return false;
-  await restoreDefaultModePrompts({ getAllPrompts, savePrompt, tr });
-  await storage.set({ [PROMPT_MODES_SEEDED_KEY]: true });
-  return true;
+  const [seeded, seededIds] = await Promise.all([
+    storage.get(PROMPT_MODES_SEEDED_KEY),
+    storage.get(PROMPT_MODES_SEEDED_IDS_KEY)
+  ]);
+  const legacySeeded = seeded?.[PROMPT_MODES_SEEDED_KEY] === true;
+  const storedIds = seededIds?.[PROMPT_MODES_SEEDED_IDS_KEY];
+  const offeredIds = Array.isArray(storedIds)
+    ? new Set(storedIds.filter(id => typeof id === 'string'))
+    : new Set(legacySeeded ? LEGACY_PROMPT_MODE_IDS : []);
+  const existing = new Set((await getAllPrompts()).map(prompt => prompt.modeKey).filter(Boolean));
+  let added = 0;
+  for (const prompt of getDefaultModePrompts(tr)) {
+    if (offeredIds.has(prompt.modeKey) || existing.has(prompt.modeKey)) continue;
+    await savePrompt(prompt);
+    added += 1;
+  }
+  const currentIds = [...PROMPT_MODE_IDS];
+  const idsChanged = !Array.isArray(storedIds)
+    || storedIds.length !== currentIds.length
+    || storedIds.some((id, index) => id !== currentIds[index]);
+  await storage.set({
+    [PROMPT_MODES_SEEDED_KEY]: true,
+    [PROMPT_MODES_SEEDED_IDS_KEY]: currentIds
+  });
+  return added > 0 || idsChanged || !legacySeeded;
 }
 
 /**

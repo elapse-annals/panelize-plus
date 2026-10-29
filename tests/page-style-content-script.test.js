@@ -238,6 +238,17 @@ describe('page style content script', () => {
     expect(doc.getElementById('answer').textContent).toBe('I am ChatGPT, made by OpenAI. 我是豆包。Googleplex stays. Gemini here');
   });
 
+  it('masks the three new provider brands in blind mode', () => {
+    const frame = createFrame({
+      url: 'https://www.perplexity.ai/',
+      html: '<p id="answer">Perplexity Copilot Microsoft ERNIE Wenxin 文心 文心一言 百度 一言难尽</p>'
+    });
+    send(frame, { blind: true });
+
+    // 一言 alone is an ordinary word; only the full 文心一言 is a brand.
+    expect(frame.win.document.getElementById('answer').textContent).toBe('███ ███ ███ ███ ███ ███ ███ ███ 一言难尽');
+  });
+
   it('does not rescan the whole page for its own masked text or stream changes inside an answer', async () => {
     const frame = createFrame({
       html: '<main><article class="prose" id="answer">ChatGPT answer</article><form id="composer-form"><textarea id="composer"></textarea><button aria-label="Send">Send</button></form></main>'

@@ -13,6 +13,7 @@ import {
   reconcileMimoSessionCookies
 } from '../modules/mimo-session-cookies.js';
 import { reconcileOptionalProviderAccess } from '../modules/optional-provider-access.js';
+import { clearPerplexityServiceWorker } from '../modules/perplexity-service-worker.js';
 import {
   ATTACHMENT_ACCEPT,
   isImageAttachment,
@@ -32,6 +33,7 @@ import {
   isProviderCurrentUrl
 } from '../modules/provider-open-url.js';
 import { getSetting, saveSetting } from '../modules/settings.js';
+import { createMultiPanelPopupWindow, savePopupWindowBounds } from '../modules/open-multi-panel.js';
 import {
   MAX_PANELS,
   LAYOUT_PANEL_COUNTS,
@@ -128,6 +130,7 @@ import {
   AI_SUMMARY_API_KEY_STORAGE_KEY,
   buildSummaryMessages,
   formatSummaryText,
+  groupItemsBySources,
   getSummaryOriginPattern,
   isRoundReadyForSummary,
   isStronglySupported,
@@ -149,7 +152,16 @@ import {
   summarizePanelReadiness
 } from '../modules/panel-readiness.js';
 import { shuffleOrder, syncDisplayOrder } from '../modules/blind-shuffle.js';
-import { applyPromptMode, cleanupSamplePrompts, ensureDefaultModePrompts, ensureDefaultModeTriggers, normalizePromptTriggers, restoreDefaultModePrompts } from '../modules/prompt-modes.js';
+import {
+  applyPromptMode,
+  cleanupSamplePrompts,
+  ensureDefaultModePrompts,
+  ensureDefaultModeTriggers,
+  getPromptAiContent,
+  getPromptDisplayContent,
+  normalizePromptTriggers,
+  restoreDefaultModePrompts
+} from '../modules/prompt-modes.js';
 
 
 // ===== State Management =====
@@ -515,7 +527,8 @@ async function requestMimoSessionCookieSync() {
 
 const PROVIDER_SESSION_SYNC = {
   grok: requestGrokWebSocketCookieSync,
-  mimo: requestMimoSessionCookieSync
+  mimo: requestMimoSessionCookieSync,
+  perplexity: clearPerplexityServiceWorker
 };
 
 function createPanelsFromStartupSnapshot() {
@@ -704,6 +717,9 @@ function showPanelLoadingState(panelEl, provider) {
 async function reloadPanelIframe(panel, overrideUrl = null) {
   if (panel.providerId === 'mimo') {
     await requestMimoSessionCookieSync();
+  }
+  if (panel.providerId === 'perplexity') {
+    await clearPerplexityServiceWorker();
   }
   const panelEl = document.getElementById(panel.id);
   const provider = getProviderById(panel.providerId);
@@ -1466,6 +1482,20 @@ async function loadSettings() {
 }
 
 // ===== Open Mode Management =====
+let popupBoundsTracked = false;
+
+function trackPopupWindowBounds(windowId) {
+  if (popupBoundsTracked || !Number.isInteger(windowId) || !chrome.windows?.onBoundsChanged) return;
+  popupBoundsTracked = true;
+  chrome.windows.onBoundsChanged.addListener((win) => {
+    if (win?.id === windowId) {
+      savePopupWindowBounds(chrome, win);
+    }
+  });
+  // Also capture the opening bounds, e.g. a window restored maximized.
+  chrome.windows.get(windowId).then((win) => savePopupWindowBounds(chrome, win)).catch(() => {});
+}
+
 async function detectWindowType() {
   try {
     // 同时读取窗口类型和设置中的模式
@@ -1476,6 +1506,9 @@ async function detectWindowType() {
     // popup 类型的窗口 type 为 'popup'
     isPopupWindow = currentWindow.type === 'popup';
     currentOpenMode = settings.openMode;
+    if (isPopupWindow) {
+      trackPopupWindowBounds(currentWindow.id);
+    }
 
     updateToggleButton();
   } catch (error) {
@@ -1547,12 +1580,7 @@ async function toggleOpenMode() {
     window.close(); // 关闭当前弹出窗口
   } else {
     // 从标签页切换到弹出窗口：创建弹出窗口，关闭当前标签页
-    await chrome.windows.create({
-      url: multiPanelUrl,
-      type: 'popup',
-      width: 1400,
-      height: 900
-    });
+    await createMultiPanelPopupWindow(chrome, multiPanelUrl);
     // 获取当前标签页并关闭
     const currentTab = await chrome.tabs.getCurrent();
     if (currentTab) {
@@ -2422,6 +2450,12 @@ export async function broadcastMessage(typedText, autoSubmit = true) {
   const resolvedMode = composerControls?.resolvePromptMode?.(typedText)
     ?? { text: typedText, instruction: composerControls?.getPromptMode() ?? null };
   const text = resolvedMode.text;
+  // A library prompt whose English text differs from the one shown was
+  // inserted verbatim; sending it unchanged sends the English text instead.
+  // Anything the user typed over it is sent exactly as it stands.
+  const sentText = appliedPromptText && text.trim() === appliedPromptText.display.trim()
+    ? appliedPromptText.ai
+    : text;
 
   try {
     if (typedText.trim() && !text.trim() && !hasImages) {
@@ -2447,9 +2481,9 @@ export async function broadcastMessage(typedText, autoSubmit = true) {
     if (hasImages) {
       pendingFillPromptMode = promptMode;
     }
-    const panelText = text.trim()
-      ? applyPromptMode(text, promptMode)
-      : promptMode || text;
+    const panelText = sentText.trim()
+      ? applyPromptMode(sentText, promptMode)
+      : promptMode || sentText;
 
     // Filling focuses each provider's composer too. Keep the unified input
     // focused, or the next Enter lands in one panel and sends only there.
@@ -2625,6 +2659,7 @@ export async function broadcastMessage(typedText, autoSubmit = true) {
 
       if (shouldClearFillPayload(summary)) {
         document.getElementById('unified-input').value = '';
+        appliedPromptText = null;
         resizeTextarea();
         clearAllImages();
       }
@@ -2682,6 +2717,7 @@ export async function broadcastMessage(typedText, autoSubmit = true) {
     // Clear input and save history
     if (totalSuccessful > 0) {
       document.getElementById('unified-input').value = '';
+      appliedPromptText = null;
       resizeTextarea();
 
       // Clear images after successful fill/send
@@ -2791,6 +2827,7 @@ export async function sendToPanel(
 async function clearAllInputs() {
   // Clear unified input
   document.getElementById('unified-input').value = '';
+  appliedPromptText = null;
   resizeTextarea();
 
   // Clear uploaded images
@@ -4150,7 +4187,16 @@ function startAiSummaryRound(roundId) {
   aiSummaryController = null;
   aiSummaryState = { roundId, status: 'idle', sources: [], missing: [], summary: null, error: '', needsSetup: false };
   document.getElementById('ai-summary-btn')?.classList.remove('ai-summary-ready');
+  updateAiSummaryButtonBusy();
   renderAiSummary();
+}
+
+// A ring spins around the button while answers are read or summarized.
+function updateAiSummaryButtonBusy() {
+  const busy = ['collecting', 'running'].includes(aiSummaryState.status);
+  const button = document.getElementById('ai-summary-btn');
+  button?.classList.toggle('ai-summary-busy', busy);
+  button?.setAttribute('aria-busy', String(busy));
 }
 
 function maybeAutoSummarize(roundId) {
@@ -4257,6 +4303,7 @@ async function runAiSummary(roundId, { collect = false } = {}) {
   const setState = (state) => {
     if (!isCurrent()) return;
     aiSummaryState = { roundId, sources: [], missing: [], summary: null, error: '', needsSetup: false, ...state };
+    updateAiSummaryButtonBusy();
     renderAiSummary();
   };
 
@@ -4353,8 +4400,8 @@ function createAiSummarySources(sources, sourcesById, round, totalSources) {
 }
 
 // Item text with any source id the model left in replaced by its AI's name.
-function createAiSummaryText(text, sourcesById, round) {
-  const element = document.createElement('p');
+function createAiSummaryText(text, sourcesById, round, tagName = 'p') {
+  const element = document.createElement(tagName);
   element.className = 'ai-summary-item-text';
   element.textContent = replaceSourceIds(text, sourceId => {
     const source = sourcesById.get(sourceId);
@@ -4363,11 +4410,47 @@ function createAiSummaryText(text, sourcesById, round) {
   return element;
 }
 
-function createAiSummaryItem(item, sourcesById, round, totalSources) {
-  const li = document.createElement('li');
-  li.classList.toggle('ai-summary-strong', isStronglySupported(item.sources, totalSources));
-  li.append(createAiSummaryText(item.text, sourcesById, round), createAiSummarySources(item.sources, sourcesById, round, totalSources));
-  return li;
+function createAiSummaryArticle(items, sourcesById, round, totalSources) {
+  const article = document.createDocumentFragment();
+  let previousSection = '';
+  items.forEach(item => {
+    const section = item.section || '';
+    if (section && section !== previousSection) {
+      const heading = createAiSummaryText(section, sourcesById, round, 'h5');
+      heading.className = 'ai-summary-article-heading';
+      article.append(heading);
+    }
+    previousSection = section;
+    const paragraph = createAiSummaryText(item.text, sourcesById, round);
+    paragraph.classList.add('ai-summary-article-paragraph');
+    paragraph.classList.toggle('ai-summary-strong', isStronglySupported(item.sources, totalSources));
+    paragraph.append(createAiSummarySources(item.sources, sourcesById, round, totalSources));
+    article.append(paragraph);
+  });
+  return article;
+}
+
+function createAiSummaryUniqueGroups(items, sourcesById, round) {
+  return groupItemsBySources(items, [...sourcesById.keys()]).map(group => {
+    const element = document.createElement('div');
+    element.className = 'ai-summary-unique-group';
+    const chips = createAiSummarySourceChips(group.sources, sourcesById, round);
+    if (chips.length) {
+      const heading = document.createElement('h5');
+      heading.className = 'ai-summary-unique-heading';
+      heading.append(...chips);
+      element.append(heading);
+    }
+    const list = document.createElement('ul');
+    list.className = 'ai-summary-unique-list';
+    group.items.forEach(item => {
+      const li = document.createElement('li');
+      li.append(createAiSummaryText(item.text, sourcesById, round));
+      list.append(li);
+    });
+    element.append(list);
+    return element;
+  });
 }
 
 // One disagreement: its topic, then each position on its own row followed by
@@ -4405,9 +4488,9 @@ function renderAiSummary() {
   const state = aiSummaryState;
   const round = state.roundId ? answerRounds.get(state.roundId) : null;
 
-  const question = byId('ai-summary-question');
-  question.textContent = round?.promptSummary || '';
-  question.hidden = !round?.promptSummary;
+  const title = round?.promptSummary || getLocalizedText('aiSummaryTitle', 'AI summary');
+  byId('ai-summary-title-text').textContent = title;
+  byId('ai-summary-title').title = title;
 
   const status = byId('ai-summary-status');
   status.classList.toggle('error', state.status === 'error');
@@ -4443,14 +4526,14 @@ function renderAiSummary() {
   const overview = byId('ai-summary-overview');
   overview.textContent = summary?.overview || '';
   overview.hidden = !summary?.overview;
-  byId('ai-summary-consensus').replaceChildren(...(summary?.consensus || []).map(item => createAiSummaryItem(item, sourcesById, round, state.sources.length)));
+  byId('ai-summary-consensus').replaceChildren(createAiSummaryArticle(summary?.consensus || [], sourcesById, round, state.sources.length));
   byId('ai-summary-consensus-section').hidden = !summary?.consensus.length;
-  byId('ai-summary-unique').replaceChildren(...(summary?.unique || []).map(item => createAiSummaryItem(item, sourcesById, round, state.sources.length)));
+  byId('ai-summary-unique').replaceChildren(...createAiSummaryUniqueGroups(summary?.unique || [], sourcesById, round));
   byId('ai-summary-unique-section').hidden = !summary?.unique?.length;
   byId('ai-summary-disagreements').replaceChildren(...(summary?.disagreements || []).map(item => createAiSummaryDisagreement(item, sourcesById, round, state.sources.length)));
   byId('ai-summary-disagreements-section').hidden = !summary?.disagreements.length;
   // Shown blocks fade in one after another (see .ai-summary-reveal).
-  [...result.querySelectorAll('.ai-summary-reveal:not([hidden]), .ai-summary-consensus > li, .ai-summary-disagreement')]
+  [...result.querySelectorAll('.ai-summary-reveal:not([hidden]), .ai-summary-article-paragraph, .ai-summary-unique-group, .ai-summary-disagreement')]
     .forEach((element, index) => element.style.setProperty('--ai-summary-index', String(index)));
 
   const missing = byId('ai-summary-missing');
@@ -4472,7 +4555,8 @@ async function copyAiSummary() {
       verdictTitle: getLocalizedText('aiSummaryVerdict', 'Verdict'),
       consensusTitle: getLocalizedText('aiSummaryConsensus', 'Agreed'),
       uniqueTitle: getLocalizedText('aiSummaryUnique', 'Unique insights'),
-      disagreementsTitle: getLocalizedText('aiSummaryDisagreements', 'Disagreements')
+      disagreementsTitle: getLocalizedText('aiSummaryDisagreements', 'Disagreements'),
+      sourceOrder: aiSummaryState.sources.map(source => source.sourceId)
     }
   );
   try {
@@ -5000,6 +5084,11 @@ async function adjustPanelCount(targetCount) {
 let currentPromptFilter = 'recent'; // 'recent', 'favorites', 'all'
 let currentCategoryFilter = '';
 let selectedPromptForVariables = null;
+// Text of the prompt last inserted into the input when its display text
+// (Chinese first) and its AI text (English first) differ, as { display, ai }.
+// A send that still holds `display` sends `ai`; an edited input sends itself.
+// Cleared once the input is cleared or other text is put in it.
+let appliedPromptText = null;
 
 async function loadPromptLibrary() {
   await loadCategoryFilter();
@@ -5057,14 +5146,18 @@ async function renderPromptList(searchQuery = '') {
     }
 
     const editLabel = escapeHtml(getLocalizedText('btnEdit', 'Edit'));
-    promptList.innerHTML = prompts.slice(0, 30).map(prompt => `
+    promptList.innerHTML = prompts.slice(0, 30).map(prompt => {
+      // Cards read like the rest of the library: Chinese first, English when
+      // there is none.
+      const preview = getPromptDisplayContent(prompt);
+      return `
       <div class="prompt-item-modal${prompt.isFavorite ? ' is-favorite' : ''}" data-id="${prompt.id}">
         <button type="button" class="prompt-item-edit" title="${editLabel}" aria-label="${editLabel}">
           <span class="material-symbols-outlined">edit</span>
         </button>
         ${prompt.isFavorite ? '<div class="prompt-item-favorite"><span class="material-symbols-outlined filled">star</span></div>' : ''}
         <div class="prompt-item-modal-title">${escapeHtml(prompt.title)}</div>
-        <div class="prompt-item-modal-preview">${escapeHtml(prompt.content.substring(0, 150))}${prompt.content.length > 150 ? '...' : ''}</div>
+        <div class="prompt-item-modal-preview">${escapeHtml(preview.substring(0, 150))}${preview.length > 150 ? '...' : ''}</div>
         <div class="prompt-item-meta-row">
           ${prompt.isMode ? `<span class="prompt-item-category prompt-item-mode">${escapeHtml(getLocalizedText('promptModeBadge', 'Mode'))}</span>` : ''}
           ${prompt.isMode ? normalizePromptTriggers(prompt.triggers).map(trigger => `<span class="prompt-item-category prompt-item-trigger">${escapeHtml(trigger)}</span>`).join('') : ''}
@@ -5077,7 +5170,8 @@ async function renderPromptList(searchQuery = '') {
           ` : ''}
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     // Add click handlers
     promptList.querySelectorAll('.prompt-item-modal').forEach(item => {
@@ -5119,7 +5213,7 @@ async function selectPrompt(prompt) {
     selectedPromptForVariables = prompt;
     showVariableModal(prompt);
   } else {
-    applyPromptToInput(prompt.content);
+    applyPromptTexts(getPromptDisplayContent(prompt), getPromptAiContent(prompt));
     closePromptModal();
   }
 }
@@ -5147,26 +5241,40 @@ function showVariableModal(prompt) {
 function applyVariables() {
   if (!selectedPromptForVariables) return;
 
-  let content = selectedPromptForVariables.content;
+  const prompt = selectedPromptForVariables;
   const inputs = document.querySelectorAll('#variable-inputs input');
+  // Both texts get the same values, so an English send matches what the
+  // Chinese prompt in the input asks for.
+  const withValues = text => {
+    let content = text;
+    inputs.forEach(input => {
+      const variable = input.dataset.variable;
+      const value = input.value || `{${variable}}`;
+      // Replace all occurrences of {variable} literally: names may hold regex
+      // characters and values may hold `$&`.
+      content = content.split(`{${variable}}`).join(value);
+    });
+    return content;
+  };
 
-  inputs.forEach(input => {
-    const variable = input.dataset.variable;
-    const value = input.value || `{${variable}}`;
-    // Replace all occurrences of {variable}
-    const regex = new RegExp(`\\{${variable}\\}`, 'g');
-    content = content.replace(regex, value);
-  });
-
-  applyPromptToInput(content);
+  applyPromptTexts(withValues(getPromptDisplayContent(prompt)), withValues(getPromptAiContent(prompt)));
   closeVariableModal();
   closePromptModal();
   selectedPromptForVariables = null;
 }
 
+// Shows a prompt in the input and remembers the text the AIs get when it
+// differs from the one shown, so an unedited send can send the English text.
+function applyPromptTexts(display, ai) {
+  applyPromptToInput(display);
+  appliedPromptText = ai !== display ? { display, ai } : null;
+}
+
 function applyPromptToInput(content) {
   const input = document.getElementById('unified-input');
   input.value = content;
+  // Text from elsewhere (say a page selection) has no English version.
+  appliedPromptText = null;
   resetFillRetryState();
   resizeTextarea();
   input.focus();
@@ -5831,6 +5939,7 @@ async function loadPromptForEditing(promptId) {
     if (prompt) {
       document.getElementById('prompt-title-input').value = prompt.title || '';
       document.getElementById('prompt-content-input').value = prompt.content || '';
+      document.getElementById('prompt-content-en-input').value = prompt.contentEn || '';
       document.getElementById('prompt-category-input').value = prompt.category || '';
       document.getElementById('prompt-tags-input').value = prompt.tags ? prompt.tags.join(', ') : '';
       document.getElementById('prompt-is-mode-input').checked = prompt.isMode === true;
@@ -5846,6 +5955,7 @@ async function loadPromptForEditing(promptId) {
 function clearPromptEditor() {
   document.getElementById('prompt-title-input').value = '';
   document.getElementById('prompt-content-input').value = '';
+  document.getElementById('prompt-content-en-input').value = '';
   document.getElementById('prompt-category-input').value = '';
   document.getElementById('prompt-tags-input').value = '';
   document.getElementById('prompt-is-mode-input').checked = false;
@@ -5862,19 +5972,21 @@ function closePromptEditor() {
 async function savePromptFromEditor() {
   const title = document.getElementById('prompt-title-input').value.trim();
   const content = document.getElementById('prompt-content-input').value.trim();
+  const contentEn = document.getElementById('prompt-content-en-input').value.trim();
   const category = document.getElementById('prompt-category-input').value.trim();
   const tagsStr = document.getElementById('prompt-tags-input').value.trim();
   const isMode = document.getElementById('prompt-is-mode-input').checked;
   const triggers = normalizePromptTriggers(document.getElementById('prompt-triggers-input').value);
 
-  if (!title || !content) {
-    alert('Title and content are required');
+  // Either text is enough: the English one alone is sent to the AIs.
+  if (!title || (!content && !contentEn)) {
+    alert('A title and content in at least one language are required');
     return;
   }
 
   const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : [];
 
-  const promptData = { title, content, category, tags, isMode, triggers };
+  const promptData = { title, content, contentEn, category, tags, isMode, triggers };
 
   try {
     if (currentEditingPromptId) {

@@ -184,6 +184,36 @@ export const PROVIDERS = [
     iconDark: '/icons/providers/dark/hy-aistudio.png',
     enabled: true,
     optionalOrigins: OPTIONAL_PROVIDER_CONFIGS['hy-aistudio'].origins
+  },
+  {
+    id: 'perplexity',
+    name: 'Perplexity',
+    url: 'https://www.perplexity.ai/',
+    topLevelUrl: 'https://www.perplexity.ai/',
+    icon: '/icons/providers/perplexity.png',
+    iconDark: '/icons/providers/dark/perplexity.png',
+    enabled: true,
+    optionalOrigins: OPTIONAL_PROVIDER_CONFIGS.perplexity.origins
+  },
+  {
+    id: 'copilot',
+    name: 'Copilot',
+    url: 'https://copilot.com/',
+    topLevelUrl: 'https://copilot.com/chat',
+    icon: '/icons/providers/copilot.png',
+    iconDark: '/icons/providers/dark/copilot.png',
+    enabled: true,
+    optionalOrigins: OPTIONAL_PROVIDER_CONFIGS.copilot.origins
+  },
+  {
+    id: 'wenxin',
+    name: '文心',
+    url: 'https://wenxin.baidu.com/',
+    topLevelUrl: 'https://wenxin.baidu.com/',
+    icon: '/icons/providers/wenxin.png',
+    iconDark: '/icons/providers/dark/wenxin.png',
+    enabled: true,
+    optionalOrigins: OPTIONAL_PROVIDER_CONFIGS.wenxin.origins
   }
 ];
 
@@ -224,7 +254,10 @@ const PROVIDER_SHORT_NAMES = {
   'meta-ai': 'Meta',
   stepfun: 'Step',
   agnes: 'Agn',
-  'hy-aistudio': 'Hy'
+  'hy-aistudio': 'Hy',
+  perplexity: 'Pplx',
+  copilot: 'Copilot',
+  wenxin: '文心'
 };
 
 export function getProviderShortName(provider) {

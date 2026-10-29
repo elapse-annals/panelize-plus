@@ -3,6 +3,7 @@ import {
   ANSWER_TEXT_MAX_LENGTH,
   buildSummaryMessages,
   formatSummaryText,
+  groupItemsBySources,
   getSummaryOriginPattern,
   isRoundReadyForSummary,
   isStronglySupported,
@@ -60,6 +61,10 @@ describe('buildSummaryMessages', () => {
     expect(messages[0].content).toContain('"verdict"');
     expect(messages[0].content).toContain('"positions"');
     expect(messages[0].content).toContain('"unique"');
+    expect(messages[0].content).toContain('2–5 short, themed sections');
+    expect(messages[0].content).toContain('"heading"');
+    expect(messages[0].content).toContain('"points"');
+    expect(messages[0].content).toContain('complete paragraph of 1–3 sentences');
     expect(messages[0].content).toContain('contradict each other and cannot both be true');
     expect(messages[0].content).toContain('does not mention a point does not disagree');
     expect(messages[0].content).toContain('Never write source ids');
@@ -98,6 +103,24 @@ describe('parseSummaryResponse', () => {
     expect(summary.unique).toEqual([{ text: 'Has plugins', sources: ['S2'] }]);
     expect(summary.disagreements[0].topic).toBe('Cost');
     expect(summary.disagreements[0].positions[0].text).toBe('Cheap');
+  });
+
+  it('flattens themed consensus groups and keeps headings only when present', () => {
+    const summary = parseSummaryResponse(JSON.stringify({
+      consensus: [
+        { heading: 'Evidence', points: [
+          { text: 'First paragraph.', sources: ['S1', 'S2'] },
+          { text: 'Second paragraph (S1).', sources: ['S1'] }
+        ] },
+        { heading: ' ', points: [{ text: 'Unsectioned paragraph.', sources: ['S2'] }] }
+      ]
+    }), valid);
+
+    expect(summary.consensus).toEqual([
+      { text: 'First paragraph.', sources: ['S1', 'S2'], section: 'Evidence' },
+      { text: 'Second paragraph.', sources: ['S1'], section: 'Evidence' },
+      { text: 'Unsectioned paragraph.', sources: ['S2'] }
+    ]);
   });
 
   it('keeps at most three positions and drops empty disagreements', () => {
@@ -225,6 +248,75 @@ describe('formatSummaryText', () => {
       unique: [{ text: 'Only one', sources: ['S2'] }],
       disagreements: [{ topic: 'Split', sources: [], positions: [{ text: 'A', sources: ['S1'] }, { text: 'B', sources: ['S2'] }] }]
     }, id => ({ S1: 'ChatGPT', S2: 'Gemini' })[id], { verdictTitle: '结论', consensusTitle: '一致', uniqueTitle: '独到观点', disagreementsTitle: '分歧' });
-    expect(text).toBe('结论: Yes [ChatGPT]\n\n一致:\n- Point [ChatGPT, Gemini]\n\n独到观点:\n- Only one [Gemini]\n\n分歧:\n- Split\n  · A [ChatGPT]\n  · B [Gemini]');
+    expect(text).toBe('结论: Yes [ChatGPT]\n\n一致:\nPoint [ChatGPT, Gemini]\n\n独到观点:\n[Gemini]\n- Only one\n\n分歧:\n- Split\n  · A [ChatGPT]\n  · B [Gemini]');
+  });
+
+  it('copies consensus sections as paragraphs and unique insights by source group', () => {
+    const text = formatSummaryText({
+      verdict: null,
+      overview: 'Overview.',
+      consensus: [
+        { section: 'Evidence', text: 'First paragraph.', sources: ['S2', 'S1'] },
+        { section: 'Evidence', text: 'Second paragraph.', sources: ['S2'] },
+        { section: 'Caveats', text: 'A caveat.', sources: ['S1'] },
+        { text: 'Legacy flat point.', sources: ['S1', 'S2'] }
+      ],
+      unique: [
+        { text: 'Only Gemini.', sources: ['S2'] },
+        { text: 'Shared insight.', sources: ['S2', 'S1'] },
+        { text: 'Only ChatGPT.', sources: ['S1'] },
+        { text: 'Same source set.', sources: ['S1', 'S2'] },
+        { text: 'No attribution.', sources: [] }
+      ],
+      disagreements: []
+    }, id => ({ S1: 'ChatGPT', S2: 'Gemini' })[id], {
+      consensusTitle: '一致',
+      uniqueTitle: '独到观点',
+      sourceOrder: ['S1', 'S2']
+    });
+
+    expect(text).toBe([
+      'Overview.',
+      '一致:\n## Evidence\nFirst paragraph. [ChatGPT, Gemini]\n\nSecond paragraph. [Gemini]\n\n## Caveats\nA caveat. [ChatGPT]\n\nLegacy flat point. [ChatGPT, Gemini]',
+      '独到观点:\n[ChatGPT]\n- Only ChatGPT.\n\n[Gemini]\n- Only Gemini.\n\n[ChatGPT, Gemini]\n- Shared insight.\n- Same source set.\n\n- No attribution.'
+    ].join('\n\n'));
+  });
+});
+
+describe('groupItemsBySources', () => {
+  it('groups exact source sets in panel order without duplicating items', () => {
+    const items = [
+      { text: 'S1/S3 first', sources: ['S3', 'S1'] },
+      { text: 'S2 only', sources: ['S2'] },
+      { text: 'S1 only', sources: ['S1', 'S1'] },
+      { text: 'S1/S2', sources: ['S1', 'S2'] },
+      { text: 'S3 only', sources: ['S3'] },
+      { text: 'S3/S1 reversed', sources: ['S1', 'S3'] },
+      { text: 'Unknown pair first', sources: ['S9', 'S8'] },
+      { text: 'Unknown pair reversed', sources: ['S8', 'S9'] },
+      { text: 'No sources', sources: [] },
+      { text: 'Sources omitted' }
+    ];
+
+    const groups = groupItemsBySources(items, ['S1', 'S2', 'S3']);
+
+    expect(groups.map(group => group.sources)).toEqual([
+      ['S1'], ['S2'], ['S3'], ['S1', 'S3'], ['S1', 'S2'], ['S8', 'S9'], []
+    ]);
+    expect(groups.map(group => group.items.map(item => item.text))).toEqual([
+      ['S1 only'], ['S2 only'], ['S3 only'], ['S1/S3 first', 'S3/S1 reversed'], ['S1/S2'],
+      ['Unknown pair first', 'Unknown pair reversed'], ['No sources', 'Sources omitted']
+    ]);
+    expect(groups.flatMap(group => group.items)).toHaveLength(items.length);
+    expect(items[0].sources).toEqual(['S3', 'S1']);
+  });
+
+  it('keeps multi-source groups with the same first panel in first-seen order', () => {
+    const groups = groupItemsBySources([
+      { text: 'S1/S3', sources: ['S1', 'S3'] },
+      { text: 'S1/S2', sources: ['S1', 'S2'] }
+    ], ['S1', 'S2', 'S3']);
+
+    expect(groups.map(group => group.sources)).toEqual([['S1', 'S3'], ['S1', 'S2']]);
   });
 });

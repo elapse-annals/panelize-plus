@@ -36,6 +36,22 @@ describe('provider location reporting content script', () => {
     });
   });
 
+  it.each([
+    ['https://www.perplexity.ai/', 'perplexity'],
+    ['https://copilot.com/chat', 'copilot'],
+    ['https://copilot.microsoft.com/', 'copilot'],
+    ['https://wenxin.baidu.com/', 'wenxin']
+  ])('detects the provider on %s', (url, provider) => {
+    const frame = new Window({ url });
+    Object.defineProperty(frame, 'parent', {
+      configurable: true,
+      value: { postMessage: vi.fn() }
+    });
+    frame.eval(contentScriptSource);
+
+    expect(getLocationReports(frame.parent.postMessage)).toContainEqual(expect.objectContaining({ provider, url }));
+  });
+
   it('reports location after pushState', async () => {
     testWindow.history.pushState({}, '', '/c/pushed');
     await new Promise(resolve => setTimeout(resolve, 0));

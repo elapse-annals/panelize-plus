@@ -249,7 +249,7 @@
   const MULTI_PANEL_EXTENSION_ORIGIN = getExtensionOrigin();
   const SLOW_COMPOSER_PROVIDERS = new Set([
     'deepseek', 'kimi', 'doubao', 'chatglm', 'zai-global', 'yuanbao', 'mimo', 'meta-ai',
-    'stepfun', 'agnes', 'hy-aistudio'
+    'stepfun', 'agnes', 'hy-aistudio', 'perplexity', 'copilot', 'wenxin'
   ]);
   const IMAGE_INJECTION_REASONS = Object.freeze({
     CONTROL_NOT_FOUND: 'control-not-found',
@@ -350,6 +350,17 @@
       'textarea[placeholder="分配一个任务或提问任何问题"]',
       'textarea[rows="1"]'
     ],
+    // Perplexity's signed-in Lexical editor was verified in the browser.
+    perplexity: [
+      'div#ask-input[contenteditable="true"][role="textbox"][data-lexical-editor="true"]',
+      '#ask-input[contenteditable="true"]',
+      'textarea#ask-input',
+      '[contenteditable="true"][data-lexical-editor="true"][role="textbox"]'
+    ],
+    copilot: [
+      '#m365-chat-input-shared-container span#m365-chat-editor-target-element[role="textbox"][contenteditable="true"][data-lexical-editor="true"]'
+    ],
+    wenxin: ['textarea#chat-textarea.ci-textarea'],
     'hy-aistudio': ['.hy-chat-input__content textarea.t-textarea__inner', 'textarea[placeholder="有问题，尽管问"]'],
     google: [
       'textarea.ITIRGe',
@@ -540,6 +551,23 @@
       'button[data-slot="button"][aria-label="发送"]',
       'button[data-slot="button"][aria-label="Send"]'
     ],
+    // Perplexity's verified editor is in a .bg-composer div, not a form.
+    perplexity: [
+      '.bg-composer:has(#ask-input) button[aria-label="提交"]',
+      '.bg-composer:has(#ask-input) button[aria-label="Submit"]',
+      '.bg-composer:has(#ask-input) button[aria-label="Send"]',
+      '.bg-composer:has(#ask-input) button[aria-label="发送"]',
+      '.bg-composer:has([contenteditable="true"][data-lexical-editor="true"][role="textbox"]) button[aria-label="提交"]',
+      '.bg-composer:has([contenteditable="true"][data-lexical-editor="true"][role="textbox"]) button[aria-label="Submit"]',
+      '.bg-composer:has([contenteditable="true"][data-lexical-editor="true"][role="textbox"]) button[aria-label="Send"]',
+      '.bg-composer:has([contenteditable="true"][data-lexical-editor="true"][role="textbox"]) button[aria-label="发送"]'
+    ],
+    copilot: [
+      '#m365-chat-input-shared-container button.fai-SendButton',
+      '#m365-chat-input-shared-container button[aria-label="Send"]',
+      '#m365-chat-input-shared-container button[aria-label="发送"]'
+    ],
+    wenxin: ['img#ci-submit-button-ai.ci-submit-button-ai-active'],
     agnes: [
       'button[title="Send"]',
       'button[title="发送"]',
@@ -667,6 +695,9 @@
     // StepFun's New Chat control has no stable selector; the root opens a new chat.
     stepfun: 'https://studio.stepfun.com/',
     agnes: 'https://app.agnes-ai.com/',
+    perplexity: 'https://www.perplexity.ai/',
+    copilot: 'https://copilot.com/chat',
+    wenxin: 'https://wenxin.baidu.com/',
     'hy-aistudio': 'https://aistudio.tencent.com/',
     google: 'https://www.google.com/search?udm=50'
   };
@@ -727,6 +758,12 @@
       return 'stepfun';
     } else if (hostname === 'app.agnes-ai.com') {
       return 'agnes';
+    } else if (hostname === 'www.perplexity.ai' || hostname === 'perplexity.ai') {
+      return 'perplexity';
+    } else if (hostname === 'copilot.com' || hostname.endsWith('.copilot.com') || hostname === 'copilot.microsoft.com') {
+      return 'copilot';
+    } else if (hostname === 'wenxin.baidu.com') {
+      return 'wenxin';
     } else if (hostname === 'aistudio.tencent.com') {
       return 'hy-aistudio';
     } else if (hostname.includes('google.com') || hostname.includes('google.') || hostname === 'www.google.com') {

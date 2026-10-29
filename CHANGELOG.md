@@ -1,5 +1,43 @@
 # Changelog
 
+## 2.39.0 - 2026-10-29
+- Popup mode remembers the window's position, size and maximized state, and reopens there instead of always at 1400×900. Switching from a tab to popup mode uses the same remembered bounds.
+
+## 2.38.2 - 2026-10-29
+- Perplexity panels load again for people who also use Perplexity in a normal tab. Its service worker answered the panel's page load with headers that block embedding, so Panelize now removes only that service worker before a Perplexity panel loads and stops panels from registering it again. This adds the `browsingData` permission; cookies and sign-ins are not touched.
+
+## 2.38.1 - 2026-10-29
+- The Copilot panel opens copilot.com instead of going blank on Microsoft's sign-in page, which refuses to load inside a panel. Signing in from the panel now opens Microsoft sign-in in a new tab; reload the panel afterwards.
+
+## 2.38.0 - 2026-10-29
+- While the AI summary is reading or summarizing answers, a loading ring spins around its toolbar button.
+
+## 2.37.0 - 2026-10-28
+- Simplified the interface to Simplified Chinese and English, with Chinese as the default. Existing English preferences are kept; retired language preferences fall back to Chinese.
+- Removed the other eight language packs and their prompt-library guides.
+
+## 2.36.0 - 2026-10-28
+- Added the Deep thinking prompt mode with `/think` and `/deep` triggers in all languages. Existing users receive the new mode once; modes they deleted stay deleted.
+- Grouped New chat, Wide mode and AI summary together in the toolbar, followed by a divider.
+- The AI summary uses the question as its compact header, presents agreement as themed paragraphs with inline sources, and groups unique insights by the models that raised them. Copied summaries keep the sections and source groups.
+
+## 2.35.1 - 2026-10-28
+- Copilot's embedding rule now only lifts framing protection for frames the panels open, so other websites can no longer frame Microsoft's sign-in pages while Copilot is enabled.
+- Blind mode no longer masks the ordinary Chinese word "一言" (as in 一言难尽); only the full name 文心一言 is masked.
+- A prompt's English text is no longer sent in place of text you put in the input later: it is forgotten once the input is cleared or filled from elsewhere, such as a page selection.
+- Prompt variables are filled in literally, so names with symbols such as `(` or `+` work and values containing `$&` are inserted as typed.
+
+## 2.35.0 - 2026-10-28
+- Prompt Library edit buttons are always visible and have a larger 32px click target, with more room beside titles and favorites.
+- Added Perplexity, Copilot and Wenxin as optional providers, with site access controls, text fill/send, Enter behavior, shortcuts, blind-mode masking and provider discovery. Image attachments remain disabled for these providers.
+- Wenxin embedding, text fill, Send All and Enter sending were verified on its live site. Perplexity and Copilot's signed-in editors and send controls were inspected in Chrome; their embedded sending remains unverified because of Cloudflare and Microsoft sign-in requirements.
+
+## 2.34.0 - 2026-10-28
+- Prompts can now carry an English version next to the Chinese one. The Prompt Library, the mode menu, the composer placeholder and the send preview show the Chinese text (the English one when a prompt has no Chinese), while the AIs receive the English text whenever it is set.
+- The prompt editor has a second field, "Content (English)"; either text alone is enough to save a prompt, and the English field is optional.
+- Picking a prompt with both texts fills the input with the Chinese text and sends the English one; edit the text and what you typed is sent instead.
+- Prompt search matches the English text too, and a mode that only has English text still appears in the mode menu.
+
 ## 2.33.0 - 2026-10-28
 - "Import Default Prompts" in Options now adds only the built-in prompt modes (Concise, Learning, Challenge, Brainstorm) that your library lacks, instead of the 70 sample prompts.
 - Sample prompts imported again after the earlier cleanup are removed once more. As before, only samples still exactly as shipped go; prompts you edited or favorited stay.

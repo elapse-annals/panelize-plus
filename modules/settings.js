@@ -1,5 +1,6 @@
 import { DEFAULT_GOOGLE_PROVIDER_MODE } from './google-mode.js';
 import { DEFAULT_PROVIDER_IDS, DEFAULT_PROVIDER_ORDER, DEFAULT_STARTUP_PROVIDER_IDS } from './provider-defaults.js';
+import { DEFAULT_LOCALE, normalizeLocale } from './locale.js';
 
 const DEFAULT_SETTINGS = {
   enabledProviders: DEFAULT_PROVIDER_IDS,
@@ -20,7 +21,7 @@ const DEFAULT_SETTINGS = {
   lastSelectedProvider: 'chatgpt',
   rememberLastProvider: true,  // When true, Panelize opens last selected provider; when false, always opens default provider
   theme: 'auto',
-  language: null,
+  language: DEFAULT_LOCALE,
   keyboardShortcutEnabled: true,
   openMode: 'tab',  // 'tab' or 'popup'
   shareWatermarkEnabled: true,  // Adds the "Compared with Panelize" strip to shared snapshots
@@ -38,6 +39,10 @@ const DEFAULT_SETTINGS = {
   }
 };
 
+function normalizeLanguageSetting(settings) {
+  return { ...settings, language: normalizeLocale(settings.language) };
+}
+
 export async function getSettings() {
   // Check if chrome API is available
   if (typeof chrome === 'undefined' || !chrome.storage) {
@@ -47,11 +52,11 @@ export async function getSettings() {
   
   try {
     const result = await chrome.storage.sync.get(DEFAULT_SETTINGS);
-    return result;
+    return normalizeLanguageSetting(result);
   } catch (error) {
     console.warn('chrome.storage.sync unavailable, using local', error);
     try {
-      return await chrome.storage.local.get(DEFAULT_SETTINGS);
+      return normalizeLanguageSetting(await chrome.storage.local.get(DEFAULT_SETTINGS));
     } catch (localError) {
       console.warn('chrome.storage.local also unavailable, using defaults');
       return { ...DEFAULT_SETTINGS };
@@ -74,7 +79,7 @@ export async function saveSetting(key, value) {
     return;
   }
   
-  const update = { [key]: value };
+  const update = { [key]: key === 'language' ? normalizeLocale(value) : value };
   try {
     await chrome.storage.sync.set(update);
   } catch (error) {
@@ -93,12 +98,13 @@ export async function saveSettings(settings) {
     return;
   }
   
+  const update = Object.hasOwn(settings, 'language') ? normalizeLanguageSetting(settings) : settings;
   try {
-    await chrome.storage.sync.set(settings);
+    await chrome.storage.sync.set(update);
   } catch (error) {
     console.warn('chrome.storage.sync unavailable, using local', error);
     try {
-      await chrome.storage.local.set(settings);
+      await chrome.storage.local.set(update);
     } catch (localError) {
       console.warn('chrome.storage.local also unavailable');
     }

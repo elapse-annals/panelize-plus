@@ -183,7 +183,10 @@ export const PROVIDER_TIER_CONFIG = Object.freeze({
   'meta-ai': { strategy: 'recipe', evidence: 'user-mapping-needs-logged-in-dom-confirmation', source: 'https://www.meta.ai/' },
   stepfun: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://studio.stepfun.com/' },
   agnes: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://app.agnes-ai.com/' },
-  'hy-aistudio': { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://aistudio.tencent.com/' }
+  'hy-aistudio': { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://aistudio.tencent.com/' },
+  perplexity: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://www.perplexity.ai/' },
+  copilot: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://copilot.com/chat' },
+  wenxin: { ...DISCOVERY_CONFIG, evidence: 'visible-ui-discovery-only', source: 'https://wenxin.baidu.com/' }
 });
 
 const MENU_EFFORT_LEVELS = Object.freeze({ fast: 'Low', balanced: 'Medium', deep: 'High' });

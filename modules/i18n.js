@@ -1,5 +1,7 @@
 // T074: Internationalization (i18n) utility module
 // Provides helper functions for Chrome i18n API
+import { DEFAULT_LOCALE, normalizeLocale } from './locale.js';
+import { getSetting } from './settings.js';
 
 // Translation cache for custom language override
 let translationCache = null;
@@ -7,13 +9,16 @@ let currentLocale = null;
 
 /**
  * Load translations from a specific locale
- * @param {string} locale - Locale code (e.g., 'en', 'zh_CN', 'zh_TW')
+ * @param {string} locale - Locale code ('en' or 'zh_CN')
  * @returns {Promise<Object>} Translation messages object
  */
 async function loadTranslations(locale) {
   try {
     const url = chrome.runtime.getURL(`_locales/${locale}/messages.json`);
     const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Translation request failed: ${response.status}`);
+    }
     const messages = await response.json();
     return messages;
   } catch (error) {
@@ -27,56 +32,18 @@ async function loadTranslations(locale) {
  * @param {string} preferredLocale - User's preferred locale from settings
  */
 export async function initializeLanguage(preferredLocale = null) {
-  // Determine which locale to use
-  let locale = preferredLocale;
-
-  if (!locale) {
-    // Try to get from storage
-    try {
-      const result = await chrome.storage.sync.get({ language: null });
-      locale = result.language;
-    } catch (error) {
-      // Storage not available, use browser default
-    }
-  }
-
-  // If still no locale, use browser's language
-  if (!locale) {
-    locale = getBrowserLocale();
-  }
+  const locale = normalizeLocale(preferredLocale ?? await getSetting('language'));
 
   // Load the translations
   translationCache = await loadTranslations(locale);
   currentLocale = locale;
 
-  // If loading failed, try fallback to English
-  if (!translationCache && locale !== 'en') {
-    translationCache = await loadTranslations('en');
-    currentLocale = 'en';
+  // Prefer Chinese on failure, with English as a last available fallback.
+  if (!translationCache) {
+    const fallbackLocale = locale === DEFAULT_LOCALE ? 'en' : DEFAULT_LOCALE;
+    translationCache = await loadTranslations(fallbackLocale);
+    currentLocale = fallbackLocale;
   }
-}
-
-/**
- * Get browser's locale in our supported format
- * @returns {string} Locale code
- */
-function getBrowserLocale() {
-  let browserLang = 'en';
-  try {
-    browserLang = chrome.i18n.getUILanguage();
-  } catch (error) {
-    // chrome.i18n not available, use default
-    browserLang = navigator.language || 'en';
-  }
-
-  // Map browser language codes to our supported locales
-  if (browserLang.startsWith('zh')) {
-    if (browserLang.includes('TW') || browserLang.includes('HK') || browserLang.includes('Hant')) {
-      return 'zh_TW';
-    }
-    return 'zh_CN';
-  }
-  return 'en';
 }
 
 /**
@@ -126,6 +93,10 @@ export function t(key, substitutions = null) {
  * @param {HTMLElement} root - Root element to search (default: document)
  */
 export function translatePage(root = document) {
+  if (root === document) {
+    document.documentElement.lang = getTranslationLocale().replace('_', '-');
+  }
+
   // Translate elements with data-i18n attribute for text content
   root.querySelectorAll('[data-i18n]').forEach(element => {
     const key = element.getAttribute('data-i18n');
@@ -169,17 +140,10 @@ export function translatePage(root = document) {
 
 /**
  * Get current UI language
- * @returns {string} Language code (e.g., 'en', 'zh_CN', 'zh_TW')
+ * @returns {string} Locale code ('en' or 'zh_CN')
  */
 export function getCurrentLanguage() {
-  try {
-    if (typeof chrome !== 'undefined' && chrome.i18n) {
-      return chrome.i18n.getUILanguage();
-    }
-  } catch (error) {
-    // chrome.i18n not available
-  }
-  return currentLocale || 'en';
+  return getTranslationLocale();
 }
 
 /**
@@ -187,7 +151,7 @@ export function getCurrentLanguage() {
  * @returns {string} Locale code (e.g., 'en', 'zh_CN')
  */
 export function getTranslationLocale() {
-  return currentLocale || 'en';
+  return currentLocale || DEFAULT_LOCALE;
 }
 
 /**

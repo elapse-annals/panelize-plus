@@ -54,7 +54,7 @@ Ever found yourself copying the same prompt across multiple AI tabs just to comp
 
 ### 🎯 Ask Once, Compare All
 
-Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, DeepSeek, Kimi, Qwen, Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, and Google simultaneously. See which AI gives you the best answer—no tab switching required.
+Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, DeepSeek, Kimi, Qwen, Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), and Google simultaneously. See which AI gives you the best answer—no tab switching required.
 
 ### 📐 Flexible Layouts
 
@@ -111,10 +111,18 @@ Save your best prompts and reuse them across all providers. Supports variables l
   <tr>
     <td align="center"><strong>Agnes</strong></td>
     <td align="center"><strong>Hy AI Studio</strong></td>
+    <td align="center"><strong>Perplexity</strong></td>
+    <td align="center"><strong>Copilot</strong></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>ERNIE (Wenxin)</strong></td>
+    <td></td>
     <td></td>
     <td></td>
   </tr>
 </table>
+
+Perplexity, Copilot, and ERNIE (Wenxin) are optional providers. Enable them in Settings and approve the requested site access. Their signed-in editors and send controls were inspected on the live pages, but embedded sending for Perplexity and Copilot remains unverified because of Cloudflare and Microsoft sign-in requirements. Wenxin embedding, text fill, Send All and Enter sending were verified on 2026-10-28. Image attachments are not enabled for these three providers.
 
 <p align="center">
   <img src="assets/screenshots/settings.png" alt="Settings & Providers" width="700">
@@ -181,7 +189,7 @@ Customize or clear the wide mode shortcut with the keyboard button in the bottom
 → ChatHub and ChatALL put many models behind one chat interface. Panelize shows each provider's real website instead, so you keep your own plans, model pickers and chat history. See [Panelize vs ChatHub](https://panelize.dev/alternatives/chathub/).
 
 **Which AI chatbots are supported?**
-→ ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Qwen, Doubao, Zhipu, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio and Google AI Mode. See [Supported AI Providers](#supported-ai-providers).
+→ ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Qwen, Doubao, Zhipu, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin) and Google AI Mode. See [Supported AI Providers](#supported-ai-providers).
 
 ## Troubleshooting
 
@@ -238,7 +246,6 @@ The live suite catches provider site changes that fixtures cannot. For each prov
 Found a bug? Have an idea? Contributions are welcome:
 - 🐛 Report bugs via [GitHub Issues](https://github.com/Manho/Panelize/issues)
 - 💡 Suggest features
-- 🌍 Help translate to more languages
 - 🔧 Submit pull requests
 
 ---
@@ -251,7 +258,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <p align="center">
   <strong>Open source & privacy-focused</strong><br>
-  Available in 10 languages
+  Available in English and Simplified Chinese
 </p>
 
 <p align="center">

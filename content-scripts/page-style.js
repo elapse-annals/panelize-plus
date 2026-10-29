@@ -142,8 +142,8 @@
   const BRAND_NAME_PATTERN = new RegExp([
     '\\b(?:ChatGPT|GPT(?:-[\\w.]+|\\d[\\w.]*)?|OpenAI|Claude|Anthropic|Gemini|Bard|Google|DeepMind|Grok|xAI',
     'DeepSeek|Kimi|Moonshot|Doubao|ByteDance|Qwen|Tongyi|Alibaba|ChatGLM|GLM(?:-[\\w.]+|\\d[\\w.]*)?|Zhipu|Z\\.ai',
-    'Yuanbao|Hunyuan|Tencent|MiMo|Xiaomi|Meta AI|Llama|StepFun|Agnes)\\b',
-    '深度求索|月之暗面|豆包|字节跳动|通义|千问|阿里巴巴|阿里云|智谱|元宝|混元|腾讯|小米|阶跃星辰|阶跃'
+    'Yuanbao|Hunyuan|Tencent|MiMo|Xiaomi|Meta AI|Llama|StepFun|Agnes|Perplexity|Copilot|Microsoft|ERNIE|Wenxin)\\b',
+    '深度求索|月之暗面|豆包|字节跳动|通义|千问|阿里巴巴|阿里云|智谱|元宝|混元|腾讯|小米|阶跃星辰|阶跃|文心一言|文心|百度'
   ].join('|'), 'gi');
   const BRAND_MASK = '███';
   // Model pickers are already transparent; their real labels are kept so tier
@@ -168,6 +168,9 @@
     ['meta-ai', ['meta.ai']],
     ['stepfun', ['studio.stepfun.com']],
     ['agnes', ['app.agnes-ai.com']],
+    ['perplexity', ['perplexity.ai']],
+    ['copilot', ['copilot.com', 'copilot.microsoft.com']],
+    ['wenxin', ['wenxin.baidu.com']],
     ['hy-aistudio', ['aistudio.tencent.com']]
   ];
   const hostname = String(window.location?.hostname || '').toLowerCase();

@@ -81,6 +81,28 @@ function findProviderInput() {
     return document.querySelector('textarea[data-slot="textarea"]');
   }
 
+  // Perplexity's signed-in Lexical composer was verified in the browser.
+  if (host === 'www.perplexity.ai' || host === 'perplexity.ai') {
+    const selectors = [
+      'div#ask-input[contenteditable="true"][role="textbox"][data-lexical-editor="true"]',
+      '#ask-input[contenteditable="true"]',
+      'textarea#ask-input',
+      '[contenteditable="true"][data-lexical-editor="true"][role="textbox"]'
+    ];
+    return selectors.map(selector => document.querySelector(selector)).find(element => element && element.offsetParent !== null) || null;
+  }
+
+  if (host === 'copilot.com' || host.endsWith('.copilot.com') || host === 'copilot.microsoft.com') {
+    const selectors = [
+      '#m365-chat-input-shared-container span#m365-chat-editor-target-element[role="textbox"][contenteditable="true"][data-lexical-editor="true"]'
+    ];
+    return selectors.map(selector => document.querySelector(selector)).find(element => element && element.offsetParent !== null) || null;
+  }
+
+  if (host === 'wenxin.baidu.com') {
+    return document.querySelector('textarea#chat-textarea.ci-textarea');
+  }
+
   // Generic fallback: find any visible textarea or contenteditable
   const textarea = document.querySelector('textarea:not([hidden])');
   if (textarea && textarea.offsetParent !== null) return textarea;

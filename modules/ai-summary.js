@@ -59,13 +59,14 @@ export function buildSummaryMessages({ question, answers, language = 'en' }) {
     'Use only what the answers say; do not add facts of your own.',
     'Every item must list the source ids of all answers that support it.',
     'If the question asks for a judgment or a choice (yes or no, true or false, which is better, should I), put the clear answer first in "verdict", citing the answers that reach it; otherwise set "verdict" to null.',
-    'Put what most answers agree on in "consensus".',
+    'Put what most answers agree on in "consensus", grouped into 2–5 short, themed sections.',
+    'Use this shape for "consensus": [{"heading": "Short theme", "points": [{"text": "A complete paragraph of 1–3 sentences", "sources": ["S1", "S2"]}]}]. Each point must read as a complete paragraph; do not turn points into fragments or lists.',
     'Put points that only some answers raise, and that no other answer contradicts, in "unique". An answer that does not mention a point does not disagree with it.',
     `Put in "disagreements" only points where answers contradict each other and cannot both be true; if there are none, return []. Give each a short "topic" with up to ${MAX_DISAGREEMENT_POSITIONS} "positions"; merge similar positions and cite each one's sources.`,
     'Never write source ids (S1, S2, ...) or assistant names in any "text" or "topic"; attribution belongs only in "sources".',
     `Write the text in the language with BCP 47 tag "${language}".`,
     'Reply with JSON only, no code fence, in this shape:',
-    '{"verdict": {"text": "...", "sources": ["S1"]} or null, "consensus": [{"text": "...", "sources": ["S1", "S2"]}], "unique": [{"text": "...", "sources": ["S2"]}], "disagreements": [{"topic": "...", "positions": [{"text": "...", "sources": ["S1"]}, {"text": "...", "sources": ["S2"]}]}]}'
+    '{"verdict": {"text": "...", "sources": ["S1"]} or null, "consensus": [{"heading": "...", "points": [{"text": "...", "sources": ["S1", "S2"]}]}], "unique": [{"text": "...", "sources": ["S2"]}], "disagreements": [{"topic": "...", "positions": [{"text": "...", "sources": ["S1"]}, {"text": "...", "sources": ["S2"]}]}]}'
   ].join('\n');
 
   const user = [
@@ -128,6 +129,27 @@ function normalizeItems(items, validSourceIds) {
   return items.map(item => normalizeItem(item, validSourceIds)).filter(item => item.text);
 }
 
+function normalizeConsensus(items, validSourceIds) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  const consensus = [];
+  items.forEach(item => {
+    if (Array.isArray(item?.points)) {
+      const section = stripSourceIds(item.heading);
+      normalizeItems(item.points, validSourceIds).forEach(point => {
+        consensus.push(section ? { ...point, section } : point);
+      });
+      return;
+    }
+
+    const point = normalizeItem(item, validSourceIds);
+    if (point.text) consensus.push(point);
+  });
+  return consensus;
+}
+
 // An older flat disagreement ({ text, sources }) becomes a topic without
 // positions so its sources still show.
 function normalizeDisagreements(items, validSourceIds) {
@@ -151,7 +173,7 @@ function normalizeDisagreements(items, validSourceIds) {
  * kept as a plain overview so nothing the model wrote is lost. Replies in the
  * older shape ("points") are read as consensus; replies without "unique" have none.
  *
- * @returns {{ verdict: { text: string, sources: string[] } | null, overview: string, consensus: Array<{ text: string, sources: string[] }>, unique: Array<{ text: string, sources: string[] }>, disagreements: Array<{ topic: string, sources: string[], positions: Array<{ text: string, sources: string[] }> }> }}
+ * @returns {{ verdict: { text: string, sources: string[] } | null, overview: string, consensus: Array<{ text: string, sources: string[], section?: string }>, unique: Array<{ text: string, sources: string[] }>, disagreements: Array<{ topic: string, sources: string[], positions: Array<{ text: string, sources: string[] }> }> }}
  */
 export function parseSummaryResponse(content, validSourceIds) {
   const raw = typeof content === 'string' ? content.trim() : '';
@@ -167,7 +189,7 @@ export function parseSummaryResponse(content, validSourceIds) {
     return {
       verdict: verdict.text ? verdict : null,
       overview: typeof parsed.overview === 'string' ? parsed.overview.trim() : '',
-      consensus: normalizeItems(parsed.consensus ?? parsed.points, validSourceIds),
+      consensus: normalizeConsensus(parsed.consensus ?? parsed.points, validSourceIds),
       unique: normalizeItems(parsed.unique, validSourceIds),
       disagreements: normalizeDisagreements(parsed.disagreements, validSourceIds)
     };
@@ -248,21 +270,103 @@ export function isStronglySupported(sources, totalSources) {
   return count * 10 >= totalSources * Math.round(STRONG_SUPPORT_RATIO * 10);
 }
 
+function normalizeSourceIds(sources) {
+  return [...new Set((Array.isArray(sources) ? sources : [])
+    .map(source => typeof source === 'string' ? source.trim().toUpperCase() : '')
+    .filter(Boolean))];
+}
+
+function orderSourceIds(sources, sourceOrder = []) {
+  const orderedSourceIds = normalizeSourceIds(sourceOrder);
+  const sourceRanks = new Map(orderedSourceIds.map((sourceId, index) => [sourceId, index]));
+  const rank = sourceId => sourceRanks.has(sourceId) ? sourceRanks.get(sourceId) : Number.MAX_SAFE_INTEGER;
+  return normalizeSourceIds(sources).sort((left, right) => {
+    const rankDifference = rank(left) - rank(right);
+    return rankDifference || left.localeCompare(right);
+  });
+}
+
 /**
- * The summary as plain text, each line followed by its sources' labels.
+ * Group items by their exact source set. The source order also determines the
+ * order of source ids within each group and the display order of the groups.
+ * Items with no sources are retained together in a final unattributed group.
+ *
+ * @param {Array<object>} items
+ * @param {string[]} sourceOrder Source ids in panel order.
+ * @returns {Array<{ sources: string[], items: object[] }>}
+ */
+export function groupItemsBySources(items, sourceOrder = []) {
+  if (!Array.isArray(items) || !items.length) return [];
+
+  const orderedSourceIds = normalizeSourceIds(sourceOrder);
+  const sourceRanks = new Map(orderedSourceIds.map((sourceId, index) => [sourceId, index]));
+  const rank = sourceId => sourceRanks.has(sourceId) ? sourceRanks.get(sourceId) : Number.MAX_SAFE_INTEGER;
+
+  const groupsByKey = new Map();
+  items.forEach(item => {
+    const sources = orderSourceIds(item?.sources, orderedSourceIds);
+    const key = JSON.stringify(sources);
+    let group = groupsByKey.get(key);
+    if (!group) {
+      group = { sources, items: [], firstIndex: groupsByKey.size };
+      groupsByKey.set(key, group);
+    }
+    group.items.push(item);
+  });
+
+  const sourceRankForGroup = group => group.sources.length
+    ? Math.min(...group.sources.map(rank))
+    : Number.MAX_SAFE_INTEGER;
+  return [...groupsByKey.values()].sort((left, right) => {
+    const leftKind = left.sources.length === 0 ? 2 : left.sources.length === 1 ? 0 : 1;
+    const rightKind = right.sources.length === 0 ? 2 : right.sources.length === 1 ? 0 : 1;
+    if (leftKind !== rightKind) return leftKind - rightKind;
+    if (leftKind !== 2) {
+      const rankDifference = sourceRankForGroup(left) - sourceRankForGroup(right);
+      if (rankDifference) return rankDifference;
+    }
+    return left.firstIndex - right.firstIndex;
+  }).map(({ sources, items: groupItems }) => ({ sources, items: groupItems }));
+}
+
+/**
+ * The summary as plain text, with article paragraphs and source-grouped unique
+ * insights. Source ids in output follow the supplied panel order.
  *
  * @param {{ verdict: object | null, overview: string, consensus: Array<object>, unique?: Array<object>, disagreements: Array<object> }} summary
  * @param {(sourceId: string) => string} getLabel
- * @param {{ verdictTitle?: string, consensusTitle?: string, uniqueTitle?: string, disagreementsTitle?: string }} [options]
+ * @param {{ verdictTitle?: string, consensusTitle?: string, uniqueTitle?: string, disagreementsTitle?: string, sourceOrder?: string[] }} [options]
  */
 export function formatSummaryText(summary, getLabel, {
   verdictTitle = 'Verdict',
   consensusTitle = 'Agreed',
   uniqueTitle = 'Unique insights',
-  disagreementsTitle = 'Disagreements'
+  disagreementsTitle = 'Disagreements',
+  sourceOrder = []
 } = {}) {
-  const cite = sources => (sources?.length ? ` [${sources.map(getLabel).join(', ')}]` : '');
-  const line = item => `- ${item.text}${cite(item.sources)}`;
+  const cite = sources => {
+    const orderedSources = orderSourceIds(sources, sourceOrder);
+    return orderedSources.length ? ` [${orderedSources.map(getLabel).join(', ')}]` : '';
+  };
+  const consensusGroups = [];
+  summary.consensus.forEach(item => {
+    const section = typeof item.section === 'string' ? item.section.trim() : '';
+    let group = consensusGroups.at(-1);
+    if (!group || group.section !== section) {
+      group = { section, paragraphs: [] };
+      consensusGroups.push(group);
+    }
+    group.paragraphs.push(`${item.text}${cite(item.sources)}`);
+  });
+  const consensusText = consensusGroups
+    .map(group => `${group.section ? `## ${group.section}\n` : ''}${group.paragraphs.join('\n\n')}`)
+    .join('\n\n');
+  const uniqueText = groupItemsBySources(summary.unique || [], sourceOrder)
+    .map(group => {
+      const heading = group.sources.length ? `[${group.sources.map(getLabel).join(', ')}]` : '';
+      return [heading, ...group.items.map(item => `- ${item.text}`)].filter(Boolean).join('\n');
+    })
+    .join('\n\n');
   const disagreement = item => [
     `- ${item.topic}${cite(item.sources)}`,
     ...item.positions.map(position => `  · ${position.text}${cite(position.sources)}`)
@@ -270,8 +374,8 @@ export function formatSummaryText(summary, getLabel, {
   const parts = [];
   if (summary.verdict) parts.push(`${verdictTitle}: ${summary.verdict.text}${cite(summary.verdict.sources)}`);
   if (summary.overview) parts.push(summary.overview);
-  if (summary.consensus.length) parts.push(`${consensusTitle}:\n${summary.consensus.map(line).join('\n')}`);
-  if (summary.unique?.length) parts.push(`${uniqueTitle}:\n${summary.unique.map(line).join('\n')}`);
+  if (summary.consensus.length) parts.push(`${consensusTitle}:\n${consensusText}`);
+  if (summary.unique?.length) parts.push(`${uniqueTitle}:\n${uniqueText}`);
   if (summary.disagreements.length) parts.push(`${disagreementsTitle}:\n${summary.disagreements.map(disagreement).join('\n')}`);
   return parts.join('\n\n');
 }

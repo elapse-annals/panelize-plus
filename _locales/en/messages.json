@@ -104,30 +104,6 @@
   "langSimplifiedChinese": {
     "message": "简体中文 (Simplified Chinese)"
   },
-  "langTraditionalChinese": {
-    "message": "繁體中文 (Traditional Chinese)"
-  },
-  "langKorean": {
-    "message": "한국어 (Korean)"
-  },
-  "langJapanese": {
-    "message": "日本語 (Japanese)"
-  },
-  "langSpanish": {
-    "message": "Español (Spanish)"
-  },
-  "langFrench": {
-    "message": "Français (French)"
-  },
-  "langGerman": {
-    "message": "Deutsch (German)"
-  },
-  "langItalian": {
-    "message": "Italiano (Italian)"
-  },
-  "langRussian": {
-    "message": "Русский (Russian)"
-  },
   "msgLanguageUpdated": {
     "message": "Language updated successfully"
   },
@@ -201,7 +177,7 @@
     "message": "Customize how Enter and modifier keys work when typing in AI provider input fields."
   },
   "descEnterBehavior2": {
-    "message": "<strong>Applies to:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, and Google (AI Mode)."
+    "message": "<strong>Applies to:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), and Google (AI Mode)."
   },
   "labelEnableEnterCustomization": {
     "message": "Enable Enter Key Customization"
@@ -722,7 +698,7 @@
     "message": "Default Prompt Library"
   },
   "descDefaultPromptLibrary": {
-    "message": "The built-in prompt modes: Concise, Learning, Challenge and Brainstorm. Modes already in your library are not added again."
+    "message": "The built-in prompt modes: Concise, Learning, Challenge, Brainstorm and Deep thinking. Modes already in your library are not added again."
   },
   "statStorageUsed": {
     "message": "Storage Used"
@@ -1523,6 +1499,9 @@
   "promptModeCompete": {
     "message": "Challenge"
   },
+  "promptModeDeep": {
+    "message": "Deep thinking"
+  },
   "promptModeDefaultHint": {
     "message": "Nothing is added; each AI answers in its own way"
   },
@@ -1538,6 +1517,9 @@
   "promptModeCompeteHint": {
     "message": "Append a challenge instruction: aim to win the side-by-side comparison"
   },
+  "promptModeDeepHint": {
+    "message": "Append a reasoning instruction: break down the problem, verify assumptions, and show the steps"
+  },
   "promptModeSuffix_learning": {
     "message": "Answer as a teacher: give the core conclusion first, then explain the reasoning step by step with examples, and finish with 1–2 questions that check my understanding."
   },
@@ -1549,6 +1531,9 @@
   },
   "promptModeSuffix_compete": {
     "message": "You are answering this alongside several other AIs and the answers will be compared side by side. Give the most accurate, insightful and useful answer you can."
+  },
+  "promptModeSuffix_deep": {
+    "message": "Think step by step: break the problem down, identify assumptions, analyze root causes, compare options and verify in reverse; before the final conclusion, list your reasoning steps in detail and state any uncertainty."
   },
   "composerPlaceholderAppend": {
     "message": "Appends: $1"

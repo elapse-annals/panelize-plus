@@ -3,6 +3,7 @@ import {
   PROMPT_MODES,
   PROMPT_MODE_IDS,
   PROMPT_MODES_SEEDED_KEY,
+  PROMPT_MODES_SEEDED_IDS_KEY,
   PROMPT_MODE_TRIGGERS_SEEDED_KEY,
   applyPromptMode,
   createModeKey,
@@ -16,6 +17,8 @@ import {
   restoreDefaultModePrompts,
   resolvePromptModeForText,
   getDefaultModePrompts,
+  getPromptAiContent,
+  getPromptDisplayContent,
   getPromptMode,
   getPromptModeSuffix,
   isPromptMode,
@@ -45,7 +48,7 @@ function memoryLibrary(initial = []) {
 
 describe('built-in prompt modes', () => {
   it('lists the built-in modes in seed order', () => {
-    expect(PROMPT_MODE_IDS).toEqual(['concise', 'learning', 'compete', 'brainstorm']);
+    expect(PROMPT_MODE_IDS).toEqual(['concise', 'learning', 'compete', 'brainstorm', 'deep']);
   });
 
   it('recognises only the built-in modes', () => {
@@ -73,6 +76,7 @@ describe('built-in prompt modes', () => {
 
     expect(getPromptModeSuffix('compete', tr)).toBe('比较一下。');
     expect(getPromptModeSuffix('learning', () => '')).toContain('Answer as a teacher');
+    expect(getPromptModeSuffix('deep', translate)).toBe('Think step by step: break the problem down, identify assumptions, analyze root causes, compare options and verify in reverse; before the final conclusion, list your reasoning steps in detail and state any uncertainty.');
     expect(getPromptModeSuffix(null, translate)).toBe('');
     expect(getPromptModeSuffix('verbose', translate)).toBe('');
   });
@@ -98,6 +102,31 @@ describe('applyPromptMode', () => {
   });
 });
 
+describe('prompt text helpers', () => {
+  it('shows the Chinese text and falls back to the English one', () => {
+    expect(getPromptDisplayContent({ content: '中文', contentEn: 'English' })).toBe('中文');
+    expect(getPromptDisplayContent({ content: '   ', contentEn: ' English ' })).toBe('English');
+    expect(getPromptDisplayContent({ content: '中文' })).toBe('中文');
+    expect(getPromptDisplayContent({ contentEn: 'English' })).toBe('English');
+    expect(getPromptDisplayContent({})).toBe('');
+    expect(getPromptDisplayContent(null)).toBe('');
+  });
+
+  it('sends the English text and falls back to the Chinese one', () => {
+    expect(getPromptAiContent({ content: '中文', contentEn: 'English' })).toBe('English');
+    expect(getPromptAiContent({ content: ' 中文 ', contentEn: '  ' })).toBe('中文');
+    expect(getPromptAiContent({ content: '中文' })).toBe('中文');
+    expect(getPromptAiContent({ contentEn: 'English' })).toBe('English');
+    expect(getPromptAiContent({})).toBe('');
+    expect(getPromptAiContent(undefined)).toBe('');
+  });
+
+  it('ignores text fields that are not strings', () => {
+    expect(getPromptDisplayContent({ content: 3, contentEn: 'English' })).toBe('English');
+    expect(getPromptAiContent({ content: '中文', contentEn: 3 })).toBe('中文');
+  });
+});
+
 describe('mode prompts in the library', () => {
   it('lists only prompts marked as modes, oldest first', () => {
     const prompts = [
@@ -120,11 +149,21 @@ describe('mode prompts in the library', () => {
       { id: 3, title: 'Concise', content: 'c', isMode: true, modeKey: 'concise', createdAt: 3 },
       { id: 4, title: 'Learning copy', content: 'l2', isMode: true, modeKey: 'learning', createdAt: 4 },
       { id: 5, title: 'Brainstorm', content: 'b', isMode: true, modeKey: 'brainstorm', createdAt: 5 },
-      { id: 6, title: 'Challenge', content: 'x', isMode: true, modeKey: 'compete', createdAt: 6 }
+      { id: 6, title: 'Challenge', content: 'x', isMode: true, modeKey: 'compete', createdAt: 6 },
+      { id: 7, title: 'Deep thinking', content: 'd', isMode: true, modeKey: 'deep', createdAt: 7 }
     ];
 
     expect(selectModePrompts(prompts).map(prompt => prompt.title))
-      .toEqual(['Concise', 'Learning', 'Challenge', 'Brainstorm', 'Mine']);
+      .toEqual(['Concise', 'Learning', 'Challenge', 'Brainstorm', 'Deep thinking', 'Mine']);
+  });
+
+  it('lists a mode that only has English text, and skips one with neither', () => {
+    const prompts = [
+      { id: 1, title: 'English only', content: '', contentEn: 'Answer in English.', isMode: true, modeKey: 'en', createdAt: 1 },
+      { id: 2, title: 'Empty', content: '   ', contentEn: '  ', isMode: true, modeKey: 'empty', createdAt: 2 }
+    ];
+
+    expect(selectModePrompts(prompts).map(prompt => prompt.title)).toEqual(['English only']);
   });
 
   it('creates distinct custom mode keys', () => {
@@ -155,11 +194,53 @@ describe('mode prompts in the library', () => {
     expect(await ensureDefaultModePrompts({ ...library, storage, tr: translate })).toBe(true);
     expect(library.prompts.map(prompt => prompt.modeKey)).toEqual(PROMPT_MODE_IDS);
     expect(storage.data[PROMPT_MODES_SEEDED_KEY]).toBe(true);
+    expect(storage.data[PROMPT_MODES_SEEDED_IDS_KEY]).toEqual(PROMPT_MODE_IDS);
 
-    // A mode the user deleted stays deleted.
+    // A mode the user deleted stays deleted after its ID has been recorded.
     library.prompts.splice(0, 1);
     expect(await ensureDefaultModePrompts({ ...library, storage, tr: translate })).toBe(false);
-    expect(library.prompts).toHaveLength(3);
+    expect(library.prompts).toHaveLength(4);
+  });
+
+  it('migrates a legacy seed by adding only deep and records all mode IDs', async () => {
+    const legacyModes = getDefaultModePrompts(translate)
+      .filter(prompt => prompt.modeKey !== 'deep' && prompt.modeKey !== 'concise');
+    const library = memoryLibrary(legacyModes);
+    const storage = memoryStorage({ [PROMPT_MODES_SEEDED_KEY]: true });
+
+    expect(await ensureDefaultModePrompts({ ...library, storage, tr: translate })).toBe(true);
+    expect(library.prompts.map(prompt => prompt.modeKey)).toEqual([
+      'learning', 'compete', 'brainstorm', 'deep'
+    ]);
+    expect(storage.data[PROMPT_MODES_SEEDED_IDS_KEY]).toEqual(PROMPT_MODE_IDS);
+    // The missing concise prompt was deleted before this upgrade and stays deleted.
+    expect(library.prompts.some(prompt => prompt.modeKey === 'concise')).toBe(false);
+  });
+
+  it('does not duplicate an existing deep mode while migrating legacy storage', async () => {
+    const existingDeep = {
+      title: 'My deep mode', content: 'Customized.', isMode: true, modeKey: 'deep'
+    };
+    const library = memoryLibrary([existingDeep]);
+    const storage = memoryStorage({ [PROMPT_MODES_SEEDED_KEY]: true });
+
+    await ensureDefaultModePrompts({ ...library, storage, tr: translate });
+
+    expect(library.prompts.filter(prompt => prompt.modeKey === 'deep')).toEqual([existingDeep]);
+    expect(storage.data[PROMPT_MODES_SEEDED_IDS_KEY]).toEqual(PROMPT_MODE_IDS);
+  });
+
+  it('keeps a deleted deep mode deleted after migration', async () => {
+    const library = memoryLibrary(getDefaultModePrompts(translate)
+      .filter(prompt => prompt.modeKey !== 'deep'));
+    const storage = memoryStorage({ [PROMPT_MODES_SEEDED_KEY]: true });
+
+    expect(await ensureDefaultModePrompts({ ...library, storage, tr: translate })).toBe(true);
+    expect(library.prompts.map(prompt => prompt.modeKey)).toEqual(['concise', 'learning', 'compete', 'brainstorm', 'deep']);
+    library.prompts.splice(library.prompts.findIndex(prompt => prompt.modeKey === 'deep'), 1);
+
+    expect(await ensureDefaultModePrompts({ ...library, storage, tr: translate })).toBe(false);
+    expect(library.prompts.some(prompt => prompt.modeKey === 'deep')).toBe(false);
   });
 
   it('skips built-ins the library already holds', async () => {
@@ -168,7 +249,7 @@ describe('mode prompts in the library', () => {
     await ensureDefaultModePrompts({ ...library, storage: memoryStorage(), tr: translate });
 
     expect(library.prompts.filter(prompt => prompt.modeKey === 'concise')).toHaveLength(1);
-    expect(library.prompts).toHaveLength(4);
+    expect(library.prompts).toHaveLength(5);
   });
 
   it('does nothing without storage', async () => {
@@ -183,10 +264,10 @@ describe('restoring built-in modes', () => {
   it('adds only the built-ins the library lacks', async () => {
     const library = memoryLibrary([{ id: 1, title: 'Mine', content: 'mine', isMode: true, modeKey: 'concise' }]);
 
-    expect(await restoreDefaultModePrompts({ ...library, tr: translate })).toBe(3);
-    expect(library.prompts.map(prompt => prompt.modeKey).sort()).toEqual(['brainstorm', 'compete', 'concise', 'learning']);
+    expect(await restoreDefaultModePrompts({ ...library, tr: translate })).toBe(4);
+    expect(library.prompts.map(prompt => prompt.modeKey).sort()).toEqual(['brainstorm', 'compete', 'concise', 'deep', 'learning']);
     expect(await restoreDefaultModePrompts({ ...library, tr: translate })).toBe(0);
-    expect(library.savePrompt).toHaveBeenCalledTimes(3);
+    expect(library.savePrompt).toHaveBeenCalledTimes(4);
   });
 });
 
@@ -214,6 +295,31 @@ describe('prompt send preview', () => {
     expect(describePromptSend('   ', { instruction: 'Teach.' })).toBeNull();
     expect(describePromptSend('/study', { auto: true, modePrompts: prompts })).toBeNull();
     expect(describePromptSend('Plain question', { instruction: null })).toBeNull();
+  });
+
+  it('previews the Chinese instruction while the send uses the English one', () => {
+    const bilingual = {
+      modeKey: 'learning', content: '像老师一样回答。', contentEn: 'Answer as a teacher.', triggers: ['/study']
+    };
+    const options = {
+      instruction: getPromptAiContent(bilingual),
+      displayInstruction: getPromptDisplayContent(bilingual)
+    };
+
+    expect(describePromptSend('Explain closures', options)).toEqual([
+      { kind: 'text', value: 'Explain closures' },
+      { kind: 'suffix', value: '\n\n像老师一样回答。' }
+    ]);
+    expect(describePromptSend('/study Explain closures', { auto: true, modePrompts: [bilingual] })).toEqual([
+      { kind: 'removed', value: '/study' },
+      { kind: 'text', value: ' Explain closures' },
+      { kind: 'suffix', value: '\n\n像老师一样回答。' }
+    ]);
+    // Without a display text the preview falls back to the instruction itself.
+    expect(describePromptSend('Explain closures', { instruction: 'Answer as a teacher.' })).toEqual([
+      { kind: 'text', value: 'Explain closures' },
+      { kind: 'suffix', value: '\n\nAnswer as a teacher.' }
+    ]);
   });
 });
 
@@ -281,6 +387,21 @@ describe('prompt mode trigger words', () => {
     expect(detectPromptModeTriggers('/study.md', prompts).prompts).toEqual([]);
   });
 
+  it.each(['/think', '/deep'])('detects the deep-thinking trigger %s and previews its instruction', (trigger) => {
+    const deepPrompt = getDefaultModePrompts(translate).find(prompt => prompt.modeKey === 'deep');
+    const modePrompts = [deepPrompt];
+    const instruction = getPromptDisplayContent(deepPrompt);
+
+    expect(detectPromptModeTriggers(`${trigger} Explain closures`, modePrompts)).toEqual({
+      text: 'Explain closures', prompts: [deepPrompt]
+    });
+    expect(describePromptSend(`${trigger} Explain closures`, { auto: true, modePrompts })).toEqual([
+      { kind: 'removed', value: trigger },
+      { kind: 'text', value: ' Explain closures' },
+      { kind: 'suffix', value: `\n\n${instruction}` }
+    ]);
+  });
+
   it('combines the matched modes in menu order, once each', () => {
     const resolved = resolvePromptModeForText('/brief /study q /study', { auto: true, modePrompts: prompts });
     expect(resolved.text).toBe('q');
@@ -290,6 +411,16 @@ describe('prompt mode trigger words', () => {
   it('passes the text and instruction through outside Auto mode', () => {
     expect(resolvePromptModeForText('/study q', { instruction: 'Fixed.', modePrompts: prompts }))
       .toEqual({ text: '/study q', instruction: 'Fixed.', prompts: [] });
+  });
+
+  it('combines the English text of the matched modes for the send', () => {
+    const bilingual = [
+      { modeKey: 'learning', content: '像老师一样回答。', contentEn: 'Answer as a teacher.', triggers: ['/study'] },
+      { modeKey: 'concise', content: '尽量简洁。', contentEn: 'Be concise.', triggers: ['/brief'] }
+    ];
+
+    expect(resolvePromptModeForText('/study /brief q', { auto: true, modePrompts: bilingual }).instruction)
+      .toBe('Answer as a teacher.\n\nBe concise.');
   });
 
   it('seeds built-in modes with their default triggers', () => {

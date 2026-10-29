@@ -78,7 +78,7 @@ All data collected by Panelize is used solely for providing extension functional
 
 ### AI Provider Websites
 
-Panelize loads AI provider websites (ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen, ChatGLM, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, and Google AI Mode) inside embedded panels. These providers operate under their own privacy policies.
+Panelize loads AI provider websites (ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen, ChatGLM, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), and Google AI Mode) inside embedded panels. Perplexity, Copilot, and ERNIE (Wenxin) are optional providers and require site access to be enabled and approved. These providers operate under their own privacy policies.
 
 When you interact with these AI providers through Panelize, you are subject to their respective privacy policies. Panelize does not collect or store the content of your conversations with these services.
 
@@ -168,6 +168,7 @@ Panelize requests the following Chrome extension permissions:
 | `contextMenus` | Add "Send to Panelize" option when right-clicking |
 | `declarativeNetRequest` | Allow AI provider websites to load in embedded panels (bypass X-Frame-Options) |
 | `declarativeNetRequestWithHostAccess` | Apply header modifications for specific AI provider domains |
+| `browsingData` | Remove only Perplexity's service worker before a Perplexity panel loads, because it would block the panel; cookies and sign-ins are not touched |
 | Host permissions | Access the built-in AI provider websites and check for updates on GitHub |
 | Optional host permissions | Access additional providers only after you enable them and approve the provider-specific browser prompt |
 

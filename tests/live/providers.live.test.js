@@ -32,6 +32,9 @@ const NEW_CHAT_VIA_URL_IN_PANEL = {
   stepfun: 'StepFun has no stable new chat selector; its root opens a new chat',
   agnes: 'Agnes has no stable new chat selector; its root opens a new chat',
   'hy-aistudio': 'Hy AI Studio has no stable new chat selector; its root opens a new chat',
+  perplexity: 'Perplexity uses its root to start a new chat; its signed-in controls are not yet verified',
+  copilot: 'Copilot uses its chat URL; its signed-in controls are not yet verified',
+  wenxin: 'Wenxin uses its root to start a new chat',
 };
 
 const LIVE_TOKEN_PREFIX = 'panelize-live-';

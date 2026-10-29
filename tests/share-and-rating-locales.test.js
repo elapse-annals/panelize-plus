@@ -121,15 +121,18 @@ const FEATURE_KEYS = [
   'promptModeConcise',
   'promptModeBrainstorm',
   'promptModeCompete',
+  'promptModeDeep',
   'promptModeDefaultHint',
   'promptModeLearningHint',
   'promptModeConciseHint',
   'promptModeBrainstormHint',
   'promptModeCompeteHint',
+  'promptModeDeepHint',
   'promptModeSuffix_learning',
   'promptModeSuffix_concise',
   'promptModeSuffix_brainstorm',
   'promptModeSuffix_compete',
+  'promptModeSuffix_deep',
   'promptModeCategory',
   'promptModeBadge',
   'promptIsModeLabel',
@@ -182,8 +185,8 @@ const FEATURE_KEYS = [
 const locales = readdirSync(LOCALES_DIR);
 
 describe('share and rating strings', () => {
-  it('covers all ten shipped locales', () => {
-    expect(locales.sort()).toEqual(['de', 'en', 'es', 'fr', 'it', 'ja', 'ko', 'ru', 'zh_CN', 'zh_TW']);
+  it('ships only English and Simplified Chinese', () => {
+    expect(locales.sort()).toEqual(['en', 'zh_CN']);
   });
 
   it.each(locales)('%s translates every new string', (locale) => {
@@ -191,6 +194,14 @@ describe('share and rating strings', () => {
     FEATURE_KEYS.forEach((key) => {
       expect(messages[key]?.message?.trim(), `${locale}.${key}`).toBeTruthy();
     });
+    expect(messages.descDefaultPromptLibrary.message, `${locale}.descDefaultPromptLibrary`)
+      .toContain(messages.promptModeDeep.message);
+  });
+
+  it('uses the requested simplified Chinese deep-thinking instruction', () => {
+    const messages = JSON.parse(readFileSync(resolve(LOCALES_DIR, 'zh_CN', 'messages.json'), 'utf8'));
+    expect(messages.promptModeSuffix_deep.message)
+      .toBe('请逐步思考拆解问题，识别假设，分析根因，比较方案，反向验证，并在给出最终结论前，详细列出你的推导步骤，说明不确定性。');
   });
 
   it('keeps the brand and site name in the watermark strings', () => {

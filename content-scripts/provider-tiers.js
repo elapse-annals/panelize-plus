@@ -87,7 +87,10 @@
     mimo: { ...DISCOVERY_CONFIG },
     stepfun: { ...DISCOVERY_CONFIG },
     agnes: { ...DISCOVERY_CONFIG },
-    'hy-aistudio': { ...DISCOVERY_CONFIG }
+    'hy-aistudio': { ...DISCOVERY_CONFIG },
+    perplexity: { ...DISCOVERY_CONFIG },
+    copilot: { ...DISCOVERY_CONFIG },
+    wenxin: { ...DISCOVERY_CONFIG }
   };
 
   const hostname = String(window.location?.hostname || '').toLowerCase();
@@ -109,7 +112,10 @@
     ['meta-ai', ['meta.ai']],
     ['stepfun', ['studio.stepfun.com']],
     ['agnes', ['app.agnes-ai.com']],
-    ['hy-aistudio', ['aistudio.tencent.com']]
+    ['hy-aistudio', ['aistudio.tencent.com']],
+    ['perplexity', ['perplexity.ai']],
+    ['copilot', ['copilot.com', 'copilot.microsoft.com']],
+    ['wenxin', ['wenxin.baidu.com']]
   ];
 
   function hostMatches(host, domain) {

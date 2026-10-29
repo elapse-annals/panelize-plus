@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { openMultiPanelPage } from '../modules/open-multi-panel.js';
+import {
+  POPUP_WINDOW_BOUNDS_KEY,
+  createMultiPanelPopupWindow,
+  openMultiPanelPage,
+  savePopupWindowBounds
+} from '../modules/open-multi-panel.js';
 
 const MULTI_PANEL_URL = 'chrome-extension://test-id/multi-panel/multi-panel.html';
 
@@ -132,6 +137,101 @@ describe('openMultiPanelPage', () => {
       type: 'popup',
       width: 1400,
       height: 900
+    });
+  });
+
+  it('reopens the popup at its remembered position and size', async () => {
+    const chromeApi = createChromeApi({ windows: [] });
+    chromeApi.storage = createStorage({
+      [POPUP_WINDOW_BOUNDS_KEY]: { left: 80, top: 40, width: 1200, height: 800, state: 'normal' }
+    });
+
+    await openMultiPanelPage(chromeApi, 'popup');
+
+    expect(chromeApi.windows.create).toHaveBeenCalledWith({
+      url: MULTI_PANEL_URL,
+      type: 'popup',
+      left: 80,
+      top: 40,
+      width: 1200,
+      height: 800
+    });
+    expect(chromeApi.windows.update).not.toHaveBeenCalled();
+  });
+});
+
+function createStorage(initial = {}) {
+  const data = { ...initial };
+  return {
+    data,
+    local: {
+      get: vi.fn(async (key) => (key in data ? { [key]: data[key] } : {})),
+      set: vi.fn(async (items) => { Object.assign(data, items); })
+    }
+  };
+}
+
+describe('popup window bounds', () => {
+  it('maximizes after creating at the last normal bounds', async () => {
+    const chromeApi = createChromeApi();
+    chromeApi.storage = createStorage({
+      [POPUP_WINDOW_BOUNDS_KEY]: { left: 10, top: 20, width: 1000, height: 700, state: 'maximized' }
+    });
+    chromeApi.windows.create.mockResolvedValue({ id: 33 });
+
+    await createMultiPanelPopupWindow(chromeApi, MULTI_PANEL_URL);
+
+    expect(chromeApi.windows.create).toHaveBeenCalledWith({
+      url: MULTI_PANEL_URL,
+      type: 'popup',
+      left: 10,
+      top: 20,
+      width: 1000,
+      height: 700
+    });
+    expect(chromeApi.windows.update).toHaveBeenCalledWith(33, { state: 'maximized' });
+  });
+
+  it('ignores unusable stored bounds', async () => {
+    const chromeApi = createChromeApi();
+    chromeApi.storage = createStorage({
+      [POPUP_WINDOW_BOUNDS_KEY]: { width: 50, height: 'tall' }
+    });
+
+    await createMultiPanelPopupWindow(chromeApi, MULTI_PANEL_URL);
+
+    expect(chromeApi.windows.create).toHaveBeenCalledWith({
+      url: MULTI_PANEL_URL,
+      type: 'popup',
+      width: 1400,
+      height: 900
+    });
+  });
+
+  it('saves normal bounds and skips minimized or fullscreen windows', async () => {
+    const chromeApi = createChromeApi();
+    chromeApi.storage = createStorage();
+
+    await savePopupWindowBounds(chromeApi, { id: 1, left: 5, top: 6, width: 900, height: 600, state: 'minimized' });
+    await savePopupWindowBounds(chromeApi, { id: 1, left: 5, top: 6, width: 900, height: 600, state: 'fullscreen' });
+    expect(chromeApi.storage.local.set).not.toHaveBeenCalled();
+
+    await savePopupWindowBounds(chromeApi, { id: 1, left: 5, top: 6, width: 900, height: 600, state: 'normal' });
+    expect(chromeApi.storage.data[POPUP_WINDOW_BOUNDS_KEY]).toEqual({
+      left: 5, top: 6, width: 900, height: 600, state: 'normal'
+    });
+  });
+
+  it('keeps the previous normal bounds when the window is maximized', async () => {
+    const chromeApi = createChromeApi();
+    chromeApi.storage = createStorage({
+      [POPUP_WINDOW_BOUNDS_KEY]: { left: 5, top: 6, width: 900, height: 600, state: 'normal' }
+    });
+
+    await savePopupWindowBounds(chromeApi, { left: 0, top: 0, width: 2560, height: 1400, state: 'maximized' });
+
+    expect(chromeApi.storage.data[POPUP_WINDOW_BOUNDS_KEY]).toEqual({
+      left: 5, top: 6, width: 900, height: 600, state: 'maximized'
     });
   });
 });

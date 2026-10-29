@@ -48,6 +48,9 @@ export const DEFAULT_PROVIDER_ORDER = [
   'grok',
   'kimi',
   'hy-aistudio',
+  'perplexity',
+  'copilot',
+  'wenxin',
 ];
 
 export const DEFAULT_STARTUP_PROVIDER_IDS = [

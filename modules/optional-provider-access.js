@@ -18,6 +18,18 @@ function createContentScript(id, matches, enterBehaviorScript) {
   };
 }
 
+function createPageScript(id, matches, script) {
+  return {
+    id,
+    matches,
+    js: [script],
+    runAt: 'document_start',
+    allFrames: true,
+    world: 'MAIN',
+    persistAcrossSessions: true
+  };
+}
+
 function createFrameRule(id, urlFilter) {
   // Installed only for enabled providers and scoped to their embedded subframes.
   return {
@@ -37,11 +49,17 @@ function createFrameRule(id, urlFilter) {
   };
 }
 
-function createDomainFrameRule(id, requestDomains) {
+function createDomainFrameRule(id, requestDomains, { scopeToPanels = false } = {}) {
   // For providers whose embedded flow spans several hosts, such as a separate sign-in host.
   const rule = createFrameRule(id, null);
   delete rule.condition.urlFilter;
   rule.condition.requestDomains = requestDomains;
+  if (scopeToPanels) {
+    // Only frames the panels open (or the provider's own hosts open inside
+    // them) lose their framing headers; other sites still cannot frame them.
+    const extensionId = globalThis.chrome?.runtime?.id;
+    rule.condition.initiatorDomains = [...(extensionId ? [extensionId] : []), ...requestDomains];
+  }
   return rule;
 }
 
@@ -101,6 +119,7 @@ function normalizeFrameRule(rule) {
     condition: {
       urlFilter: rule.condition.urlFilter,
       requestDomains: [...(rule.condition.requestDomains || [])].sort(),
+      initiatorDomains: [...(rule.condition.initiatorDomains || [])].sort(),
       resourceTypes: [...(rule.condition.resourceTypes || [])].sort()
     }
   };
@@ -208,6 +227,48 @@ export const OPTIONAL_PROVIDER_CONFIGS = Object.freeze({
       'content-scripts/enter-behavior-hy-aistudio.js'
     )),
     frameRule: Object.freeze(createFrameRule(1009, 'https://aistudio.tencent.com/*'))
+  }),
+  perplexity: Object.freeze({
+    origins: Object.freeze(['https://www.perplexity.ai/*']),
+    contentScript: Object.freeze(createContentScript(
+      'perplexity-scripts',
+      ['https://www.perplexity.ai/*'],
+      'content-scripts/enter-behavior-perplexity.js'
+    )),
+    pageScript: Object.freeze(createPageScript(
+      'perplexity-page-scripts',
+      ['https://www.perplexity.ai/*'],
+      'content-scripts/perplexity-no-service-worker.js'
+    )),
+    frameRule: Object.freeze(createFrameRule(1010, 'https://www.perplexity.ai/*'))
+  }),
+  copilot: Object.freeze({
+    origins: Object.freeze([
+      'https://copilot.com/*',
+      'https://copilot.microsoft.com/*',
+      'https://login.microsoftonline.com/*',
+      'https://login.live.com/*'
+    ]),
+    contentScript: Object.freeze(createContentScript(
+      'copilot-scripts',
+      ['https://copilot.com/*', 'https://copilot.microsoft.com/*'],
+      'content-scripts/enter-behavior-copilot.js'
+    )),
+    frameRule: Object.freeze(createDomainFrameRule(1011, [
+      'copilot.com',
+      'copilot.microsoft.com',
+      'login.microsoftonline.com',
+      'login.live.com'
+    ], { scopeToPanels: true }))
+  }),
+  wenxin: Object.freeze({
+    origins: Object.freeze(['https://wenxin.baidu.com/*']),
+    contentScript: Object.freeze(createContentScript(
+      'wenxin-scripts',
+      ['https://wenxin.baidu.com/*'],
+      'content-scripts/enter-behavior-wenxin.js'
+    )),
+    frameRule: Object.freeze(createFrameRule(1012, 'https://wenxin.baidu.com/*'))
   })
 });
 
@@ -291,13 +352,19 @@ export async function reconcileOptionalProviderAccess() {
   }
 }
 
+function getConfigScripts({ contentScript, pageScript }) {
+  return pageScript ? [contentScript, pageScript] : [contentScript];
+}
+
 async function syncContentScripts(allConfigs, desiredConfigs) {
   if (!chrome.scripting?.getRegisteredContentScripts) {
     return;
   }
 
-  const managedScriptIds = new Set(allConfigs.map(({ contentScript }) => contentScript.id));
-  const desiredScriptIds = new Set(desiredConfigs.map(({ contentScript }) => contentScript.id));
+  const allScripts = allConfigs.flatMap(getConfigScripts);
+  const desiredScripts = desiredConfigs.flatMap(getConfigScripts);
+  const managedScriptIds = new Set(allScripts.map(({ id }) => id));
+  const desiredScriptIds = new Set(desiredScripts.map(({ id }) => id));
   const registeredScripts = await chrome.scripting.getRegisteredContentScripts();
   const registeredManagedScripts = registeredScripts
     .filter(({ id }) => managedScriptIds.has(id));
@@ -311,7 +378,7 @@ async function syncContentScripts(allConfigs, desiredConfigs) {
 
   const scriptsToRegister = [];
   const scriptsToUpdate = [];
-  for (const { contentScript } of desiredConfigs) {
+  for (const contentScript of desiredScripts) {
     const registeredScript = registeredById.get(contentScript.id);
     if (!registeredScript) {
       scriptsToRegister.push(contentScript);

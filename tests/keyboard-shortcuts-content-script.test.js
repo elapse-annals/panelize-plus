@@ -284,6 +284,22 @@ describe('provider keyboard shortcut forwarding content script', () => {
     }
   });
 
+  it('routes shortcuts from Perplexity, both Copilot hostnames, and Wenxin', () => {
+    for (const [hostname, expectedProvider] of [
+      ['www.perplexity.ai', 'perplexity'],
+      ['copilot.com', 'copilot'],
+      ['copilot.microsoft.com', 'copilot'],
+      ['wenxin.baidu.com', 'wenxin']
+    ]) {
+      setProviderHost(hostname);
+      const controller = evaluateContentScript();
+      dispatchKey(document.body, keydown('Enter', modModifiers()));
+      expect(parent.postMessage.mock.calls.at(-1)?.[0]).toMatchObject({ provider: expectedProvider });
+      controller.destroy();
+      parent.postMessage.mockClear();
+    }
+  });
+
   it('responds to setting changes from both sync and local storage areas', () => {
     evaluateContentScript();
     storageListener({ pageShortcutsEnabled: { newValue: false } }, 'local');
