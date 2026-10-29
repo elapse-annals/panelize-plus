@@ -7,16 +7,24 @@
 import { ANSWER_STATUS } from './answer-stats.js';
 
 export const AI_SUMMARY_API_KEY_STORAGE_KEY = 'aiSummaryApiKey';
-export const AI_SUMMARY_REQUEST_TIMEOUT_MS = 120 * 1000;
+// How long the API may go without sending anything before the request fails.
+export const AI_SUMMARY_REQUEST_TIMEOUT_MS = 90 * 1000;
+// Longest a summary request may run in total, even while data keeps arriving.
+export const AI_SUMMARY_MAX_DURATION_MS = 5 * 60 * 1000;
+export const AI_SUMMARY_TIMEOUT_ERROR = 'Timed out';
 export const AI_SUMMARY_MIN_ANSWERS = 2;
 // Longest answer text sent per panel; longer answers are cut.
 export const ANSWER_TEXT_MAX_LENGTH = 20000;
+// Longest combined answer text sent in one summary request.
+export const ANSWER_TEXTS_TOTAL_MAX_LENGTH = 60000;
 const ERROR_BODY_MAX_LENGTH = 300;
 const CHAT_COMPLETIONS_PATH = '/chat/completions';
 // Most positions shown side by side for one disagreement.
 export const MAX_DISAGREEMENT_POSITIONS = 3;
 // Items backed by at least this share of the summarized answers are highlighted.
 export const STRONG_SUPPORT_RATIO = 0.8;
+// The automatic summary starts once this share of a round's answers finished.
+export const AUTO_SUMMARY_READY_RATIO = 0.8;
 
 export function normalizeChatCompletionsUrl(baseUrl) {
   const trimmed = typeof baseUrl === 'string' ? baseUrl.trim().replace(/\/+$/, '') : '';
@@ -49,6 +57,35 @@ export function truncateAnswerText(text, maxLength = ANSWER_TEXT_MAX_LENGTH) {
 }
 
 /**
+ * Answer texts cut to share a total budget: short answers stay whole and the
+ * room they leave goes to the longer ones, each still capped at maxLength.
+ *
+ * @param {string[]} texts
+ * @returns {string[]}
+ */
+export function fitAnswerTexts(texts, totalMaxLength = ANSWER_TEXTS_TOTAL_MAX_LENGTH, maxLength = ANSWER_TEXT_MAX_LENGTH) {
+  const normalized = texts.map(text => truncateAnswerText(text, maxLength));
+  const limits = new Array(normalized.length).fill(0);
+  let remaining = totalMaxLength;
+  let open = normalized.map((_, index) => index);
+  while (open.length && remaining > 0) {
+    const share = Math.floor(remaining / open.length);
+    if (share <= 0) break;
+    const fits = open.filter(index => normalized[index].length <= share);
+    if (!fits.length) {
+      open.forEach(index => { limits[index] = share; });
+      break;
+    }
+    fits.forEach(index => {
+      limits[index] = normalized[index].length;
+      remaining -= normalized[index].length;
+    });
+    open = open.filter(index => !fits.includes(index));
+  }
+  return normalized.map((text, index) => truncateAnswerText(text, Math.max(1, limits[index])));
+}
+
+/**
  * Chat messages asking for a JSON summary of the answers.
  *
  * @param {{ question: string, answers: Array<{ sourceId: string, label: string, text: string }>, language?: string }} options
@@ -59,19 +96,21 @@ export function buildSummaryMessages({ question, answers, language = 'en' }) {
     'Use only what the answers say; do not add facts of your own.',
     'Every item must list the source ids of all answers that support it.',
     'If the question asks for a judgment or a choice (yes or no, true or false, which is better, should I), put the clear answer first in "verdict", citing the answers that reach it; otherwise set "verdict" to null.',
-    'Put what most answers agree on in "consensus", grouped into 2–5 short, themed sections.',
+    'Put what most answers agree on in "consensus", grouped into 2–5 short, themed sections with at most 3 points each.',
     'Use this shape for "consensus": [{"heading": "Short theme", "points": [{"text": "A complete paragraph of 1–3 sentences", "sources": ["S1", "S2"]}]}]. Each point must read as a complete paragraph; do not turn points into fragments or lists.',
-    'Put points that only some answers raise, and that no other answer contradicts, in "unique". An answer that does not mention a point does not disagree with it.',
-    `Put in "disagreements" only points where answers contradict each other and cannot both be true; if there are none, return []. Give each a short "topic" with up to ${MAX_DISAGREEMENT_POSITIONS} "positions"; merge similar positions and cite each one's sources.`,
+    'Put points that only some answers raise, and that no other answer contradicts, in "unique", at most 8 of the most useful. An answer that does not mention a point does not disagree with it.',
+    `Put in "disagreements" only points where answers contradict each other and cannot both be true, at most 5; if there are none, return []. Give each a short "topic" with up to ${MAX_DISAGREEMENT_POSITIONS} "positions"; merge similar positions and cite each one's sources.`,
+    'Be concise: keep the whole summary short enough to read in a minute.',
     'Never write source ids (S1, S2, ...) or assistant names in any "text" or "topic"; attribution belongs only in "sources".',
     `Write the text in the language with BCP 47 tag "${language}".`,
     'Reply with JSON only, no code fence, in this shape:',
     '{"verdict": {"text": "...", "sources": ["S1"]} or null, "consensus": [{"heading": "...", "points": [{"text": "...", "sources": ["S1", "S2"]}]}], "unique": [{"text": "...", "sources": ["S2"]}], "disagreements": [{"topic": "...", "positions": [{"text": "...", "sources": ["S1"]}, {"text": "...", "sources": ["S2"]}]}]}'
   ].join('\n');
 
+  const texts = fitAnswerTexts(answers.map(answer => answer.text));
   const user = [
     `Question:\n${question || '(no text)'}`,
-    ...answers.map(answer => `--- Answer ${answer.sourceId} (${answer.label}) ---\n${truncateAnswerText(answer.text)}`)
+    ...answers.map((answer, index) => `--- Answer ${answer.sourceId} (${answer.label}) ---\n${texts[index]}`)
   ].join('\n\n');
 
   return [
@@ -198,22 +237,83 @@ export function parseSummaryResponse(content, validSourceIds) {
   }
 }
 
+// Reads a server-sent events body of chat completion chunks. Calls onActivity
+// for every chunk, including reasoning the reply leaves out.
+async function readStreamedContent(body, onActivity) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let content = '';
+  const readLine = (line) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('data:')) return false;
+    const data = trimmed.slice(5).trim();
+    if (data === '[DONE]') return true;
+    let chunk;
+    try {
+      chunk = JSON.parse(data);
+    } catch {
+      return false;
+    }
+    if (chunk?.error) {
+      throw new Error(chunk.error.message || JSON.stringify(chunk.error).slice(0, ERROR_BODY_MAX_LENGTH));
+    }
+    const delta = chunk?.choices?.[0]?.delta;
+    if (typeof delta?.content === 'string') content += delta.content;
+    onActivity(content.length);
+    return false;
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    onActivity(content.length);
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (readLine(line)) {
+        reader.cancel().catch(() => {});
+        return content;
+      }
+    }
+  }
+  buffer += decoder.decode();
+  if (buffer) readLine(buffer);
+  return content;
+}
+
 /**
- * Calls the chat completions API and returns the reply text.
+ * Calls the chat completions API and returns the reply text. The reply is
+ * streamed when the API supports it, so a long summary does not time out
+ * while it is still being written: the request fails only after timeoutMs
+ * without new data, or after maxDurationMs in all.
  *
- * @param {{ config: { baseUrl: string, apiKey: string, model: string }, messages: Array<object>, fetchImpl?: Function, signal?: AbortSignal, timeoutMs?: number }} options
+ * @param {{ config: { baseUrl: string, apiKey: string, model: string }, messages: Array<object>, fetchImpl?: Function, signal?: AbortSignal, timeoutMs?: number, maxDurationMs?: number, onProgress?: (receivedChars: number) => void }} options
  */
 export async function requestSummary({
   config,
   messages,
   fetchImpl = globalThis.fetch,
   signal,
-  timeoutMs = AI_SUMMARY_REQUEST_TIMEOUT_MS
+  timeoutMs = AI_SUMMARY_REQUEST_TIMEOUT_MS,
+  maxDurationMs = AI_SUMMARY_MAX_DURATION_MS,
+  onProgress
 }) {
   const controller = new AbortController();
+  let timedOut = false;
   const abort = () => controller.abort();
+  const timeOut = () => {
+    timedOut = true;
+    controller.abort();
+  };
   signal?.addEventListener('abort', abort, { once: true });
-  const timeoutId = setTimeout(abort, timeoutMs);
+  let idleTimeoutId = setTimeout(timeOut, timeoutMs);
+  const maxTimeoutId = setTimeout(timeOut, maxDurationMs);
+  const onActivity = (receivedChars) => {
+    clearTimeout(idleTimeoutId);
+    idleTimeoutId = setTimeout(timeOut, timeoutMs);
+    onProgress?.(receivedChars);
+  };
   try {
     const response = await fetchImpl(normalizeChatCompletionsUrl(config.baseUrl), {
       method: 'POST',
@@ -221,21 +321,30 @@ export async function requestSummary({
         'Content-Type': 'application/json',
         Authorization: `Bearer ${config.apiKey.trim()}`
       },
-      body: JSON.stringify({ model: config.model.trim(), messages, temperature: 0.2 }),
+      body: JSON.stringify({ model: config.model.trim(), messages, temperature: 0.2, stream: true }),
       signal: controller.signal
     });
     if (!response.ok) {
       const body = await response.text().catch(() => '');
       throw new Error(`HTTP ${response.status}${body ? `: ${body.slice(0, ERROR_BODY_MAX_LENGTH)}` : ''}`);
     }
-    const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content;
+    let content;
+    if (response.body?.getReader && /text\/event-stream/i.test(response.headers?.get?.('content-type') || '')) {
+      content = await readStreamedContent(response.body, onActivity);
+    } else {
+      const data = await response.json();
+      content = data?.choices?.[0]?.message?.content;
+    }
     if (typeof content !== 'string' || !content.trim()) {
       throw new Error('Empty reply');
     }
     return content;
+  } catch (error) {
+    if (timedOut) throw new Error(AI_SUMMARY_TIMEOUT_ERROR);
+    throw error;
   } finally {
-    clearTimeout(timeoutId);
+    clearTimeout(idleTimeoutId);
+    clearTimeout(maxTimeoutId);
     signal?.removeEventListener('abort', abort);
   }
 }
@@ -250,6 +359,28 @@ export async function requestSummary({
 export function isRoundReadyForSummary(round, answerTexts) {
   const answers = Object.values(round?.answers || {});
   if (answers.length === 0 || answers.some(answer => answer.timed && answer.status === ANSWER_STATUS.PENDING)) {
+    return false;
+  }
+  const withText = Object.keys(round.answers).filter(panelId => answerTexts?.get(panelId)?.trim());
+  return withText.length >= AI_SUMMARY_MIN_ANSWERS;
+}
+
+/**
+ * True once at least AUTO_SUMMARY_READY_RATIO of the round's answers have
+ * finished and at least AI_SUMMARY_MIN_ANSWERS answers have text, so a slow
+ * AI does not hold up the automatic summary.
+ *
+ * @param {object} round
+ * @param {Map<string, string>} answerTexts Answer text by panel id.
+ */
+export function isRoundReadyForAutoSummary(round, answerTexts) {
+  const answers = Object.values(round?.answers || {});
+  if (answers.length === 0) {
+    return false;
+  }
+  const finished = answers.filter(answer => !(answer.timed && answer.status === ANSWER_STATUS.PENDING)).length;
+  // Integer comparison, as in isStronglySupported.
+  if (finished * 10 < answers.length * Math.round(AUTO_SUMMARY_READY_RATIO * 10)) {
     return false;
   }
   const withText = Object.keys(round.answers).filter(panelId => answerTexts?.get(panelId)?.trim());

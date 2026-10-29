@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PANEL_READY_STATE, isSendHeldByReadiness, summarizePanelReadiness } from '../modules/panel-readiness.js';
+import { PANEL_ACTIVITY, PANEL_READY_STATE, getPanelActivity, isSendHeldByReadiness, summarizePanelReadiness } from '../modules/panel-readiness.js';
 
 describe('summarizePanelReadiness', () => {
   it('groups panels by ready state', () => {
@@ -53,5 +53,33 @@ describe('isSendHeldByReadiness', () => {
   it('does not hold without pending AIs, even when some timed out', () => {
     expect(held(1, 0, 3)).toBe(false);
     expect(held(0, 0)).toBe(false);
+  });
+});
+
+describe('getPanelActivity', () => {
+  const ready = { readyState: PANEL_READY_STATE.READY };
+  const answer = status => ({ timed: true, status });
+
+  it('shows a loading page as preparing, even with an answer', () => {
+    expect(getPanelActivity({ readyState: PANEL_READY_STATE.PENDING }, answer('complete'))).toBe(PANEL_ACTIVITY.PREPARING);
+  });
+
+  it('follows a timed answer in the latest round', () => {
+    expect(getPanelActivity(ready, answer('pending'))).toBe(PANEL_ACTIVITY.RUNNING);
+    expect(getPanelActivity(ready, answer('complete'))).toBe(PANEL_ACTIVITY.DONE);
+    expect(getPanelActivity(ready, answer('timeout'))).toBe(PANEL_ACTIVITY.STALLED);
+  });
+
+  it('shows nothing for untimed or cancelled answers', () => {
+    expect(getPanelActivity(ready, { timed: false, status: 'pending' })).toBe(PANEL_ACTIVITY.IDLE);
+    expect(getPanelActivity(ready, answer('cancelled'))).toBe(PANEL_ACTIVITY.IDLE);
+    expect(getPanelActivity(ready, null)).toBe(PANEL_ACTIVITY.IDLE);
+    expect(getPanelActivity({}, null)).toBe(PANEL_ACTIVITY.IDLE);
+  });
+
+  it('marks a page that never got ready unless it answered', () => {
+    const timedOut = { readyState: PANEL_READY_STATE.TIMEOUT };
+    expect(getPanelActivity(timedOut, null)).toBe(PANEL_ACTIVITY.NOT_READY);
+    expect(getPanelActivity(timedOut, answer('complete'))).toBe(PANEL_ACTIVITY.DONE);
   });
 });

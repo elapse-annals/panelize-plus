@@ -1,3 +1,5 @@
+import { ANSWER_STATUS } from './answer-stats.js';
+
 export const PANELIZE_COMPOSER_READY = 'PANELIZE_COMPOSER_READY';
 // Long enough for a slow provider page; a page that never shows a question
 // box (e.g. signed out) stops holding Send after this.
@@ -40,4 +42,38 @@ export const PANEL_READY_SEND_RATIO = 0.8;
 export function isSendHeldByReadiness(summary) {
   if (!summary?.pending?.length) return false;
   return summary.ready.length < Math.ceil(summary.total * PANEL_READY_SEND_RATIO);
+}
+
+// What a panel's tab chip shows: loading, answering, finished, or a problem.
+export const PANEL_ACTIVITY = Object.freeze({
+  IDLE: 'idle',
+  PREPARING: 'preparing',
+  NOT_READY: 'not-ready',
+  RUNNING: 'running',
+  DONE: 'done',
+  STALLED: 'stalled'
+});
+
+const ANSWER_ACTIVITY = {
+  [ANSWER_STATUS.PENDING]: PANEL_ACTIVITY.RUNNING,
+  [ANSWER_STATUS.COMPLETE]: PANEL_ACTIVITY.DONE,
+  [ANSWER_STATUS.TIMEOUT]: PANEL_ACTIVITY.STALLED
+};
+
+/**
+ * The activity a panel's tab chip shows. A loading page wins; then the
+ * panel's answer in the latest round, when its provider reports timing
+ * (untimed answers show nothing); then a page that never got ready.
+ *
+ * @param {{readyState?: string}} panel - The panel.
+ * @param {{timed?: boolean, status?: string}|null} answer - The panel's answer
+ *   in the latest round, or null when the panel is not in it.
+ * @returns {string} A PANEL_ACTIVITY value.
+ */
+export function getPanelActivity(panel, answer) {
+  if (panel?.readyState === PANEL_READY_STATE.PENDING) return PANEL_ACTIVITY.PREPARING;
+  const answerActivity = answer?.timed ? ANSWER_ACTIVITY[answer.status] : null;
+  if (answerActivity) return answerActivity;
+  if (panel?.readyState === PANEL_READY_STATE.TIMEOUT) return PANEL_ACTIVITY.NOT_READY;
+  return PANEL_ACTIVITY.IDLE;
 }

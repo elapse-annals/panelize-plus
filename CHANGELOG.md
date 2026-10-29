@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.42.0 - 2026-10-29
+- The AI summary streams its reply and shows how long it has been running and how much text has arrived, so a long summary no longer looks stuck. It fails only after the API sends nothing for 90 seconds (or after 5 minutes in all) instead of after 120 seconds no matter what, and says so when it times out.
+- Long answers share a 60,000-character budget per summary, so many panels or long replies no longer flood the summary model; short answers are sent whole. The summary is asked to stay concise, which also makes it faster.
+
+## 2.41.0 - 2026-10-29
+- Each AI's tab chip at the top shows its state: the icon breathes while the page loads, a blue ring spins while it answers, and a green dot marks a finished answer until the next question. An amber dot means the page never got ready or the answer's end could not be confirmed. Hover a chip for the state in words. AIs whose answers Panelize cannot time show no answering state.
+
+## 2.40.0 - 2026-10-29
+- With "Summarize when 80% of answers are done" turned on, the AI summary starts once at least 80% of the AIs have finished answering instead of waiting for the slowest one. AIs still answering are listed as not included; re-run the summary to add them.
+- When a summary finishes, a green ring marks the AI summary button until the next question.
+
 ## 2.39.0 - 2026-10-29
 - Popup mode remembers the window's position, size and maximized state, and reopens there instead of always at 1400×900. Switching from a tab to popup mode uses the same remembered bounds.
 

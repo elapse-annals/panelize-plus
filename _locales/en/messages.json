@@ -1385,6 +1385,21 @@
   "composerWaitingFor": {
     "message": "Waiting for $1."
   },
+  "panelActivityPreparing": {
+    "message": "Preparing"
+  },
+  "panelActivityNotReady": {
+    "message": "Not ready; check sign-in or reload"
+  },
+  "panelActivityRunning": {
+    "message": "Answering"
+  },
+  "panelActivityDone": {
+    "message": "Answer complete"
+  },
+  "panelActivityStalled": {
+    "message": "Couldn't confirm the answer finished"
+  },
   "composerAllReady": {
     "message": "All $1 AIs are ready."
   },
@@ -1610,6 +1625,15 @@
   "aiSummaryRunning": {
     "message": "Summarizing $1 answers…"
   },
+  "aiSummaryWaiting": {
+    "message": "Summarizing $1 answers… ($2 s)"
+  },
+  "aiSummaryReceiving": {
+    "message": "Summarizing $1 answers… $2 characters received ($3 s)"
+  },
+  "aiSummaryTimedOut": {
+    "message": "The summary timed out: the API sent nothing for a long time. Try again or use a faster model."
+  },
   "aiSummaryIdle": {
     "message": "Waiting for the answers. Use Summarize again to summarize now."
   },
@@ -1662,7 +1686,7 @@
     "message": "The model name the API expects, such as gpt-4o-mini or deepseek-chat."
   },
   "labelAiSummaryAuto": {
-    "message": "Summarize when all answers are done"
+    "message": "Summarize when 80% of answers are done"
   },
   "descAiSummaryAuto": {
     "message": "Off: summarize only with the AI summary button in the toolbar"

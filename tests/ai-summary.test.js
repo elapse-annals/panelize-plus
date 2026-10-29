@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  AI_SUMMARY_TIMEOUT_ERROR,
   ANSWER_TEXT_MAX_LENGTH,
+  ANSWER_TEXTS_TOTAL_MAX_LENGTH,
   buildSummaryMessages,
+  fitAnswerTexts,
   formatSummaryText,
   groupItemsBySources,
   getSummaryOriginPattern,
+  isRoundReadyForAutoSummary,
   isRoundReadyForSummary,
   isStronglySupported,
   isSummaryConfigured,
@@ -198,6 +202,108 @@ describe('requestSummary', () => {
   });
 });
 
+function streamResponse(chunks) {
+  const encoder = new TextEncoder();
+  let index = 0;
+  return {
+    ok: true,
+    headers: { get: () => 'text/event-stream; charset=utf-8' },
+    body: {
+      getReader: () => ({
+        read: async () => index < chunks.length
+          ? { value: encoder.encode(chunks[index++]), done: false }
+          : { value: undefined, done: true },
+        cancel: async () => {}
+      })
+    }
+  };
+}
+
+describe('requestSummary streaming', () => {
+  it('asks for a stream and joins the streamed content', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(streamResponse([
+      'data: {"choices":[{"delta":{"reasoning_content":"thinking"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"{\\"over"}}]}\n\ndata: {"choices":[{"del',
+      'ta":{"content":"view\\":\\"ok\\"}"}}]}\n\n',
+      'data: [DONE]\n\n'
+    ]));
+    const onProgress = vi.fn();
+    const content = await requestSummary({ config: CONFIG, messages: [], fetchImpl, onProgress });
+    expect(content).toBe('{"overview":"ok"}');
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body).stream).toBe(true);
+    expect(onProgress).toHaveBeenCalled();
+    expect(onProgress.mock.calls.at(-1)[0]).toBe(content.length);
+  });
+
+  it('reports an error sent inside the stream', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(streamResponse(['data: {"error":{"message":"context too long"}}\n\n']));
+    await expect(requestSummary({ config: CONFIG, messages: [], fetchImpl })).rejects.toThrow('context too long');
+  });
+
+  it('times out when the API sends nothing', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn((url, init) => new Promise((resolve, reject) => {
+        init.signal.addEventListener('abort', () => reject(new Error('aborted')));
+      }));
+      const pending = requestSummary({ config: CONFIG, messages: [], fetchImpl, timeoutMs: 1000 });
+      const assertion = expect(pending).rejects.toThrow(AI_SUMMARY_TIMEOUT_ERROR);
+      await vi.advanceTimersByTimeAsync(1000);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps waiting while data keeps arriving', async () => {
+    vi.useFakeTimers();
+    try {
+      const encoder = new TextEncoder();
+      const chunks = Array.from({ length: 5 }, (_, i) => `data: {"choices":[{"delta":{"content":"${i}"}}]}\n\n`);
+      let index = 0;
+      const response = {
+        ok: true,
+        headers: { get: () => 'text/event-stream' },
+        body: {
+          getReader: () => ({
+            read: () => new Promise(resolve => setTimeout(() => resolve(index < chunks.length
+              ? { value: encoder.encode(chunks[index++]), done: false }
+              : { value: undefined, done: true }), 800)),
+            cancel: async () => {}
+          })
+        }
+      };
+      const pending = requestSummary({ config: CONFIG, messages: [], fetchImpl: async () => response, timeoutMs: 1000 });
+      await vi.advanceTimersByTimeAsync(6 * 800);
+      await expect(pending).resolves.toBe('01234');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('fitAnswerTexts', () => {
+  it('keeps short answers whole and splits the rest of the budget', () => {
+    const texts = fitAnswerTexts(['a'.repeat(10), 'b'.repeat(100), 'c'.repeat(100)], 60, 1000);
+    expect(texts[0]).toBe('a'.repeat(10));
+    expect(texts[1]).toHaveLength(25);
+    expect(texts[2]).toHaveLength(25);
+    expect(texts.join('').length).toBeLessThanOrEqual(60);
+  });
+
+  it('leaves answers alone when they fit', () => {
+    expect(fitAnswerTexts([' x ', 'yy'], 100, 100)).toEqual(['x', 'yy']);
+  });
+
+  it('keeps the summary request within the total budget', () => {
+    const answers = Array.from({ length: 8 }, (_, i) => ({ sourceId: `S${i + 1}`, label: `AI ${i + 1}`, text: 'z'.repeat(ANSWER_TEXT_MAX_LENGTH) }));
+    const [, user] = buildSummaryMessages({ question: 'q', answers });
+    const answerChars = (user.content.match(/z/g) || []).length;
+    expect(answerChars).toBeLessThanOrEqual(ANSWER_TEXTS_TOTAL_MAX_LENGTH);
+    expect(answerChars).toBeGreaterThan(ANSWER_TEXTS_TOTAL_MAX_LENGTH - 100);
+  });
+});
+
 describe('isStronglySupported', () => {
   const ids = count => Array.from({ length: count }, (_, index) => `S${index + 1}`);
 
@@ -236,6 +342,41 @@ describe('isRoundReadyForSummary', () => {
     expect(isRoundReadyForSummary(next, texts)).toBe(false);
     texts.set('p2', 'B');
     expect(isRoundReadyForSummary(next, texts)).toBe(true);
+  });
+});
+
+describe('isRoundReadyForAutoSummary', () => {
+  const createFivePanelRound = () => createRound({
+    id: 'r2',
+    createdAt: 1000,
+    text: 'Q',
+    panels: ['chatgpt', 'gemini', 'deepseek', 'kimi', 'grok'].map((providerId, index) => ({ id: `p${index + 1}`, providerId }))
+  });
+
+  it('starts once 80% of the answers finished and two have text', () => {
+    let next = createFivePanelRound();
+    ['p1', 'p2', 'p3'].forEach((id, index) => {
+      next = applyTimingEvent(next, id, 'complete', 2000 + index);
+    });
+    const texts = new Map([['p1', 'A'], ['p2', 'B'], ['p3', 'C']]);
+    expect(isRoundReadyForAutoSummary(next, texts)).toBe(false);
+    next = applyTimingEvent(next, 'p4', 'complete', 3000);
+    expect(isRoundReadyForAutoSummary(next, texts)).toBe(true);
+    expect(isRoundReadyForAutoSummary(next, new Map([['p1', 'A']]))).toBe(false);
+  });
+
+  it('waits for both answers when only two AIs answer', () => {
+    const round = createRound({
+      id: 'r3',
+      createdAt: 1000,
+      text: 'Q',
+      panels: [{ id: 'p1', providerId: 'chatgpt' }, { id: 'p2', providerId: 'gemini' }]
+    });
+    const texts = new Map([['p1', 'A'], ['p2', 'B']]);
+    let next = applyTimingEvent(round, 'p1', 'complete', 2000);
+    expect(isRoundReadyForAutoSummary(next, texts)).toBe(false);
+    next = applyTimingEvent(next, 'p2', 'complete', 3000);
+    expect(isRoundReadyForAutoSummary(next, texts)).toBe(true);
   });
 });
 

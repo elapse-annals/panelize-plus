@@ -128,10 +128,12 @@ import {
 import { renderAnswerStatsTable } from '../modules/answer-stats-view.js';
 import {
   AI_SUMMARY_API_KEY_STORAGE_KEY,
+  AI_SUMMARY_TIMEOUT_ERROR,
   buildSummaryMessages,
   formatSummaryText,
   groupItemsBySources,
   getSummaryOriginPattern,
+  isRoundReadyForAutoSummary,
   isRoundReadyForSummary,
   isStronglySupported,
   isSummaryConfigured,
@@ -148,6 +150,8 @@ import {
   PANELIZE_COMPOSER_READY,
   PANEL_READY_STATE,
   PANEL_READY_TIMEOUT_MS,
+  PANEL_ACTIVITY,
+  getPanelActivity,
   isSendHeldByReadiness,
   summarizePanelReadiness
 } from '../modules/panel-readiness.js';
@@ -326,6 +330,8 @@ const PANELIZE_GET_ANSWER_TEXT = 'PANELIZE_GET_ANSWER_TEXT';
 const PANELIZE_ANSWER_TEXT = 'PANELIZE_ANSWER_TEXT';
 // How long a summary asked for by hand waits for panels to report their answer.
 const AI_SUMMARY_COLLECT_TIMEOUT_MS = 1500;
+// How often the running summary's elapsed time is refreshed.
+const AI_SUMMARY_PROGRESS_INTERVAL_MS = 1000;
 const PANELIZE_PAGE_STYLE = 'PANELIZE_PAGE_STYLE';
 const MAX_IN_MEMORY_ANSWER_ROUNDS = 20;
 const ANSWER_STATS_RECENT_LIMIT = 20;
@@ -2026,7 +2032,10 @@ function updatePanelSelectors() {
     selector.className = 'panel-selector';
     selector.dataset.panelId = panel.id;
     selector.innerHTML = `
-      <img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="provider-icon" data-provider-id="${provider.id}">
+      <span class="provider-icon-wrap">
+        <img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="provider-icon" data-provider-id="${provider.id}">
+        <span class="panel-activity" aria-hidden="true"></span>
+      </span>
       <span class="provider-name">${getProviderShortName(provider)}</span>
       <span class="blind-label" aria-hidden="true"></span>
       <button class="remove-panel" title="Remove panel">
@@ -2055,6 +2064,30 @@ function updatePanelSelectors() {
   });
   setFocusedPanel(focusedPanelId);
   renderBlindLabels();
+}
+
+const PANEL_ACTIVITY_LABELS = {
+  [PANEL_ACTIVITY.PREPARING]: ['panelActivityPreparing', 'Preparing'],
+  [PANEL_ACTIVITY.NOT_READY]: ['panelActivityNotReady', 'Not ready; check sign-in or reload'],
+  [PANEL_ACTIVITY.RUNNING]: ['panelActivityRunning', 'Answering'],
+  [PANEL_ACTIVITY.DONE]: ['panelActivityDone', 'Answer complete'],
+  [PANEL_ACTIVITY.STALLED]: ['panelActivityStalled', "Couldn't confirm the answer finished"]
+};
+
+// Marks each tab chip with its panel's loading or answering state; the chip's
+// tooltip names the panel (anonymously in blind mode) and adds the state.
+function renderPanelActivity() {
+  const round = getLatestAnswerRound();
+  document.querySelectorAll('#panel-selectors .panel-selector').forEach(selector => {
+    const panel = panels.find(candidate => candidate.id === selector.dataset.panelId);
+    if (!panel) return;
+    const answer = isPanelInAnswerRound(round, panel) ? round.answers[panel.id] : null;
+    const activity = getPanelActivity(panel, answer);
+    selector.dataset.activity = activity;
+    const label = PANEL_ACTIVITY_LABELS[activity];
+    const name = getPanelDisplayName(panel);
+    selector.title = label ? `${name} · ${getLocalizedText(...label)}` : name;
+  });
 }
 
 // ===== Blind mode & wide content =====
@@ -2287,9 +2320,8 @@ function renderBlindLabels() {
     const text = isBlindModeEnabled ? getPanelDisplayName(panel) : '';
     document.querySelectorAll(`#${CSS.escape(panel.id)} .blind-label, .panel-selector[data-panel-id="${panel.id}"] .blind-label`)
       .forEach(label => { label.textContent = text; });
-    const selector = document.querySelector(`.panel-selector[data-panel-id="${panel.id}"]`);
-    if (selector) selector.title = getPanelDisplayName(panel);
   });
+  renderPanelActivity();
   composerControls?.panelsChanged();
 }
 
@@ -3696,6 +3728,7 @@ function setPanelReadyState(panel, state) {
   panel.readyTimerId = null;
   panel.readyState = state;
   renderReadinessStatus();
+  renderPanelActivity();
   sendCatchUp(panel, state);
 }
 
@@ -3827,6 +3860,7 @@ async function newChatAllProviders({ retryFailed = false } = {}) {
         if (panel) panel.clearedAnswerRoundId = latestAnswerRoundId;
       });
       updateAnswerFeedbackButtons();
+      renderPanelActivity();
       await composerControls?.restoreTier(successful);
     }
   } catch (error) {
@@ -3964,6 +3998,7 @@ function isPanelInAnswerRound(round, panel) {
 
 function persistAnswerRound(round) {
   answerRounds.set(round.id, round);
+  if (round.id === latestAnswerRoundId) renderPanelActivity();
   saveAnswerRound(round).catch(error => {
     console.warn('[Multi-Panel] Failed to save answer stats:', error);
   });
@@ -4191,18 +4226,20 @@ function startAiSummaryRound(roundId) {
   renderAiSummary();
 }
 
-// A ring spins around the button while answers are read or summarized.
+// A ring spins around the button while answers are read or summarized, and
+// turns green once the summary is done.
 function updateAiSummaryButtonBusy() {
   const busy = ['collecting', 'running'].includes(aiSummaryState.status);
   const button = document.getElementById('ai-summary-btn');
   button?.classList.toggle('ai-summary-busy', busy);
+  button?.classList.toggle('ai-summary-done', aiSummaryState.status === 'done');
   button?.setAttribute('aria-busy', String(busy));
 }
 
 function maybeAutoSummarize(roundId) {
   const round = answerRounds.get(roundId);
   if (!aiSummaryConfig.autoEnabled || roundId !== latestAnswerRoundId || autoSummarizedRoundIds.has(roundId)
-    || !isSummaryConfigured(aiSummaryConfig) || !isRoundReadyForSummary(round, getRoundAnswerTexts(round))) {
+    || !isSummaryConfigured(aiSummaryConfig) || !isRoundReadyForAutoSummary(round, getRoundAnswerTexts(round))) {
     return;
   }
   autoSummarizedRoundIds.add(roundId);
@@ -4341,7 +4378,11 @@ async function runAiSummary(roundId, { collect = false } = {}) {
     console.warn('[Multi-Panel] Could not check AI summary access:', error);
   }
 
-  setState({ status: 'running', sources, missing });
+  setState({ status: 'running', sources, missing, startedAt: Date.now(), receivedChars: 0 });
+  // Re-renders once a second so the elapsed time and received text keep moving.
+  const progressTimerId = setInterval(() => {
+    if (isCurrent() && aiSummaryState.status === 'running') renderAiSummary();
+  }, AI_SUMMARY_PROGRESS_INTERVAL_MS);
   try {
     const messages = buildSummaryMessages({
       question: answerQuestionsByRound.get(roundId) || round.promptSummary,
@@ -4352,7 +4393,14 @@ async function runAiSummary(roundId, { collect = false } = {}) {
       })),
       language: getSnapshotLocale()
     });
-    const content = await requestSummary({ config: aiSummaryConfig, messages, signal: controller.signal });
+    const content = await requestSummary({
+      config: aiSummaryConfig,
+      messages,
+      signal: controller.signal,
+      onProgress: (receivedChars) => {
+        if (isCurrent() && aiSummaryState.status === 'running') aiSummaryState.receivedChars = receivedChars;
+      }
+    });
     const summary = parseSummaryResponse(content, sources.map(source => source.sourceId));
     setState({ status: 'done', sources, missing, summary });
   } catch (error) {
@@ -4362,9 +4410,12 @@ async function runAiSummary(roundId, { collect = false } = {}) {
       status: 'error',
       sources,
       missing,
-      error: getLocalizedText('aiSummaryFailed', 'Summary failed: $1', [error?.message || String(error)])
+      error: error?.message === AI_SUMMARY_TIMEOUT_ERROR
+        ? getLocalizedText('aiSummaryTimedOut', 'The summary timed out: the API sent nothing for a long time. Try again or use a faster model.')
+        : getLocalizedText('aiSummaryFailed', 'Summary failed: $1', [error?.message || String(error)])
     });
   } finally {
+    clearInterval(progressTimerId);
     if (isCurrent()) aiSummaryController = null;
   }
 }
@@ -4479,6 +4530,16 @@ function createAiSummaryDisagreement(item, sourcesById, round, totalSources) {
   return card;
 }
 
+// The running status with the seconds spent and, once the reply streams in,
+// how much of it has arrived.
+function getAiSummaryRunningText(state) {
+  const count = String(state.sources.length);
+  const seconds = String(Math.max(0, Math.floor((Date.now() - (state.startedAt || Date.now())) / 1000)));
+  return state.receivedChars > 0
+    ? getLocalizedText('aiSummaryReceiving', 'Summarizing $1 answers… $2 characters received ($3 s)', [count, String(state.receivedChars), seconds])
+    : getLocalizedText('aiSummaryWaiting', 'Summarizing $1 answers… ($2 s)', [count, seconds]);
+}
+
 function renderAiSummary() {
   const drawer = document.getElementById('ai-summary-drawer');
   if (!drawer || drawer.hidden) {
@@ -4499,7 +4560,7 @@ function renderAiSummary() {
       ? getLocalizedText('aiSummaryIdle', 'Waiting for the answers. Use Summarize again to summarize now.')
       : getLocalizedText('aiSummaryNoRound', 'Send a question to several AIs, then summarize their answers here.'),
     collecting: getLocalizedText('aiSummaryCollecting', 'Reading the answers…'),
-    running: getLocalizedText('aiSummaryRunning', 'Summarizing $1 answers…', [String(state.sources.length)]),
+    running: getAiSummaryRunningText(state),
     done: '',
     error: state.error
   };

@@ -307,6 +307,73 @@ body {
   object-fit: contain;
 }
 
+/* Tab chip activity: loading, answering, finished, or a problem. */
+.panel-selector .provider-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.panel-selector[data-activity="preparing"] .provider-icon {
+  animation: panel-activity-breathe 1.6s ease-in-out infinite;
+}
+
+.panel-selector .panel-activity {
+  position: absolute;
+  pointer-events: none;
+}
+
+.panel-selector[data-activity="running"] .panel-activity {
+  inset: -3px;
+  border: 2px solid transparent;
+  border-top-color: #1976d2;
+  border-right-color: #1976d2;
+  border-radius: 50%;
+  animation: panel-activity-spin 0.9s linear infinite;
+}
+
+.panel-selector[data-activity="done"] .panel-activity,
+.panel-selector[data-activity="stalled"] .panel-activity,
+.panel-selector[data-activity="not-ready"] .panel-activity {
+  right: -2px;
+  bottom: -2px;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.panel-selector[data-activity="done"] .panel-activity {
+  background: #2e7d32;
+}
+
+.panel-selector[data-activity="stalled"] .panel-activity,
+.panel-selector[data-activity="not-ready"] .panel-activity {
+  background: #f9a825;
+}
+
+@keyframes panel-activity-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes panel-activity-breathe {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.8; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-selector[data-activity="preparing"] .provider-icon {
+    animation: none;
+    opacity: 0.45;
+  }
+
+  .panel-selector[data-activity="running"] .panel-activity {
+    animation: none;
+    border-color: #1976d2;
+  }
+}
+
 .panel-selector .remove-panel {
   display: flex;
   align-items: center;
@@ -2202,6 +2269,21 @@ body {
   border-color: #64b5f6;
   background: #1a3a5a;
   color: #90caf9;
+}
+
+[data-theme="dark"] .panel-selector[data-activity="running"] .panel-activity {
+  border-top-color: #64b5f6;
+  border-right-color: #64b5f6;
+}
+
+[data-theme="dark"] .panel-selector[data-activity="done"] .panel-activity,
+[data-theme="dark"] .panel-selector[data-activity="stalled"] .panel-activity,
+[data-theme="dark"] .panel-selector[data-activity="not-ready"] .panel-activity {
+  border-color: #2d2d2d;
+}
+
+[data-theme="dark"] .panel-selector[data-activity="done"] .panel-activity {
+  background: #66bb6a;
 }
 
 [data-theme="dark"] #panel-grid {
@@ -4132,6 +4214,20 @@ body.panel-shuffling #panel-grid, body.panel-shuffling #panel-selectors { pointe
   to { transform: rotate(360deg); }
 }
 
+/* A finished summary: a green ring until the next question. */
+#ai-summary-btn.ai-summary-done {
+  color: #2e7d32;
+}
+
+#ai-summary-btn.ai-summary-done::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid #2e7d32;
+  pointer-events: none;
+}
+
 /* The button bounces as the closing drawer shrinks into it. */
 #ai-summary-btn.ai-summary-absorb {
   animation: ai-summary-absorb 0.36s cubic-bezier(0.3, 1.6, 0.5, 1);
@@ -4177,6 +4273,14 @@ body.panel-shuffling #panel-grid, body.panel-shuffling #panel-selectors { pointe
   border-color: rgba(144, 202, 249, 0.18);
   border-top-color: #90caf9;
   border-right-color: #90caf9;
+}
+
+[data-theme="dark"] #ai-summary-btn.ai-summary-done {
+  color: #81c784;
+}
+
+[data-theme="dark"] #ai-summary-btn.ai-summary-done::after {
+  border-color: #81c784;
 }
 
 [data-theme="dark"] #ai-summary-btn.ai-summary-ready {

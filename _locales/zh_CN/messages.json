@@ -1364,6 +1364,21 @@
   "composerWaitingFor": {
     "message": "等待：$1。"
   },
+  "panelActivityPreparing": {
+    "message": "正在准备"
+  },
+  "panelActivityNotReady": {
+    "message": "未就绪，请检查登录或重新加载"
+  },
+  "panelActivityRunning": {
+    "message": "正在回答"
+  },
+  "panelActivityDone": {
+    "message": "已回答完成"
+  },
+  "panelActivityStalled": {
+    "message": "未检测到回答完成"
+  },
   "composerAllReady": {
     "message": "$1 个 AI 已全部就绪。"
   },
@@ -1589,6 +1604,15 @@
   "aiSummaryRunning": {
     "message": "正在汇总 $1 个回答…"
   },
+  "aiSummaryWaiting": {
+    "message": "正在汇总 $1 个回答…（$2 秒）"
+  },
+  "aiSummaryReceiving": {
+    "message": "正在汇总 $1 个回答… 已接收 $2 字（$3 秒）"
+  },
+  "aiSummaryTimedOut": {
+    "message": "AI 总结超时：接口长时间没有返回数据，请重试或换用更快的模型。"
+  },
   "aiSummaryIdle": {
     "message": "正在等待回答。点击“重新汇总”可立即汇总。"
   },
@@ -1641,7 +1665,7 @@
     "message": "API 使用的模型名，例如 gpt-4o-mini 或 deepseek-chat。"
   },
   "labelAiSummaryAuto": {
-    "message": "所有回答完成后自动汇总"
+    "message": "80% 的回答完成后自动汇总"
   },
   "descAiSummaryAuto": {
     "message": "关闭时只在点击工具栏的 AI 汇总按钮时汇总"
