@@ -2,7 +2,7 @@
 // panel's answer, newest first and grouped by day. Text and provider names
 // come from the caller so this module has no page globals.
 
-import { ANSWER_STATUS, RECENT_SCORE_WINDOW_MS } from './answer-stats.js';
+import { ANSWER_STATUS, RECENT_SCORE_WINDOW_MS, getRoundCategory } from './answer-stats.js';
 import { createCell, formatAnswerDuration } from './answer-stats-view.js';
 
 export const ANSWER_LOG_FEEDBACK = Object.freeze({
@@ -10,6 +10,14 @@ export const ANSWER_LOG_FEEDBACK = Object.freeze({
   ADOPTED: 'adopted',
   REJECTED: 'rejected',
   NONE: 'none'
+});
+
+const TASK_CATEGORY_TEXT = Object.freeze({
+  coding: ['taskCategoryCoding', 'Coding'],
+  writing: ['taskCategoryWriting', 'Writing'],
+  translation: ['taskCategoryTranslation', 'Translation'],
+  qa: ['taskCategoryQa', 'Q&A'],
+  other: ['taskCategoryOther', 'Other']
 });
 
 function normalizeQuery(text) {
@@ -126,13 +134,16 @@ export function renderAnswerLog(list, rounds, { limit, locale, getText, getProvi
       header.firstChild.title = round.promptSummary;
     }
 
+    const [categoryKey, categoryFallback] = TASK_CATEGORY_TEXT[getRoundCategory(round)] || TASK_CATEGORY_TEXT.other;
+    const category = createCell('span', getText(categoryKey, categoryFallback), 'answer-log-category');
+
     const answers = document.createElement('div');
     answers.className = 'answer-log-answers';
     Object.entries(round.answers || {}).forEach(([panelId, answer]) => {
       answers.appendChild(createAnswerChip(round, panelId, answer, { getText, getProviderName }));
     });
 
-    item.append(header, answers);
+    item.append(header, category, answers);
     items.push(item);
   });
 

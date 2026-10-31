@@ -317,6 +317,12 @@
   "descAbout2": {
     "message": "Built with privacy-first architecture. All data stored locally."
   },
+  "labelAboutAuthor": {
+    "message": "Author: Ben"
+  },
+  "labelAboutForkedFrom": {
+    "message": "Forked from"
+  },
   "msgThemeUpdated": {
     "message": "Theme updated"
   },
@@ -1028,6 +1034,36 @@
   "answerStatsEmpty": {
     "message": "No stats yet. Send a question to several AIs, then adopt the best answer with the thumbs-up button in its panel."
   },
+  "answerStatsCategoryLabel": {
+    "message": "Task category"
+  },
+  "answerStatsCategoryAll": {
+    "message": "All categories"
+  },
+  "taskCategoryCoding": {
+    "message": "Coding"
+  },
+  "taskCategoryWriting": {
+    "message": "Writing"
+  },
+  "taskCategoryTranslation": {
+    "message": "Translation"
+  },
+  "taskCategoryQa": {
+    "message": "Q&A"
+  },
+  "taskCategoryOther": {
+    "message": "Other"
+  },
+  "answerStatsBestByCategory": {
+    "message": "Best model by category"
+  },
+  "answerStatsBestEmpty": {
+    "message": "Each category needs at least three adopted answers before a best model is shown."
+  },
+  "answerStatsBestCategorySummary": {
+    "message": "$1: $2 · adoption $3 · median $4"
+  },
   "answerStatsColumnProvider": {
     "message": "AI"
   },
@@ -1361,6 +1397,9 @@
   "billingCredits": {
     "message": "Uses credits"
   },
+  "billingLimited": {
+    "message": "Rate limited"
+  },
   "msgProviderBillingUpdated": {
     "message": "Billing marker saved"
   },
@@ -1396,6 +1435,9 @@
   },
   "panelActivityDone": {
     "message": "Answer complete"
+  },
+  "panelSpeedRank": {
+    "message": "Fastest answer #$1"
   },
   "panelActivityStalled": {
     "message": "Couldn't confirm the answer finished"
@@ -1648,6 +1690,9 @@
   },
   "aiSummaryNoPermission": {
     "message": "Panelize has no access to the API site. Use Save and test in Settings to allow it."
+  },
+  "aiSummaryBusy": {
+    "message": "The summary API is busy and still failed after retries. Try again later or use another model. ($1)"
   },
   "aiSummaryFailed": {
     "message": "Summary failed: $1"

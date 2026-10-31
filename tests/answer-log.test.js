@@ -109,6 +109,25 @@ describe('renderAnswerLog', () => {
     expect(list.querySelector('.answer-log-prompt').textContent).toBe('(no text)');
   });
 
+  it('shows the saved or inferred task category without changing prompt and time positions', () => {
+    const saved = round('saved-category', NOW, 'Please translate this into English', ['chatgpt']);
+    saved.category = 'translation';
+    const legacy = round('legacy-category', NOW - 1000, 'Translate this text', ['gemini']);
+    delete legacy.category;
+    legacy.promptSummary = '翻译成英文：早上好';
+
+    const list = document.createElement('ul');
+    renderAnswerLog(list, [saved, legacy], { ...OPTIONS, limit: 20 });
+
+    const items = list.querySelectorAll('.answer-log-item');
+    expect([...items].map(item => item.querySelector('.answer-log-category').textContent))
+      .toEqual(['Translation', 'Translation']);
+    const firstHeader = items[0].firstElementChild;
+    expect(firstHeader.firstElementChild).toBe(items[0].querySelector('.answer-log-prompt'));
+    expect(firstHeader.children[1].classList.contains('answer-log-time')).toBe(true);
+    expect(firstHeader.firstElementChild.title).toBe('Please translate this into English');
+  });
+
   it('renders with an extension locale converted to a language tag', () => {
     const list = document.createElement('ul');
     const result = renderAnswerLog(list, [round('zh', NOW, '你好')], { ...OPTIONS, locale: toLanguageTag('zh_CN'), limit: 20 });

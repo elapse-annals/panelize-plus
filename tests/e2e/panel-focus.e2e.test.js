@@ -136,7 +136,10 @@ test('focus fills the panel area while hidden providers keep running, and chips 
     const page = await openMultiPanel(extension, { providers, layout: '2x2' });
     await waitForProviderFixtures(page, providers);
     await expect(page.locator('.focus-panel-btn')).toHaveCount(4);
+    const jumpedId = await page.locator('.panel-selector').nth(1).getAttribute('data-panel-id');
     await page.locator('.panel-selector').nth(1).click();
+    await expect(page.locator(`#${jumpedId}`)).toHaveClass(/panel-jump-highlight/);
+    await expect(page.locator(`#${jumpedId}`)).toBeInViewport();
     await expect(page.locator('#main-content')).not.toHaveClass(/panel-focus-active/);
     await expect(page.locator('.panel-item.panel-focused')).toHaveCount(0);
 

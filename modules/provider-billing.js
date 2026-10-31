@@ -4,7 +4,8 @@ export const PROVIDER_BILLING_TYPES = {
   free: 'billingFree',
   paid: 'billingPaid',
   quota: 'billingQuota',
-  credits: 'billingCredits'
+  credits: 'billingCredits',
+  limited: 'billingLimited'
 };
 
 const DEFAULT_PROVIDER_BILLING_TYPES = {

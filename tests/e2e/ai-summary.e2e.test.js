@@ -189,6 +189,8 @@ test.describe('AI summary reading layout', () => {
       await expect.poll(() => drawer.evaluate(element => getComputedStyle(element).backgroundColor))
         .toBe('rgb(255, 255, 255)');
 
+      // A short summary opens in the narrow drawer.
+      await expect(drawer).not.toHaveClass(/ai-summary-expanded/);
       const widthBeforeExpand = await drawer.evaluate(element => element.getBoundingClientRect().width);
       await page.locator('#ai-summary-expand-btn').click();
       await expect(drawer).toHaveClass(/ai-summary-expanded/);
@@ -215,4 +217,84 @@ test.describe('AI summary reading layout', () => {
       await extensionCopy?.cleanup();
     }
   });
+});
+
+test('source chips locate quoted passages and older summary paragraphs in provider frames', async ({}, testInfo) => {
+  test.setTimeout(60000);
+  let extensionCopy;
+  let extension;
+  const chatgptAnswer = '<div data-message-author-role="assistant"><p>Start with a small example.</p><p id="retry">A careful retry policy waits before sending another request.</p></div>';
+  const deepseekAnswer = '<div class="ds-markdown"><p id="backoff">Use exponential <strong>backoff</strong> for busy servers.</p><p id="header">Respect the Retry-After header.</p></div>';
+  const summary = {
+    verdict: { text: 'Wait before retrying.', sources: ['S1'], quotes: { S1: 'A careful retry policy waits before sending another request.' } },
+    consensus: [
+      { text: 'A careful retry policy waits before sending another request.', sources: ['S1'] },
+      { text: 'Zyzzyva', sources: ['S1'], quotes: { S1: 'This phrase is absent.' } }
+    ],
+    unique: [
+      { text: 'Back off for busy servers.', sources: ['S2'], quotes: { S2: 'Use exponential backoff for busy servers.' } },
+      { text: 'Honor the retry header.', sources: ['S2'], quotes: { S2: 'Respect the Retry-After header.' } }
+    ],
+    disagreements: [{ topic: 'What next?', positions: [
+      { text: 'Try a small example.', sources: ['S1'], quotes: { S1: 'Start with a small example.' } },
+      { text: 'Use the header.', sources: ['S2'], quotes: { S2: 'Respect the Retry-After header.' } }
+    ] }]
+  };
+  try {
+    extensionCopy = await createPatchedExtensionCopy(manifest => {
+      manifest.host_permissions.push('https://chat.deepseek.com/*', 'https://api.panelize-e2e.test/*');
+    });
+    extension = await launchExtension({ extensionPath: extensionCopy.extensionPath, viewport: { width: 1440, height: 900 } });
+    await extension.context.route('https://chatgpt.com/**', route => route.fulfill({
+      contentType: 'text/html', body: renderChatgptFixture({ composer: 'current' })
+    }));
+    await extension.context.route('https://chat.deepseek.com/**', route => route.fulfill({
+      contentType: 'text/html', body: DEEPSEEK_FIXTURE
+    }));
+    await extension.context.route(`${API_BASE_URL}/chat/completions`, route => route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ choices: [{ message: { content: JSON.stringify(summary) } }] })
+    }));
+    await extension.serviceWorker.evaluate(async ({ baseUrl, key }) => {
+      await chrome.storage.sync.set({ aiSummaryBaseUrl: baseUrl, aiSummaryModel: 'e2e-mock' });
+      await chrome.storage.local.set({ [key]: 'e2e-dummy-key' });
+    }, { baseUrl: API_BASE_URL, key: AI_SUMMARY_API_KEY_STORAGE_KEY });
+    const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
+    await page.locator('#unified-input').fill('How should I retry requests?');
+    await page.locator('#send-all-btn').click();
+    await expect(page.locator('.adopt-answer-btn').first()).toBeEnabled();
+    const chatgpt = findFrame(page, 'https://chatgpt.com/');
+    const deepseek = findFrame(page, 'https://chat.deepseek.com/');
+    await chatgpt.evaluate(html => document.body.insertAdjacentHTML('beforeend', html), chatgptAnswer);
+    await deepseek.evaluate(html => document.getElementById('thread').insertAdjacentHTML('beforeend', html), deepseekAnswer);
+    await page.locator('#ai-summary-btn').click();
+    await expect(page.locator('#ai-summary-result')).toBeVisible({ timeout: 15000 });
+
+    await page.locator('#ai-summary-verdict .ai-summary-source').click();
+    await expect(chatgpt.locator('#retry')).toHaveClass(/panelize-quote-highlight/);
+    await expect(chatgpt.locator('p').filter({ hasText: 'Start with a small example.' })).not.toHaveClass(/panelize-quote-highlight/);
+    await page.screenshot({ path: testInfo.outputPath('ai-summary-quote-highlight.png') });
+    await expect(chatgpt.locator('#retry')).not.toHaveClass(/panelize-quote-highlight/, { timeout: 5000 });
+
+    // A reply without quotes still uses a sufficiently similar original paragraph.
+    await page.locator('#ai-summary-consensus .ai-summary-article-paragraph').first().locator('.ai-summary-source').click();
+    await expect(chatgpt.locator('#retry')).toHaveClass(/panelize-quote-highlight/);
+
+    // Each point in a shared unique-source group keeps its own anchor.
+    const uniqueItems = page.locator('#ai-summary-unique .ai-summary-unique-list li');
+    await uniqueItems.nth(0).locator('.ai-summary-source').click();
+    await expect(deepseek.locator('#backoff')).toHaveClass(/panelize-quote-highlight/);
+    await uniqueItems.nth(1).locator('.ai-summary-source').click();
+    await expect(deepseek.locator('#header')).toHaveClass(/panelize-quote-highlight/);
+
+    await page.locator('#ai-summary-disagreements .ai-summary-position').first().locator('.ai-summary-source').click();
+    await expect(chatgpt.locator('p').filter({ hasText: 'Start with a small example.' })).toHaveClass(/panelize-quote-highlight/);
+    await expect(chatgpt.locator('.panelize-quote-highlight')).toHaveCount(0, { timeout: 5000 });
+    await page.locator('#ai-summary-consensus .ai-summary-article-paragraph').nth(1).locator('.ai-summary-source').click();
+    await expect(page.locator('.panel-item').first()).toHaveClass(/panel-jump-highlight/);
+    await expect(chatgpt.locator('.panelize-quote-highlight')).toHaveCount(0);
+  } finally {
+    await extension?.close();
+    await extensionCopy?.cleanup();
+  }
 });

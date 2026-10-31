@@ -12,6 +12,11 @@ export const AI_SUMMARY_REQUEST_TIMEOUT_MS = 90 * 1000;
 // Longest a summary request may run in total, even while data keeps arriving.
 export const AI_SUMMARY_MAX_DURATION_MS = 5 * 60 * 1000;
 export const AI_SUMMARY_TIMEOUT_ERROR = 'Timed out';
+// Statuses that mean the API is busy or briefly down, so the request is retried.
+export const AI_SUMMARY_RETRYABLE_STATUSES = [429, 502, 503, 504];
+// Waits before each retry of a busy API; a longer Retry-After is capped.
+export const AI_SUMMARY_RETRY_DELAYS_MS = [2000, 5000];
+const RETRY_AFTER_MAX_MS = 10000;
 export const AI_SUMMARY_MIN_ANSWERS = 2;
 // Longest answer text sent per panel; longer answers are cut.
 export const ANSWER_TEXT_MAX_LENGTH = 20000;
@@ -95,6 +100,7 @@ export function buildSummaryMessages({ question, answers, language = 'en' }) {
     'You merge several AI assistants\' answers to the same question into one summary.',
     'Use only what the answers say; do not add facts of your own.',
     'Every item must list the source ids of all answers that support it.',
+    'For every item, include a "quotes" object keyed by its source ids; each value must be one short excerpt copied exactly from that answer and no more than 120 characters.',
     'If the question asks for a judgment or a choice (yes or no, true or false, which is better, should I), put the clear answer first in "verdict", citing the answers that reach it; otherwise set "verdict" to null.',
     'Put what most answers agree on in "consensus", grouped into 2–5 short, themed sections with at most 3 points each.',
     'Use this shape for "consensus": [{"heading": "Short theme", "points": [{"text": "A complete paragraph of 1–3 sentences", "sources": ["S1", "S2"]}]}]. Each point must read as a complete paragraph; do not turn points into fragments or lists.',
@@ -104,7 +110,7 @@ export function buildSummaryMessages({ question, answers, language = 'en' }) {
     'Never write source ids (S1, S2, ...) or assistant names in any "text" or "topic"; attribution belongs only in "sources".',
     `Write the text in the language with BCP 47 tag "${language}".`,
     'Reply with JSON only, no code fence, in this shape:',
-    '{"verdict": {"text": "...", "sources": ["S1"]} or null, "consensus": [{"heading": "...", "points": [{"text": "...", "sources": ["S1", "S2"]}]}], "unique": [{"text": "...", "sources": ["S2"]}], "disagreements": [{"topic": "...", "positions": [{"text": "...", "sources": ["S1"]}, {"text": "...", "sources": ["S2"]}]}]}'
+    '{"verdict": {"text": "...", "sources": ["S1"], "quotes": {"S1": "..."}} or null, "consensus": [{"heading": "...", "points": [{"text": "...", "sources": ["S1", "S2"], "quotes": {"S1": "...", "S2": "..."}}]}], "unique": [{"text": "...", "sources": ["S2"], "quotes": {"S2": "..."}}], "disagreements": [{"topic": "...", "positions": [{"text": "...", "sources": ["S1"], "quotes": {"S1": "..."}}, {"text": "...", "sources": ["S2"], "quotes": {"S2": "..."}}]}]}'
   ].join('\n');
 
   const texts = fitAnswerTexts(answers.map(answer => answer.text));
@@ -157,8 +163,151 @@ export function replaceSourceIds(text, getLabel) {
 function normalizeItem(item, validSourceIds) {
   return {
     text: stripSourceIds(item?.text),
-    sources: normalizeSources(item?.sources, validSourceIds)
+    sources: normalizeSources(item?.sources, validSourceIds),
+    quotes: normalizeQuotes(item?.quotes, validSourceIds)
   };
+}
+
+const SUMMARY_QUOTE_MAX_LENGTH = 120;
+
+function normalizeQuotes(quotes, validSourceIds) {
+  if (!quotes || typeof quotes !== 'object' || Array.isArray(quotes)) return {};
+  return Object.fromEntries(Object.entries(quotes)
+    .filter(([sourceId, quote]) => validSourceIds.includes(sourceId.toUpperCase()) && typeof quote === 'string')
+    .map(([sourceId, quote]) => [sourceId.toUpperCase(), quote.trim().slice(0, SUMMARY_QUOTE_MAX_LENGTH)])
+    .filter(([, quote]) => quote));
+}
+
+function normalizeAnchorWhitespace(text) {
+  return typeof text === 'string' ? text.replace(/[\s\u00a0]+/gu, ' ').trim() : '';
+}
+
+function getLongestCommonSubstring(left, right) {
+  const leftChars = Array.from(left);
+  const rightChars = Array.from(right);
+  if (!leftChars.length || !rightChars.length) return '';
+
+  const lengths = new Uint32Array(rightChars.length + 1);
+  let longest = 0;
+  let endIndex = 0;
+  for (const char of leftChars) {
+    for (let index = rightChars.length; index >= 1; index--) {
+      if (char === rightChars[index - 1]) {
+        lengths[index] = lengths[index - 1] + 1;
+        if (lengths[index] > longest) {
+          longest = lengths[index];
+          endIndex = index;
+        }
+      } else {
+        lengths[index] = 0;
+      }
+    }
+  }
+
+  // A few shared letters are too weak to locate reliably. Chinese text has
+  // no spaces between words, so use a shorter minimum when it is present.
+  const containsCjk = /[\u3400-\u9fff]/u.test(right);
+  if (longest < (containsCjk ? 6 : 12)) return '';
+  return rightChars.slice(endIndex - longest, endIndex).join('').trim();
+}
+
+/**
+ * Finds the best usable excerpt from an answer. Exact whitespace-normalized
+ * quotes are preferred; if the model quote is slightly inaccurate, the
+ * longest substantial phrase shared by the answer and quote is returned.
+ */
+export function findQuoteInText(answerText, quote) {
+  const answer = normalizeAnchorWhitespace(answerText);
+  const normalizedQuote = normalizeAnchorWhitespace(quote);
+  if (!answer || !normalizedQuote) return null;
+  if (answer.includes(normalizedQuote)) return normalizedQuote;
+  const common = getLongestCommonSubstring(normalizedQuote, answer);
+  return common || null;
+}
+
+function characterBigrams(text) {
+  const chars = Array.from(normalizeAnchorWhitespace(text).toLocaleLowerCase());
+  const bigrams = new Set();
+  for (let index = 0; index < chars.length - 1; index++) {
+    bigrams.add(chars[index] + chars[index + 1]);
+  }
+  return bigrams;
+}
+
+function getBigramOverlap(left, right) {
+  const leftBigrams = characterBigrams(left);
+  const rightBigrams = characterBigrams(right);
+  if (!leftBigrams.size || !rightBigrams.size) return 0;
+  let overlap = 0;
+  leftBigrams.forEach(bigram => { if (rightBigrams.has(bigram)) overlap++; });
+  const union = leftBigrams.size + rightBigrams.size - overlap;
+  return { count: overlap, ratio: union ? overlap / union : 0 };
+}
+
+const MAX_ANSWER_ANCHOR_LENGTH = 160;
+
+function getBoundedAnswerAnchor(summaryText, paragraph) {
+  if (paragraph.length <= MAX_ANSWER_ANCHOR_LENGTH) return paragraph;
+
+  const sharedPhrase = getLongestCommonSubstring(summaryText, paragraph);
+  if (sharedPhrase) return sharedPhrase.slice(0, MAX_ANSWER_ANCHOR_LENGTH);
+
+  // If shared bigrams are spread across the paragraph, choose the strongest
+  // local window so the page search stays specific and within its input limit.
+  const windowLength = Math.min(
+    MAX_ANSWER_ANCHOR_LENGTH,
+    Math.max(32, Math.ceil(Array.from(summaryText).length * 1.5))
+  );
+  const step = Math.max(1, Math.floor(windowLength / 8));
+  let best = '';
+  let bestOverlap = { count: 0, ratio: 0 };
+  const lastStart = paragraph.length - windowLength;
+  for (let start = 0; start <= lastStart; start += step) {
+    const candidate = paragraph.slice(start, start + windowLength);
+    const overlap = getBigramOverlap(summaryText, candidate);
+    if (overlap.ratio > bestOverlap.ratio
+      || (overlap.ratio === bestOverlap.ratio && overlap.count > bestOverlap.count)) {
+      best = candidate;
+      bestOverlap = overlap;
+    }
+  }
+  const finalCandidate = paragraph.slice(lastStart, lastStart + windowLength);
+  const finalOverlap = getBigramOverlap(summaryText, finalCandidate);
+  if (finalOverlap.ratio > bestOverlap.ratio
+    || (finalOverlap.ratio === bestOverlap.ratio && finalOverlap.count > bestOverlap.count)) {
+    best = finalCandidate;
+  }
+  return normalizeAnchorWhitespace(best);
+}
+
+/**
+ * Picks an item's quote for one source, falling back to the most similar
+ * answer paragraph when the response predates or misstates the quote field.
+ */
+export function pickAnchorText(item, sourceId, answerText) {
+  const normalizedSourceId = String(sourceId ?? '').trim().toUpperCase();
+  const answer = typeof answerText === 'string' ? answerText : '';
+  const quote = item?.quotes?.[normalizedSourceId] ?? item?.quotes?.[sourceId];
+  if (typeof quote === 'string') {
+    const foundQuote = findQuoteInText(answer, quote);
+    if (foundQuote) return foundQuote;
+  }
+
+  const summaryText = normalizeAnchorWhitespace(stripSourceIds(item?.text));
+  if (!summaryText) return null;
+  const paragraphs = answer.split(/(?:\r?\n\s*){2,}|\r?\n/u)
+    .map(normalizeAnchorWhitespace)
+    .filter(Boolean);
+  let best = null;
+  paragraphs.forEach((paragraph, index) => {
+    const anchor = getBoundedAnswerAnchor(summaryText, paragraph);
+    const overlap = getBigramOverlap(summaryText, anchor);
+    if (!overlap || overlap.count < 4 || overlap.ratio < 0.34) return;
+    if (!best || overlap.ratio > best.ratio || (overlap.ratio === best.ratio && overlap.count > best.count)) {
+      best = { paragraph: anchor, ratio: overlap.ratio, count: overlap.count, index };
+    }
+  });
+  return best?.paragraph ?? null;
 }
 
 function normalizeItems(items, validSourceIds) {
@@ -200,7 +349,13 @@ function normalizeDisagreements(items, validSourceIds) {
       const positions = normalizeItems(item?.positions, validSourceIds).slice(0, MAX_DISAGREEMENT_POSITIONS);
       const topic = stripSourceIds(item?.topic);
       if (!topic && !positions.length && typeof item?.text === 'string') {
-        return { topic: item.text.trim(), sources: normalizeSources(item.sources, validSourceIds), positions: [] };
+        const legacyTopic = normalizeItem(item, validSourceIds);
+        return {
+          topic: legacyTopic.text,
+          sources: legacyTopic.sources,
+          quotes: legacyTopic.quotes,
+          positions: []
+        };
       }
       return { topic, sources: [], positions };
     })
@@ -212,16 +367,14 @@ function normalizeDisagreements(items, validSourceIds) {
  * kept as a plain overview so nothing the model wrote is lost. Replies in the
  * older shape ("points") are read as consensus; replies without "unique" have none.
  *
- * @returns {{ verdict: { text: string, sources: string[] } | null, overview: string, consensus: Array<{ text: string, sources: string[], section?: string }>, unique: Array<{ text: string, sources: string[] }>, disagreements: Array<{ topic: string, sources: string[], positions: Array<{ text: string, sources: string[] }> }> }}
+ * @returns {{ verdict: { text: string, sources: string[], quotes: Record<string, string> } | null, overview: string, consensus: Array<{ text: string, sources: string[], quotes: Record<string, string>, section?: string }>, unique: Array<{ text: string, sources: string[], quotes: Record<string, string> }>, disagreements: Array<{ topic: string, sources: string[], positions: Array<{ text: string, sources: string[], quotes: Record<string, string> }> }> }}
  */
 export function parseSummaryResponse(content, validSourceIds) {
   const raw = typeof content === 'string' ? content.trim() : '';
-  const unfenced = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  const start = unfenced.indexOf('{');
-  const end = unfenced.lastIndexOf('}');
+  const candidates = extractJsonCandidates(raw);
+  const candidate = candidates.at(-1);
   try {
-    if (start < 0 || end <= start) throw new Error('No JSON object');
-    const parsed = JSON.parse(unfenced.slice(start, end + 1));
+    const parsed = parseLenientJson(candidates);
     const verdict = typeof parsed.verdict === 'string'
       ? normalizeItem({ text: parsed.verdict }, validSourceIds)
       : normalizeItem(parsed.verdict, validSourceIds);
@@ -233,8 +386,117 @@ export function parseSummaryResponse(content, validSourceIds) {
       disagreements: normalizeDisagreements(parsed.disagreements, validSourceIds)
     };
   } catch {
-    return { verdict: null, overview: raw, consensus: [], unique: [], disagreements: [] };
+    const overview = (candidate && extractReadableText(candidate)) || raw;
+    return { verdict: null, overview, consensus: [], unique: [], disagreements: [] };
   }
+}
+
+// The JSON object in a reply: reasoning blocks are dropped and a fenced block
+// anywhere is preferred. The text up to the last closing brace is tried
+// first, then the text to the end, for a reply cut off mid-object.
+function extractJsonCandidates(raw) {
+  const text = raw.replace(/<(think|thinking)>[\s\S]*?<\/\1>/gi, '').trim();
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
+  const body = fenced && fenced[1].includes('{') ? fenced[1] : text;
+  const start = body.indexOf('{');
+  if (start < 0) return [];
+  const end = body.lastIndexOf('}');
+  const tail = body.slice(start).trim();
+  return end > start ? [body.slice(start, end + 1), tail] : [tail];
+}
+
+function parseLenientJson(candidates) {
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {}
+  }
+  // Repair the text to the end first, so a cut-off reply keeps its last items.
+  for (const candidate of [...candidates].reverse()) {
+    try {
+      const parsed = JSON.parse(repairJson(candidate));
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch {}
+  }
+  throw new Error('No JSON object');
+}
+
+function nextNonSpace(text, index) {
+  for (let i = index; i < text.length; i++) {
+    if (!/\s/.test(text[i])) return text[i];
+  }
+  return '';
+}
+
+/**
+ * Repairs the usual faults in a model's JSON: unescaped quotes and raw line
+ * breaks inside strings, trailing commas, and a reply cut off before its
+ * strings and brackets were closed.
+ */
+function repairJson(text) {
+  let out = '';
+  let inString = false;
+  const closers = [];
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inString) {
+      if (char === '\\' && i + 1 < text.length) {
+        out += char + text[++i];
+      } else if (char === '"') {
+        const next = nextNonSpace(text, i + 1);
+        if (!next || ',:}]'.includes(next)) {
+          inString = false;
+          out += char;
+        } else {
+          out += '\\"';
+        }
+      } else if (char === '\n') {
+        out += '\\n';
+      } else if (char === '\r') {
+        out += '\\r';
+      } else if (char === '\t') {
+        out += '\\t';
+      } else {
+        out += char;
+      }
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+    } else if (char === '{') {
+      closers.push('}');
+    } else if (char === '[') {
+      closers.push(']');
+    } else if (char === '}' || char === ']') {
+      out = out.replace(/,\s*$/, '');
+      closers.pop();
+    }
+    out += char;
+  }
+  if (inString) out += '"';
+  out = out.replace(/[,:]\s*$/, '');
+  // A cut-off key with no value cannot be kept.
+  out = out.replace(/([{,])\s*"[^"]*"\s*$/, '$1').replace(/,\s*$/, '');
+  return out + closers.reverse().join('');
+}
+
+// Readable lines from JSON that could not be parsed, so the summary never
+// shows as raw JSON.
+function extractReadableText(text) {
+  const lines = [];
+  const pattern = /"(heading|topic|text)"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+  for (const match of text.matchAll(pattern)) {
+    let value = match[2];
+    try {
+      value = JSON.parse(`"${value}"`);
+    } catch {
+      value = value.replace(/\\n/g, '\n').replace(/\\(.)/g, '$1');
+    }
+    value = stripSourceIds(value).trim();
+    if (!value) continue;
+    lines.push(match[1] === 'text' ? `- ${value}` : value);
+  }
+  return lines.join('\n');
 }
 
 // Reads a server-sent events body of chat completion chunks. Calls onActivity
@@ -282,13 +544,33 @@ async function readStreamedContent(body, onActivity) {
   return content;
 }
 
+export function isRetryableSummaryError(error) {
+  return AI_SUMMARY_RETRYABLE_STATUSES.includes(error?.status);
+}
+
+function getRetryDelayMs(response, fallbackMs) {
+  const seconds = Number(response.headers?.get?.('retry-after'));
+  return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds * 1000, RETRY_AFTER_MAX_MS) : fallbackMs;
+}
+
+function waitUnlessAborted(ms, signal) {
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(resolve, ms);
+    signal.addEventListener('abort', () => {
+      clearTimeout(timeoutId);
+      resolve();
+    }, { once: true });
+  });
+}
+
 /**
  * Calls the chat completions API and returns the reply text. The reply is
  * streamed when the API supports it, so a long summary does not time out
  * while it is still being written: the request fails only after timeoutMs
- * without new data, or after maxDurationMs in all.
+ * without new data, or after maxDurationMs in all. A busy API (HTTP 429 or
+ * 5xx gateway errors) is retried after each of retryDelaysMs.
  *
- * @param {{ config: { baseUrl: string, apiKey: string, model: string }, messages: Array<object>, fetchImpl?: Function, signal?: AbortSignal, timeoutMs?: number, maxDurationMs?: number, onProgress?: (receivedChars: number) => void }} options
+ * @param {{ config: { baseUrl: string, apiKey: string, model: string }, messages: Array<object>, fetchImpl?: Function, signal?: AbortSignal, timeoutMs?: number, maxDurationMs?: number, retryDelaysMs?: number[], onProgress?: (receivedChars: number) => void }} options
  */
 export async function requestSummary({
   config,
@@ -297,6 +579,7 @@ export async function requestSummary({
   signal,
   timeoutMs = AI_SUMMARY_REQUEST_TIMEOUT_MS,
   maxDurationMs = AI_SUMMARY_MAX_DURATION_MS,
+  retryDelaysMs = AI_SUMMARY_RETRY_DELAYS_MS,
   onProgress
 }) {
   const controller = new AbortController();
@@ -315,18 +598,29 @@ export async function requestSummary({
     onProgress?.(receivedChars);
   };
   try {
-    const response = await fetchImpl(normalizeChatCompletionsUrl(config.baseUrl), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.apiKey.trim()}`
-      },
-      body: JSON.stringify({ model: config.model.trim(), messages, temperature: 0.2, stream: true }),
-      signal: controller.signal
-    });
-    if (!response.ok) {
+    let response;
+    for (let attempt = 0; ; attempt++) {
+      response = await fetchImpl(normalizeChatCompletionsUrl(config.baseUrl), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${config.apiKey.trim()}`
+        },
+        body: JSON.stringify({ model: config.model.trim(), messages, temperature: 0.2, stream: true }),
+        signal: controller.signal
+      });
+      if (response.ok) break;
       const body = await response.text().catch(() => '');
-      throw new Error(`HTTP ${response.status}${body ? `: ${body.slice(0, ERROR_BODY_MAX_LENGTH)}` : ''}`);
+      if (AI_SUMMARY_RETRYABLE_STATUSES.includes(response.status) && attempt < retryDelaysMs.length) {
+        clearTimeout(idleTimeoutId);
+        await waitUnlessAborted(getRetryDelayMs(response, retryDelaysMs[attempt]), controller.signal);
+        if (controller.signal.aborted) throw new Error('aborted');
+        idleTimeoutId = setTimeout(timeOut, timeoutMs);
+        continue;
+      }
+      const error = new Error(`HTTP ${response.status}${body ? `: ${body.slice(0, ERROR_BODY_MAX_LENGTH)}` : ''}`);
+      error.status = response.status;
+      throw error;
     }
     let content;
     if (response.body?.getReader && /text\/event-stream/i.test(response.headers?.get?.('content-type') || '')) {
@@ -399,6 +693,38 @@ export function isStronglySupported(sources, totalSources) {
   const count = Array.isArray(sources) ? sources.length : 0;
   // Integer comparison: 15 * 0.8 is not exactly 12 in floating point.
   return count * 10 >= totalSources * Math.round(STRONG_SUPPORT_RATIO * 10);
+}
+
+// Weighted characters (a CJK character counts as two) above which the
+// summary opens in the wide drawer.
+export const AI_SUMMARY_WIDE_TEXT_LENGTH = 900;
+
+const WIDE_CHARACTERS = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\uff00-\uffef]/gu;
+
+/**
+ * Whether the summary has enough to read that the drawer should open wide:
+ * long text, or a disagreement with the most positions side by side.
+ *
+ * @param {{ verdict?: object | null, overview?: string, consensus?: Array<object>, unique?: Array<object>, disagreements?: Array<object> } | null} summary
+ */
+export function shouldExpandSummary(summary) {
+  if (!summary) return false;
+  const disagreements = summary.disagreements || [];
+  if (disagreements.some(item => (item.positions?.length || 0) >= MAX_DISAGREEMENT_POSITIONS)) return true;
+  const sections = new Set((summary.consensus || []).map(item => item.section).filter(Boolean));
+  const texts = [
+    summary.verdict?.text,
+    summary.overview,
+    ...sections,
+    ...(summary.consensus || []).map(item => item.text),
+    ...(summary.unique || []).map(item => item.text),
+    ...disagreements.flatMap(item => [item.topic, ...(item.positions || []).map(position => position.text)])
+  ];
+  const length = texts.reduce((total, text) => {
+    const plain = stripSourceIds(text);
+    return total + plain.length + (plain.match(WIDE_CHARACTERS)?.length || 0);
+  }, 0);
+  return length >= AI_SUMMARY_WIDE_TEXT_LENGTH;
 }
 
 function normalizeSourceIds(sources) {

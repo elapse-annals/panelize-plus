@@ -107,6 +107,8 @@
       <div id="panel-grid" class="layout-2x2">
         <!-- Panels will be dynamically generated -->
       </div>
+      <div id="panel-edge-flash-start" class="panel-edge-flash panel-edge-flash-start" aria-hidden="true"></div>
+      <div id="panel-edge-flash-end" class="panel-edge-flash panel-edge-flash-end" aria-hidden="true"></div>
       <button id="panel-edge-start-btn" class="panel-edge-btn panel-edge-start" type="button" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.41 16.59L13.82 12l4.59-4.59L17 6l-6 6 6 6zM6 6h2v12H6z" /></svg>
       </button>
@@ -776,6 +778,21 @@
         <div class="modal-body">
           <p id="answer-stats-empty" class="answer-stats-empty" data-i18n="answerStatsEmpty">No stats yet. Send a question to several AIs, then adopt the best answer with the thumbs-up button in its panel.</p>
           <div id="answer-stats-content" hidden>
+            <div class="answer-stats-category-filter">
+              <label for="answer-stats-category" data-i18n="answerStatsCategoryLabel">Task category</label>
+              <select id="answer-stats-category" class="answer-log-select">
+                <option value="" data-i18n="answerStatsCategoryAll">All categories</option>
+                <option value="coding" data-i18n="taskCategoryCoding">Coding</option>
+                <option value="writing" data-i18n="taskCategoryWriting">Writing</option>
+                <option value="translation" data-i18n="taskCategoryTranslation">Translation</option>
+                <option value="qa" data-i18n="taskCategoryQa">Q&amp;A</option>
+                <option value="other" data-i18n="taskCategoryOther">Other</option>
+              </select>
+            </div>
+            <section class="answer-stats-best-section" aria-labelledby="answer-stats-best-title">
+              <h4 id="answer-stats-best-title" class="answer-stats-section-title" data-i18n="answerStatsBestByCategory">Best model by category</h4>
+              <div id="answer-stats-best" class="answer-stats-best" aria-live="polite"></div>
+            </section>
             <div class="answer-stats-table-wrapper">
               <table id="answer-stats-table" class="answer-stats-table">
                 <thead>

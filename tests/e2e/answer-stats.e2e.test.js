@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { launchExtension, openMultiPanel } from './extension-harness.js';
 import { renderChatgptFixture } from './fixtures/chatgpt-fixture.js';
 
@@ -82,6 +83,14 @@ test('Answer stats time each answer, record the adopted one and score engagement
     await expect(deepseekRow.locator('td').nth(10)).toHaveText('5');
     await expect(chatgptRow.locator('td').nth(10)).toHaveText('-3');
     await expect(chatgptRow.locator('td').nth(7)).not.toHaveText('—');
+    const category = page.locator('#answer-stats-category');
+    await expect(category.locator('option')).toHaveCount(6);
+    await category.selectOption('translation');
+    await expect(rows).toHaveCount(0);
+    await expect(category).toBeVisible();
+    await category.selectOption('qa');
+    await expect(rows).toHaveCount(2);
+    await category.selectOption('');
 
     // Both answers finish once their text settles (DeepSeek waits 5s).
     await expect(chatgptRow.locator('td').nth(3)).not.toHaveText('—', { timeout: 15000 });
@@ -153,6 +162,90 @@ test('Answer stats time each answer, record the adopted one and score engagement
     page.once('dialog', dialog => dialog.accept());
     await page.locator('#answer-stats-clear-btn').click();
     await expect(page.locator('#answer-stats-empty')).toBeVisible();
+  } finally {
+    await extension.close();
+  }
+});
+
+test('task category filters, best models and exports include legacy and newly sent rounds', async ({}, testInfo) => {
+  test.setTimeout(60000);
+  const extension = await launchExtension({ viewport: { width: 1280, height: 800 } });
+  try {
+    await extension.context.route('https://chatgpt.com/**', route => route.fulfill({
+      contentType: 'text/html', body: renderChatgptFixture({ composer: 'current' })
+    }));
+    await extension.context.route('https://chat.deepseek.com/**', route => route.fulfill({
+      contentType: 'text/html', body: DEEPSEEK_FIXTURE
+    }));
+    await extension.serviceWorker.evaluate(() => chrome.storage.sync.set({ language: 'en', selectedPromptMode: 'auto' }));
+    const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
+    await page.evaluate(async () => {
+      const { createRound, applyTimingEvent, toggleRoundAdoption, saveAnswerRound } = await import('../modules/answer-stats.js');
+      const now = Date.now();
+      for (let i = 0; i < 5; i++) {
+        const coding = i < 3;
+        let round = createRound({
+          id: `seed-${i}`, createdAt: now - (i + 1) * 1000,
+          text: coding ? 'Fix this function' : 'Translate this into English',
+          panels: [{ id: 'p1', providerId: 'chatgpt' }, { id: 'p2', providerId: 'deepseek' }]
+        });
+        round = applyTimingEvent(round, 'p1', 'complete', round.createdAt + 8000);
+        round = applyTimingEvent(round, 'p2', 'complete', round.createdAt + 18000);
+        round = toggleRoundAdoption(round, coding ? 'p2' : 'p1');
+        if (i === 0) delete round.category; // A record from before categories existed.
+        await saveAnswerRound(round);
+      }
+    });
+    await page.locator('#answer-stats-btn').click();
+    const rows = page.locator('#answer-stats-table tbody tr');
+    const category = page.locator('#answer-stats-category');
+    await expect(page.locator('#answer-stats-best .answer-stats-best-chip')).toHaveText([
+      'Coding: DeepSeek · adoption 100% · median 18.0 s'
+    ]);
+    await category.selectOption('coding');
+    await expect(rows.locator('td:nth-child(2)')).toHaveText(['3', '3']);
+    await category.selectOption('translation');
+    await expect(rows.locator('td:nth-child(2)')).toHaveText(['2', '2']);
+    await category.selectOption('writing');
+    await expect(rows).toHaveCount(0);
+    await expect(category).toBeVisible();
+    // The overview still compares every category when the table is filtered.
+    await expect(page.locator('#answer-stats-best .answer-stats-best-chip')).toHaveCount(1);
+    await category.selectOption('coding');
+    await page.screenshot({ path: testInfo.outputPath('answer-stats-categories-light.png') });
+    await page.locator('html').evaluate(html => html.setAttribute('data-theme', 'dark'));
+    await page.screenshot({ path: testInfo.outputPath('answer-stats-categories-dark.png') });
+    await page.locator('#close-answer-stats-modal').click();
+
+    // Classification uses the question after an Auto trigger is removed.
+    await page.locator('#unified-input').fill('/brief Translate this code into English: function greet() {}');
+    await page.locator('#fill-input-btn').click();
+    await page.locator('#send-all-btn').click();
+    await expect(page.locator('.adopt-answer-btn').first()).toBeEnabled();
+    await page.locator('.adopt-answer-btn').first().click();
+    await page.locator('#answer-log-btn').click();
+    await expect(page.locator('#answer-log-list .answer-log-item').first().locator('.answer-log-prompt'))
+      .toHaveText('Translate this code into English: function greet() {}');
+    await expect(page.locator('#answer-log-list .answer-log-item').first().locator('.answer-log-category'))
+      .toHaveText('Translation');
+    await page.locator('#close-answer-log-modal').click();
+    await page.locator('#answer-stats-btn').click();
+    await expect(page.locator('#answer-stats-best .answer-stats-best-chip')).toHaveText([
+      'Coding: DeepSeek · adoption 100% · median 18.0 s',
+      'Translation: ChatGPT · adoption 100% · median 8.0 s'
+    ]);
+    const downloadEvent = page.waitForEvent('download');
+    await page.locator('#answer-stats-export-btn').click();
+    const download = await downloadEvent;
+    const exported = JSON.parse(await readFile(await download.path(), 'utf8'));
+    expect(exported.rounds).toHaveLength(6);
+    expect(exported.rounds.every(round => ['coding', 'translation'].includes(round.category))).toBe(true);
+    expect(exported.rounds.find(round => round.id === 'seed-0').category).toBe('coding');
+    const legacyUnchanged = await page.evaluate(async () => {
+      const { getAllAnswerRounds } = await import('../modules/answer-stats.js');
+      return !(await getAllAnswerRounds()).find(round => round.id === 'seed-0').category;
+    });
+    expect(legacyUnchanged).toBe(true);
   } finally {
     await extension.close();
   }

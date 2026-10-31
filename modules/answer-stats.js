@@ -1,13 +1,14 @@
 // Answer stats: response speed and adopted answer for each question sent to
 // several providers at once. Kept in its own local IndexedDB database; nothing
 // leaves the browser.
+import { classifyTask, TASK_CATEGORIES } from './task-category.js';
 
 const DB_NAME = 'PanelizeAnswerStatsDB';
 const DB_VERSION = 1;
 const ROUNDS_STORE = 'rounds';
 
 // Providers whose content script reports response timing.
-export const ANSWER_TIMING_PROVIDER_IDS = Object.freeze(['chatgpt', 'gemini', 'deepseek', 'kimi', 'qwen-cn', 'yuanbao', 'chatglm', 'zai-global', 'mimo', 'qwen-global', 'grok', 'meta-ai', 'doubao', 'google']);
+export const ANSWER_TIMING_PROVIDER_IDS = Object.freeze(['chatgpt', 'gemini', 'deepseek', 'kimi', 'qwen-cn', 'yuanbao', 'chatglm', 'zai-global', 'mimo', 'qwen-global', 'grok', 'meta-ai', 'doubao', 'google', 'wenxin', 'perplexity', 'copilot']);
 export const PROMPT_SUMMARY_MAX_LENGTH = 100;
 export const MAX_STORED_ROUNDS = 1000;
 
@@ -80,9 +81,9 @@ export function summarizePromptText(text, maxLength = PROMPT_SUMMARY_MAX_LENGTH)
  * `blind` marks rounds sent while provider names were hidden; older rounds
  * have no such field.
  *
- * @param {{ id: string, createdAt: number, text: string, panels: Array<{ id: string, providerId: string }>, blind?: boolean }} options
+ * @param {{ id: string, createdAt: number, text: string, panels: Array<{ id: string, providerId: string }>, blind?: boolean, category?: string }} options
  */
-export function createRound({ id, createdAt, text, panels, blind = false }) {
+export function createRound({ id, createdAt, text, panels, blind = false, category }) {
   const answers = {};
   panels.forEach(panel => {
     answers[panel.id] = {
@@ -98,11 +99,17 @@ export function createRound({ id, createdAt, text, panels, blind = false }) {
     id,
     createdAt,
     promptSummary: summarizePromptText(text),
+    category: category ?? classifyTask(text),
     adoptedPanelId: null,
     adoptedProviderId: null,
     ...(blind ? { blind: true } : {}),
     answers
   };
+}
+
+/** Returns a saved category, or derives one for rounds written before categories existed. */
+export function getRoundCategory(round) {
+  return round?.category ?? classifyTask(round?.promptSummary);
 }
 
 /**
@@ -148,6 +155,29 @@ export function isFirstRoundCompletion(round, nextRound, panelId) {
     return false;
   }
   return !Object.values(round.answers).some(answer => answer.status === ANSWER_STATUS.COMPLETE);
+}
+
+export const SPEED_RANK_COUNT = 3;
+
+/**
+ * Ranks the round's completed answers by completion time, fastest first, as
+ * { panelId: 1..SPEED_RANK_COUNT }. Ties keep panel order. Rounds with fewer
+ * than two timed answers have no ranking.
+ */
+export function getRoundSpeedRanks(round) {
+  const entries = Object.entries(round?.answers || {});
+  if (entries.filter(([, answer]) => answer?.timed).length < 2) {
+    return {};
+  }
+  const ranks = {};
+  entries
+    .filter(([, answer]) => answer?.status === ANSWER_STATUS.COMPLETE && Number.isFinite(answer.completeMs))
+    .sort(([, a], [, b]) => a.completeMs - b.completeMs)
+    .slice(0, SPEED_RANK_COUNT)
+    .forEach(([panelId], index) => {
+      ranks[panelId] = index + 1;
+    });
+  return ranks;
 }
 
 /**
@@ -318,9 +348,12 @@ function toScoreTenths(value) {
  * Rounds older than RECENT_SCORE_WINDOW_MS before `now` count towards
  * olderScore, which the total score weighs by OLDER_SCORE_WEIGHT.
  */
-export function aggregateAnswerStats(rounds, now = Date.now()) {
+export function aggregateAnswerStats(rounds, now = Date.now(), { category } = {}) {
   const byProvider = new Map();
   const recentSince = now - RECENT_SCORE_WINDOW_MS;
+  const selectedRounds = category
+    ? rounds.filter(round => getRoundCategory(round) === category)
+    : rounds;
 
   const getEntry = (providerId) => {
     if (!byProvider.has(providerId)) {
@@ -351,7 +384,7 @@ export function aggregateAnswerStats(rounds, now = Date.now()) {
   // Confirming a failure needs each provider's rounds in time order.
   const providerRounds = [];
   const timelines = new Map();
-  [...rounds].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).forEach(round => {
+  [...selectedRounds].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).forEach(round => {
     const answersByProvider = new Map();
     Object.values(round.answers || {}).forEach(answer => {
       if (!answer?.providerId) return;
@@ -455,6 +488,24 @@ export function aggregateAnswerStats(rounds, now = Date.now()) {
       };
     })
     .sort((a, b) => b.score - a.score || b.adoptedCount - a.adoptedCount || b.rounds - a.rounds);
+}
+
+/**
+ * Finds the best adopted provider in each task category. Categories need at
+ * least three decided rounds for a provider to be included.
+ */
+export function summarizeBestByCategory(rounds, now = Date.now()) {
+  return TASK_CATEGORIES.flatMap(category => {
+    const [best] = aggregateAnswerStats(rounds, now, { category })
+      .filter(entry => entry.decidedRounds >= 3);
+    return best ? [{
+      category,
+      providerId: best.providerId,
+      adoptionRate: best.adoptionRate,
+      medianCompleteMs: best.medianCompleteMs,
+      rounds: best.rounds
+    }] : [];
+  });
 }
 
 // ===== IndexedDB =====

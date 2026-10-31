@@ -76,6 +76,16 @@ const FEATURE_KEYS = [
   'answerStatsExport',
   'answerStatsNotMeasured',
   'answerStatsNoPrompt',
+  'answerStatsCategoryLabel',
+  'answerStatsCategoryAll',
+  'taskCategoryCoding',
+  'taskCategoryWriting',
+  'taskCategoryTranslation',
+  'taskCategoryQa',
+  'taskCategoryOther',
+  'answerStatsBestByCategory',
+  'answerStatsBestEmpty',
+  'answerStatsBestCategorySummary',
   'answerStatsAdopted',
   'answerStatsRejected',
   'answerStatsStatus_pending',
@@ -157,6 +167,7 @@ const FEATURE_KEYS = [
   'aiSummaryNotConfigured',
   'aiSummaryNoPermission',
   'aiSummaryFailed',
+  'aiSummaryBusy',
   'aiSummaryMissing',
   'aiSummaryJumpToPanel',
   'aiSummaryCopied',
@@ -179,7 +190,9 @@ const FEATURE_KEYS = [
   'msgAiSummaryPermissionDenied',
   'msgAiSummaryTesting',
   'msgAiSummaryTestOk',
-  'msgAiSummaryTestFailed'
+  'msgAiSummaryTestFailed',
+  'labelAboutAuthor',
+  'labelAboutForkedFrom'
 ];
 
 const locales = readdirSync(LOCALES_DIR);
@@ -225,7 +238,9 @@ describe('share and rating strings', () => {
       composerPlaceholderAppend: ['$1'],
       aiSummaryRunning: ['$1'],
       aiSummaryFailed: ['$1'],
+      aiSummaryBusy: ['$1'],
       aiSummaryMissing: ['$1'],
+      answerStatsBestCategorySummary: ['$1', '$2', '$3', '$4'],
       msgAiSummaryTestFailed: ['$1']
     };
     locales.forEach((locale) => {

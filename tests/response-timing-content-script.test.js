@@ -297,6 +297,14 @@ describe('response timing content script', () => {
     ['doubao', 'https://www.doubao.com/chat/test',
       '<div data-testid="receive_message"><div data-testid="message_text_content" data-streaming="true">Hi</div></div>',
       (thread) => thread.querySelector('[data-streaming]').setAttribute('data-streaming', 'false')],
+    ['wenxin', 'https://wenxin.baidu.com/search/test',
+      '<div class="answer-box last-answer-box"><div class="chat-search-answer-generate-item"><div class="cosd-markdown">Hi</div></div></div>'
+        + '<span class="ci-submit-button"><img class="ci-submit-pause"></span>',
+      (thread) => thread.querySelector('.ci-submit-pause').remove()],
+    ['chatglm', 'https://chatglm.cn/main/alltoolsdetail?cid=test',
+      '<div class="item"><div class="answer"><div class="markdown-body">Hi</div></div></div>'
+        + '<div id="search-input-box"><div class="enter is-main-chat searching"></div></div>',
+      (thread) => thread.querySelector('.enter').classList.remove('searching')],
   ])('completes a %s answer once it stops typing', async (provider, url, answerHtml, stopTyping) => {
     window.happyDOM.setURL(url);
     document.body.innerHTML = '<div id="thread"></div>';
@@ -343,6 +351,28 @@ describe('response timing content script', () => {
       expect.objectContaining({ phase: 'first-output', provider: 'chatglm', at: firstOutputAt }),
       expect.objectContaining({ phase: 'complete', at: lastChangeAt }),
     ]);
+  });
+
+  it.each([
+    ['perplexity', 'https://www.perplexity.ai/search/test',
+      '<div class="prose dark:prose-invert" data-renderer="lm"><p>Hi</p></div>'],
+    ['copilot', 'https://copilot.com/chat',
+      '<div data-testid="copilot-message-div"><div data-testid="markdown-reply"><p>Hi</p></div></div>'],
+  ])('completes a %s answer after its settle time', async (provider, url, answerHtml) => {
+    window.happyDOM.setURL(url);
+    document.body.innerHTML = '<div id="thread"></div>';
+    const thread = document.getElementById('thread');
+    const requestId = `req-${provider}`;
+
+    startSend(requestId);
+    await vi.advanceTimersByTimeAsync(500);
+    thread.insertAdjacentHTML('beforeend', answerHtml);
+    await vi.advanceTimersByTimeAsync(4750);
+    expect(getTimingCalls(requestId)).toEqual([
+      expect.objectContaining({ phase: 'first-output', provider }),
+    ]);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(getPhases(requestId)).toEqual(['first-output', 'complete']);
   });
 
   it('completes a Yuanbao answer after its settle time', async () => {

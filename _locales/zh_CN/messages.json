@@ -263,6 +263,12 @@
   "descAbout2": {
     "message": "采用隐私优先架构构建。所有数据本地存储。"
   },
+  "labelAboutAuthor": {
+    "message": "作者：Ben"
+  },
+  "labelAboutForkedFrom": {
+    "message": "Fork 自"
+  },
   "msgThemeUpdated": {
     "message": "主题已更新"
   },
@@ -1007,6 +1013,36 @@
   "answerStatsEmpty": {
     "message": "还没有统计数据。把问题发送给多个 AI，再点面板上的点赞按钮采纳最好的回答。"
   },
+  "answerStatsCategoryLabel": {
+    "message": "任务分类"
+  },
+  "answerStatsCategoryAll": {
+    "message": "全部分类"
+  },
+  "taskCategoryCoding": {
+    "message": "编码"
+  },
+  "taskCategoryWriting": {
+    "message": "写作"
+  },
+  "taskCategoryTranslation": {
+    "message": "翻译"
+  },
+  "taskCategoryQa": {
+    "message": "问答"
+  },
+  "taskCategoryOther": {
+    "message": "其他"
+  },
+  "answerStatsBestByCategory": {
+    "message": "各分类最佳模型"
+  },
+  "answerStatsBestEmpty": {
+    "message": "每个分类至少有 3 个已采纳回答后才会显示最佳模型。"
+  },
+  "answerStatsBestCategorySummary": {
+    "message": "$1：$2 · 采纳 $3 · 中位 $4"
+  },
   "answerStatsColumnProvider": {
     "message": "AI"
   },
@@ -1340,6 +1376,9 @@
   "billingCredits": {
     "message": "扣积分"
   },
+  "billingLimited": {
+    "message": "限流"
+  },
   "msgProviderBillingUpdated": {
     "message": "计费标记已保存"
   },
@@ -1375,6 +1414,9 @@
   },
   "panelActivityDone": {
     "message": "已回答完成"
+  },
+  "panelSpeedRank": {
+    "message": "回答速度第 $1 名"
   },
   "panelActivityStalled": {
     "message": "未检测到回答完成"
@@ -1627,6 +1669,9 @@
   },
   "aiSummaryNoPermission": {
     "message": "Panelize 无权访问该 API 站点。请在设置中点击“保存并测试”授权。"
+  },
+  "aiSummaryBusy": {
+    "message": "汇总 API 繁忙，自动重试后仍失败。请稍后再试或换一个模型。（$1）"
   },
   "aiSummaryFailed": {
     "message": "汇总失败：$1"

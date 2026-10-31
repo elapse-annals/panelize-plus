@@ -3,6 +3,9 @@ import {
   ANSWER_STATUS,
   RECENT_SCORE_WINDOW_MS,
   aggregateAnswerStats,
+  getRoundCategory,
+  getRoundSpeedRanks,
+  summarizeBestByCategory,
   applyEngagementEvent,
   applyTimingEvent,
   getEngagementPoints,
@@ -54,6 +57,17 @@ describe('createRound', () => {
     expect(newRound()).not.toHaveProperty('blind');
     expect(createRound({ id: 'r-blind', createdAt: 1, text: 'Q', panels: PANELS, blind: true }).blind).toBe(true);
   });
+
+  it('stores the task category and derives one for old rounds without changing them', () => {
+    const categorized = createRound({
+      id: 'categorized', createdAt: 1, text: 'Translate this', panels: PANELS, category: 'translation'
+    });
+    const oldRound = { id: 'old', promptSummary: '帮我修复这个 bug', answers: {} };
+    expect(categorized.category).toBe('translation');
+    expect(getRoundCategory(oldRound)).toBe('coding');
+    expect(oldRound).not.toHaveProperty('category');
+    expect(getRoundCategory({ promptSummary: 'What is a panel?' })).toBe('qa');
+  });
 });
 
 describe('applyTimingEvent', () => {
@@ -103,6 +117,38 @@ describe('isFirstRoundCompletion', () => {
     expect(isFirstRoundCompletion(round, applyTimingEvent(round, 'p1', 'timeout', 99000), 'p1')).toBe(false);
     expect(isFirstRoundCompletion(round, applyTimingEvent(round, 'p2', 'cancelled', 2000), 'p2')).toBe(false);
     expect(isFirstRoundCompletion(round, null, 'p1')).toBe(false);
+  });
+});
+
+describe('getRoundSpeedRanks', () => {
+  function completeAt(round, panelId, at) {
+    return applyTimingEvent(round, panelId, 'complete', at);
+  }
+
+  it('ranks completed answers fastest first and keeps only the top three', () => {
+    const panels = ['chatgpt', 'gemini', 'deepseek', 'kimi', 'qwen-cn'].map((providerId, index) => ({ id: `q${index}`, providerId }));
+    let round = createRound({ id: 'r', createdAt: 1000, text: 'Q', panels });
+    round = completeAt(round, 'q0', 9000);
+    round = completeAt(round, 'q1', 3000);
+    round = completeAt(round, 'q2', 5000);
+    round = completeAt(round, 'q3', 4000);
+    round = applyTimingEvent(round, 'q4', 'timeout', 2000);
+    expect(getRoundSpeedRanks(round)).toEqual({ q1: 1, q3: 2, q2: 3 });
+  });
+
+  it('ranks answers as they complete and keeps panel order on ties', () => {
+    let round = completeAt(newRound(), 'p2', 4000);
+    expect(getRoundSpeedRanks(round)).toEqual({ p2: 1 });
+    round = completeAt(round, 'p1', 4000);
+    expect(getRoundSpeedRanks(round)).toEqual({ p1: 1, p2: 2 });
+  });
+
+  it('ignores cancelled answers and rounds with fewer than two timed answers', () => {
+    const cancelled = applyTimingEvent(newRound(), 'p1', 'cancelled', 2000);
+    expect(getRoundSpeedRanks(completeAt(cancelled, 'p2', 3000))).toEqual({ p2: 1 });
+    const single = createRound({ id: 'r', createdAt: 1000, text: 'Q', panels: [PANELS[0], PANELS[2]] });
+    expect(getRoundSpeedRanks(completeAt(single, 'p1', 3000))).toEqual({});
+    expect(getRoundSpeedRanks(null)).toEqual({});
   });
 });
 
@@ -417,5 +463,50 @@ describe('aggregateAnswerStats', () => {
 
   it('returns nothing without rounds', () => {
     expect(aggregateAnswerStats([], NOW)).toEqual([]);
+  });
+
+  it('filters aggregate results by explicit or legacy prompt category', () => {
+    const coding = toggleRoundAdoption(createRound({
+      id: 'coding', createdAt: 1000, text: 'Fix the bug', panels: PANELS, category: 'coding'
+    }), 'p1');
+    const translation = toggleRoundAdoption(createRound({
+      id: 'translation', createdAt: 2000, text: 'Translate this', panels: PANELS, category: 'translation'
+    }), 'p2');
+    const legacyQa = toggleRoundAdoption({
+      id: 'legacy-qa', createdAt: 3000, promptSummary: 'What is this?', adoptedPanelId: null,
+      adoptedProviderId: null, answers: { p1: { providerId: 'chatgpt' } }
+    }, 'p1');
+
+    expect(aggregateAnswerStats([coding, translation, legacyQa], NOW, { category: 'translation' }))
+      .toEqual(aggregateAnswerStats([translation], NOW));
+    expect(aggregateAnswerStats([coding, translation, legacyQa], NOW, { category: 'qa' }))
+      .toEqual(aggregateAnswerStats([legacyQa], NOW));
+    expect(aggregateAnswerStats([coding, translation], NOW)).toEqual(aggregateAnswerStats([coding, translation], NOW, {}));
+  });
+
+  it('summarizes each category only after a provider has three decided rounds', () => {
+    const rounds = [];
+    for (let index = 0; index < 4; index += 1) {
+      const round = createRound({
+        id: `coding-${index}`, createdAt: 1000 + index, text: 'Fix the bug', panels: PANELS,
+        category: 'coding'
+      });
+      rounds.push(toggleRoundAdoption(round, index < 3 ? 'p1' : 'p2'));
+    }
+    for (let index = 0; index < 2; index += 1) {
+      const round = createRound({
+        id: `writing-${index}`, createdAt: 2000 + index, text: 'Draft an essay', panels: PANELS,
+        category: 'writing'
+      });
+      rounds.push(toggleRoundAdoption(round, 'p2'));
+    }
+
+    expect(summarizeBestByCategory(rounds, NOW)).toEqual([{
+      category: 'coding',
+      providerId: 'chatgpt',
+      adoptionRate: 0.75,
+      medianCompleteMs: null,
+      rounds: 4
+    }]);
   });
 });

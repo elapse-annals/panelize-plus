@@ -646,6 +646,25 @@ select:focus {
   text-decoration: underline;
 }
 
+.about-credits {
+  font-size: 12px;
+  color: #999;
+  margin-top: 8px;
+}
+
+.about-credits-sep {
+  margin: 0 4px;
+}
+
+.about-credits a {
+  color: #1a73e8;
+  text-decoration: none;
+}
+
+.about-credits a:hover {
+  text-decoration: underline;
+}
+
 .update-status {
   padding: 12px;
   border-radius: 4px;
@@ -801,7 +820,8 @@ select:focus {
   color: #aaa;
 }
 
-[data-theme="dark"] .version-download a {
+[data-theme="dark"] .version-download a,
+[data-theme="dark"] .about-credits a {
   color: #90caf9;
 }
 
@@ -969,7 +989,8 @@ select:focus {
     color: #aaa;
   }
 
-  .version-download a {
+  .version-download a,
+  .about-credits a {
     color: #90caf9;
   }
 

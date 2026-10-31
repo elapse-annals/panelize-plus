@@ -120,12 +120,16 @@ import {
   clearAnswerRounds,
   createRound,
   getAllAnswerRounds,
+  getRoundCategory,
+  getRoundSpeedRanks,
   isFirstRoundCompletion,
   saveAnswerRound,
+  summarizeBestByCategory,
   toggleRoundAdoption,
   toggleRoundRejection
 } from '../modules/answer-stats.js';
-import { renderAnswerStatsTable } from '../modules/answer-stats-view.js';
+import { renderAnswerStatsTable, renderBestByCategory } from '../modules/answer-stats-view.js';
+import { classifyTask } from '../modules/task-category.js';
 import {
   AI_SUMMARY_API_KEY_STORAGE_KEY,
   AI_SUMMARY_TIMEOUT_ERROR,
@@ -133,13 +137,16 @@ import {
   formatSummaryText,
   groupItemsBySources,
   getSummaryOriginPattern,
+  isRetryableSummaryError,
   isRoundReadyForAutoSummary,
   isRoundReadyForSummary,
   isStronglySupported,
   isSummaryConfigured,
   parseSummaryResponse,
+  pickAnchorText,
   replaceSourceIds,
-  requestSummary
+  requestSummary,
+  shouldExpandSummary
 } from '../modules/ai-summary.js';
 import { filterAnswerLogRounds, getAnswerLogProviderIds, renderAnswerLog } from '../modules/answer-log.js';
 import { createPointerGuard, createPointerTracker } from '../modules/pointer-guard.js';
@@ -328,6 +335,9 @@ const PANELIZE_RESPONSE_TIMING = 'PANELIZE_RESPONSE_TIMING';
 const PANELIZE_ANSWER_ENGAGEMENT = 'PANELIZE_ANSWER_ENGAGEMENT';
 const PANELIZE_GET_ANSWER_TEXT = 'PANELIZE_GET_ANSWER_TEXT';
 const PANELIZE_ANSWER_TEXT = 'PANELIZE_ANSWER_TEXT';
+const PANELIZE_LOCATE_ANSWER_TEXT = 'PANELIZE_LOCATE_ANSWER_TEXT';
+const PANELIZE_LOCATE_ANSWER_RESULT = 'PANELIZE_LOCATE_ANSWER_RESULT';
+const AI_SUMMARY_LOCATE_TIMEOUT_MS = 1500;
 // How long a summary asked for by hand waits for panels to report their answer.
 const AI_SUMMARY_COLLECT_TIMEOUT_MS = 1500;
 // How often the running summary's elapsed time is refreshed.
@@ -1343,6 +1353,9 @@ function handleProviderStatusMessage(event) {
     case PANELIZE_ANSWER_TEXT:
       handleAnswerTextMessage(panel, data);
       break;
+    case PANELIZE_LOCATE_ANSWER_RESULT:
+      handleLocateAnswerResult(panel, data);
+      break;
     case PANELIZE_TEMP_CHAT_ENABLED:
       if (!tempChatPendingPanelIds.has(panel.id)) {
         return;
@@ -2035,6 +2048,9 @@ function updatePanelSelectors() {
       <span class="provider-icon-wrap">
         <img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="provider-icon" data-provider-id="${provider.id}">
         <span class="panel-activity" aria-hidden="true"></span>
+        <span class="panel-speed-crown" aria-hidden="true">
+          <svg viewBox="0 0 24 16" width="13" height="9" fill="currentColor"><path d="M2 14 0.5 3.5l6 4.5L12 0l5.5 8 6-4.5L22 14z"/><rect x="2" y="14" width="20" height="2" rx="1"/></svg>
+        </span>
       </span>
       <span class="provider-name">${getProviderShortName(provider)}</span>
       <span class="blind-label" aria-hidden="true"></span>
@@ -2046,6 +2062,8 @@ function updatePanelSelectors() {
     selector.addEventListener('click', () => {
       if (focusedPanelId) {
         setFocusedPanel(panel.id);
+      } else {
+        jumpToPanelElement(panel.id);
       }
     });
 
@@ -2074,19 +2092,29 @@ const PANEL_ACTIVITY_LABELS = {
   [PANEL_ACTIVITY.STALLED]: ['panelActivityStalled', "Couldn't confirm the answer finished"]
 };
 
-// Marks each tab chip with its panel's loading or answering state; the chip's
-// tooltip names the panel (anonymously in blind mode) and adds the state.
+// Marks each tab chip with its panel's loading or answering state and, for the
+// three fastest answers of the latest round, a gold, silver or bronze crown; the
+// chip's tooltip names the panel (anonymously in blind mode) and adds both.
 function renderPanelActivity() {
   const round = getLatestAnswerRound();
+  const speedRanks = getRoundSpeedRanks(round);
   document.querySelectorAll('#panel-selectors .panel-selector').forEach(selector => {
     const panel = panels.find(candidate => candidate.id === selector.dataset.panelId);
     if (!panel) return;
     const answer = isPanelInAnswerRound(round, panel) ? round.answers[panel.id] : null;
     const activity = getPanelActivity(panel, answer);
     selector.dataset.activity = activity;
+    const speedRank = answer ? speedRanks[panel.id] : undefined;
+    if (speedRank) {
+      selector.dataset.speedRank = String(speedRank);
+    } else {
+      delete selector.dataset.speedRank;
+    }
     const label = PANEL_ACTIVITY_LABELS[activity];
-    const name = getPanelDisplayName(panel);
-    selector.title = label ? `${name} · ${getLocalizedText(...label)}` : name;
+    const parts = [getPanelDisplayName(panel)];
+    if (label) parts.push(getLocalizedText(...label));
+    if (speedRank) parts.push(getLocalizedText('panelSpeedRank', 'Fastest answer #$1', [String(speedRank)]));
+    selector.title = parts.join(' · ');
   });
 }
 
@@ -2205,6 +2233,30 @@ function updatePanelEdgeButtons() {
   document.getElementById('panel-edge-end-btn').hidden = maxScroll <= 1 || grid.scrollLeft >= maxScroll - 1;
 }
 
+// Flashes the edge a horizontal swipe keeps pushing against once the panel
+// row is already scrolled all the way there, once per gesture: wheel events
+// closer together than the gap (including momentum) count as one push.
+const PANEL_EDGE_FLASH_MIN_DELTA = 4;
+const PANEL_EDGE_FLASH_GESTURE_GAP_MS = 300;
+let panelEdgeOverscrollAt = 0;
+
+function flashPanelEdgeOnOverscroll(grid, deltaX) {
+  if (Math.abs(deltaX) < PANEL_EDGE_FLASH_MIN_DELTA) return;
+  const maxScroll = grid.scrollWidth - grid.clientWidth;
+  if (maxScroll <= 1) return;
+  const edge = deltaX < 0
+    ? (grid.scrollLeft <= 1 ? 'start' : null)
+    : (grid.scrollLeft >= maxScroll - 1 ? 'end' : null);
+  if (!edge) return;
+  const now = performance.now();
+  const continuesPush = now - panelEdgeOverscrollAt < PANEL_EDGE_FLASH_GESTURE_GAP_MS;
+  panelEdgeOverscrollAt = now;
+  const flash = document.getElementById(`panel-edge-flash-${edge}`);
+  if (continuesPush || !flash || flash.classList.contains('flashing')) return;
+  flash.classList.add('flashing');
+  flash.addEventListener('animationend', () => flash.classList.remove('flashing'), { once: true });
+}
+
 function setupPanelEdgeNavigation() {
   const grid = document.getElementById('panel-grid');
   if (!grid) return;
@@ -2232,8 +2284,16 @@ function setupPanelEdgeNavigation() {
     if (data?.type !== 'PANELIZE_PANEL_WHEEL' || data.context !== 'multi-panel' || !Number.isFinite(data.deltaX)) return;
     if (!panels.some(panel => panel.iframe?.contentWindow === event.source)) return;
     if (document.getElementById('main-content')?.classList.contains('panel-focus-active')) return;
+    flashPanelEdgeOnOverscroll(grid, data.deltaX);
     grid.scrollLeft += data.deltaX;
   });
+  // Swipes over the grid itself (headers, gaps) scroll it natively.
+  grid.addEventListener('wheel', (event) => {
+    if (event.ctrlKey || Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+    if (document.getElementById('main-content')?.classList.contains('panel-focus-active')) return;
+    const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? grid.clientWidth : 1;
+    flashPanelEdgeOnOverscroll(grid, event.deltaX * scale);
+  }, { passive: true });
   new ResizeObserver(scheduleUpdate).observe(grid);
   // Panel count, layout and wide mode change the scroll width without resizing the grid.
   new MutationObserver(scheduleUpdate).observe(grid, { childList: true, attributes: true, attributeFilter: ['class', 'style'] });
@@ -2256,7 +2316,12 @@ function setupPanelEdgeNavigation() {
 // `index` is 1-based and follows the on-screen order, including blind shuffles.
 function jumpToPanel(index) {
   const panel = getDisplayedPanels()[index - 1];
-  const element = panel && document.getElementById(panel.id);
+  if (panel) jumpToPanelElement(panel.id);
+}
+
+// Scrolls the panel into view and flashes it so the eye lands on it.
+function jumpToPanelElement(panelId) {
+  const element = document.getElementById(panelId);
   if (!element) return;
   element.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
   element.classList.remove('panel-jump-highlight');
@@ -4017,6 +4082,7 @@ function startAnswerRound(requestId, text, sentAt, roundPanels) {
     id: requestId,
     createdAt: sentAt,
     text,
+    category: classifyTask(text),
     panels: roundPanels.map(panel => ({ id: panel.id, providerId: panel.providerId })),
     blind: isBlindModeEnabled
   });
@@ -4065,6 +4131,7 @@ const aiSummaryConfig = { autoEnabled: false, baseUrl: '', model: '', apiKey: ''
 const autoSummarizedRoundIds = new Set();
 const remindedAiSummaryRoundIds = new Set();
 const pendingAnswerTextRequests = new Map();
+const pendingLocateAnswerRequests = new Map();
 // status: 'idle', 'collecting', 'running', 'done' or 'error'.
 let aiSummaryState = { roundId: null, status: 'idle', sources: [], missing: [], summary: null, error: '', needsSetup: false };
 let aiSummaryController = null;
@@ -4172,7 +4239,8 @@ function closeAiSummaryDrawer() {
   });
 }
 
-// The drawer keeps its width between openings while the page stays open.
+// A finished summary picks the width by its length (see shouldExpandSummary);
+// a manual toggle holds until the next summary and across openings.
 function setAiSummaryExpanded(expanded) {
   document.getElementById('ai-summary-drawer')?.classList.toggle('ai-summary-expanded', expanded);
   const button = document.getElementById('ai-summary-expand-btn');
@@ -4294,6 +4362,35 @@ function requestPanelAnswerText(panel) {
   });
 }
 
+function handleLocateAnswerResult(panel, data) {
+  const request = pendingLocateAnswerRequests.get(data.requestId);
+  if (!request || request.panelId !== panel.id) return;
+  clearTimeout(request.timeoutId);
+  pendingLocateAnswerRequests.delete(data.requestId);
+  request.resolve(data.found === true);
+}
+
+function requestPanelAnswerLocation(panel, anchor) {
+  const frame = panel.iframe?.contentWindow;
+  const targetUrl = panel.currentUrl || panel.iframe?.src;
+  if (!frame || !isProviderAllowedUrl(panel.providerId, targetUrl)) return Promise.resolve(false);
+  const requestId = `ai-summary-locate-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return new Promise(resolve => {
+    const timeoutId = setTimeout(() => {
+      pendingLocateAnswerRequests.delete(requestId);
+      resolve(false);
+    }, AI_SUMMARY_LOCATE_TIMEOUT_MS);
+    pendingLocateAnswerRequests.set(requestId, { panelId: panel.id, timeoutId, resolve });
+    try {
+      frame.postMessage({ type: PANELIZE_LOCATE_ANSWER_TEXT, context: 'multi-panel', requestId, anchor }, new URL(targetUrl).origin);
+    } catch {
+      clearTimeout(timeoutId);
+      pendingLocateAnswerRequests.delete(requestId);
+      resolve(false);
+    }
+  });
+}
+
 // Asks panels whose timing missed the answer for their last answer.
 async function collectRoundAnswerTexts(round) {
   const texts = getRoundAnswerTexts(round);
@@ -4403,6 +4500,8 @@ async function runAiSummary(roundId, { collect = false } = {}) {
     });
     const summary = parseSummaryResponse(content, sources.map(source => source.sourceId));
     setState({ status: 'done', sources, missing, summary });
+    // Each finished summary picks the drawer width by how much it says.
+    if (isCurrent()) setAiSummaryExpanded(shouldExpandSummary(summary));
   } catch (error) {
     if (controller.signal.aborted && !isCurrent()) return;
     console.warn('[Multi-Panel] AI summary failed:', error);
@@ -4412,7 +4511,9 @@ async function runAiSummary(roundId, { collect = false } = {}) {
       missing,
       error: error?.message === AI_SUMMARY_TIMEOUT_ERROR
         ? getLocalizedText('aiSummaryTimedOut', 'The summary timed out: the API sent nothing for a long time. Try again or use a faster model.')
-        : getLocalizedText('aiSummaryFailed', 'Summary failed: $1', [error?.message || String(error)])
+        : isRetryableSummaryError(error)
+          ? getLocalizedText('aiSummaryBusy', 'The summary API is busy and still failed after retries. Try again later or use another model. ($1)', [error.message])
+          : getLocalizedText('aiSummaryFailed', 'Summary failed: $1', [error?.message || String(error)])
     });
   } finally {
     clearInterval(progressTimerId);
@@ -4420,21 +4521,29 @@ async function runAiSummary(roundId, { collect = false } = {}) {
   }
 }
 
-function createAiSummarySourceChips(sources, sourcesById, round) {
+function createAiSummarySourceChips(sources, sourcesById, round, item) {
   return sources.map(sourceId => sourcesById.get(sourceId)).filter(Boolean).map(source => {
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'ai-summary-source';
     chip.textContent = getAiSummarySourceLabel(source, round);
     chip.title = getLocalizedText('aiSummaryJumpToPanel', 'Go to this panel');
-    chip.addEventListener('click', () => jumpToPanel(source.position));
+    chip.addEventListener('click', () => {
+      const panel = panels.find(candidate => candidate.id === source.panelId);
+      const position = getDisplayedPanels().findIndex(candidate => candidate.id === source.panelId) + 1;
+      jumpToPanel(position);
+      if (!isPanelInAnswerRound(round, panel)) return;
+      const answerText = getRoundAnswerTexts(round).get(panel.id);
+      const anchor = pickAnchorText(item?.topic ? { ...item, text: item.topic } : item, source.sourceId, answerText);
+      if (anchor) void requestPanelAnswerLocation(panel, anchor);
+    });
     return chip;
   });
 }
 
 // The AIs behind one item, on their own row under its text. When every
 // summarized AI backs it, one badge stands in for the whole row of chips.
-function createAiSummarySources(sources, sourcesById, round, totalSources) {
+function createAiSummarySources(sources, sourcesById, round, totalSources, item) {
   const row = document.createElement('span');
   row.className = 'ai-summary-item-sources';
   const known = sources.filter(sourceId => sourcesById.has(sourceId));
@@ -4445,7 +4554,7 @@ function createAiSummarySources(sources, sourcesById, round, totalSources) {
     badge.title = known.map(sourceId => getAiSummarySourceLabel(sourcesById.get(sourceId), round)).join(', ');
     row.append(badge);
   } else {
-    row.append(...createAiSummarySourceChips(known, sourcesById, round));
+    row.append(...createAiSummarySourceChips(known, sourcesById, round, item));
   }
   return row;
 }
@@ -4475,7 +4584,7 @@ function createAiSummaryArticle(items, sourcesById, round, totalSources) {
     const paragraph = createAiSummaryText(item.text, sourcesById, round);
     paragraph.classList.add('ai-summary-article-paragraph');
     paragraph.classList.toggle('ai-summary-strong', isStronglySupported(item.sources, totalSources));
-    paragraph.append(createAiSummarySources(item.sources, sourcesById, round, totalSources));
+    paragraph.append(createAiSummarySources(item.sources, sourcesById, round, totalSources, item));
     article.append(paragraph);
   });
   return article;
@@ -4485,7 +4594,7 @@ function createAiSummaryUniqueGroups(items, sourcesById, round) {
   return groupItemsBySources(items, [...sourcesById.keys()]).map(group => {
     const element = document.createElement('div');
     element.className = 'ai-summary-unique-group';
-    const chips = createAiSummarySourceChips(group.sources, sourcesById, round);
+    const chips = createAiSummarySourceChips(group.sources, sourcesById, round, group.items[0]);
     if (chips.length) {
       const heading = document.createElement('h5');
       heading.className = 'ai-summary-unique-heading';
@@ -4497,6 +4606,12 @@ function createAiSummaryUniqueGroups(items, sourcesById, round) {
     group.items.forEach(item => {
       const li = document.createElement('li');
       li.append(createAiSummaryText(item.text, sourcesById, round));
+      if (group.items.length > 1) {
+        const sources = document.createElement('span');
+        sources.className = 'ai-summary-item-sources';
+        sources.append(...createAiSummarySourceChips(item.sources, sourcesById, round, item));
+        li.append(sources);
+      }
       list.append(li);
     });
     element.append(list);
@@ -4504,8 +4619,8 @@ function createAiSummaryUniqueGroups(items, sourcesById, round) {
   });
 }
 
-// One disagreement: its topic, then each position on its own row followed by
-// the AIs that hold it.
+// One disagreement: its topic, then its positions side by side, each column a
+// camp followed by the AIs that hold it.
 function createAiSummaryDisagreement(item, sourcesById, round, totalSources) {
   const card = document.createElement('div');
   card.className = 'ai-summary-disagreement';
@@ -4513,7 +4628,7 @@ function createAiSummaryDisagreement(item, sourcesById, round, totalSources) {
     const topic = createAiSummaryText(item.topic, sourcesById, round);
     topic.className = 'ai-summary-disagreement-topic';
     card.append(topic);
-    if (item.sources.length) card.append(createAiSummarySources(item.sources, sourcesById, round, totalSources));
+    if (item.sources.length) card.append(createAiSummarySources(item.sources, sourcesById, round, totalSources, item));
   }
   if (item.positions.length) {
     const positions = document.createElement('ul');
@@ -4522,7 +4637,7 @@ function createAiSummaryDisagreement(item, sourcesById, round, totalSources) {
       const row = document.createElement('li');
       row.className = 'ai-summary-position';
       row.classList.toggle('ai-summary-strong', isStronglySupported(position.sources, totalSources));
-      row.append(createAiSummaryText(position.text, sourcesById, round), createAiSummarySources(position.sources, sourcesById, round, totalSources));
+      row.append(createAiSummaryText(position.text, sourcesById, round), createAiSummarySources(position.sources, sourcesById, round, totalSources, position));
       positions.append(row);
     });
     card.append(positions);
@@ -4581,7 +4696,7 @@ function renderAiSummary() {
         const source = sourcesById.get(sourceId);
         return source ? getAiSummarySourceLabel(source, round) : '';
       })),
-      createAiSummarySources(summary.verdict.sources, sourcesById, round, state.sources.length)
+      createAiSummarySources(summary.verdict.sources, sourcesById, round, state.sources.length, summary.verdict)
     ]
     : []));
   const overview = byId('ai-summary-overview');
@@ -4916,16 +5031,19 @@ function renderAnswerStats() {
   document.getElementById('answer-stats-content').hidden = !hasRounds;
   document.getElementById('answer-stats-export-btn').disabled = !hasRounds;
   document.getElementById('answer-stats-clear-btn').disabled = !hasRounds;
-  if (!hasRounds) {
-    return;
-  }
-
+  const now = Date.now();
+  const category = document.getElementById('answer-stats-category').value;
   document.getElementById('answer-stats-older-score-header').textContent = getLocalizedText(
     'answerStatsColumnOlderScore', 'Older ($1)', [`${Math.round(OLDER_SCORE_WEIGHT * 100)}%`]
   );
   renderAnswerStatsTable(
     document.querySelector('#answer-stats-table tbody'),
-    aggregateAnswerStats(rounds, Date.now()),
+    aggregateAnswerStats(rounds, now, { category }),
+    getAnswerViewOptions()
+  );
+  renderBestByCategory(
+    document.getElementById('answer-stats-best'),
+    summarizeBestByCategory(rounds, now),
     getAnswerViewOptions()
   );
 }
@@ -4933,7 +5051,8 @@ function renderAnswerStats() {
 async function exportAnswerStats() {
   try {
     const rounds = await getAllAnswerRounds();
-    const blob = new Blob([JSON.stringify({ exportedAt: Date.now(), rounds }, null, 2)], {
+    const exportedRounds = rounds.map(round => ({ ...round, category: getRoundCategory(round) }));
+    const blob = new Blob([JSON.stringify({ exportedAt: Date.now(), rounds: exportedRounds }, null, 2)], {
       type: 'application/json'
     });
     const url = URL.createObjectURL(blob);
@@ -4969,6 +5088,7 @@ async function clearAnswerStats() {
 }
 
 function setupAnswerStats() {
+  document.getElementById('answer-stats-category')?.addEventListener('change', renderAnswerStats);
   document.getElementById('answer-stats-btn')?.addEventListener('click', openAnswerStatsModal);
   document.getElementById('close-answer-stats-modal')?.addEventListener('click', closeAnswerStatsModal);
   document.getElementById('answer-stats-export-btn')?.addEventListener('click', exportAnswerStats);

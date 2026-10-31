@@ -18,6 +18,19 @@
   const PANELIZE_ANSWER_ENGAGEMENT = 'PANELIZE_ANSWER_ENGAGEMENT';
   const PANELIZE_GET_ANSWER_TEXT = 'PANELIZE_GET_ANSWER_TEXT';
   const PANELIZE_ANSWER_TEXT = 'PANELIZE_ANSWER_TEXT';
+  const PANELIZE_LOCATE_ANSWER_TEXT = 'PANELIZE_LOCATE_ANSWER_TEXT';
+  const PANELIZE_LOCATE_ANSWER_RESULT = 'PANELIZE_LOCATE_ANSWER_RESULT';
+  const PANELIZE_QUOTE_HIGHLIGHT_CLASS = 'panelize-quote-highlight';
+  const PANELIZE_QUOTE_HIGHLIGHT_STYLE_ID = 'panelize-quote-highlight-style';
+  const PANELIZE_QUOTE_HIGHLIGHT_DURATION_MS = 2500;
+  const PANELIZE_LOCATE_ANCHOR_MAX_LENGTH = 2000;
+  const quoteHighlightTimeouts = new WeakMap();
+  const ANSWER_TEXT_BLOCK_BOUNDARY_TAGS = new Set([
+    'ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'DD', 'DIV', 'DL', 'DT', 'FIELDSET',
+    'FIGCAPTION', 'FIGURE', 'FOOTER', 'FORM', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+    'HEADER', 'HR', 'LI', 'MAIN', 'NAV', 'OL', 'P', 'PRE', 'SECTION', 'TABLE',
+    'TBODY', 'TD', 'TFOOT', 'TH', 'THEAD', 'TR', 'UL'
+  ]);
   // Longest answer text sent to Multi-Panel for the AI summary.
   const ANSWER_TEXT_MAX_LENGTH = 20000;
   const PANELIZE_TEMP_CHAT_ENABLED = 'PANELIZE_TEMP_CHAT_ENABLED';
@@ -153,7 +166,9 @@
       // The thinking and the answer each render as .markdown-body inside the
       // answer row; the answer's is added after the thinking's.
       answerSelector: '.answer .markdown-body',
-      busySelector: null,
+      // The send button carries .searching for the whole reply, including the
+      // pauses between thinking, searching and the answer.
+      busySelector: '#search-input-box .enter.is-main-chat.searching',
       settleMs: 5000
     },
     'zai-global': {
@@ -195,6 +210,24 @@
       // AI Mode answers in place; each turn's main column holds the answer
       // without the hidden "AI Mode reply for" label.
       answerSelector: '[data-subtree="aimc"] [data-container-id="main-col"]',
+      busySelector: null,
+      settleMs: 5000
+    },
+    wenxin: {
+      // Each reply's search steps, document card and closing note render in
+      // one generate item; the send button shows a pause icon while it answers.
+      answerSelector: '.answer-box .chat-search-answer-generate-item',
+      busySelector: 'img.ci-submit-pause',
+      settleMs: 3000
+    },
+    perplexity: {
+      // Each answer's text renders in a prose block; the query bubble does not.
+      answerSelector: 'div.prose[data-renderer="lm"]',
+      busySelector: null,
+      settleMs: 5000
+    },
+    copilot: {
+      answerSelector: '[data-testid="markdown-reply"]',
       busySelector: null,
       settleMs: 5000
     }
@@ -1732,6 +1765,143 @@
       requestId: data.requestId,
       provider,
       text: answers.length > 0 ? readAnswerText(answers[answers.length - 1]) : '',
+      context: MULTI_PANEL_PROVIDER_STATUS_CONTEXT
+    }, MULTI_PANEL_EXTENSION_ORIGIN);
+  }
+
+  function normalizeLocateText(text) {
+    return String(text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  // Build an innerText-like normalized view while retaining each source
+  // character's text-node offset. Block and <br> boundaries become spaces;
+  // inline boundaries do not add characters (important for CJK text).
+  function getNormalizedAnswerText(answer) {
+    const characters = [];
+    let pendingSpace = null;
+    let previousTextNode = null;
+    const markBoundary = () => {
+      if (characters.length && !pendingSpace) pendingSpace = { node: null, offset: 0 };
+    };
+    const crossedBlockBoundary = (previous, current) => {
+      const previousAncestors = new Set();
+      for (let element = previous.parentElement; element && element !== answer; element = element.parentElement) {
+        previousAncestors.add(element);
+      }
+      let commonAncestor = current.parentElement;
+      while (commonAncestor && commonAncestor !== answer && !previousAncestors.has(commonAncestor)) {
+        commonAncestor = commonAncestor.parentElement;
+      }
+      for (let element = previous.parentElement; element && element !== commonAncestor; element = element.parentElement) {
+        if (ANSWER_TEXT_BLOCK_BOUNDARY_TAGS.has(element.tagName)) return true;
+      }
+      return false;
+    };
+    const appendText = node => {
+      if (previousTextNode && crossedBlockBoundary(previousTextNode, node)) markBoundary();
+      for (let offset = 0; offset < node.nodeValue.length; offset++) {
+        const character = node.nodeValue[offset];
+        if (/\s/.test(character)) {
+          if (characters.length && (!pendingSpace || pendingSpace.node === null)) pendingSpace = { node, offset };
+          continue;
+        }
+        if (pendingSpace) {
+          characters.push({ value: ' ', ...pendingSpace });
+          pendingSpace = null;
+        }
+        characters.push({ value: character, node, offset });
+      }
+      previousTextNode = node;
+    };
+    const walker = document.createTreeWalker(
+      answer,
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+      {
+        acceptNode(node) {
+          if (node.nodeType === Node.ELEMENT_NODE && node.matches(SNAPSHOT_SKIPPED_TEXT_PARENTS)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          if (node.nodeType === Node.TEXT_NODE
+            && node.parentElement?.closest(SNAPSHOT_SKIPPED_TEXT_PARENTS)) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        appendText(node);
+      } else if (node.tagName === 'BR' || ANSWER_TEXT_BLOCK_BOUNDARY_TAGS.has(node.tagName)) {
+        // Block opening and <br> create line boundaries. The ancestor check in
+        // appendText also catches leaving a nested block before inline text.
+        markBoundary();
+      }
+    }
+    return {
+      text: characters.map(character => character.value).join(''),
+      characters
+    };
+  }
+
+  function ensureQuoteHighlightStyle() {
+    if (document.getElementById(PANELIZE_QUOTE_HIGHLIGHT_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = PANELIZE_QUOTE_HIGHLIGHT_STYLE_ID;
+    style.textContent = `.${PANELIZE_QUOTE_HIGHLIGHT_CLASS}{animation:panelize-quote-highlight-fade ${PANELIZE_QUOTE_HIGHLIGHT_DURATION_MS}ms ease-out forwards}@keyframes panelize-quote-highlight-fade{0%,65%{background-color:rgba(255,220,80,.62);outline:2px solid rgba(235,170,0,.9);outline-offset:2px}100%{background-color:transparent;outline-color:transparent}}`;
+    (document.head || document.documentElement).append(style);
+  }
+
+  // Locates only inside the most recent answer selected by the provider's
+  // response selector. The extension page supplies the anchor quote.
+  function handleLocateAnswerTextRequest(event) {
+    const { data } = event;
+    if (!MULTI_PANEL_EXTENSION_ORIGIN || window.parent === window
+      || event.source !== window.parent || event.origin !== MULTI_PANEL_EXTENSION_ORIGIN
+      || typeof data.requestId !== 'string' || !data.requestId || data.requestId.length > 160) {
+      return;
+    }
+
+    const provider = detectProvider();
+    const answerSelector = RESPONSE_TIMING_PROVIDERS[provider]?.answerSelector;
+    const answers = answerSelector ? document.querySelectorAll(answerSelector) : [];
+    const answer = answers.length ? answers[answers.length - 1] : null;
+    const anchor = typeof data.anchor === 'string' && data.anchor.length <= PANELIZE_LOCATE_ANCHOR_MAX_LENGTH
+      ? normalizeLocateText(data.anchor)
+      : '';
+    let found = false;
+
+    if (answer && anchor) {
+      const { text, characters } = getNormalizedAnswerText(answer);
+      const start = text.indexOf(anchor);
+      if (start >= 0 && characters[start]) {
+        const firstCharacter = characters[start];
+        const textElement = firstCharacter.node.parentElement;
+        const block = textElement?.closest('p, li, pre, blockquote, h1, h2, h3, h4, h5, h6, td');
+        const target = block && answer.contains(block) ? block : answer;
+        if (target) {
+          found = true;
+          ensureQuoteHighlightStyle();
+          clearTimeout(quoteHighlightTimeouts.get(target));
+          target.classList.remove(PANELIZE_QUOTE_HIGHLIGHT_CLASS);
+          // Restart the one-shot animation when the same paragraph is found
+          // again before its previous highlight has faded.
+          void target.offsetWidth;
+          target.classList.add(PANELIZE_QUOTE_HIGHLIGHT_CLASS);
+          target.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+          const timeoutId = setTimeout(() => {
+            target.classList.remove(PANELIZE_QUOTE_HIGHLIGHT_CLASS);
+            quoteHighlightTimeouts.delete(target);
+          }, PANELIZE_QUOTE_HIGHLIGHT_DURATION_MS);
+          quoteHighlightTimeouts.set(target, timeoutId);
+        }
+      }
+    }
+
+    window.parent.postMessage({
+      type: PANELIZE_LOCATE_ANSWER_RESULT,
+      requestId: data.requestId,
+      provider,
+      found,
       context: MULTI_PANEL_PROVIDER_STATUS_CONTEXT
     }, MULTI_PANEL_EXTENSION_ORIGIN);
   }
@@ -4979,6 +5149,11 @@
 
     if (event.data.type === PANELIZE_GET_ANSWER_TEXT && event.data.context === 'multi-panel') {
       handleAnswerTextRequest(event);
+      return;
+    }
+
+    if (event.data.type === PANELIZE_LOCATE_ANSWER_TEXT && event.data.context === 'multi-panel') {
+      handleLocateAnswerTextRequest(event);
       return;
     }
 

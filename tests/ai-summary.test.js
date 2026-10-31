@@ -1,21 +1,26 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   AI_SUMMARY_TIMEOUT_ERROR,
+  AI_SUMMARY_WIDE_TEXT_LENGTH,
   ANSWER_TEXT_MAX_LENGTH,
   ANSWER_TEXTS_TOTAL_MAX_LENGTH,
   buildSummaryMessages,
   fitAnswerTexts,
+  findQuoteInText,
   formatSummaryText,
   groupItemsBySources,
   getSummaryOriginPattern,
+  isRetryableSummaryError,
   isRoundReadyForAutoSummary,
   isRoundReadyForSummary,
   isStronglySupported,
   isSummaryConfigured,
   normalizeChatCompletionsUrl,
   parseSummaryResponse,
+  pickAnchorText,
   replaceSourceIds,
   requestSummary,
+  shouldExpandSummary,
   stripSourceIds,
   truncateAnswerText
 } from '../modules/ai-summary.js';
@@ -65,6 +70,8 @@ describe('buildSummaryMessages', () => {
     expect(messages[0].content).toContain('"verdict"');
     expect(messages[0].content).toContain('"positions"');
     expect(messages[0].content).toContain('"unique"');
+    expect(messages[0].content).toContain('"quotes"');
+    expect(messages[0].content).toContain('no more than 120 characters');
     expect(messages[0].content).toContain('2–5 short, themed sections');
     expect(messages[0].content).toContain('"heading"');
     expect(messages[0].content).toContain('"points"');
@@ -89,12 +96,30 @@ describe('parseSummaryResponse', () => {
   it('parses JSON in a code fence and drops unknown sources', () => {
     const summary = parseSummaryResponse('```json\n{"verdict":{"text":"Yes","sources":["s1","S9"]},"consensus":[{"text":"Scattering","sources":["s1","S2","S9","S1"]},{"text":" ","sources":["S1"]}],"disagreements":[{"topic":"Color","positions":[{"text":"Blue","sources":["S1"]},{"text":"Violet","sources":["S2"]}]}]}\n```', valid);
     expect(summary).toEqual({
-      verdict: { text: 'Yes', sources: ['S1'] },
+      verdict: { text: 'Yes', sources: ['S1'], quotes: {} },
       overview: '',
-      consensus: [{ text: 'Scattering', sources: ['S1', 'S2'] }],
+      consensus: [{ text: 'Scattering', sources: ['S1', 'S2'], quotes: {} }],
       unique: [],
-      disagreements: [{ topic: 'Color', sources: [], positions: [{ text: 'Blue', sources: ['S1'] }, { text: 'Violet', sources: ['S2'] }] }]
+      disagreements: [{ topic: 'Color', sources: [], positions: [{ text: 'Blue', sources: ['S1'], quotes: {} }, { text: 'Violet', sources: ['S2'], quotes: {} }] }]
     });
+  });
+
+  it('keeps only valid quote keys, trims values and caps their length', () => {
+    const summary = parseSummaryResponse(JSON.stringify({
+      consensus: [{ text: 'A point', sources: ['S1'], quotes: {
+        s1: '  copied excerpt  ',
+        S2: 'x'.repeat(130),
+        S9: 'unknown source',
+        S1_EMPTY: 'ignored',
+        S1_BAD: 42
+      } }]
+    }), valid);
+    expect(summary.consensus[0].quotes).toEqual({ S1: 'copied excerpt', S2: 'x'.repeat(120) });
+  });
+
+  it('keeps older replies compatible with empty quote maps', () => {
+    const summary = parseSummaryResponse('{"consensus":[{"text":"A point","sources":["S1"]}]}', valid);
+    expect(summary.consensus[0]).toEqual({ text: 'A point', sources: ['S1'], quotes: {} });
   });
 
   it('reads unique points and strips cited source ids from the text', () => {
@@ -103,8 +128,8 @@ describe('parseSummaryResponse', () => {
       unique: [{ text: 'S2：Has plugins', sources: ['S2'] }],
       disagreements: [{ topic: 'Cost【S1】', positions: [{ text: 'Cheap（S1、S2）', sources: ['S1'] }] }]
     }), valid);
-    expect(summary.consensus).toEqual([{ text: 'Uses EAV', sources: ['S1', 'S2'] }]);
-    expect(summary.unique).toEqual([{ text: 'Has plugins', sources: ['S2'] }]);
+    expect(summary.consensus).toEqual([{ text: 'Uses EAV', sources: ['S1', 'S2'], quotes: {} }]);
+    expect(summary.unique).toEqual([{ text: 'Has plugins', sources: ['S2'], quotes: {} }]);
     expect(summary.disagreements[0].topic).toBe('Cost');
     expect(summary.disagreements[0].positions[0].text).toBe('Cheap');
   });
@@ -121,9 +146,9 @@ describe('parseSummaryResponse', () => {
     }), valid);
 
     expect(summary.consensus).toEqual([
-      { text: 'First paragraph.', sources: ['S1', 'S2'], section: 'Evidence' },
-      { text: 'Second paragraph.', sources: ['S1'], section: 'Evidence' },
-      { text: 'Unsectioned paragraph.', sources: ['S2'] }
+      { text: 'First paragraph.', sources: ['S1', 'S2'], quotes: {}, section: 'Evidence' },
+      { text: 'Second paragraph.', sources: ['S1'], quotes: {}, section: 'Evidence' },
+      { text: 'Unsectioned paragraph.', sources: ['S2'], quotes: {} }
     ]);
   });
 
@@ -133,21 +158,105 @@ describe('parseSummaryResponse', () => {
     expect(summary.verdict).toBeNull();
     expect(summary.disagreements).toHaveLength(1);
     expect(summary.disagreements[0].positions.map(position => position.text)).toEqual(['A', 'B', 'C']);
+    expect(summary.disagreements[0].positions[0].quotes).toEqual({});
   });
 
   it('reads the older points and flat disagreements', () => {
-    const summary = parseSummaryResponse('{"overview":"Both agree.","points":[{"text":"Scattering","sources":["S1"]}],"disagreements":[{"text":"Color","sources":["S2"]}]}', valid);
+    const summary = parseSummaryResponse('{"overview":"Both agree.","points":[{"text":"Scattering","sources":["S1"]}],"disagreements":[{"text":"Color (S2)","sources":["S2"],"quotes":{"s2":" copied color excerpt ","S9":"unknown source"}}]}', valid);
     expect(summary).toEqual({
       verdict: null,
       overview: 'Both agree.',
-      consensus: [{ text: 'Scattering', sources: ['S1'] }],
+      consensus: [{ text: 'Scattering', sources: ['S1'], quotes: {} }],
       unique: [],
-      disagreements: [{ topic: 'Color', sources: ['S2'], positions: [] }]
+      disagreements: [{ topic: 'Color', sources: ['S2'], quotes: { S2: 'copied color excerpt' }, positions: [] }]
     });
   });
 
   it('keeps a non-JSON reply as the overview', () => {
     expect(parseSummaryResponse('Plain summary', valid)).toEqual({ verdict: null, overview: 'Plain summary', consensus: [], unique: [], disagreements: [] });
+  });
+
+  it('repairs unescaped quotes and raw line breaks inside strings', () => {
+    const summary = parseSummaryResponse('{\n  "consensus": [\n    {\n      "heading": "制度性限制判断",\n      "points": [\n        {\n          "text": "包括"破净"限制\n与IPO锁定期。",\n          "sources": ["S1", "S2"],\n          "quotes": {"S1": "不能只看"表面"..."}\n        }\n      ]\n    }\n  ]\n}', valid);
+    expect(summary.overview).toBe('');
+    expect(summary.consensus).toEqual([{ text: '包括"破净"限制\n与IPO锁定期。', sources: ['S1', 'S2'], quotes: { S1: '不能只看"表面"...' }, section: '制度性限制判断' }]);
+  });
+
+  it('repairs trailing commas', () => {
+    const summary = parseSummaryResponse('{"consensus":[{"text":"A","sources":["S1",],},],}', valid);
+    expect(summary.consensus).toEqual([{ text: 'A', sources: ['S1'], quotes: {} }]);
+  });
+
+  it('reads a fenced reply after reasoning and prose', () => {
+    const summary = parseSummaryResponse('<think>Need {braces} here</think>Here is the JSON:\n```json\n{"verdict":{"text":"Yes","sources":["S1"]}}\n```\nDone.', valid);
+    expect(summary.verdict).toEqual({ text: 'Yes', sources: ['S1'], quotes: {} });
+  });
+
+  it('keeps the complete items of a cut-off reply', () => {
+    const summary = parseSummaryResponse('{"consensus":[{"text":"A","sources":["S1"]},{"text":"B","sources":["S2"],"quotes":{"S2":"cut of', valid);
+    expect(summary.overview).toBe('');
+    expect(summary.consensus.map(item => item.text)).toEqual(['A', 'B']);
+  });
+
+  it('shows readable lines instead of JSON that cannot be repaired', () => {
+    const summary = parseSummaryResponse('{"consensus": [{"heading": "Theme", "points": [{"text": "First (S1)", "sources": ["S1"]} {"text": "Second", "sources": ["S2"]}]}]}', valid);
+    expect(summary.consensus).toEqual([]);
+    expect(summary.overview).toBe('Theme\n- First\n- Second');
+  });
+});
+
+describe('summary source anchors', () => {
+  it('finds exact excerpts after normalizing whitespace', () => {
+    expect(findQuoteInText('A useful phrase\n split across lines.', '  A useful phrase  split across\n lines. '))
+      .toBe('A useful phrase split across lines.');
+    expect(findQuoteInText('错误发生后，服务会等待 两秒再试。', '错误发生后，服务会等待\n两秒再试。'))
+      .toBe('错误发生后，服务会等待 两秒再试。');
+  });
+
+  it('returns the longest substantial shared phrase when an excerpt is slightly wrong', () => {
+    const answer = 'The implementation retries the request after the server responds with HTTP 503.';
+    const quote = 'The implementation retries each request after the server responds with HTTP 503.';
+    expect(findQuoteInText(answer, quote)).toBe('request after the server responds with HTTP 503.');
+    expect(findQuoteInText('请求失败后会等待两秒，然后再次尝试连接服务器。', '请求失败后等待两秒，再次尝试连接服务器。'))
+      .toContain('再次尝试连接服务器');
+  });
+
+  it('returns null when a quote has no substantial overlap with the answer', () => {
+    expect(findQuoteInText('A completely unrelated answer.', '你好世界这是完全不同的一句话。')).toBeNull();
+    expect(findQuoteInText('A completely unrelated answer.', 'z')).toBeNull();
+  });
+
+  it('prefers a validated source quote over the summary text', () => {
+    expect(pickAnchorText({
+      text: 'The provider retries failed requests.',
+      quotes: { S1: 'HTTP 503 responses trigger a retry after a short delay.' }
+    }, 'S1', 'HTTP 503 responses trigger a retry after a short delay.'))
+      .toBe('HTTP 503 responses trigger a retry after a short delay.');
+  });
+
+  it('falls back to the best answer paragraph by character bigram overlap', () => {
+    const answer = 'A different explanation comes first.\n\nWhen a request times out, the client waits two seconds before reconnecting to the server.';
+    expect(pickAnchorText({ text: 'When a request times out, the client waits two seconds before reconnecting.' }, 'S2', answer))
+      .toBe('When a request times out, the client waits two seconds before reconnecting to the server.');
+  });
+
+  it('returns a bounded source fragment for a long matching paragraph', () => {
+    const sourcePhrase = 'When a request times out, the client waits two seconds before reconnecting to the server.';
+    const answer = `${'The service supports several independent configurations for request handling. '.repeat(8)}${sourcePhrase}${' Detailed timing and retry settings can be adjusted for individual providers. '.repeat(8)}`;
+    const anchor = pickAnchorText({ text: sourcePhrase }, 'S1', answer);
+    expect(anchor).toBe(sourcePhrase);
+    expect(anchor.length).toBeLessThanOrEqual(160);
+    expect(answer).toContain(anchor);
+  });
+
+  it('returns null when neither the quote nor summary text is supported by the answer', () => {
+    expect(pickAnchorText({ text: 'Quantum mechanics explains the observation.', quotes: { S1: 'The sky is blue because of scattering.' } }, 'S1', 'A recipe for vegetable soup.'))
+      .toBeNull();
+  });
+
+  it('does not accept a short generic phrase inside an unrelated paragraph', () => {
+    expect(pickAnchorText({ text: 'The server is busy.' }, 'S1', 'The server provides reliable weather forecasts and local data storage.'))
+      .toBeNull();
   });
 });
 
@@ -184,6 +293,25 @@ describe('requestSummary', () => {
   it('reports HTTP errors with the status and body', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 401, text: async () => 'bad key' });
     await expect(requestSummary({ config: CONFIG, messages: [], fetchImpl })).rejects.toThrow('HTTP 401: bad key');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a busy API and then succeeds', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, text: async () => 'queue full' })
+      .mockResolvedValueOnce({ ok: false, status: 429, text: async () => 'slow down' })
+      .mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: 'ok' } }] }) });
+    const content = await requestSummary({ config: CONFIG, messages: [], fetchImpl, retryDelaysMs: [0, 0] });
+    expect(content).toBe('ok');
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('reports a busy API once the retries run out', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 503, text: async () => 'queue full' });
+    const pending = requestSummary({ config: CONFIG, messages: [], fetchImpl, retryDelaysMs: [0] });
+    await expect(pending).rejects.toThrow('HTTP 503: queue full');
+    await expect(pending.catch(error => isRetryableSummaryError(error))).resolves.toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it('rejects an empty reply', async () => {
@@ -319,6 +447,34 @@ describe('isStronglySupported', () => {
     expect(isStronglySupported(ids(1), 1)).toBe(false);
     expect(isStronglySupported([], 5)).toBe(false);
     expect(isStronglySupported(undefined, 5)).toBe(false);
+  });
+});
+
+describe('shouldExpandSummary', () => {
+  const summaryOf = (fields = {}) => ({ verdict: null, overview: '', consensus: [], unique: [], disagreements: [], ...fields });
+
+  it('keeps empty and short summaries narrow', () => {
+    expect(shouldExpandSummary(null)).toBe(false);
+    expect(shouldExpandSummary(summaryOf())).toBe(false);
+    expect(shouldExpandSummary(summaryOf({ overview: 'Both agree.', consensus: [{ text: 'Use X.', sources: ['S1'] }] }))).toBe(false);
+  });
+
+  it('widens long summaries, counting CJK characters double', () => {
+    const half = AI_SUMMARY_WIDE_TEXT_LENGTH / 2;
+    expect(shouldExpandSummary(summaryOf({ overview: 'a'.repeat(half), unique: [{ text: 'b'.repeat(half) }] }))).toBe(true);
+    expect(shouldExpandSummary(summaryOf({ overview: '中'.repeat(half) }))).toBe(true);
+    expect(shouldExpandSummary(summaryOf({ overview: 'a'.repeat(half) }))).toBe(false);
+  });
+
+  it('ignores cited source ids when measuring', () => {
+    const text = `${'a'.repeat(AI_SUMMARY_WIDE_TEXT_LENGTH - 1)} [S1, S2]`;
+    expect(shouldExpandSummary(summaryOf({ overview: text }))).toBe(false);
+  });
+
+  it('widens a disagreement with three positions side by side', () => {
+    const positions = ['x', 'y', 'z'].map(text => ({ text, sources: [] }));
+    expect(shouldExpandSummary(summaryOf({ disagreements: [{ topic: 'T', positions }] }))).toBe(true);
+    expect(shouldExpandSummary(summaryOf({ disagreements: [{ topic: 'T', positions: positions.slice(0, 2) }] }))).toBe(false);
   });
 });
 

@@ -1,5 +1,56 @@
 # Changelog
 
+## 2.55.0 - 2026-10-31
+- Top-bar AI chips now share the toolbar width equally (up to 150px each); with many panels they shrink, shorten their labels, and become icon-only instead of overflowing, while a small group stays centered.
+
+## 2.54.0 - 2026-10-30
+- Settings > About now shows the author (Ben) and that Panelize Plus is forked from Panelize by Manho, with a link to the upstream project.
+
+## 2.53.0 - 2026-10-30
+- The three fastest AIs of the latest question now wear a small gold, silver, or bronze crown on their top-bar chip; crowns appear as each answer finishes, and the chip tooltip shows the rank.
+- The AI summary drawer now picks its width by how much the summary says: short summaries open narrow, long ones (or a disagreement with three positions side by side) open wide. The expand button still switches it until the next summary.
+
+## 2.52.0 - 2026-10-30
+- Swiping the panel row left or right past the first or last panel now flashes a red bar on that edge once, showing there is nothing further to scroll.
+
+## 2.51.0 - 2026-10-30
+- AI summary disagreements now show their positions side by side in columns, each camp in its own color (green, red, then blue for a third), instead of stacked rows; on narrow windows they stack again.
+
+## 2.50.0 - 2026-10-30
+- AI chips in the top bar are larger (bigger icons, names, and close buttons) and the top bar is slightly taller, making them easier to read and click.
+
+## 2.49.1 - 2026-10-30
+- AI summary no longer shows raw JSON when the model returns slightly malformed JSON (unescaped quotes, raw line breaks, trailing commas, reasoning blocks, or a cut-off reply); the reply is repaired, and if it still cannot be read, its headings and points are shown as plain text.
+
+## 2.49.0 - 2026-10-30
+- Locating an AI panel (top-bar chips, AI summary source chips, Alt+number) now runs a soft violet-magenta light once around its border instead of the blue outline flash.
+
+## 2.48.0 - 2026-10-30
+- The Popup/Tab Mode and Share buttons in the top toolbar are now icon-only, matching the other toolbar buttons. Their labels remain as hover tooltips and screen-reader text.
+- Toolbar icons sit closer together, so the AI chips in the top bar get the freed width and more of them fit before scrolling.
+
+## 2.47.1 - 2026-10-30
+- Zhipu (ChatGLM) chips no longer show "Answer complete" while it pauses between thinking, searching and answering; it now waits for its send button to leave the answering state.
+
+## 2.47.0 - 2026-10-30
+- AI summary source chips now locate and briefly highlight the quoted passage in the original answer, with paragraph matching for older summaries and panel highlighting when no passage is found.
+- Answer stats now classify questions locally, filter results by task category and show the best model per category once enough adopted rounds are available. Answer logs and JSON exports include the category.
+
+## 2.46.0 - 2026-10-29
+- Clicking an AI's chip in the top bar scrolls to its panel and briefly highlights it. In focus mode the chip still switches the focused panel.
+
+## 2.45.0 - 2026-10-29
+- Provider billing markers in Settings gain a "Rate limited" (限流) option, for platforms that throttle your account.
+
+## 2.43.2 - 2026-10-29
+- 文心 (Wenxin), Perplexity and Copilot panels now report answer timing, so their tab chip shows the answering and done animation, and their answers count towards answer stats and the AI summary.
+
+## 2.43.1 - 2026-10-29
+- When the summary API is busy (HTTP 429, 502, 503 or 504, such as "The request queue is full"), the AI summary retries twice on its own before failing, and the error now says the API is busy and suggests trying later or another model.
+
+## 2.43.0 - 2026-10-29
+- In the AI summary, the "Agreed" paragraphs and their headings sit closer together, so the section is easier to read.
+
 ## 2.42.0 - 2026-10-29
 - The AI summary streams its reply and shows how long it has been running and how much text has arrived, so a long summary no longer looks stuck. It fails only after the API sends nothing for 90 seconds (or after 5 minutes in all) instead of after 120 seconds no matter what, and says so when it times out.
 - Long answers share a 60,000-character budget per summary, so many panels or long replies no longer flood the summary model; short answers are sent whole. The summary is asked to stay concise, which also makes it faster.

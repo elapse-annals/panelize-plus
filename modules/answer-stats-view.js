@@ -39,6 +39,47 @@ export function formatAnswerScore(score) {
 }
 
 /**
+ * Replaces the category overview with one localized chip per best provider.
+ *
+ * @param {HTMLElement} container
+ * @param {Array<{ category: string, providerId: string, adoptionRate: number|null, medianCompleteMs: number|null }>} items
+ * @param {{ getText: (key: string, fallback: string, substitutions?: string|string[]) => string, getProviderName: (providerId: string) => string }} options
+ */
+export function renderBestByCategory(container, items, { getText, getProviderName }) {
+  const categoryLabels = {
+    coding: ['taskCategoryCoding', 'Coding'],
+    writing: ['taskCategoryWriting', 'Writing'],
+    translation: ['taskCategoryTranslation', 'Translation'],
+    qa: ['taskCategoryQa', 'Q&A'],
+    other: ['taskCategoryOther', 'Other']
+  };
+  const chips = (items || []).map((item) => {
+    const [categoryKey, categoryFallback] = categoryLabels[item.category] || categoryLabels.other;
+    const category = getText(categoryKey, categoryFallback);
+    const provider = getProviderName(item.providerId);
+    const adoptionRate = item.adoptionRate === null || !Number.isFinite(item.adoptionRate)
+      ? '—'
+      : `${Math.round(item.adoptionRate * 100)}%`;
+    const duration = formatAnswerDuration(item.medianCompleteMs);
+    const text = getText(
+      'answerStatsBestCategorySummary',
+      '$1: $2 · adoption $3 · median $4',
+      [category, provider, adoptionRate, duration]
+    );
+    return createCell('span', text, 'answer-stats-best-chip');
+  });
+
+  if (chips.length === 0) {
+    chips.push(createCell(
+      'span',
+      getText('answerStatsBestEmpty', 'Best models appear after at least three adopted answers in a category.'),
+      'answer-stats-best-empty'
+    ));
+  }
+  container.replaceChildren(...chips);
+}
+
+/**
  * Replaces the rows of `tbody` with one row per aggregated provider entry.
  *
  * @param {HTMLTableSectionElement} tbody

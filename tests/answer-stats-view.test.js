@@ -10,6 +10,7 @@ import {
   formatAnswerScore,
   formatAnswerTiming,
   formatEngagedDuration,
+  renderBestByCategory,
   renderAnswerStatsTable
 } from '../modules/answer-stats-view.js';
 
@@ -62,5 +63,49 @@ describe('renderAnswerStatsTable', () => {
     expect(rows[0].querySelectorAll('td')[2].title).toBe('Not measured');
     expect(rows[1].querySelectorAll('td')[2].title).toBe('');
     expect(rows[0].querySelector('td').className).toBe('answer-stats-provider');
+  });
+});
+
+describe('renderBestByCategory', () => {
+  const getText = (key, fallback, substitutions = []) => {
+    const values = Array.isArray(substitutions) ? substitutions : [substitutions];
+    return values.reduce((text, value, index) => text.replaceAll(`$${index + 1}`, value), fallback);
+  };
+
+  it('renders localized category chips with adoption and median completion time', () => {
+    const container = document.createElement('div');
+
+    renderBestByCategory(container, [
+      { category: 'coding', providerId: 'claude', adoptionRate: 0.625, medianCompleteMs: 18000 },
+      { category: 'translation', providerId: 'chatgpt', adoptionRate: 0.5, medianCompleteMs: null }
+    ], {
+      getText: (key, fallback, substitutions) => getText(key, ({
+        taskCategoryCoding: 'Coding',
+        taskCategoryTranslation: 'Translation'
+      })[key] || fallback, substitutions),
+      getProviderName: providerId => NAMES[providerId] || providerId
+    });
+
+    expect([...container.children].map(chip => chip.textContent)).toEqual([
+      'Coding: Claude · adoption 63% · median 18.0 s',
+      'Translation: ChatGPT · adoption 50% · median —'
+    ]);
+    expect([...container.children].every(chip => chip.className === 'answer-stats-best-chip')).toBe(true);
+  });
+
+  it('renders an empty state and treats provider names as text', () => {
+    const container = document.createElement('div');
+    const localizedOptions = { ...OPTIONS, getText };
+    renderBestByCategory(container, [], localizedOptions);
+    expect(container.textContent).toBe('Best models appear after at least three adopted answers in a category.');
+    expect(container.firstElementChild.className).toBe('answer-stats-best-empty');
+
+    renderBestByCategory(container, [
+      { category: 'qa', providerId: '<img src=x onerror=alert(1)>', adoptionRate: null, medianCompleteMs: undefined }
+    ], localizedOptions);
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.textContent).toContain('<img src=x onerror=alert(1)>');
+    expect(container.textContent).toContain('Q&A:');
+    expect(container.textContent).toContain('adoption — · median —');
   });
 });
