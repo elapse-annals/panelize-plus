@@ -15,31 +15,33 @@ export const DOUBAO_MIGRATION_PROVIDER_IDS = [
 ];
 
 export const DEFAULT_PROVIDER_IDS = [
+  'google',
   'chatgpt',
   'gemini',
-  'deepseek',
   'meta-ai',
-  'mimo',
-  'doubao',
-  'yuanbao',
-  'grok',
-  'zai-global',
-  'google',
-  'chatglm',
-  'qwen-global',
-];
-
-export const DEFAULT_PROVIDER_ORDER = [
-  'chatgpt',
-  'claude',
-  'gemini',
   'deepseek',
-  'google',
   'qwen-cn',
   'qwen-global',
   'chatglm',
   'zai-global',
+  'mimo',
+  'yuanbao',
+  'grok',
+  'perplexity',
+  'wenxin',
+];
+
+export const DEFAULT_PROVIDER_ORDER = [
+  'claude',
+  'google',
+  'chatgpt',
+  'gemini',
   'meta-ai',
+  'deepseek',
+  'qwen-cn',
+  'qwen-global',
+  'chatglm',
+  'zai-global',
   'mimo',
   'doubao',
   'stepfun',
@@ -71,6 +73,8 @@ export const DEFAULT_STARTUP_PROVIDER_IDS = [
   'google',
   'qwen-global',
   'zai-global',
+  'perplexity',
+  'wenxin',
 ];
 
 export function migrateEnabledProvidersOnUpdate(enabledProviders, providerOrder) {

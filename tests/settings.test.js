@@ -84,12 +84,12 @@ describe('settings module', () => {
       expect(result.enabledProviders).toEqual(DEFAULT_PROVIDER_IDS);
     });
 
-    it('should append no prompt instruction by default', async () => {
+    it('should append the Deep thinking instruction by default', async () => {
       chrome.storage.sync.get.mockImplementation(async (defaults) => defaults);
 
       const result = await getSettings();
 
-      expect(result.selectedPromptMode).toBeNull();
+      expect(result.selectedPromptMode).toBe('deep');
     });
   });
 

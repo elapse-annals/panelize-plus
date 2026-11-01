@@ -7,15 +7,15 @@ const DEFAULT_SETTINGS = {
   googleProviderMode: DEFAULT_GOOGLE_PROVIDER_MODE,
   providerOrder: DEFAULT_PROVIDER_ORDER,
   providerSortMode: 'manual',
-  providerBillingTypes: null,  // Account billing marker overrides; null uses the built-in defaults
+  providerBillingTypes: { doubao: 'quota', 'hy-aistudio': 'quota' },  // Account billing marker overrides; null uses the built-in defaults
   providerNotes: null,  // One-line user notes shown after each panel's provider name, keyed by provider id
   pageShortcutsEnabled: true,
   keyboardShortcutBindings: {},
   selectedProviderTier: null,
-  selectedPromptMode: null,  // Instruction appended to the question every AI receives; null appends nothing
+  selectedPromptMode: 'deep',  // Instruction appended to the question every AI receives; null appends nothing
   providerTierRecipes: null,  // User overrides of DEFAULT_TIER_RECIPES, keyed by provider then tier; null uses the built-in mapping
   blindModeEnabled: false,  // Panels show anonymous labels and provider pages share one neutral style
-  wideContentEnabled: false,  // Provider pages are laid out wider than their panel and scaled to fit
+  wideContentEnabled: true,  // Provider pages are laid out wider than their panel and scaled to fit
   startupProviders: DEFAULT_STARTUP_PROVIDER_IDS,  // Provider IDs opened when Multi-Panel starts; null opens the first ones that fit the layout
   defaultProvider: 'chatgpt',
   lastSelectedProvider: 'chatgpt',
@@ -26,9 +26,9 @@ const DEFAULT_SETTINGS = {
   openMode: 'tab',  // 'tab' or 'popup'
   shareWatermarkEnabled: true,  // Adds the "Compared with Panelize" strip to shared snapshots
   answerCompleteNotificationEnabled: true,  // System notification when the first AI in a round finishes answering
-  aiSummaryAutoEnabled: false,  // Summarize every round once all its AIs finish answering
-  aiSummaryBaseUrl: '',  // OpenAI-compatible API base URL for the AI summary; the API key stays in chrome.storage.local
-  aiSummaryModel: '',
+  aiSummaryAutoEnabled: true,  // Summarize every round once all its AIs finish answering
+  aiSummaryBaseUrl: 'https://apihub.agnes-ai.com/v1',  // OpenAI-compatible API base URL for the AI summary; the API key stays in chrome.storage.local
+  aiSummaryModel: 'agnes-3.0-flash',
   enterKeyBehavior: {
     enabled: true,
     preset: 'default',  // 'default', 'swapped', 'slack', 'discord', 'custom'

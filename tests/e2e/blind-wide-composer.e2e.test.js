@@ -41,7 +41,9 @@ function routeProviderFixtures(extension, providers = ['chatgpt', 'deepseek']) {
 }
 
 async function openPanels(extension) {
-  const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
+  const page = await openMultiPanel(extension, {
+    providers: ['chatgpt', 'deepseek'], layout: '1x2', settings: { wideContentEnabled: false }
+  });
   await page.waitForFunction(() => document.documentElement.dataset.panelizeReady === 'true');
   return page;
 }
@@ -290,7 +292,7 @@ test.describe('Blind mode, wide content and composer overhang', () => {
     try {
       const providers = ['chatgpt', 'gemini', 'grok', 'deepseek', 'kimi', 'claude', 'google', 'doubao'];
       await routeProviderFixtures(extension, providers);
-      const page = await openMultiPanel(extension, { providers, layout: '1x8' });
+      const page = await openMultiPanel(extension, { providers, layout: '1x8', settings: { wideContentEnabled: false } });
       const normal = Array(8).fill(320);
       const wide = Array(8).fill(672);
       await expect.poll(() => columnWidths(page)).toEqual(normal);

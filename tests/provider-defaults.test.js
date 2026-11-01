@@ -12,29 +12,29 @@ import {
 describe('provider defaults', () => {
   it('uses the current default provider list', () => {
     expect(DEFAULT_PROVIDER_IDS).toEqual([
+      'google',
       'chatgpt',
       'gemini',
-      'deepseek',
       'meta-ai',
+      'deepseek',
+      'qwen-cn',
+      'qwen-global',
+      'chatglm',
+      'zai-global',
       'mimo',
-      'doubao',
       'yuanbao',
       'grok',
-      'zai-global',
-      'google',
-      'chatglm',
-      'qwen-global',
+      'perplexity',
+      'wenxin',
     ]);
   });
 
-  it('orders new optional providers last without enabling or auto-starting them', () => {
+  it('orders new optional providers last without auto-starting copilot', () => {
     const optionalProviderIds = ['perplexity', 'copilot', 'wenxin'];
 
     expect(DEFAULT_PROVIDER_ORDER.slice(-optionalProviderIds.length)).toEqual(optionalProviderIds);
-    for (const providerId of optionalProviderIds) {
-      expect(DEFAULT_PROVIDER_IDS).not.toContain(providerId);
-      expect(DEFAULT_STARTUP_PROVIDER_IDS).not.toContain(providerId);
-    }
+    expect(DEFAULT_PROVIDER_IDS).not.toContain('copilot');
+    expect(DEFAULT_STARTUP_PROVIDER_IDS).not.toContain('copilot');
   });
 
   it('appends doubao to the legacy list for the update migration', () => {

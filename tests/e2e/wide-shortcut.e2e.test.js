@@ -12,7 +12,9 @@ test('wide mode shortcuts work in the composer and AI frames, persist custom bin
     await extension.context.route('https://chat.deepseek.com/**', route => route.fulfill({
       status: 200, contentType: 'text/html', body: renderProviderTierFixture('deepseek')
     }));
-    const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
+    const page = await openMultiPanel(extension, {
+      providers: ['chatgpt', 'deepseek'], layout: '1x2', settings: { wideContentEnabled: false }
+    });
     await page.waitForFunction(() => document.documentElement.dataset.panelizeReady === 'true');
     const isMac = await page.evaluate(() => /mac|iphone|ipad/i.test(navigator.platform || navigator.userAgent));
     const defaultShortcut = `${isMac ? 'Meta' : 'Control'}+Alt+W`;

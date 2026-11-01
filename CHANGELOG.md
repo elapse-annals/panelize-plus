@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.58.1 - 2026-11-01
+- An automatic AI summary now opens the drawer only after a real summary arrives; a failed, timed-out or empty automatic summary stays silent instead of opening an error drawer.
+
+## 2.58.0 - 2026-11-01
+- Fresh installs now start from the maintainer's exported configuration: enabled providers, provider order and startup panels follow that backup, wide content is on, Deep thinking is the default prompt mode, AI summary is preconfigured for the Agnes endpoint with agnes-3.0-flash, and doubao/hy-aistudio carry a quota billing marker.
+
+## 2.57.0 - 2026-11-01
+- Challenge mode now acts as an adversarial reviewer: it gives a short verdict, restates your claim and assumptions, attacks the weakest or unsupported points with concrete consequences, and ends with sharp clarifying questions. Unedited Challenge prompts update once; customized text stays as is.
+
+## 2.56.0 - 2026-11-01
+- The gold speed crown on the fastest answer's top-bar chip is brighter, and the bronze crown on the third-fastest answer is dimmer and recedes, in both light and dark themes.
+
 ## 2.55.0 - 2026-10-31
 - Top-bar AI chips now share the toolbar width equally (up to 150px each); with many panels they shrink, shorten their labels, and become icon-only instead of overflowing, while a small group stays centered.
 

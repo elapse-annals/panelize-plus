@@ -10,6 +10,41 @@
  * the conversation is unchanged because only the outgoing message carries it.
  */
 
+// The Challenge instruction before and after it became an adversarial review.
+// Both languages live in code because the one-time migration runs regardless of
+// the UI locale; _locales/*/messages.json must match `current` (asserted in
+// tests). Keep `previous` after the migration has shipped everywhere.
+export const COMPETE_PROMPT_TEXTS = {
+  previous: {
+    en: 'You are answering this alongside several other AIs and the answers will be compared side by side. Give the most accurate, insightful and useful answer you can.',
+    zh: '你正在与其他多个 AI 同时回答这个问题，回答将被直接比较。请给出你能做到的最准确、最有洞见、最实用的回答。'
+  },
+  current: {
+    en: 'Act as an adversarial but fair peer reviewer of the message above, not an assistant trying to please me. '
+      + 'If my message is a request rather than a claim, review the approach and its assumptions as the claim.\n\n'
+      + 'First, in one or two sentences, give your verdict or best answer. Then restate my core claim or request '
+      + 'and separate its load-bearing assumptions from the incidental ones, and attack, most damaging first, '
+      + 'the weakest, vaguest, most contradictory or least supported points — each as problem → concrete '
+      + 'consequence or failure scenario → the missing evidence. Do not open with praise and do not soften '
+      + 'findings with "it\'s a good question", "it depends" or "you might consider". Critique the idea, never '
+      + 'the person; every criticism must point to a specific claim. Add one line naming what evidence would '
+      + 'reverse your verdict.\n\n'
+      + 'Finish with 3–5 sharp clarifying questions addressed to me, asking nothing I already answered: each '
+      + 'must say why my answer would change your conclusion, and where useful offer two or three candidate '
+      + 'answers so I can reply quickly. If it cannot be answered as asked, say so plainly instead of guessing.',
+    zh: '请充当上面这条消息的对抗性但公正的同行审稿人，而不是一味讨好我的助手。'
+      + '如果我的消息是请求而非主张，就把其中的做法及其假设当作待审主张。\n\n'
+      + '先用一两句话给出你的判断或最佳答案。然后复述我的核心主张或请求，并区分不可或缺的关键假设与次要假设；'
+      + '按危害从大到小，逐条攻击最薄弱、最含糊、最自相矛盾或最缺乏依据的地方，'
+      + '每条都按「问题 → 具体后果或失败场景 → 缺失的证据」来写。'
+      + '不要开场恭维，不要用「很好的问题」「视情况而定」「你可以考虑」之类的话淡化结论。'
+      + '只批评观点，不针对个人，每条批评都必须落到具体主张上。再补一句：什么证据会推翻你的判断。\n\n'
+      + '最后向我提出 3–5 个尖锐的澄清问题，不要问我已经回答过的内容；'
+      + '每个都要说明我的回答为何会改变结论，并在有用时给出两三个候选答案，方便我快速回复。'
+      + '如果这条消息无法按所问的方式回答，直接说明，不要猜测。'
+  }
+};
+
 // Menu and seed order (Concise, Learning, Challenge, Brainstorm, Deep thinking), with each
 // built-in mode's locale keys and English fallbacks.
 // `id` becomes the seeded prompt's modeKey, which also matches the
@@ -22,7 +57,7 @@ export const PROMPT_MODES = [
     hintKey: 'promptModeLearningHint', hint: 'Append a teaching instruction: conclusion first, then the reasoning',
     triggers: ['/study', '/learn'] },
   { id: 'compete', labelKey: 'promptModeCompete', label: 'Challenge',
-    hintKey: 'promptModeCompeteHint', hint: 'Append a challenge instruction: aim to win the side-by-side comparison',
+    hintKey: 'promptModeCompeteHint', hint: 'Append an adversarial-review instruction: verdict first, then attacks on weak assumptions and sharp clarifying questions',
     triggers: ['/challenge', '/compete'] },
   { id: 'brainstorm', labelKey: 'promptModeBrainstorm', label: 'Brainstorm',
     hintKey: 'promptModeBrainstormHint', hint: 'Append a brainstorm instruction: many varied angles, no early verdict',
@@ -57,7 +92,7 @@ const PROMPT_MODE_SUFFIX_FALLBACKS = {
   learning: 'Answer as a teacher: give the core conclusion first, then explain the reasoning step by step with examples, and finish with 1–2 questions that check my understanding.',
   concise: 'Be as concise as possible: give the conclusion and the key points only, and skip preamble, pleasantries and repetition.',
   brainstorm: 'Brainstorm: offer several different angles, as varied and even as bold as you can, briefly note the pros and cons of each, and do not rush to a verdict.',
-  compete: 'You are answering this alongside several other AIs and the answers will be compared side by side. Give the most accurate, insightful and useful answer you can.',
+  compete: COMPETE_PROMPT_TEXTS.current.en,
   deep: 'Think step by step: break the problem down, identify assumptions, analyze root causes, compare options and verify in reverse; before the final conclusion, list your reasoning steps in detail and state any uncertainty.'
 };
 
@@ -413,6 +448,45 @@ export async function ensureDefaultModeTriggers({ getAllPrompts, updatePrompt, s
   }
   await storage.set({ [PROMPT_MODE_TRIGGERS_SEEDED_KEY]: true });
   return true;
+}
+
+// chrome.storage.local flag for the one-time Challenge prompt migration below.
+export const COMPETE_PROMPT_MIGRATED_KEY = 'promptModeCompetePromptMigrated';
+
+/**
+ * Replaces the old "compared side by side" Challenge instruction with the
+ * adversarial-review one, once per device. Only fields still exactly as
+ * shipped are rewritten, each in the language it already holds, so edits and
+ * the title are kept. Prompts with another modeKey are never touched.
+ *
+ * @param {{ getAllPrompts: () => Promise<object[]>,
+ *   updatePrompt: (id: number, updates: object) => Promise<unknown>,
+ *   storage?: { get: Function, set: Function } }} options
+ * @returns {Promise<number>} How many prompts were updated.
+ */
+export async function migrateCompetePrompt({ getAllPrompts, updatePrompt, storage }) {
+  if (!storage?.get || !storage?.set) return 0;
+  const stored = await storage.get(COMPETE_PROMPT_MIGRATED_KEY);
+  if (stored?.[COMPETE_PROMPT_MIGRATED_KEY]) return 0;
+
+  const { previous, current } = COMPETE_PROMPT_TEXTS;
+  const replacement = value => value === previous.zh ? current.zh
+    : value === previous.en ? current.en : '';
+
+  let updated = 0;
+  for (const prompt of await getAllPrompts()) {
+    if (prompt?.modeKey !== 'compete') continue;
+    const updates = {};
+    for (const field of ['content', 'contentEn']) {
+      const next = replacement(promptText(prompt, field));
+      if (next) updates[field] = next;
+    }
+    if (!Object.keys(updates).length) continue;
+    await updatePrompt(prompt.id, updates);
+    updated += 1;
+  }
+  await storage.set({ [COMPETE_PROMPT_MIGRATED_KEY]: true });
+  return updated;
 }
 
 // chrome.storage.local flag for the one-time sample cleanup below. V2 runs it

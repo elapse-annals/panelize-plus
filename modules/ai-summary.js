@@ -702,6 +702,25 @@ export const AI_SUMMARY_WIDE_TEXT_LENGTH = 900;
 const WIDE_CHARACTERS = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\uff00-\uffef]/gu;
 
 /**
+ * Whether a parsed summary has anything to show. A reply that parsed as JSON
+ * without any usable section (for example "{}") counts as no result, so the
+ * automatic summary does not open the drawer for it.
+ *
+ * @param {{ verdict?: object | null, overview?: string, consensus?: Array<object>, unique?: Array<object>, disagreements?: Array<object> } | null} summary
+ */
+export function hasSummaryContent(summary) {
+  if (!summary) return false;
+  const text = value => typeof value === 'string' ? value.trim() : '';
+  return Boolean(
+    text(summary.verdict?.text)
+    || text(summary.overview)
+    || summary.consensus?.length
+    || summary.unique?.length
+    || summary.disagreements?.length
+  );
+}
+
+/**
  * Whether the summary has enough to read that the drawer should open wide:
  * long text, or a disagreement with the most positions side by side.
  *

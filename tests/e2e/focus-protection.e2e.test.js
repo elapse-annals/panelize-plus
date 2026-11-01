@@ -48,7 +48,9 @@ test.describe('Focus protection E2E', () => {
     fixtureConfigByHost = Object.fromEntries(
       providers.map((providerId) => [PROVIDER_HOSTS[providerId], configByProvider[providerId]])
     );
-    page = await openMultiPanel(extension, { providers, layout });
+    page = await openMultiPanel(extension, {
+      providers, layout, settings: { selectedPromptMode: null, wideContentEnabled: false }
+    });
     await Promise.all(providers.map((providerId) => waitForFixtureReady(providerId)));
   }
 

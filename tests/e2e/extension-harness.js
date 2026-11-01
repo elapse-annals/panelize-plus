@@ -138,9 +138,10 @@ export async function launchExtension({
  * @param {string} [options.layout] - Grid layout id such as '1x1'.
  * @param {string[]} [options.enabledProviders] - Providers offered by the add
  *   panel menu; defaults to the open panels.
+ * @param {object} [options.settings] - Extra settings seeded before the page opens.
  * @returns {Promise<import('@playwright/test').Page>}
  */
-export async function openMultiPanel(extension, { providers, layout = '1x1', enabledProviders = providers }) {
+export async function openMultiPanel(extension, { providers, layout = '1x1', enabledProviders = providers, settings = {} }) {
   // This helper changes settings outside the Multi-Panel page. Drop the old
   // startup hint so the page reflects those settings instead of briefly
   // requesting providers from the previous test.
@@ -156,6 +157,7 @@ export async function openMultiPanel(extension, { providers, layout = '1x1', ena
     providerOrder: enabledProviders,
     multiPanelProviders: providers,
     multiPanelLayout: layout,
+    ...settings,
   });
 
   const page = await extension.context.newPage();

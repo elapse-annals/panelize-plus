@@ -8,7 +8,9 @@ test('Send All supports the current ChatGPT composer without a legacy id', async
     await extension.context.route('https://chatgpt.com/**', route => route.fulfill({
       contentType: 'text/html', body: renderChatgptFixture({ composer: 'current' }),
     }));
-    const page = await openMultiPanel(extension, { providers: ['chatgpt'] });
+    const page = await openMultiPanel(extension, {
+      providers: ['chatgpt'], settings: { selectedPromptMode: null }
+    });
     const panel = page.frameLocator('iframe');
     const editor = panel.locator('[data-composer-placement="thread"] [data-composer-markdown]');
     await expect(editor).toBeVisible();

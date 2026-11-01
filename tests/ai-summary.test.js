@@ -10,6 +10,7 @@ import {
   formatSummaryText,
   groupItemsBySources,
   getSummaryOriginPattern,
+  hasSummaryContent,
   isRetryableSummaryError,
   isRoundReadyForAutoSummary,
   isRoundReadyForSummary,
@@ -447,6 +448,24 @@ describe('isStronglySupported', () => {
     expect(isStronglySupported(ids(1), 1)).toBe(false);
     expect(isStronglySupported([], 5)).toBe(false);
     expect(isStronglySupported(undefined, 5)).toBe(false);
+  });
+});
+
+describe('hasSummaryContent', () => {
+  it('treats a missing or parsed-empty summary as no result', () => {
+    expect(hasSummaryContent(null)).toBe(false);
+    expect(hasSummaryContent({})).toBe(false);
+    expect(hasSummaryContent(parseSummaryResponse('{}', ['S1']))).toBe(false);
+    expect(hasSummaryContent(parseSummaryResponse('{"verdict":{"text":" "}}', ['S1']))).toBe(false);
+  });
+
+  it('keeps any readable section, including plain-text replies', () => {
+    expect(hasSummaryContent(parseSummaryResponse('Plain summary', ['S1']))).toBe(true);
+    expect(hasSummaryContent({ verdict: { text: 'Yes' } })).toBe(true);
+    expect(hasSummaryContent({ overview: 'Both agree.' })).toBe(true);
+    expect(hasSummaryContent({ consensus: [{ text: 'Use X.' }] })).toBe(true);
+    expect(hasSummaryContent({ unique: [{ text: 'Only one says this.' }] })).toBe(true);
+    expect(hasSummaryContent({ disagreements: [{ topic: 'Color' }] })).toBe(true);
   });
 });
 

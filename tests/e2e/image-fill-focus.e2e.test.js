@@ -48,7 +48,9 @@ test('Enter with an image attaches it, sends every panel and keeps focus', async
     await extension.context.route('https://gemini.google.com/**', route => route.fulfill({
       contentType: 'text/html', body: renderGeminiFixture(),
     }));
-    const page = await openMultiPanel(extension, { providers: ['chatgpt', 'gemini'], layout: '1x2' });
+    const page = await openMultiPanel(extension, {
+      providers: ['chatgpt', 'gemini'], layout: '1x2', settings: { selectedPromptMode: null }
+    });
 
     const readFixture = (host) => {
       const frame = page.frames().find(candidate => candidate.url().startsWith(`https://${host}/`));
@@ -90,7 +92,9 @@ test('clicking into a panel after an image fill keeps focus there', async () => 
     await extension.context.route('https://gemini.google.com/**', route => route.fulfill({
       contentType: 'text/html', body: renderGeminiFixture(),
     }));
-    const page = await openMultiPanel(extension, { providers: ['gemini'] });
+    const page = await openMultiPanel(extension, {
+      providers: ['gemini'], settings: { selectedPromptMode: null }
+    });
     const geminiEditor = page.frameLocator('iframe').locator('.ql-editor');
     await expect(geminiEditor).toBeVisible();
     await page.waitForTimeout(3300);

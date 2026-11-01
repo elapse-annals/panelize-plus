@@ -21,11 +21,11 @@ function modeNames(page) {
   return page.locator('.prompt-mode-option-name');
 }
 
-async function openChatgptPanel(extension) {
+async function openChatgptPanel(extension, settings = {}) {
   await extension.context.route('https://chatgpt.com/**', route => route.fulfill({
     contentType: 'text/html', body: renderChatgptFixture({ composer: 'current' })
   }));
-  return openMultiPanel(extension, { providers: ['chatgpt'] });
+  return openMultiPanel(extension, { providers: ['chatgpt'], settings });
 }
 
 test.describe('Prompt mode and Prompt Library keyboard', () => {
@@ -37,8 +37,9 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
       const page = await openChatgptPanel(extension);
       const select = page.locator('#prompt-mode-btn');
       const control = page.locator('.prompt-mode-control');
-      await expect(select).toHaveAttribute('data-mode', '');
-      await expect(control).toHaveAttribute('data-active', 'false');
+      // New installs start in Deep thinking mode.
+      await expect(select).toHaveAttribute('data-mode', 'deep');
+      await expect(control).toHaveAttribute('data-active', 'true');
 
       await chooseMode(page, 'Concise');
       await expect(control).toHaveAttribute('data-active', 'true');
@@ -218,7 +219,7 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
   test('Default sends the question exactly as typed', async () => {
     const extension = await launchExtension({ viewport: { width: 1280, height: 800 } });
     try {
-      const page = await openChatgptPanel(extension);
+      const page = await openChatgptPanel(extension, { selectedPromptMode: null });
       await page.locator('#unified-input').fill('Explain closures');
       await page.locator('#send-all-btn').click();
 

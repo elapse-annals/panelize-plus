@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { COMPETE_PROMPT_TEXTS } from '../modules/prompt-modes.js';
 
 const LOCALES_DIR = resolve(process.cwd(), '_locales');
 
@@ -164,6 +165,7 @@ const FEATURE_KEYS = [
   'aiSummaryIdle',
   'aiSummaryNoRound',
   'aiSummaryNoAnswers',
+  'aiSummaryEmpty',
   'aiSummaryNotConfigured',
   'aiSummaryNoPermission',
   'aiSummaryFailed',
@@ -215,6 +217,14 @@ describe('share and rating strings', () => {
     const messages = JSON.parse(readFileSync(resolve(LOCALES_DIR, 'zh_CN', 'messages.json'), 'utf8'));
     expect(messages.promptModeSuffix_deep.message)
       .toBe('请逐步思考拆解问题，识别假设，分析根因，比较方案，反向验证，并在给出最终结论前，详细列出你的推导步骤，说明不确定性。');
+  });
+
+  it('ships the adversarial Challenge instruction in both locales', () => {
+    const en = JSON.parse(readFileSync(resolve(LOCALES_DIR, 'en', 'messages.json'), 'utf8'));
+    const zh = JSON.parse(readFileSync(resolve(LOCALES_DIR, 'zh_CN', 'messages.json'), 'utf8'));
+
+    expect(en.promptModeSuffix_compete.message).toBe(COMPETE_PROMPT_TEXTS.current.en);
+    expect(zh.promptModeSuffix_compete.message).toBe(COMPETE_PROMPT_TEXTS.current.zh);
   });
 
   it('keeps the brand and site name in the watermark strings', () => {

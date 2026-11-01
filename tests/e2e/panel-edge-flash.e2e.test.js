@@ -11,7 +11,9 @@ test('swiping past the first or last panel flashes that edge once per push', asy
         status: 200, contentType: 'text/html', body: renderProviderTierFixture(provider)
       }));
     }
-    const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
+    const page = await openMultiPanel(extension, {
+      providers: ['chatgpt', 'deepseek'], layout: '1x2', settings: { wideContentEnabled: false }
+    });
     await page.waitForFunction(() => document.documentElement.dataset.panelizeReady === 'true');
     await page.locator('#wide-content-btn').click();
     await expect.poll(() => page.locator('#panel-grid').evaluate(grid => grid.scrollWidth - grid.clientWidth))

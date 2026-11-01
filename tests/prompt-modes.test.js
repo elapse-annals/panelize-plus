@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  COMPETE_PROMPT_TEXTS,
+  COMPETE_PROMPT_MIGRATED_KEY,
   PROMPT_MODES,
   PROMPT_MODE_IDS,
   PROMPT_MODES_SEEDED_KEY,
@@ -13,6 +15,7 @@ import {
   cleanupSamplePrompts,
   ensureDefaultModePrompts,
   ensureDefaultModeTriggers,
+  migrateCompetePrompt,
   normalizePromptTriggers,
   restoreDefaultModePrompts,
   resolvePromptModeForText,
@@ -79,6 +82,12 @@ describe('built-in prompt modes', () => {
     expect(getPromptModeSuffix('deep', translate)).toBe('Think step by step: break the problem down, identify assumptions, analyze root causes, compare options and verify in reverse; before the final conclusion, list your reasoning steps in detail and state any uncertainty.');
     expect(getPromptModeSuffix(null, translate)).toBe('');
     expect(getPromptModeSuffix('verbose', translate)).toBe('');
+  });
+
+  it('ships the adversarial Challenge instruction as the built-in text', () => {
+    expect(getPromptModeSuffix('compete', translate)).toBe(COMPETE_PROMPT_TEXTS.current.en);
+    expect(getDefaultModePrompts(translate).find(prompt => prompt.modeKey === 'compete').content)
+      .toBe(COMPETE_PROMPT_TEXTS.current.en);
   });
 });
 
@@ -444,6 +453,110 @@ describe('prompt mode trigger words', () => {
     expect(storage.data[PROMPT_MODE_TRIGGERS_SEEDED_KEY]).toBe(true);
     expect(await ensureDefaultModeTriggers(options)).toBe(false);
     expect(updatePrompt).toHaveBeenCalledOnce();
+  });
+});
+
+describe('migrating the built-in Challenge prompt', () => {
+  const { previous, current } = COMPETE_PROMPT_TEXTS;
+  const libraryWith = prompts => {
+    const items = [...prompts];
+    return {
+      items,
+      getAllPrompts: vi.fn(async () => items),
+      updatePrompt: vi.fn(async (id, updates) => {
+        Object.assign(items.find(prompt => prompt.id === id), updates);
+      })
+    };
+  };
+  const migrate = (library, storage = memoryStorage()) =>
+    migrateCompetePrompt({ ...library, storage });
+
+  it('rewrites the untouched Chinese instruction in place', async () => {
+    const library = libraryWith([
+      { id: 1, title: '挑战', modeKey: 'compete', isMode: true, content: previous.zh }
+    ]);
+    const storage = memoryStorage();
+
+    expect(await migrate(library, storage)).toBe(1);
+    expect(library.items[0].content).toBe(current.zh);
+    expect(library.items[0].contentEn).toBeUndefined();
+    expect(storage.data[COMPETE_PROMPT_MIGRATED_KEY]).toBe(true);
+  });
+
+  it('rewrites the untouched English instruction in place', async () => {
+    const library = libraryWith([
+      { id: 1, title: 'Challenge', modeKey: 'compete', isMode: true, content: previous.en }
+    ]);
+
+    expect(await migrate(library)).toBe(1);
+    expect(library.items[0].content).toBe(current.en);
+  });
+
+  it('updates an old English contentEn while keeping an edited content', async () => {
+    const library = libraryWith([
+      { id: 1, title: 'Challenge', modeKey: 'compete', isMode: true, content: '我的自定义指令。', contentEn: previous.en }
+    ]);
+
+    expect(await migrate(library)).toBe(1);
+    expect(library.items[0].content).toBe('我的自定义指令。');
+    expect(library.items[0].contentEn).toBe(current.en);
+  });
+
+  it('never touches the same text under another modeKey', async () => {
+    const library = libraryWith([
+      { id: 1, modeKey: 'learning', isMode: true, content: previous.en },
+      { id: 2, modeKey: 'custom-x', isMode: true, content: previous.zh }
+    ]);
+    const storage = memoryStorage();
+
+    expect(await migrate(library, storage)).toBe(0);
+    expect(library.updatePrompt).not.toHaveBeenCalled();
+    expect(library.items.map(prompt => prompt.content)).toEqual([previous.en, previous.zh]);
+    expect(storage.data[COMPETE_PROMPT_MIGRATED_KEY]).toBe(true);
+  });
+
+  it('keeps a renamed built-in prompt and updates its text', async () => {
+    const library = libraryWith([
+      { id: 1, title: 'Red team', modeKey: 'compete', isMode: true, content: previous.zh }
+    ]);
+
+    expect(await migrate(library)).toBe(1);
+    expect(library.items[0].title).toBe('Red team');
+    expect(library.items[0].content).toBe(current.zh);
+  });
+
+  it('updates every prompt still carrying the built-in modeKey', async () => {
+    const library = libraryWith([
+      { id: 1, modeKey: 'compete', content: previous.zh },
+      { id: 2, modeKey: 'compete', content: previous.en }
+    ]);
+
+    expect(await migrate(library)).toBe(2);
+    expect(library.items.map(prompt => prompt.content)).toEqual([current.zh, current.en]);
+  });
+
+  it('runs once per device', async () => {
+    const library = libraryWith([{ id: 1, modeKey: 'compete', content: previous.zh }]);
+    const storage = memoryStorage();
+
+    expect(await migrate(library, storage)).toBe(1);
+    expect(await migrate(library, storage)).toBe(0);
+    expect(library.getAllPrompts).toHaveBeenCalledOnce();
+  });
+
+  it('does nothing without storage', async () => {
+    const library = libraryWith([{ id: 1, modeKey: 'compete', content: previous.zh }]);
+
+    expect(await migrateCompetePrompt(library)).toBe(0);
+    expect(library.getAllPrompts).not.toHaveBeenCalled();
+  });
+
+  it('records the flag when the user deleted the mode', async () => {
+    const library = libraryWith([{ id: 1, modeKey: 'concise', content: 'Be brief.' }]);
+    const storage = memoryStorage();
+
+    expect(await migrate(library, storage)).toBe(0);
+    expect(storage.data[COMPETE_PROMPT_MIGRATED_KEY]).toBe(true);
   });
 });
 

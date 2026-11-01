@@ -52,6 +52,31 @@ async function appendAnswer(page, origin, answerSelector, text) {
   }, { selector: answerSelector, text });
 }
 
+async function seedSummarySettings(extension, { auto = false } = {}) {
+  await extension.serviceWorker.evaluate(async ({ baseUrl, apiKey, autoSummarize }) => {
+    await chrome.storage.sync.set({
+      aiSummaryBaseUrl: baseUrl,
+      aiSummaryModel: 'e2e-mock',
+      aiSummaryAutoEnabled: autoSummarize
+    });
+    await chrome.storage.local.set({ [apiKey.key]: 'e2e-dummy-key' });
+  }, { baseUrl: API_BASE_URL, apiKey: { key: AI_SUMMARY_API_KEY_STORAGE_KEY }, autoSummarize: auto });
+}
+
+// Sends a question and gives both panels an answer, which is what lets the
+// automatic summary reach its 80% threshold.
+async function sendQuestionWithTwoAnswers(page) {
+  await page.locator('#unified-input').fill(QUESTION);
+  await page.locator('#send-all-btn').click();
+  await expect(page.locator('.adopt-answer-btn').first()).toBeEnabled();
+  await appendAnswer(page, 'https://chatgpt.com/', {
+    attribute: 'data-message-author-role', value: 'assistant'
+  }, 'ChatGPT answer text');
+  await appendAnswer(page, 'https://chat.deepseek.com/', {
+    className: 'ds-markdown'
+  }, 'DeepSeek answer text');
+}
+
 test.describe('AI summary reading layout', () => {
   test('shows the question, grouped consensus and unique insights, and copies the same structure', async ({}, testInfo) => {
     test.setTimeout(90000);
@@ -103,7 +128,11 @@ test.describe('AI summary reading layout', () => {
       // Seed a dummy API key in this isolated browser profile. The network
       // request above is intercepted, so the credential cannot leave the test.
       await extension.serviceWorker.evaluate(async ({ baseUrl, apiKey }) => {
-        await chrome.storage.sync.set({ aiSummaryBaseUrl: baseUrl, aiSummaryModel: 'e2e-mock' });
+        await chrome.storage.sync.set({
+          aiSummaryBaseUrl: baseUrl,
+          aiSummaryModel: 'e2e-mock',
+          aiSummaryAutoEnabled: false
+        });
         await chrome.storage.local.set({ [apiKey.key]: 'e2e-dummy-key' });
       }, { baseUrl: API_BASE_URL, apiKey: { key: AI_SUMMARY_API_KEY_STORAGE_KEY } });
 
@@ -256,7 +285,11 @@ test('source chips locate quoted passages and older summary paragraphs in provid
       body: JSON.stringify({ choices: [{ message: { content: JSON.stringify(summary) } }] })
     }));
     await extension.serviceWorker.evaluate(async ({ baseUrl, key }) => {
-      await chrome.storage.sync.set({ aiSummaryBaseUrl: baseUrl, aiSummaryModel: 'e2e-mock' });
+      await chrome.storage.sync.set({
+        aiSummaryBaseUrl: baseUrl,
+        aiSummaryModel: 'e2e-mock',
+        aiSummaryAutoEnabled: false
+      });
       await chrome.storage.local.set({ [key]: 'e2e-dummy-key' });
     }, { baseUrl: API_BASE_URL, key: AI_SUMMARY_API_KEY_STORAGE_KEY });
     const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
@@ -293,6 +326,104 @@ test('source chips locate quoted passages and older summary paragraphs in provid
     await page.locator('#ai-summary-consensus .ai-summary-article-paragraph').nth(1).locator('.ai-summary-source').click();
     await expect(page.locator('.panel-item').first()).toHaveClass(/panel-jump-highlight/);
     await expect(chatgpt.locator('.panelize-quote-highlight')).toHaveCount(0);
+  } finally {
+    await extension?.close();
+    await extensionCopy?.cleanup();
+  }
+});
+
+test('automatic summary opens the drawer only after the summary arrives', async ({}, testInfo) => {
+  test.setTimeout(90000);
+  let extensionCopy;
+  let extension;
+  let releaseSummary;
+  const requests = [];
+  const gate = new Promise(resolve => { releaseSummary = resolve; });
+  try {
+    extensionCopy = await createPatchedExtensionCopy(manifest => {
+      manifest.host_permissions.push('https://chat.deepseek.com/*', 'https://api.panelize-e2e.test/*');
+    });
+    extension = await launchExtension({ extensionPath: extensionCopy.extensionPath, viewport: { width: 1440, height: 900 } });
+    await extension.context.route('https://chatgpt.com/**', route => route.fulfill({
+      contentType: 'text/html', body: renderChatgptFixture({ composer: 'current' })
+    }));
+    await extension.context.route('https://chat.deepseek.com/**', route => route.fulfill({
+      contentType: 'text/html', body: DEEPSEEK_FIXTURE
+    }));
+    await extension.context.route(`${API_BASE_URL}/chat/completions`, async route => {
+      requests.push(route.request().postDataJSON());
+      await gate;
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({ choices: [{ message: { content: JSON.stringify(SUMMARY) } }] })
+      });
+    });
+    await seedSummarySettings(extension, { auto: true });
+    const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
+
+    await sendQuestionWithTwoAnswers(page);
+    await expect.poll(() => requests.length, { timeout: 30000 }).toBe(1);
+    // The request is in flight; the drawer must stay closed until there is a
+    // summary to read, and the button must not ring as if one were ready.
+    const drawer = page.locator('#ai-summary-drawer');
+    await expect(drawer).toBeHidden();
+    await expect(page.locator('#ai-summary-btn')).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('#ai-summary-btn')).not.toHaveClass(/ai-summary-ready/);
+    await page.screenshot({ path: testInfo.outputPath('ai-summary-auto-pending.png') });
+
+    releaseSummary();
+    await expect(drawer).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#ai-summary-result')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#ai-summary-overview')).toHaveText(SUMMARY.overview);
+  } finally {
+    releaseSummary?.();
+    await extension?.close();
+    await extensionCopy?.cleanup();
+  }
+});
+
+test('an empty automatic summary leaves the drawer closed', async ({}, testInfo) => {
+  test.setTimeout(90000);
+  let extensionCopy;
+  let extension;
+  const requests = [];
+  try {
+    extensionCopy = await createPatchedExtensionCopy(manifest => {
+      manifest.host_permissions.push('https://chat.deepseek.com/*', 'https://api.panelize-e2e.test/*');
+    });
+    extension = await launchExtension({ extensionPath: extensionCopy.extensionPath, viewport: { width: 1440, height: 900 } });
+    await extension.context.route('https://chatgpt.com/**', route => route.fulfill({
+      contentType: 'text/html', body: renderChatgptFixture({ composer: 'current' })
+    }));
+    await extension.context.route('https://chat.deepseek.com/**', route => route.fulfill({
+      contentType: 'text/html', body: DEEPSEEK_FIXTURE
+    }));
+    await extension.context.route(`${API_BASE_URL}/chat/completions`, route => {
+      requests.push(route.request().postDataJSON());
+      return route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({ choices: [{ message: { content: '{}' } }] })
+      });
+    });
+    await seedSummarySettings(extension, { auto: true });
+    const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
+
+    await sendQuestionWithTwoAnswers(page);
+    await expect.poll(() => requests.length, { timeout: 30000 }).toBe(1);
+    const button = page.locator('#ai-summary-btn');
+    await expect(button).not.toHaveClass(/ai-summary-busy/, { timeout: 15000 });
+    // No result: no drawer, no ready ring, no toast.
+    await expect(page.locator('#ai-summary-drawer')).toBeHidden();
+    await expect(button).not.toHaveClass(/ai-summary-ready/);
+    await expect(page.locator('.panelize-toast')).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath('ai-summary-auto-empty.png') });
+
+    // Asking by hand still explains why there is nothing to show.
+    await button.click();
+    await expect(page.locator('#ai-summary-drawer')).toBeVisible();
+    const status = page.locator('#ai-summary-status');
+    await expect(status).toHaveClass(/error/, { timeout: 15000 });
+    await expect(status).not.toHaveText('');
   } finally {
     await extension?.close();
     await extensionCopy?.cleanup();

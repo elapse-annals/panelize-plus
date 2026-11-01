@@ -137,6 +137,7 @@ import {
   formatSummaryText,
   groupItemsBySources,
   getSummaryOriginPattern,
+  hasSummaryContent,
   isRetryableSummaryError,
   isRoundReadyForAutoSummary,
   isRoundReadyForSummary,
@@ -170,6 +171,7 @@ import {
   ensureDefaultModeTriggers,
   getPromptAiContent,
   getPromptDisplayContent,
+  migrateCompetePrompt,
   normalizePromptTriggers,
   restoreDefaultModePrompts
 } from '../modules/prompt-modes.js';
@@ -417,6 +419,9 @@ async function init() {
   await ensureDefaultModePrompts({
     getAllPrompts, savePrompt, storage: chrome.storage?.local, tr: getLocalizedText
   }).catch(error => console.warn('Could not add the built-in prompt modes', error));
+  await migrateCompetePrompt({
+    getAllPrompts, updatePrompt, storage: chrome.storage?.local
+  }).catch(error => console.warn('Could not update the built-in Challenge prompt', error));
   await ensureDefaultModeTriggers({
     getAllPrompts, updatePrompt, storage: chrome.storage?.local
   }).catch(error => console.warn('Could not add the built-in mode trigger words', error));
@@ -1470,12 +1475,12 @@ async function loadSettings() {
       openMode: 'tab',
       googleProviderMode: DEFAULT_GOOGLE_PROVIDER_MODE,
       blindModeEnabled: false,
-      wideContentEnabled: false,
+      wideContentEnabled: true,
       providerNotes: null,
       answerCompleteNotificationEnabled: true,
-      aiSummaryAutoEnabled: false,
-      aiSummaryBaseUrl: '',
-      aiSummaryModel: ''
+      aiSummaryAutoEnabled: true,
+      aiSummaryBaseUrl: 'https://apihub.agnes-ai.com/v1',
+      aiSummaryModel: 'agnes-3.0-flash'
     });
 
     providerNotes = settings.providerNotes || {};
@@ -4161,6 +4166,9 @@ const AI_SUMMARY_CLOSE_MS = 280;
 // "All N AIs" badge instead of a chip per AI.
 const AI_SUMMARY_ALL_SOURCES_MIN = 3;
 let aiSummaryDrawerAnimation = null;
+// Counts real closes, so an automatic summary that finishes later does not
+// reopen a drawer the user closed while it was running.
+let aiSummaryDrawerCloseCount = 0;
 
 function isAiSummaryDrawerOpen() {
   const drawer = document.getElementById('ai-summary-drawer');
@@ -4216,6 +4224,7 @@ function openAiSummaryDrawer() {
 function closeAiSummaryDrawer() {
   const drawer = document.getElementById('ai-summary-drawer');
   if (!drawer || !isAiSummaryDrawerOpen()) return;
+  aiSummaryDrawerCloseCount += 1;
   const button = document.getElementById('ai-summary-btn');
   button?.setAttribute('aria-expanded', 'false');
   const finish = () => {
@@ -4311,15 +4320,16 @@ function maybeAutoSummarize(roundId) {
     return;
   }
   autoSummarizedRoundIds.add(roundId);
-  openAiSummaryDrawer();
-  void runAiSummary(roundId);
+  // The drawer opens only once there is a summary to read (see runAiSummary).
+  void runAiSummary(roundId, { autoOpen: true });
 }
 
 // Rings the AI summary button once the latest round is ready and the drawer is
 // closed, so a finished comparison is not missed. Needs a configured API.
 function maybeRemindAiSummary(roundId) {
   const round = answerRounds.get(roundId);
-  if (roundId !== latestAnswerRoundId || remindedAiSummaryRoundIds.has(roundId) || isAiSummaryDrawerOpen()
+  if (roundId !== latestAnswerRoundId || remindedAiSummaryRoundIds.has(roundId)
+    || autoSummarizedRoundIds.has(roundId) || isAiSummaryDrawerOpen()
     || !isSummaryConfigured(aiSummaryConfig) || !isRoundReadyForSummary(round, getRoundAnswerTexts(round))) {
     return;
   }
@@ -4425,7 +4435,7 @@ function getRoundSummaryPanels(round) {
     .filter(({ panel }) => isPanelInAnswerRound(round, panel));
 }
 
-async function runAiSummary(roundId, { collect = false } = {}) {
+async function runAiSummary(roundId, { collect = false, autoOpen = false } = {}) {
   const round = answerRounds.get(roundId);
   if (!round) {
     return;
@@ -4434,6 +4444,7 @@ async function runAiSummary(roundId, { collect = false } = {}) {
   const controller = new AbortController();
   aiSummaryController = controller;
   const isCurrent = () => aiSummaryController === controller;
+  const drawerCloseCountAtStart = aiSummaryDrawerCloseCount;
   const setState = (state) => {
     if (!isCurrent()) return;
     aiSummaryState = { roundId, sources: [], missing: [], summary: null, error: '', needsSetup: false, ...state };
@@ -4499,9 +4510,18 @@ async function runAiSummary(roundId, { collect = false } = {}) {
       }
     });
     const summary = parseSummaryResponse(content, sources.map(source => source.sourceId));
+    if (!hasSummaryContent(summary)) {
+      // A reply that parsed to nothing is no result: keep the drawer closed
+      // for an automatic summary and report it when the user asks.
+      setState({ status: 'error', sources, missing, error: getLocalizedText('aiSummaryEmpty', 'The summary came back empty. Try again or use another model.') });
+      return;
+    }
     setState({ status: 'done', sources, missing, summary });
     // Each finished summary picks the drawer width by how much it says.
     if (isCurrent()) setAiSummaryExpanded(shouldExpandSummary(summary));
+    // An automatic summary opens the drawer only now, and not if the user
+    // closed it while this summary was running.
+    if (autoOpen && isCurrent() && aiSummaryDrawerCloseCount === drawerCloseCountAtStart) openAiSummaryDrawer();
   } catch (error) {
     if (controller.signal.aborted && !isCurrent()) return;
     console.warn('[Multi-Panel] AI summary failed:', error);

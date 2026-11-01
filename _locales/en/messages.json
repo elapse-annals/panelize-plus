@@ -1572,7 +1572,7 @@
     "message": "Append a brainstorm instruction: many varied angles, no early verdict"
   },
   "promptModeCompeteHint": {
-    "message": "Append a challenge instruction: aim to win the side-by-side comparison"
+    "message": "Append an adversarial-review instruction: verdict first, then attacks on weak assumptions and sharp clarifying questions"
   },
   "promptModeDeepHint": {
     "message": "Append a reasoning instruction: break down the problem, verify assumptions, and show the steps"
@@ -1587,7 +1587,7 @@
     "message": "Brainstorm: offer several different angles, as varied and even as bold as you can, briefly note the pros and cons of each, and do not rush to a verdict."
   },
   "promptModeSuffix_compete": {
-    "message": "You are answering this alongside several other AIs and the answers will be compared side by side. Give the most accurate, insightful and useful answer you can."
+    "message": "Act as an adversarial but fair peer reviewer of the message above, not an assistant trying to please me. If my message is a request rather than a claim, review the approach and its assumptions as the claim.\n\nFirst, in one or two sentences, give your verdict or best answer. Then restate my core claim or request and separate its load-bearing assumptions from the incidental ones, and attack, most damaging first, the weakest, vaguest, most contradictory or least supported points — each as problem → concrete consequence or failure scenario → the missing evidence. Do not open with praise and do not soften findings with \"it's a good question\", \"it depends\" or \"you might consider\". Critique the idea, never the person; every criticism must point to a specific claim. Add one line naming what evidence would reverse your verdict.\n\nFinish with 3–5 sharp clarifying questions addressed to me, asking nothing I already answered: each must say why my answer would change your conclusion, and where useful offer two or three candidate answers so I can reply quickly. If it cannot be answered as asked, say so plainly instead of guessing."
   },
   "promptModeSuffix_deep": {
     "message": "Think step by step: break the problem down, identify assumptions, analyze root causes, compare options and verify in reverse; before the final conclusion, list your reasoning steps in detail and state any uncertainty."
@@ -1684,6 +1684,9 @@
   },
   "aiSummaryNoAnswers": {
     "message": "No answer could be read from the panels yet."
+  },
+  "aiSummaryEmpty": {
+    "message": "The summary came back empty. Try again or use another model."
   },
   "aiSummaryNotConfigured": {
     "message": "Set up an OpenAI-compatible API in Settings to summarize answers."
