@@ -56,6 +56,10 @@ Ever found yourself copying the same prompt across multiple AI tabs just to comp
 
 Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, DeepSeek, Kimi, Qwen, Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), and Google simultaneously. See which AI gives you the best answer—no tab switching required.
 
+### 🌍 Global Prompt Sender (macOS)
+
+An optional macOS menu-bar client opens a floating composer from any app with `Option + Space` (or `Command + Shift + Space`). Press Enter and the prompt goes through the same Send All flow to every AI in your current Panelize window; the composer also offers the built-in prompt modes, defaulting to Auto. See [macOS client setup](desktop/macos/README.md).
+
 ### 📐 Flexible Layouts
 
 Choose from 49 different layouts to fit your workflow, with capacity for up to 30 panels. Use 1×2 for a quick comparison, or 1×30 and 2×15 for larger sets. The number of panels you can open depends on the enabled providers.
@@ -149,6 +153,10 @@ Perplexity, Copilot, and ERNIE (Wenxin) are optional providers. Enable them in S
 4. Click "Load unpacked" and select the extracted folder
 
 </details>
+
+### macOS Global Shortcut (Optional)
+
+Requires macOS 13+, Chrome or Edge running, and Panelize 2.62.0+. It is off by default: after installing the client, enable Settings → Global Input (macOS). It reuses the existing Send All flow rather than adding a separate AI pipeline. See [macOS client setup](desktop/macos/README.md) for installation, usage, and troubleshooting.
 
 ---
 

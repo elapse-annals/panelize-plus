@@ -931,6 +931,61 @@ describe('prompt mode control', () => {
     });
   });
 
+  describe('per-send prompt mode override', () => {
+    it('uses the requested built-in mode instead of the saved one', async () => {
+      settingsState.selectedPromptMode = 'learning';
+      const { controls } = await setupWithModes();
+
+      expect(controls.resolvePromptMode('Explain closures', { promptMode: 'concise' }))
+        .toEqual({ text: 'Explain closures', instruction: 'Be brief.', prompts: [] });
+      expect(controls.getPromptMode()).toBe('Teach me.');
+      expect(mocks.saveSetting).not.toHaveBeenCalled();
+    });
+
+    it('applies Default as no instruction even when a mode is saved', async () => {
+      settingsState.selectedPromptMode = 'auto';
+      const { controls } = await setupWithModes(modePrompts().map(prompt => ({
+        ...prompt,
+        triggers: prompt.modeKey === 'learning' ? ['/study'] : []
+      })));
+
+      expect(controls.resolvePromptMode('/study Explain', { promptMode: 'default' }))
+        .toEqual({ text: '/study Explain', instruction: null, prompts: [] });
+    });
+
+    it('runs Auto trigger words for the requested send only', async () => {
+      settingsState.selectedPromptMode = 'concise';
+      const { controls } = await setupWithModes(modePrompts().map(prompt => ({
+        ...prompt,
+        triggers: prompt.modeKey === 'learning' ? ['/study'] : []
+      })));
+
+      const resolved = controls.resolvePromptMode('/study Explain', { promptMode: 'auto' });
+      expect(resolved.text).toBe('Explain');
+      expect(resolved.instruction).toBe('Teach me.');
+      expect(controls.getPromptMode()).toBe('Be brief.');
+      expect(promptSelect().dataset.mode).toBe('concise');
+    });
+
+    it('appends nothing for a built-in the library no longer has', async () => {
+      const prompts = modePrompts().filter(prompt => prompt.modeKey !== 'learning');
+      const { controls } = await setupWithModes(prompts);
+
+      expect(controls.resolvePromptMode('Explain', { promptMode: 'learning' }))
+        .toEqual({ text: 'Explain', instruction: null, prompts: [] });
+      expect(controls.resolvePromptMode('Explain', { promptMode: 'custom-x' }))
+        .toEqual({ text: 'Explain', instruction: null, prompts: [] });
+    });
+
+    it('keeps the saved mode when no override is passed', async () => {
+      settingsState.selectedPromptMode = 'concise';
+      const { controls } = await setupWithModes();
+
+      expect(controls.resolvePromptMode('Explain'))
+        .toEqual({ text: 'Explain', instruction: 'Be brief.', prompts: [] });
+    });
+  });
+
   it('follows a mode saved in another window', async () => {
     const { controls } = await setupWithModes();
 

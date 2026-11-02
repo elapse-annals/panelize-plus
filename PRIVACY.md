@@ -169,6 +169,8 @@ Panelize requests the following Chrome extension permissions:
 | `declarativeNetRequest` | Allow AI provider websites to load in embedded panels (bypass X-Frame-Options) |
 | `declarativeNetRequestWithHostAccess` | Apply header modifications for specific AI provider domains |
 | `browsingData` | Remove only Perplexity's service worker before a Perplexity panel loads, because it would block the panel; cookies and sign-ins are not touched |
+| `nativeMessaging` | Connect locally to the optional macOS global-input client, and only after you enable the bridge in Settings; it carries the prompt you type in that client and nothing else |
+| `alarms` | Reconnect the optional macOS global-input bridge after its native host restarts; no alarm runs while the bridge is off |
 | Host permissions | Access the built-in AI provider websites and check for updates on GitHub |
 | Optional host permissions | Access additional providers only after you enable them and approve the provider-specific browser prompt |
 

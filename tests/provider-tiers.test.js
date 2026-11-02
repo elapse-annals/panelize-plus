@@ -181,6 +181,24 @@ describe('provider tier contract', () => {
     expect(target.removeEventListener).toHaveBeenCalledTimes(1);
   });
 
+  it('skips a frame that is still about:blank instead of posting to the wrong origin', async () => {
+    const target = createEventTarget();
+    const blankWindow = {
+      postMessage: vi.fn(),
+      location: { origin: 'chrome-extension://eiednahedkinbhajejladidcjjlfffpj' }
+    };
+    const panel = { panelId: 'panel-a', provider: 'gemini', window: blankWindow, origin: 'https://gemini.google.com' };
+
+    await expect(requestProviderTierState(panel, { target, timeoutMs: 100 })).resolves.toMatchObject({
+      panelId: 'panel-a',
+      provider: 'gemini',
+      status: 'error',
+      reason: 'not_ready'
+    });
+    expect(blankWindow.postMessage).not.toHaveBeenCalled();
+    expect(target.addEventListener).not.toHaveBeenCalled();
+  });
+
   it('uses each panel origin and returns one result per panel in a batch', async () => {
     const target = createEventTarget();
     const providers = [

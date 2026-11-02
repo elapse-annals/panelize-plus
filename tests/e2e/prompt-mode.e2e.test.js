@@ -25,7 +25,9 @@ async function openChatgptPanel(extension, settings = {}) {
   await extension.context.route('https://chatgpt.com/**', route => route.fulfill({
     contentType: 'text/html', body: renderChatgptFixture({ composer: 'current' })
   }));
-  return openMultiPanel(extension, { providers: ['chatgpt'], settings });
+  // These tests assert English labels and placeholders; the default UI is
+  // Chinese, so pin the language instead of depending on the host locale.
+  return openMultiPanel(extension, { providers: ['chatgpt'], settings: { language: 'en', ...settings } });
 }
 
 test.describe('Prompt mode and Prompt Library keyboard', () => {
@@ -37,8 +39,8 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
       const page = await openChatgptPanel(extension);
       const select = page.locator('#prompt-mode-btn');
       const control = page.locator('.prompt-mode-control');
-      // New installs start in Deep thinking mode.
-      await expect(select).toHaveAttribute('data-mode', 'deep');
+      // New installs start in Auto mode.
+      await expect(select).toHaveAttribute('data-mode', 'auto');
       await expect(control).toHaveAttribute('data-active', 'true');
 
       await chooseMode(page, 'Concise');
@@ -67,6 +69,37 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
       expect(sent.startsWith('Explain closures')).toBe(true);
       expect(sent).toContain(CONCISE_INSTRUCTION);
       await expect(select).toHaveAttribute('data-mode', 'concise');
+    } finally {
+      await extension.close();
+    }
+  });
+
+  test('a per-send prompt mode overrides the saved mode without changing it', async () => {
+    const extension = await launchExtension({ viewport: { width: 1280, height: 800 } });
+    try {
+      const page = await openChatgptPanel(extension, { selectedPromptMode: 'deep' });
+      await expect(page.locator('#prompt-mode-btn')).toHaveAttribute('data-mode', 'deep');
+
+      await extension.serviceWorker.evaluate(() => {
+        const result = chrome.runtime.sendMessage({
+          action: 'sendPromptToAll',
+          payload: {
+            requestId: 'native-default-mode',
+            text: 'Explain closures',
+            promptMode: 'default'
+          }
+        });
+        result?.catch?.(() => {});
+      });
+
+      await expect.poll(async () => (await readFixture(page))?.sends).toBe(1);
+      const sent = (await readFixture(page)).sentTexts[0];
+      expect(sent).toBe('Explain closures');
+      expect(sent).not.toContain(DEEP_INSTRUCTION);
+      await expect(page.locator('#prompt-mode-btn')).toHaveAttribute('data-mode', 'deep');
+      expect(await extension.serviceWorker.evaluate(async () =>
+        (await chrome.storage.sync.get('selectedPromptMode')).selectedPromptMode
+      )).toBe('deep');
     } finally {
       await extension.close();
     }

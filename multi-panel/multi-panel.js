@@ -9,6 +9,13 @@ import { PROVIDERS, getProviderById, getEnabledProviders, getProviderIcon, getPr
 import { DEFAULT_PROVIDER_IDS, DEFAULT_PROVIDER_ORDER, DEFAULT_STARTUP_PROVIDER_IDS } from '../modules/provider-defaults.js';
 import { GROK_WEBSOCKET_COOKIE_SYNC_ACTION } from '../modules/grok-websocket-cookies.js';
 import {
+  GLOBAL_SEND_ACTION,
+  GLOBAL_SEND_RESULT_ACTION,
+  normalizeGlobalPrompt,
+  normalizeGlobalPromptMode,
+  normalizeRequestId
+} from '../modules/global-send.js';
+import {
   MIMO_SESSION_COOKIE_SYNC_ACTION,
   reconcileMimoSessionCookies
 } from '../modules/mimo-session-cookies.js';
@@ -319,6 +326,8 @@ let isPopupWindow = false;   // 当前窗口是否为弹出窗口
 // Default panel configuration
 const DEFAULT_PROVIDERS = DEFAULT_PROVIDER_IDS;
 const PENDING_MULTI_PANEL_ACTION_KEY = 'pendingMultiPanelAction';
+const handledGlobalSendRequestIds = new Set();
+const GLOBAL_SEND_READY_TIMEOUT_MS = PANEL_READY_TIMEOUT_MS + 5000;
 const SEND_FOCUS_RESTORE_DELAYS = [0, 80, 200, 400, 800, 1500, 2500, 4000, 6000, 8000, 10000, 12000];
 const SEND_FOCUS_NO_BUSY_TIMEOUT_MS = 2000;
 const SEND_FOCUS_HARD_TIMEOUT_MS = 90000;
@@ -1417,7 +1426,77 @@ async function handlePendingMultiPanelAction() {
   }
 }
 
+function rememberGlobalSendRequest(requestId) {
+  handledGlobalSendRequestIds.add(requestId);
+  while (handledGlobalSendRequestIds.size > 64) {
+    handledGlobalSendRequestIds.delete(handledGlobalSendRequestIds.values().next().value);
+  }
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function waitForGlobalSendReady() {
+  const deadline = Date.now() + GLOBAL_SEND_READY_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if (!isNewChatBusy && !broadcastGate.isActive()
+        && !isSendHeldByReadiness(summarizePanelReadiness(panels))) {
+      return;
+    }
+    await wait(200);
+  }
+}
+
+async function reportGlobalSendResult(requestId, outcome) {
+  if (!requestId) {
+    return;
+  }
+  try {
+    await chrome.runtime.sendMessage({
+      action: GLOBAL_SEND_RESULT_ACTION,
+      payload: { requestId, ...outcome }
+    });
+  } catch (error) {
+    // The background may have been stopped; the desktop client times out.
+  }
+}
+
+async function handleGlobalSendAction(payload = {}) {
+  const requestId = normalizeRequestId(payload.requestId);
+  if (requestId && handledGlobalSendRequestIds.has(requestId)) {
+    return true;
+  }
+  // Mark before waiting so the runtime message and pending action delivered by
+  // the background cannot both send the same prompt.
+  if (requestId) {
+    rememberGlobalSendRequest(requestId);
+  }
+
+  const prompt = normalizeGlobalPrompt(payload.text);
+  if (!prompt.ok) {
+    await reportGlobalSendResult(requestId, {
+      ok: false,
+      sent: 0,
+      total: panels.length,
+      reason: prompt.error.code
+    });
+    return true;
+  }
+
+  applyPromptToInput(prompt.text);
+  await waitForGlobalSendReady();
+  const promptMode = normalizeGlobalPromptMode(payload.promptMode);
+  const outcome = await broadcastMessage(prompt.text, true, { promptMode });
+  await reportGlobalSendResult(requestId, outcome || { ok: false, reason: 'send-failed' });
+  return true;
+}
+
 async function handleMultiPanelAction(action, payload = {}) {
+  if (action === GLOBAL_SEND_ACTION) {
+    return handleGlobalSendAction(payload);
+  }
+
   if (action === 'openPromptLibrary') {
     if (payload.selectedText) {
       applyPromptToInput(payload.selectedText);
@@ -2517,22 +2596,22 @@ function setFillRetryState(panelIds) {
   updateFillRetryButton();
 }
 
-export async function broadcastMessage(typedText, autoSubmit = true) {
+export async function broadcastMessage(typedText, autoSubmit = true, { promptMode: promptModeOverride } = {}) {
   if (isNewChatBusy) {
     // The draft and textarea stay untouched so the user can keep typing.
     showToast(getLocalizedText('composerSendBlockedNewChat', 'New conversations are starting. Your draft is kept; send when they are ready.'));
-    return;
+    return { ok: false, reason: 'new-chat-busy', sent: 0, total: panels.length };
   }
   if (isSendHeldByReadiness(summarizePanelReadiness(panels))) {
     showToast(getLocalizedText('composerSendBlockedPreparing', 'The AIs are still loading. Your draft is kept; send when they are ready.'));
-    return;
+    return { ok: false, reason: 'preparing', sent: 0, total: panels.length };
   }
   if (composerControls?.isTierBusy()) {
     showToast(getLocalizedText('composerActionBusy', 'Wait for the current operation to finish.'));
-    return;
+    return { ok: false, reason: 'busy', sent: 0, total: panels.length };
   }
   if (!broadcastGate.tryAcquire()) {
-    return;
+    return { ok: false, reason: 'busy', sent: 0, total: panels.length };
   }
 
   const sendBtn = document.getElementById('send-all-btn');
@@ -2549,7 +2628,7 @@ export async function broadcastMessage(typedText, autoSubmit = true) {
   const { isFillAction, shouldAutoSubmit, waitForActionResult } = broadcastParams;
   // Auto mode removes the trigger words (say /study) it finds and uses their
   // modes for this send; the trimmed question is what stats and snapshots keep.
-  const resolvedMode = composerControls?.resolvePromptMode?.(typedText)
+  const resolvedMode = composerControls?.resolvePromptMode?.(typedText, { promptMode: promptModeOverride })
     ?? { text: typedText, instruction: composerControls?.getPromptMode() ?? null };
   const text = resolvedMode.text;
   // A library prompt whose English text differs from the one shown was
@@ -2562,16 +2641,15 @@ export async function broadcastMessage(typedText, autoSubmit = true) {
   try {
     if (typedText.trim() && !text.trim() && !hasImages) {
       showToast('Please enter a message or attach a file');
-      return;
+      return { ok: false, reason: 'empty', sent: 0, total: panels.length };
     }
     if (!text.trim() && !hasImages) {
       // If input is empty and autoSubmit is true, just trigger send buttons
       if (autoSubmit) {
-        await triggerSendButtons();
-        return;
+        return await triggerSendButtons();
       }
       showToast('Please enter a message or attach a file');
-      return;
+      return { ok: false, reason: 'empty', sent: 0, total: panels.length };
     }
 
     // Only the message the AIs receive carries the prompt-mode instruction:
@@ -2770,7 +2848,12 @@ export async function broadcastMessage(typedText, autoSubmit = true) {
         statusEl.textContent = '';
         statusEl.className = 'send-status';
       }, 3000);
-      return;
+      return {
+        ok: successfulCount > 0 && shouldAutoSubmit,
+        sent: shouldAutoSubmit ? successfulCount : 0,
+        total: totalCount,
+        reason: successfulCount > 0 ? '' : 'fill-failed'
+      };
     }
 
     // Count results (panels only)
@@ -2827,6 +2910,12 @@ export async function broadcastMessage(typedText, autoSubmit = true) {
         clearAllImages();
       }
     }
+    return {
+      ok: totalSuccessful > 0,
+      sent: shouldAutoSubmit ? totalSuccessful : 0,
+      total: totalCount,
+      reason: totalSuccessful > 0 ? '' : 'send-failed'
+    };
   } catch (error) {
     console.error('Error in broadcastMessage:', error);
     statusEl.textContent = 'Error occurred';
@@ -2835,6 +2924,7 @@ export async function broadcastMessage(typedText, autoSubmit = true) {
       statusEl.textContent = '';
       statusEl.className = 'send-status';
     }, 3000);
+    return { ok: false, reason: 'send-error', sent: 0, total: panels.length };
   } finally {
     // Always re-enable buttons and release broadcast gate
     sendBtn.disabled = false;
@@ -4040,6 +4130,7 @@ async function triggerSendButtons() {
       statusEl.textContent = '';
       statusEl.className = 'send-status';
     }, 3000);
+    return { ok: sentPanels.length > 0, sent: sentPanels.length, total: panels.length };
   } catch (error) {
     console.error('Error in triggerSendButtons:', error);
     statusEl.textContent = 'Error occurred';
@@ -4048,6 +4139,7 @@ async function triggerSendButtons() {
       statusEl.textContent = '';
       statusEl.className = 'send-status';
     }, 3000);
+    return { ok: false, reason: 'send-error', sent: 0, total: panels.length };
   } finally {
     // Always re-enable buttons
     sendBtn.disabled = false;

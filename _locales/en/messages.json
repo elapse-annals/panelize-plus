@@ -152,6 +152,24 @@
   "btnConfigureEdge": {
     "message": "Configure in Edge"
   },
+  "sectionGlobalInput": {
+    "message": "Global Input (macOS)"
+  },
+  "descGlobalInput": {
+    "message": "Type a prompt from any app and send it to every AI in the current Panelize window. Requires the Panelize Search macOS client."
+  },
+  "labelGlobalSendBridge": {
+    "message": "Enable global input bridge"
+  },
+  "descGlobalSendBridge": {
+    "message": "Off by default. When on, the extension keeps a local Native Messaging connection and a periodic heartbeat so the global shortcut can send. Turn it off to stop the connection and heartbeat; quit the menu-bar app separately to stop it."
+  },
+  "msgGlobalSendBridgeEnabled": {
+    "message": "Global input bridge enabled"
+  },
+  "msgGlobalSendBridgeDisabled": {
+    "message": "Global input bridge disabled"
+  },
   "sectionContentSending": {
     "message": "Content Sending"
   },

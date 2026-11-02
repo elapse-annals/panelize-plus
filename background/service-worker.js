@@ -17,6 +17,14 @@ import {
 } from '../modules/consent-cookies.js';
 import { openMultiPanelPage } from '../modules/open-multi-panel.js';
 import {
+  GLOBAL_SEND_ACTION,
+  GLOBAL_SEND_RESULT_ACTION,
+  NATIVE_SEND_KEEPALIVE_ALARM,
+  NATIVE_SEND_KEEPALIVE_MINUTES,
+  isTrustedGlobalSendResultSender
+} from '../modules/global-send.js';
+import { createNativeSendBridge } from './native-send.js';
+import {
   GROK_WEBSOCKET_COOKIE_SYNC_ACTION,
   createGrokWebSocketCookieReconcileScheduler,
   handleGrokTabNavigationComplete,
@@ -31,8 +39,10 @@ import {
 // Install event - setup context menus
 const DEFAULT_SHORTCUT_SETTING = { keyboardShortcutEnabled: true };
 const DEFAULT_OPEN_MODE = { openMode: 'tab' };
+const DEFAULT_GLOBAL_SEND_SETTING = { globalSendBridgeEnabled: false };
 let keyboardShortcutEnabled = true;
 let openMode = 'tab';
+let globalSendBridgeEnabled = false;
 const PENDING_MULTI_PANEL_ACTION_KEY = 'pendingMultiPanelAction';
 const PAGE_EXTRACTOR_SCRIPTS = [
   'libs/Readability.js',
@@ -56,6 +66,16 @@ async function loadOpenModeSetting() {
   } catch (error) {
     // Fallback to default if storage unavailable
     openMode = 'tab';
+  }
+}
+
+async function loadGlobalSendSetting() {
+  try {
+    const result = await chrome.storage.sync.get(DEFAULT_GLOBAL_SEND_SETTING);
+    globalSendBridgeEnabled = result.globalSendBridgeEnabled === true;
+  } catch (error) {
+    // Fallback to off if storage unavailable
+    globalSendBridgeEnabled = false;
   }
 }
 
@@ -339,6 +359,57 @@ function dispatchToMultiPanel(action, payload) {
 }
 
 /**
+ * Delivers a prompt typed in the macOS global client through the same Send All
+ * path as the main composer. Opening Panelize first makes the pending action
+ * survive while the page and its AI panels initialize.
+ */
+async function handOffGlobalPrompt({ text, requestId, promptMode }) {
+  const payload = { text, requestId };
+  if (promptMode !== undefined) {
+    payload.promptMode = promptMode;
+  }
+  await setPendingMultiPanelAction(GLOBAL_SEND_ACTION, payload);
+  await openMultiPanel();
+  setTimeout(() => {
+    notifyMessage({
+      action: GLOBAL_SEND_ACTION,
+      payload
+    }).catch(() => {
+      // A newly opened Multi-Panel consumes the pending action instead.
+    });
+  }, 500);
+}
+
+const nativeSendBridge = createNativeSendBridge({
+  connectNative: name => chrome.runtime.connectNative(name),
+  runtime: chrome.runtime,
+  onSendPrompt: handOffGlobalPrompt
+});
+
+function ensureNativeSendBridge() {
+  if (!globalSendBridgeEnabled) {
+    return;
+  }
+  try {
+    chrome.alarms.create(NATIVE_SEND_KEEPALIVE_ALARM, {
+      periodInMinutes: NATIVE_SEND_KEEPALIVE_MINUTES
+    });
+  } catch (error) {
+    // Native messaging still works after the next service worker event.
+  }
+  nativeSendBridge.connect();
+}
+
+function disableNativeSendBridge() {
+  try {
+    Promise.resolve(chrome.alarms.clear(NATIVE_SEND_KEEPALIVE_ALARM)).catch(() => {});
+  } catch (error) {
+    // The alarm API may be unavailable before the worker is fully started.
+  }
+  nativeSendBridge.disconnect();
+}
+
+/**
  * On the Multi-Panel page itself, invoking the extension shares a snapshot
  * of it: this gesture is what grants activeTab for a silent capture.
  * @returns {Promise<boolean>} Whether the page was asked to share.
@@ -398,10 +469,27 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
   if (changes.keyboardShortcutEnabled) {
     keyboardShortcutEnabled = changes.keyboardShortcutEnabled.newValue !== false;
   }
+  if (changes.globalSendBridgeEnabled) {
+    globalSendBridgeEnabled = changes.globalSendBridgeEnabled.newValue === true;
+    if (globalSendBridgeEnabled) {
+      ensureNativeSendBridge();
+    } else {
+      disableNativeSendBridge();
+    }
+  }
 });
 
 // Listen for version check requests
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === GLOBAL_SEND_RESULT_ACTION) {
+    const trusted = isTrustedGlobalSendResultSender(sender, chrome.runtime);
+    if (trusted) {
+      nativeSendBridge.deliverResult(message.payload || {});
+    }
+    sendResponse({ ok: trusted });
+    return false;
+  }
+
   if (message.action === MIMO_SESSION_COOKIE_SYNC_ACTION) {
     if (!isMultiPanelTopFrameSender(sender)) {
       sendResponse({ success: false, error: 'MiMo session sync is only available to the Multi-Panel page' });
@@ -466,6 +554,15 @@ async function handleFetchLatestCommit() {
   }
 }
 
+// Chrome starts the native host when the extension connects. If the host
+// crashes, the alarm wakes this worker so it can reconnect without waiting for
+// another browser or Panelize action.
+chrome.alarms.onAlarm.addListener(alarm => {
+  if (alarm.name === NATIVE_SEND_KEEPALIVE_ALARM) {
+    ensureNativeSendBridge();
+  }
+});
+
 // Listen for keyboard shortcuts - simplified for Multi-Panel mode
 chrome.commands.onCommand.addListener(async (command, tab) => {
   if (!keyboardShortcutEnabled) {
@@ -491,3 +588,14 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
     await openMultiPanel();
   }
 });
+
+async function initializeNativeSendBridge() {
+  await loadGlobalSendSetting();
+  if (globalSendBridgeEnabled) {
+    ensureNativeSendBridge();
+  } else {
+    disableNativeSendBridge();
+  }
+}
+
+initializeNativeSendBridge();

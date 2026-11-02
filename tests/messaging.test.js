@@ -91,5 +91,29 @@ describe('messaging module', () => {
       const result = await notifyMessage({ action: 'notify' });
       expect(result).toBeUndefined();
     });
+
+    it('should read lastError when the port closes without a response', async () => {
+      const readLastError = vi.fn(() => null);
+      Object.defineProperty(chrome.runtime, 'lastError', {
+        configurable: true,
+        get: readLastError
+      });
+      let callback;
+      chrome.runtime.sendMessage.mockImplementation((message, respond) => {
+        callback = respond;
+      });
+
+      try {
+        await notifyMessage({ action: 'notify' });
+        callback();
+        expect(readLastError).toHaveBeenCalled();
+      } finally {
+        Object.defineProperty(chrome.runtime, 'lastError', {
+          configurable: true,
+          writable: true,
+          value: null
+        });
+      }
+    });
   });
 });

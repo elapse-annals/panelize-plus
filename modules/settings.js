@@ -12,7 +12,7 @@ const DEFAULT_SETTINGS = {
   pageShortcutsEnabled: true,
   keyboardShortcutBindings: {},
   selectedProviderTier: null,
-  selectedPromptMode: 'deep',  // Instruction appended to the question every AI receives; null appends nothing
+  selectedPromptMode: 'auto',  // Instruction appended to every question; 'auto' appends only when the question has a trigger word; null appends nothing
   providerTierRecipes: null,  // User overrides of DEFAULT_TIER_RECIPES, keyed by provider then tier; null uses the built-in mapping
   blindModeEnabled: false,  // Panels show anonymous labels and provider pages share one neutral style
   wideContentEnabled: true,  // Provider pages are laid out wider than their panel and scaled to fit
@@ -23,6 +23,7 @@ const DEFAULT_SETTINGS = {
   theme: 'auto',
   language: DEFAULT_LOCALE,
   keyboardShortcutEnabled: true,
+  globalSendBridgeEnabled: false,  // Connects to the macOS global-input client and keeps a native heartbeat
   openMode: 'tab',  // 'tab' or 'popup'
   shareWatermarkEnabled: true,  // Adds the "Compared with Panelize" strip to shared snapshots
   answerCompleteNotificationEnabled: true,  // System notification when the first AI in a round finishes answering

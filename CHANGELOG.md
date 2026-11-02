@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.62.0 - 2026-11-02
+- New installs now start in Auto prompt mode: a question without a trigger word gets no extra instruction, and an explicitly saved mode is preserved.
+- The macOS global composer gained a built-in prompt-mode picker (Auto by default). The choice is saved locally and sent with each prompt, so it applies only to that send without changing the extension's saved mode.
+
+## 2.61.0 - 2026-11-02
+- The macOS composer now opens horizontally centered in the lower part of the mouse's current display, follows visible-screen changes, and stays clear of the Dock and menu bar.
+- Removed the floating composer's heavy shadow and input focus outlines, while preserving the rounded material, black send button and readable dynamic colors in both light and dark appearances.
+
+## 2.60.0 - 2026-11-02
+- The macOS global-input bridge is now opt-in and off by default. Settings > Global Input (macOS) enables it; when off, the extension does not start the native host or keep its heartbeat, avoiding background wakeups.
+
+## 2.59.1 - 2026-11-02
+- Provider tier checks no longer post to a panel iframe that is still about:blank, so loading panels stop logging target-origin `postMessage` errors; the check retries once the provider page has loaded.
+- Fire-and-forget runtime notifications now consume `lastError`, so a closing message port no longer logs as unchecked.
+
+## 2.59.0 - 2026-11-02
+- Added an optional macOS menu-bar client: a global shortcut opens a floating composer and sends the typed prompt through the existing Send All flow, with the same readiness gate and sent-count feedback. It uses a Native Messaging host restricted to Panelize's extension origin; installation and limitations are documented under `desktop/macos/`.
+
 ## 2.58.1 - 2026-11-01
 - An automatic AI summary now opens the drawer only after a real summary arrives; a failed, timed-out or empty automatic summary stays silent instead of opening an error drawer.
 

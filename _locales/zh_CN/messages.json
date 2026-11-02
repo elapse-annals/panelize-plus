@@ -98,6 +98,24 @@
   "btnConfigureEdge": {
     "message": "在 Edge 中配置"
   },
+  "sectionGlobalInput": {
+    "message": "全局快捷输入（macOS）"
+  },
+  "descGlobalInput": {
+    "message": "在任意应用中输入提示词，发送给当前 Panelize 窗口里的所有 AI。需要安装 macOS 客户端。"
+  },
+  "labelGlobalSendBridge": {
+    "message": "启用全局输入桥接"
+  },
+  "descGlobalSendBridge": {
+    "message": "默认关闭。开启后扩展会保持本地 Native Messaging 连接和定时心跳，供全局快捷键发送；关闭会断开连接和心跳，菜单栏客户端需单独退出。"
+  },
+  "msgGlobalSendBridgeEnabled": {
+    "message": "已启用全局输入桥接"
+  },
+  "msgGlobalSendBridgeDisabled": {
+    "message": "已关闭全局输入桥接"
+  },
   "sectionContentSending": {
     "message": "内容发送"
   },

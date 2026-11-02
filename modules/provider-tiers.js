@@ -332,6 +332,18 @@ export function waitForProviderTierResult({
   });
 }
 
+// A provider iframe that has not navigated yet is still about:blank and
+// inherits this page's extension origin; posting to it with the provider's
+// origin throws. Once it is cross-origin, reading its location throws.
+function hasReachedOrigin(source, origin) {
+  if (!source?.location) return true;
+  try {
+    return source.location.origin === origin;
+  } catch {
+    return true;
+  }
+}
+
 async function requestProviderTier(panel, {
   target = globalThis.window,
   type,
@@ -343,6 +355,9 @@ async function requestProviderTier(panel, {
   if (!REQUEST_TO_RESPONSE[type]) return failureResult(panel, 'error', 'invalid_request_type', null, tier);
   if (type === 'SET_PROVIDER_TIER' && !PROVIDER_TIER_IDS.includes(tier)) {
     return failureResult(panel, 'error', 'invalid_tier', null, tier);
+  }
+  if (!hasReachedOrigin(resolved.targetWindow, resolved.origin)) {
+    return failureResult(panel, 'error', 'not_ready', null, tier);
   }
 
   const requestId = createProviderTierRequestId(resolved.provider);

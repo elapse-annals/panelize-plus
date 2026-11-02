@@ -18,6 +18,8 @@ export function sendMessageWithTimeout(message, options = {}) {
     try {
       chrome.runtime.sendMessage(message, (response) => {
         if (!expectResponse) {
+          // Read lastError so a closed port does not log as unchecked.
+          void chrome.runtime.lastError;
           resolve(undefined);
           return;
         }

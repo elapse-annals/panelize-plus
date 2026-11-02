@@ -18,10 +18,12 @@ import {
 } from './provider-tiers.js';
 import {
   AUTO_PROMPT_MODE,
+  DEFAULT_PROMPT_MODE,
   describePromptSend,
   findPromptTriggerCompletion,
   getPromptAiContent,
   getPromptDisplayContent,
+  isPromptMode,
   normalizePromptTriggers,
   resolvePromptModeForText,
   selectModePrompts
@@ -435,6 +437,22 @@ export async function setupComposerControls({
 
   function isAutoMode() {
     return promptMode === AUTO_PROMPT_MODE;
+  }
+
+  // The lookup options for one send: no override keeps the saved mode; a
+  // native client's override resolves against the same editable library.
+  function promptModeResolveOptions(override) {
+    if (override === undefined || override === null) {
+      return { auto: isAutoMode(), instruction: getPromptAiContent(currentModePrompt()) };
+    }
+    if (override === AUTO_PROMPT_MODE) {
+      return { auto: true, instruction: null };
+    }
+    if (override === DEFAULT_PROMPT_MODE || !isPromptMode(override)) {
+      return { auto: false, instruction: null };
+    }
+    const prompt = modePrompts.find(candidate => candidate.modeKey === override);
+    return { auto: false, instruction: getPromptAiContent(prompt) || null };
   }
 
   // "/brief Concise · /study Learning": each mode's first trigger word only,
@@ -1125,12 +1143,10 @@ export async function setupComposerControls({
     // Default and Auto.
     getPromptMode: () => getPromptAiContent(currentModePrompt()) || null,
     // The text and instruction for one send: Auto removes the trigger words
-    // it finds and uses their modes; other modes keep the text as typed.
-    resolvePromptMode: text => resolvePromptModeForText(text, {
-      auto: isAutoMode(),
-      instruction: getPromptAiContent(currentModePrompt()),
-      modePrompts
-    }),
+    // it finds and uses their modes; other modes keep the text as typed. A
+    // native client's per-send override never changes the saved mode.
+    resolvePromptMode: (text, { promptMode: override } = {}) =>
+      resolvePromptModeForText(text, { ...promptModeResolveOptions(override), modePrompts }),
     refreshPromptModes,
     refreshPromptGhost: renderPromptGhost
   };

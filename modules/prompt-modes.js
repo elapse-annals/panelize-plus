@@ -71,6 +71,9 @@ export const PROMPT_MODES = [
 // word typed in the question (say /study) applies that mode to this send only.
 export const AUTO_PROMPT_MODE = 'auto';
 
+// Wire sentinel for a native client's explicit "Default" choice: no instruction.
+export const DEFAULT_PROMPT_MODE = 'default';
+
 export const PROMPT_MODE_IDS = PROMPT_MODES.map(mode => mode.id);
 
 // chrome.storage.local, not sync: the library lives in this device's IndexedDB.

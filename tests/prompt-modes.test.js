@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   COMPETE_PROMPT_TEXTS,
   COMPETE_PROMPT_MIGRATED_KEY,
+  DEFAULT_PROMPT_MODE,
   PROMPT_MODES,
   PROMPT_MODE_IDS,
   PROMPT_MODES_SEEDED_KEY,
@@ -57,6 +58,11 @@ describe('built-in prompt modes', () => {
   it('recognises only the built-in modes', () => {
     PROMPT_MODE_IDS.forEach(mode => expect(isPromptMode(mode)).toBe(true));
     [null, undefined, '', 'verbose', 'Learning', 0].forEach(value => expect(isPromptMode(value)).toBe(false));
+  });
+
+  it('uses a wire-only Default sentinel that is not a prompt mode', () => {
+    expect(DEFAULT_PROMPT_MODE).toBe('default');
+    expect(isPromptMode(DEFAULT_PROMPT_MODE)).toBe(false);
   });
 
   it('names the compete mode Challenge', () => {

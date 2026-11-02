@@ -310,6 +310,12 @@ async function loadSettings() {
     answerCompleteNotificationToggle.checked = settings.answerCompleteNotificationEnabled !== false;
   }
 
+  // macOS global input bridge (off unless explicitly enabled)
+  const globalSendBridgeToggle = document.getElementById('global-send-bridge-toggle');
+  if (globalSendBridgeToggle) {
+    globalSendBridgeToggle.checked = settings.globalSendBridgeEnabled === true;
+  }
+
   loadAiSummarySettings(settings);
 
   // Enter key behavior settings
@@ -989,6 +995,13 @@ function setupEventListeners() {
       showStatus('success', enabled ? t('msgAnswerCompleteNotificationEnabled') : t('msgAnswerCompleteNotificationDisabled'));
     });
   }
+
+  // macOS global input bridge
+  document.getElementById('global-send-bridge-toggle')?.addEventListener('change', async (e) => {
+    const enabled = e.target.checked;
+    await saveSetting('globalSendBridgeEnabled', enabled);
+    showStatus('success', enabled ? t('msgGlobalSendBridgeEnabled') : t('msgGlobalSendBridgeDisabled'));
+  });
 
   // AI summary
   document.getElementById('ai-summary-auto-toggle')?.addEventListener('change', async (e) => {

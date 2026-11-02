@@ -56,6 +56,10 @@ Panelize 是一个免费、开源的 Chrome / Edge 扩展：一次输入，同�
 
 在统一输入框中输入一次内容，就能同时发送到 ChatGPT、Claude、Gemini、Grok、Doubao、DeepSeek、Kimi、Qwen、Zhipu (China)、Z.ai (Global)、元宝、MiMo、Meta AI、阶跃 StepFun、Agnes、腾讯混元 Hy AI Studio、Perplexity、Copilot、文心、Google。
 
+### 系统级快捷发送（macOS）
+
+可选安装 macOS 菜单栏客户端后，在任意应用里按 `Option + Space`（或 `Command + Shift + Space`）唤起浮动输入框；按 Enter 后，内容会通过现有 Send All 流程发送给当前所有 AI，输入框还提供内置提示词模式（默认“自动”）。详见 [macOS 客户端安装说明](desktop/macos/README.zh-CN.md)。
+
 ### 灵活布局
 
 支持 49 种布局，面板上限为 30 个。快速双模型对比可用 1×2，大规模对比可用 1×30 或 2×15；实际可打开的面板数量取决于已启用的平台数量。
@@ -132,6 +136,10 @@ Perplexity、Copilot 和文心是可选平台，需要在设置中启用并授�
 4. 点击“加载已解压的扩展程序”，选择项目目录
 
 </details>
+
+### macOS 全局快捷发送（可选）
+
+需要 macOS 13+、Chrome 或 Edge 正在运行，以及 Panelize 2.62.0+。该功能默认关闭：安装客户端后，在“设置 → 全局快捷输入（macOS）”中开启。它复用现有的 Send All 流程，不会另起一套 AI 调用。安装、使用和排错见 [macOS 客户端文档](desktop/macos/README.zh-CN.md)。
 
 ---
 

@@ -75,6 +75,14 @@ describe('settings module', () => {
       expect(result.answerCompleteNotificationEnabled).toBe(true);
     });
 
+    it('should keep the macOS global input bridge off by default', async () => {
+      chrome.storage.sync.get.mockImplementation(async (defaults) => defaults);
+
+      const result = await getSettings();
+
+      expect(result.globalSendBridgeEnabled).toBe(false);
+    });
+
     it('should expose the default Google provider mode', async () => {
       chrome.storage.sync.get.mockImplementation(async (defaults) => defaults);
 
@@ -84,12 +92,21 @@ describe('settings module', () => {
       expect(result.enabledProviders).toEqual(DEFAULT_PROVIDER_IDS);
     });
 
-    it('should append the Deep thinking instruction by default', async () => {
+    it('should use Auto prompt mode by default', async () => {
       chrome.storage.sync.get.mockImplementation(async (defaults) => defaults);
 
       const result = await getSettings();
 
-      expect(result.selectedPromptMode).toBe('deep');
+      expect(result.selectedPromptMode).toBe('auto');
+    });
+
+    it('should keep an explicitly saved prompt mode', async () => {
+      chrome.storage.sync.get.mockResolvedValue({ selectedPromptMode: 'deep' });
+
+      expect((await getSettings()).selectedPromptMode).toBe('deep');
+
+      chrome.storage.sync.get.mockResolvedValue({ selectedPromptMode: null });
+      expect((await getSettings()).selectedPromptMode).toBeNull();
     });
   });
 

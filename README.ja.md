@@ -56,6 +56,10 @@ Panelize は、1つのプロンプトを ChatGPT、Claude、Gemini、Grok、Deep
 
 統一入力欄から ChatGPT / Claude / Gemini / Grok / Doubao / DeepSeek / Kimi / Qwen / Zhipu (China) / Z.ai (Global) / Yuanbao / MiMo / Meta AI / StepFun / Agnes / Hy AI Studio / Perplexity / Copilot / Wenxin / Google へ同時に送信できます。
 
+### グローバル入力（macOS）
+
+オプションの macOS メニューバークライアントを導入すると、どのアプリからでも `Option + Space`（または `Command + Shift + Space`）でフローティング入力欄を開けます。Enter を押すと、現在の Panelize ウィンドウ内のすべての AI に既存の Send All フローで送信されます。入力欄には組み込みのプロンプトモード選択もあり、初期値は「自動」です。詳しくは [macOS クライアントのセットアップ](desktop/macos/README.md) を参照してください。
+
 ### 柔軟なレイアウト
 
 49種類のレイアウトを用意し、最大30パネルに対応。素早い2モデル比較には1×2、多数のパネルには1×30または2×15が使えます。実際に開けるパネル数は、有効なプロバイダー数によって異なります。
@@ -132,6 +136,10 @@ Perplexity、Copilot、Wenxin は任意のプロバイダーです。設定で�
 4. 「パッケージ化されていない拡張機能を読み込む」でフォルダを選択
 
 </details>
+
+### macOS グローバルショートカット（任意）
+
+macOS 13 以降、Chrome または Edge が起動していること、Panelize 2.62.0 以降が必要です。初期状態では無効です。クライアントをインストールした後、「設定 → グローバル入力（macOS）」で有効にしてください。既存の Send All フローを再利用し、別の AI 送信経路は追加しません。インストール、使い方、トラブルシューティングは [macOS クライアントのドキュメント](desktop/macos/README.md) を参照してください。
 
 ---
 
