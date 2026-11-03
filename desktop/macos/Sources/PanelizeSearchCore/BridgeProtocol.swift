@@ -7,7 +7,7 @@ public enum BridgeProtocol {
     public static let maxPromptCharacters = 8000
     public static let maxRequestIdLength = 100
     public static let appBundleIdentifier = "com.panelize.search"
-    public static let appName = "Panelize Search"
+    public static let appName = "Panelize Link"
 
     public static func supportDirectory(
         fileManager: FileManager = .default
@@ -187,12 +187,19 @@ public enum BridgeMessages {
         return message
     }
 
-    public static func tokenHandshake(_ token: String) -> [String: Any] {
-        [
+    public static func tokenHandshake(
+        _ token: String,
+        browserBundleIdentifier: String? = nil
+    ) -> [String: Any] {
+        var message: [String: Any] = [
             "protocol": BridgeProtocol.version,
             "type": "bridgeHello",
             "token": token
         ]
+        if let browserBundleIdentifier, !browserBundleIdentifier.isEmpty {
+            message["browserBundleId"] = browserBundleIdentifier
+        }
+        return message
     }
 
     public static func parse(_ message: [String: Any]) -> BridgeEvent? {

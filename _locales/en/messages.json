@@ -156,7 +156,7 @@
     "message": "Global Input (macOS)"
   },
   "descGlobalInput": {
-    "message": "Type a prompt from any app and send it to every AI in the current Panelize window. Requires the Panelize Search macOS client."
+    "message": "Type a prompt from any app and send it to every AI in the current Panelize window. Requires the Panelize Link macOS client."
   },
   "labelGlobalSendBridge": {
     "message": "Enable global input bridge"
@@ -1634,6 +1634,9 @@
   "composerTriggerCompletionHint": {
     "message": "Tab · $1"
   },
+  "questionHistoryLabel": {
+    "message": "Recent questions"
+  },
   "promptTriggersLabel": {
     "message": "Trigger words (Auto mode)"
   },
@@ -1660,6 +1663,9 @@
   },
   "aiSummaryRerun": {
     "message": "Summarize again"
+  },
+  "aiSummaryCached": {
+    "message": "Cached result from a recently asked question. Use Summarize again to refresh."
   },
   "aiSummaryOpenSettings": {
     "message": "Set up the AI summary"

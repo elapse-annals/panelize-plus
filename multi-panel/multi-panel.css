@@ -3663,7 +3663,7 @@ html.snapshot-hide-cursor *::after {
   --composer-line: #42414d;
 }
 #input-bar .input-container { padding: 0 8px; }
-#input-bar .composer-controls { padding: 0 8px; }
+#input-bar .composer-controls { padding: 0 8px 8px; gap: 6px; }
 #input-bar .input-wrapper.drag-over { background: var(--composer-accent-soft); border-radius: 10px; }
 #input-bar #unified-input {
   border: 0;
@@ -3724,6 +3724,56 @@ html.snapshot-hide-cursor *::after {
 [data-theme="dark"] #input-bar .prompt-ghost-completion-hint { color: rgba(255, 255, 255, 0.32); }
 [data-theme="dark"] #input-bar .prompt-ghost-suffix { color: rgba(255, 255, 255, 0.42); }
 [data-theme="dark"] #input-bar .prompt-ghost-removed { --strike: rgba(255, 255, 255, 0.6); }
+/* Recent questions offered above the composer while the draft is their prefix. */
+#input-bar .question-history {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 30;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--composer-edge, #e1e3ec);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(30, 42, 70, .16);
+}
+#input-bar .question-history[hidden] { display: none; }
+#input-bar .question-history-item {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #3f4658;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#input-bar .question-history-item:hover,
+#input-bar .question-history-item.is-active {
+  background: var(--composer-accent-soft, #f3f2f9);
+  color: var(--composer-accent-ink, #574681);
+}
+[data-theme="dark"] #input-bar .question-history {
+  border-color: #41414e;
+  background: #26262b;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .4);
+}
+[data-theme="dark"] #input-bar .question-history-item { color: #d5d3de; }
+[data-theme="dark"] #input-bar .question-history-item:hover,
+[data-theme="dark"] #input-bar .question-history-item.is-active {
+  background: #393344;
+  color: #d9d0ff;
+}
 #input-bar .input-btn,
 #input-bar .clear-btn {
   width: 28px;
@@ -3737,21 +3787,22 @@ html.snapshot-hide-cursor *::after {
 #input-bar .clear-btn:hover { color: #d32f2f; background: #fdecec; }
 [data-theme="dark"] #input-bar .clear-btn:hover { color: #ff8a80; background: #4a2a2e; }
 #input-bar .input-actions { gap: 6px; }
-#input-bar .input-actions .composer-divider { height: 18px; background: var(--composer-line); }
+#input-bar .composer-divider { height: 16px; background: var(--composer-line); }
 #input-bar .fill-btn {
   height: 28px;
   padding: 0 12px;
-  border: 1px solid var(--composer-line);
-  border-radius: 10px;
+  border: 0;
+  border-radius: 8px;
   background: transparent;
   color: var(--composer-accent-ink);
+  gap: 6px;
 }
-#input-bar .fill-btn:hover:not(:disabled) { border-color: var(--composer-accent); background: var(--composer-accent-soft); }
+#input-bar .fill-btn:hover:not(:disabled) { background: var(--composer-accent-soft); }
 #input-bar .fill-btn:disabled { background: transparent; color: var(--composer-muted); opacity: .55; }
 #input-bar .send-btn {
   height: 28px;
-  padding: 0 14px;
-  border-radius: 10px;
+  padding: 0 12px;
+  border-radius: 8px;
   background: var(--composer-accent);
   color: #fff;
   box-shadow: 0 1px 3px rgba(80, 64, 150, .25);
@@ -3764,24 +3815,29 @@ html.snapshot-hide-cursor *::after {
 #input-bar[data-ai-preparing] .fill-btn { opacity: .55; cursor: not-allowed; }
 #input-bar .input-btn:focus-visible, #input-bar .clear-btn:focus-visible,
 #input-bar .fill-btn:focus-visible, #input-bar .send-btn:focus-visible {
-  outline: 2px solid #8a79b5;
+  outline: 2px solid var(--composer-accent);
   outline-offset: 2px;
 }
 /* Control row: equal heights so the divider, levels and status line up. */
-#input-bar .composer-controls-left { gap: 4px 6px; }
-#input-bar .composer-control { min-height: 26px; }
+#input-bar .composer-controls-left { gap: 6px; }
+#input-bar .composer-controls-right { gap: 6px; }
+#input-bar .composer-control { min-height: 28px; border-radius: 8px; }
+#input-bar .composer-control .material-symbols-outlined { font-size: 16px; }
+#input-bar .input-btn .material-symbols-outlined,
+#input-bar .clear-btn .material-symbols-outlined { font-size: 16px; }
 #input-bar .tier-menu-btn { position: relative; transition: background-color .15s ease, color .15s ease, box-shadow .15s ease; }
 /* AI mode mapping: a small, light "i" keeps the control row quiet. */
 #input-bar .tier-details-btn {
-  min-width: 18px;
-  min-height: 18px;
+  min-width: 28px;
+  min-height: 28px;
   padding: 0;
-  color: #a3a8b8;
-  font-size: 14px;
+  border-radius: 8px;
+  color: var(--composer-muted);
+  font-size: 16px;
   background: transparent;
 }
-#input-bar .tier-details-btn .material-symbols-outlined { font-size: 14px; }
-#input-bar .tier-details-btn:hover { color: #6d7485; background: transparent; }
+#input-bar .tier-details-btn .material-symbols-outlined { font-size: 16px; }
+#input-bar .tier-details-btn:hover { color: var(--composer-accent-ink); background: var(--composer-accent-soft); }
 /* Prompt mode: a quiet select that takes the pressed-button accent while an
    instruction is appended to every question. */
 #input-bar .prompt-mode-control {
@@ -3790,22 +3846,25 @@ html.snapshot-hide-cursor *::after {
   gap: 1px;
   color: var(--composer-muted);
 }
-#input-bar .prompt-mode-control .material-symbols-outlined { font-size: 15px; }
-#input-bar .prompt-mode-control[data-active="true"] { color: #635799; }
+#input-bar .prompt-mode-control .material-symbols-outlined { font-size: 16px; }
+#input-bar .prompt-mode-control[data-active="true"] { color: var(--composer-accent-ink); }
 #input-bar .composer-prompt-group { display: inline-flex; align-items: center; gap: 2px; }
 #input-bar .prompt-mode-btn {
-  min-height: 22px;
-  padding: 1px 4px;
-  border-radius: 6px;
+  min-height: 28px;
+  padding: 0 6px;
+  border-radius: 8px;
   background: transparent;
   color: inherit;
   font-size: 12px;
 }
-#input-bar .prompt-mode-btn .material-symbols-outlined:first-child { font-size: 15px; }
+#input-bar .prompt-mode-btn .material-symbols-outlined:first-child { font-size: 16px; }
 #input-bar .prompt-mode-btn:hover { color: var(--composer-accent-ink); }
 #input-bar .prompt-mode-control[data-active="true"] .prompt-mode-btn {
-  color: #635799;
-  background: #f1eef9;
+  color: var(--composer-accent-ink);
+  background: transparent;
+}
+#input-bar .prompt-mode-control[data-active="true"] .prompt-mode-btn:hover {
+  background: var(--composer-accent-soft);
 }
 .prompt-mode-list { width: 300px; max-width: calc(100vw - 24px); }
 @media (hover: none) { .prompt-mode-action { opacity: 1; } }
@@ -3918,10 +3977,11 @@ html.snapshot-hide-cursor *::after {
 [data-theme="dark"] .tier-option-hint { color: #8d8a9c; }
 [data-theme="dark"] .tier-option-key { color: #b4b2c2; background: #1e1e24; border-color: #43414e; }
 [data-theme="dark"] .composer-control:hover, [data-theme="dark"] .composer-control[aria-pressed="true"] { color: #d2c5f4; background: #393344; }
-[data-theme="dark"] #input-bar .tier-details-btn { color: #75798a; }
-[data-theme="dark"] #input-bar .tier-details-btn:hover { color: #c9c6d6; }
-[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] { color: #d2c5f4; }
-[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] .prompt-mode-btn { color: #d2c5f4; background: #393344; }
+[data-theme="dark"] #input-bar .tier-details-btn { color: var(--composer-muted); }
+[data-theme="dark"] #input-bar .tier-details-btn:hover { color: var(--composer-accent-ink); background: var(--composer-accent-soft); }
+[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] { color: var(--composer-accent-ink); }
+[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] .prompt-mode-btn { color: var(--composer-accent-ink); background: transparent; }
+[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] .prompt-mode-btn:hover { background: var(--composer-accent-soft); }
 [data-theme="dark"] .prompt-mode-option { color: #b4b2c2; }
 [data-theme="dark"] .prompt-mode-row:hover, [data-theme="dark"] .prompt-mode-row:focus-within, [data-theme="dark"] .prompt-mode-new:hover { background: #393344; }
 [data-theme="dark"] .prompt-mode-option[aria-checked="true"]::before, [data-theme="dark"] .prompt-mode-option:hover { color: #d2c5f4; }
@@ -4183,7 +4243,65 @@ body.panel-shuffling #panel-grid, body.panel-shuffling #panel-selectors { pointe
 
 .ai-summary-overview {
   margin: 0 0 20px;
-  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ai-summary-overview > :first-child {
+  margin-top: 0;
+}
+
+.ai-summary-overview > :last-child {
+  margin-bottom: 0;
+}
+
+.ai-summary-overview-paragraph {
+  margin: 4px 0 8px;
+  line-height: 1.6;
+}
+
+.ai-summary-overview-heading {
+  margin: 14px 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ai-summary-overview-list {
+  margin: 4px 0 10px;
+  padding-left: 22px;
+}
+
+.ai-summary-overview-list > li {
+  margin: 3px 0;
+}
+
+.ai-summary-overview-code {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+  overflow-wrap: normal;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.ai-summary-overview code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+}
+
+.ai-summary-overview pre code {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: inherit;
 }
 
 .ai-summary-section {
@@ -4514,6 +4632,18 @@ body.panel-shuffling #panel-grid, body.panel-shuffling #panel-selectors { pointe
 
 [data-theme="dark"] .ai-summary-body {
   color: #e0e0e0;
+}
+
+[data-theme="dark"] .ai-summary-overview-code {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .ai-summary-overview code {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .ai-summary-overview pre code {
+  background: transparent;
 }
 
 [data-theme="dark"] .ai-summary-status {

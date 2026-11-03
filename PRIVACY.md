@@ -28,6 +28,16 @@ The following data is stored in browser-managed storage. Prompt library data rem
 
 **Purpose:** To compare provider response speed, adopted answers and scores in the Answer stats dialog. Only these counts and times are kept, never what you clicked or read. Stored only in this browser profile; you can export or clear it there.
 
+#### Recent Questions
+- The last three complete questions you successfully sent, newest first
+
+**Purpose:** To suggest a matching question above the composer while you type. Stored only in this browser profile (`chrome.storage.local`) and never synced. The optional macOS client keeps its own last three questions in the app's local preferences; they are not shared with the extension.
+
+#### AI Summary Cache
+- Up to three recent AI summaries of identical questions, with the question, model, API base URL, UI language, panel positions and creation time (never the API key)
+
+**Purpose:** To reuse a summary for the same question within three days instead of calling the summary API again. Stored only in this browser profile; use **Summarize again** to refresh a cached summary.
+
 #### User Preferences and Settings
 - Selected theme (Light/Dark/Auto)
 - Enabled AI providers

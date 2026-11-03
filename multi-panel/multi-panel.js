@@ -156,7 +156,21 @@ import {
   requestSummary,
   shouldExpandSummary
 } from '../modules/ai-summary.js';
+import { parseOverviewBlocks, renderOverviewBlocks } from '../modules/ai-summary-overview.js';
 import { filterAnswerLogRounds, getAnswerLogProviderIds, renderAnswerLog } from '../modules/answer-log.js';
+import {
+  QUESTION_HISTORY_STORAGE_KEY,
+  findQuestionHistoryMatches,
+  loadQuestionHistory,
+  readQuestionHistory,
+  recordQuestion
+} from '../modules/question-history.js';
+import {
+  createAiSummaryCacheEntry,
+  loadAiSummaryCache,
+  matchAiSummaryCache,
+  saveAiSummaryCacheEntry
+} from '../modules/ai-summary-cache.js';
 import { createPointerGuard, createPointerTracker } from '../modules/pointer-guard.js';
 import { setupComposerControls } from '../modules/composer-controls.js';
 import { formatShortcutForTooltip, matchesShortcut } from '../modules/keyboard-shortcuts.js';
@@ -239,6 +253,12 @@ let zoomedAnswer = null;
 // dropped once both close; null while not loaded.
 let answerStatsRoundsCache = null;
 let answerViewsRenderTimerId = null;
+// Recently sent questions, newest first; offered above the input when the
+// draft is a prefix of one. Stored locally, never synced.
+let questionHistoryEntries = [];
+let questionHistoryMatches = [];
+let questionHistoryIndex = -1;
+let questionHistorySuppressed = false;
 // Questions shown in the answer log; reset when it opens or a filter changes.
 let answerLogLimit = 0;
 // Text of the last Fill, used as the question when Send then submits it.
@@ -419,6 +439,7 @@ async function init() {
 
   // Setup event listeners
   setupEventListeners();
+  void setupQuestionHistory();
   setupRatingPrompt();
   setupShareSnapshot();
   setupAnswerStats();
@@ -890,6 +911,13 @@ function registerStorageChangeListener() {
     if (changes.providerNotes) {
       providerNotes = changes.providerNotes.newValue || {};
       renderAllPanelNotes();
+    }
+
+    // Another Multi-Panel window sent a question; offer it here too.
+    if (areaName === 'local' && changes[QUESTION_HISTORY_STORAGE_KEY]) {
+      questionHistoryEntries = readQuestionHistory(changes[QUESTION_HISTORY_STORAGE_KEY].newValue);
+      questionHistoryIndex = -1;
+      refreshQuestionHistoryMatches();
     }
 
     if (changes.answerCompleteNotificationEnabled) {
@@ -2614,6 +2642,10 @@ export async function broadcastMessage(typedText, autoSubmit = true, { promptMod
     return { ok: false, reason: 'busy', sent: 0, total: panels.length };
   }
 
+  // The draft is about to be sent or replaced; do not leave a suggestion popup
+  // over the composer once it clears.
+  dismissQuestionHistory({ suppress: true });
+
   const sendBtn = document.getElementById('send-all-btn');
   const fillBtn = document.getElementById('fill-input-btn');
   const statusEl = document.getElementById('send-status');
@@ -4188,6 +4220,9 @@ function startAnswerRound(requestId, text, sentAt, roundPanels) {
   updateZoomedAnswer();
   answerQuestionsByRound.set(round.id, text || '');
   answerTextsByRound.set(round.id, new Map());
+  // Every actual send reaches here, including image and global-send flows;
+  // fill-only requests do not.
+  void rememberQuestionForHistory(text);
 
   // Older rounds stay in storage; their panels have moved on.
   while (answerRounds.size > MAX_IN_MEMORY_ANSWER_ROUNDS) {
@@ -4230,7 +4265,17 @@ const remindedAiSummaryRoundIds = new Set();
 const pendingAnswerTextRequests = new Map();
 const pendingLocateAnswerRequests = new Map();
 // status: 'idle', 'collecting', 'running', 'done' or 'error'.
-let aiSummaryState = { roundId: null, status: 'idle', sources: [], missing: [], summary: null, error: '', needsSetup: false };
+let aiSummaryState = {
+  roundId: null,
+  status: 'idle',
+  sources: [],
+  missing: [],
+  summary: null,
+  error: '',
+  needsSetup: false,
+  fromCache: false,
+  cachedAt: null
+};
 let aiSummaryController = null;
 
 async function loadAiSummaryApiKey() {
@@ -4389,7 +4434,17 @@ function toggleAiSummaryDrawer() {
 function startAiSummaryRound(roundId) {
   aiSummaryController?.abort();
   aiSummaryController = null;
-  aiSummaryState = { roundId, status: 'idle', sources: [], missing: [], summary: null, error: '', needsSetup: false };
+  aiSummaryState = {
+    roundId,
+    status: 'idle',
+    sources: [],
+    missing: [],
+    summary: null,
+    error: '',
+    needsSetup: false,
+    fromCache: false,
+    cachedAt: null
+  };
   document.getElementById('ai-summary-btn')?.classList.remove('ai-summary-ready');
   updateAiSummaryButtonBusy();
   renderAiSummary();
@@ -4527,7 +4582,7 @@ function getRoundSummaryPanels(round) {
     .filter(({ panel }) => isPanelInAnswerRound(round, panel));
 }
 
-async function runAiSummary(roundId, { collect = false, autoOpen = false } = {}) {
+async function runAiSummary(roundId, { collect = false, autoOpen = false, forceRefresh = false } = {}) {
   const round = answerRounds.get(roundId);
   if (!round) {
     return;
@@ -4539,15 +4594,20 @@ async function runAiSummary(roundId, { collect = false, autoOpen = false } = {})
   const drawerCloseCountAtStart = aiSummaryDrawerCloseCount;
   const setState = (state) => {
     if (!isCurrent()) return;
-    aiSummaryState = { roundId, sources: [], missing: [], summary: null, error: '', needsSetup: false, ...state };
+    aiSummaryState = {
+      roundId,
+      sources: [],
+      missing: [],
+      summary: null,
+      error: '',
+      needsSetup: false,
+      fromCache: false,
+      cachedAt: null,
+      ...state
+    };
     updateAiSummaryButtonBusy();
     renderAiSummary();
   };
-
-  if (!isSummaryConfigured(aiSummaryConfig)) {
-    setState({ status: 'error', needsSetup: true, error: getLocalizedText('aiSummaryNotConfigured', 'Set up an OpenAI-compatible API in Settings to summarize answers.') });
-    return;
-  }
 
   setState({ status: 'collecting' });
   const texts = collect ? await collectRoundAnswerTexts(round) : getRoundAnswerTexts(round);
@@ -4568,6 +4628,46 @@ async function runAiSummary(roundId, { collect = false, autoOpen = false } = {})
     return;
   }
 
+  const question = (answerQuestionsByRound.get(roundId) || round.promptSummary || '').trim();
+  const language = getSnapshotLocale();
+  const summaryPanels = sources.map(source => {
+    const panel = panels.find(candidate => candidate.id === source.panelId);
+    return { position: source.position, providerId: panel?.providerId || '' };
+  });
+
+  // The same question within three days reuses its finished summary; a manual
+  // rerun always asks the API again.
+  if (!forceRefresh && question) {
+    const cached = matchAiSummaryCache(await loadAiSummaryCache(), {
+      question,
+      baseUrl: aiSummaryConfig.baseUrl,
+      model: aiSummaryConfig.model,
+      language,
+      panels: summaryPanels
+    });
+    if (!isCurrent()) return;
+    if (cached) {
+      setState({
+        status: 'done',
+        sources,
+        missing,
+        summary: cached.summary,
+        fromCache: true,
+        cachedAt: cached.createdAt
+      });
+      if (isCurrent()) setAiSummaryExpanded(shouldExpandSummary(cached.summary));
+      // A cached hit never opens the drawer by itself; ring the button so the
+      // user can read it when they choose.
+      if (autoOpen) document.getElementById('ai-summary-btn')?.classList.add('ai-summary-ready');
+      return;
+    }
+  }
+
+  if (!isSummaryConfigured(aiSummaryConfig)) {
+    setState({ status: 'error', needsSetup: true, error: getLocalizedText('aiSummaryNotConfigured', 'Set up an OpenAI-compatible API in Settings to summarize answers.') });
+    return;
+  }
+
   try {
     const granted = await chrome.permissions.contains({ origins: [getSummaryOriginPattern(aiSummaryConfig.baseUrl)] });
     if (!granted) {
@@ -4585,13 +4685,13 @@ async function runAiSummary(roundId, { collect = false, autoOpen = false } = {})
   }, AI_SUMMARY_PROGRESS_INTERVAL_MS);
   try {
     const messages = buildSummaryMessages({
-      question: answerQuestionsByRound.get(roundId) || round.promptSummary,
+      question,
       answers: sources.map(source => ({
         sourceId: source.sourceId,
         label: getAiSummarySourceLabel(source, round),
         text: texts.get(source.panelId)
       })),
-      language: getSnapshotLocale()
+      language
     });
     const content = await requestSummary({
       config: aiSummaryConfig,
@@ -4608,6 +4708,14 @@ async function runAiSummary(roundId, { collect = false, autoOpen = false } = {})
       setState({ status: 'error', sources, missing, error: getLocalizedText('aiSummaryEmpty', 'The summary came back empty. Try again or use another model.') });
       return;
     }
+    void saveAiSummaryCacheEntry(createAiSummaryCacheEntry({
+      question,
+      config: aiSummaryConfig,
+      language,
+      panels: summaryPanels,
+      sources,
+      summary
+    }));
     setState({ status: 'done', sources, missing, summary });
     // Each finished summary picks the drawer width by how much it says.
     if (isCurrent()) setAiSummaryExpanded(shouldExpandSummary(summary));
@@ -4782,13 +4890,16 @@ function renderAiSummary() {
 
   const status = byId('ai-summary-status');
   status.classList.toggle('error', state.status === 'error');
+  drawer.dataset.fromCache = String(state.fromCache === true);
   const statusText = {
     idle: round
       ? getLocalizedText('aiSummaryIdle', 'Waiting for the answers. Use Summarize again to summarize now.')
       : getLocalizedText('aiSummaryNoRound', 'Send a question to several AIs, then summarize their answers here.'),
     collecting: getLocalizedText('aiSummaryCollecting', 'Reading the answers…'),
     running: getAiSummaryRunningText(state),
-    done: '',
+    done: state.fromCache
+      ? getLocalizedText('aiSummaryCached', 'Cached result from a recently asked question. Use Summarize again to refresh.')
+      : '',
     error: state.error
   };
   status.textContent = statusText[state.status] ?? '';
@@ -4800,20 +4911,26 @@ function renderAiSummary() {
   const summary = state.status === 'done' ? state.summary : null;
   result.hidden = !summary;
   const sourcesById = new Map(state.sources.map(source => [source.sourceId, source]));
+  const getSourceLabel = sourceId => {
+    const source = sourcesById.get(sourceId);
+    return source ? getAiSummarySourceLabel(source, round) : '';
+  };
   const verdict = byId('ai-summary-verdict');
   verdict.hidden = !summary?.verdict;
   byId('ai-summary-verdict-text').replaceChildren(...(summary?.verdict
     ? [
-      document.createTextNode(replaceSourceIds(summary.verdict.text, sourceId => {
-        const source = sourcesById.get(sourceId);
-        return source ? getAiSummarySourceLabel(source, round) : '';
-      })),
+      document.createTextNode(replaceSourceIds(summary.verdict.text, getSourceLabel)),
       createAiSummarySources(summary.verdict.sources, sourcesById, round, state.sources.length, summary.verdict)
     ]
     : []));
   const overview = byId('ai-summary-overview');
-  overview.textContent = summary?.overview || '';
-  overview.hidden = !summary?.overview;
+  const overviewText = String(summary?.overview || '').trim();
+  overview.hidden = !overviewText;
+  renderOverviewBlocks(
+    overview,
+    overviewText ? parseOverviewBlocks(overviewText) : [],
+    text => replaceSourceIds(text, getSourceLabel)
+  );
   byId('ai-summary-consensus').replaceChildren(createAiSummaryArticle(summary?.consensus || [], sourcesById, round, state.sources.length));
   byId('ai-summary-consensus-section').hidden = !summary?.consensus.length;
   byId('ai-summary-unique').replaceChildren(...createAiSummaryUniqueGroups(summary?.unique || [], sourcesById, round));
@@ -4863,7 +4980,7 @@ function setupAiSummary() {
   document.getElementById('ai-summary-copy-btn')?.addEventListener('click', () => { void copyAiSummary(); });
   document.getElementById('ai-summary-rerun-btn')?.addEventListener('click', () => {
     const roundId = aiSummaryState.roundId || latestAnswerRoundId;
-    if (roundId) void runAiSummary(roundId, { collect: true });
+    if (roundId) void runAiSummary(roundId, { collect: true, forceRefresh: true });
   });
   document.getElementById('ai-summary-settings-btn')?.addEventListener('click', () => chrome.runtime.openOptionsPage());
   document.getElementById('ai-summary-drawer')?.addEventListener('keydown', (event) => {
@@ -5582,6 +5699,136 @@ async function searchPromptLibrary(query) {
   await renderPromptList(query);
 }
 
+// ===== Recent question suggestions =====
+function questionHistoryElement() {
+  return document.getElementById('question-history');
+}
+
+function canShowQuestionHistory(input) {
+  return Boolean(
+    input
+    && document.activeElement === input
+    && input.selectionStart === input.selectionEnd
+    && uploadedImages.length === 0
+    && !isAnyModalOpen()
+    // The inline trigger-word completion owns the caret while it shows.
+    && !document.querySelector('#prompt-ghost .prompt-ghost-completion')
+  );
+}
+
+function renderQuestionHistory() {
+  const list = questionHistoryElement();
+  const input = document.getElementById('unified-input');
+  if (!list) return;
+  if (!questionHistoryMatches.length) {
+    list.hidden = true;
+    list.replaceChildren();
+    input?.removeAttribute('aria-activedescendant');
+    return;
+  }
+
+  list.hidden = false;
+  list.replaceChildren(...questionHistoryMatches.map((text, index) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.id = `question-history-option-${index}`;
+    item.className = 'question-history-item';
+    item.dataset.index = String(index);
+    item.setAttribute('role', 'option');
+    item.setAttribute('aria-selected', String(index === questionHistoryIndex));
+    item.classList.toggle('is-active', index === questionHistoryIndex);
+    item.textContent = text.replace(/\s+/g, ' ').trim();
+    item.title = text;
+    return item;
+  }));
+
+  if (input && questionHistoryIndex >= 0) {
+    input.setAttribute('aria-activedescendant', `question-history-option-${questionHistoryIndex}`);
+  } else {
+    input?.removeAttribute('aria-activedescendant');
+  }
+}
+
+function refreshQuestionHistoryMatches() {
+  const input = document.getElementById('unified-input');
+  questionHistoryMatches = !questionHistorySuppressed && canShowQuestionHistory(input)
+    ? findQuestionHistoryMatches(questionHistoryEntries, input.value)
+    : [];
+  if (questionHistoryIndex >= questionHistoryMatches.length) questionHistoryIndex = -1;
+  renderQuestionHistory();
+}
+
+function dismissQuestionHistory({ suppress = false } = {}) {
+  if (suppress) questionHistorySuppressed = true;
+  questionHistoryMatches = [];
+  questionHistoryIndex = -1;
+  renderQuestionHistory();
+}
+
+// Fills the composer with a past question; the user still chooses to send it.
+function fillQuestionHistory(index) {
+  const text = questionHistoryMatches[index];
+  if (!text) return;
+  questionHistorySuppressed = true;
+  questionHistoryMatches = [];
+  questionHistoryIndex = -1;
+  renderQuestionHistory();
+  applyPromptToInput(text);
+  const input = document.getElementById('unified-input');
+  if (input) {
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+}
+
+function handleQuestionHistoryKeydown(event, isComposing) {
+  if (event.defaultPrevented || isComposing || event.isComposing || event.keyCode === 229) return false;
+  if (!questionHistoryMatches.length) return false;
+  if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return false;
+
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    const delta = event.key === 'ArrowDown' ? 1 : -1;
+    questionHistoryIndex = questionHistoryIndex < 0
+      ? (delta > 0 ? 0 : questionHistoryMatches.length - 1)
+      : (questionHistoryIndex + delta + questionHistoryMatches.length) % questionHistoryMatches.length;
+    renderQuestionHistory();
+    return true;
+  }
+
+  // Enter fills only a highlighted suggestion; otherwise it sends as usual.
+  if (event.key === 'Enter') {
+    if (questionHistoryIndex < 0) return false;
+    event.preventDefault();
+    fillQuestionHistory(questionHistoryIndex);
+    return true;
+  }
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    dismissQuestionHistory({ suppress: true });
+    return true;
+  }
+
+  return false;
+}
+
+async function setupQuestionHistory() {
+  questionHistoryEntries = await loadQuestionHistory();
+  refreshQuestionHistoryMatches();
+  const list = questionHistoryElement();
+  // Keep the textarea focused while a suggestion is clicked.
+  list?.addEventListener('pointerdown', event => event.preventDefault());
+  list?.addEventListener('click', event => {
+    const item = event.target instanceof Element ? event.target.closest('.question-history-item') : null;
+    if (item) fillQuestionHistory(Number(item.dataset.index));
+  });
+}
+
+async function rememberQuestionForHistory(text) {
+  questionHistoryEntries = await recordQuestion(text);
+  refreshQuestionHistoryMatches();
+}
+
 // ===== Event Listeners =====
 function setupEventListeners() {
   const layoutBtn = document.getElementById('layout-btn');
@@ -5814,6 +6061,17 @@ function setupEventListeners() {
   inputTextarea.addEventListener('input', () => {
     resetFillRetryState();
     resizeTextarea();
+    questionHistorySuppressed = false;
+    questionHistoryIndex = -1;
+    refreshQuestionHistoryMatches();
+  });
+  inputTextarea.addEventListener('focus', refreshQuestionHistoryMatches);
+  inputTextarea.addEventListener('blur', () => dismissQuestionHistory());
+  document.addEventListener('selectionchange', () => {
+    if (document.activeElement === inputTextarea
+        && inputTextarea.selectionStart !== inputTextarea.selectionEnd) {
+      dismissQuestionHistory();
+    }
   });
   // Re-measure after focus settles: the draft overhangs the panels only while
   // focus is inside the composer.
@@ -5830,11 +6088,16 @@ function setupEventListeners() {
   });
   inputTextarea.addEventListener('compositionstart', () => {
     isInputComposing = true;
+    dismissQuestionHistory();
   });
   inputTextarea.addEventListener('compositionend', () => {
     isInputComposing = false;
+    refreshQuestionHistoryMatches();
   });
   inputTextarea.addEventListener('keydown', (e) => {
+    if (handleQuestionHistoryKeydown(e, isInputComposing)) {
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
       if (isInputComposing || e.isComposing) {
         return;

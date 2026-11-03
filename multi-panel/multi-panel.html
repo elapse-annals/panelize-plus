@@ -148,7 +148,7 @@
                 <p id="ai-summary-verdict-text" class="ai-summary-verdict-text"></p>
               </div>
             </div>
-            <p id="ai-summary-overview" class="ai-summary-overview ai-summary-reveal"></p>
+            <div id="ai-summary-overview" class="ai-summary-overview ai-summary-reveal"></div>
             <section id="ai-summary-consensus-section" class="ai-summary-section ai-summary-reveal" hidden>
               <h4 class="ai-summary-subtitle ai-summary-subtitle-consensus">
                 <span class="material-symbols-outlined" aria-hidden="true">thumb_up</span>
@@ -194,8 +194,9 @@
         <div class="input-wrapper">
           <div id="image-preview-container" class="image-preview-container"></div>
           <div class="prompt-input-stack">
+            <div id="question-history" class="question-history" role="listbox" data-i18n-aria="questionHistoryLabel" aria-label="Recent questions" hidden></div>
             <div id="prompt-ghost" class="prompt-ghost" aria-hidden="true" hidden></div>
-            <textarea id="unified-input" placeholder="Enter your question to send to all AI providers..." rows="1"></textarea>
+            <textarea id="unified-input" placeholder="Enter your question to send to all AI providers..." rows="1" aria-autocomplete="list" aria-controls="question-history"></textarea>
           </div>
         </div>
       </div>

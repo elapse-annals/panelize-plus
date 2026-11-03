@@ -1,4 +1,4 @@
-# Panelize
+# Panelize（百家）
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> |
@@ -38,7 +38,7 @@
 
 ## 为什么选择 Panelize？
 
-Panelize 是一个免费、开源的 Chrome / Edge 扩展：一次输入，同时发给 ChatGPT、Claude、Gemini、DeepSeek、Kimi、豆包等 AI，并在同一个窗口里并排显示它们的回答。每个面板加载的都是官方网站，直接使用你已登录的账号，不需要 API Key，也不用额外订阅。
+Panelize（百家）是一个免费、开源的 Chrome / Edge 扩展：一次输入，同时发给 ChatGPT、Claude、Gemini、DeepSeek、Kimi、豆包等 AI，并在同一个窗口里并排显示它们的回答。每个面板加载的都是官方网站，直接使用你已登录的账号，不需要 API Key，也不用额外订阅。
 
 还在把同一个 Prompt 复制到多个 AI 标签页里逐个比较吗？
 
@@ -56,9 +56,9 @@ Panelize 是一个免费、开源的 Chrome / Edge 扩展：一次输入，同�
 
 在统一输入框中输入一次内容，就能同时发送到 ChatGPT、Claude、Gemini、Grok、Doubao、DeepSeek、Kimi、Qwen、Zhipu (China)、Z.ai (Global)、元宝、MiMo、Meta AI、阶跃 StepFun、Agnes、腾讯混元 Hy AI Studio、Perplexity、Copilot、文心、Google。
 
-### 系统级快捷发送（macOS）
+### Panelize Link 系统级快捷发送（macOS）
 
-可选安装 macOS 菜单栏客户端后，在任意应用里按 `Option + Space`（或 `Command + Shift + Space`）唤起浮动输入框；按 Enter 后，内容会通过现有 Send All 流程发送给当前所有 AI，输入框还提供内置提示词模式（默认“自动”）。详见 [macOS 客户端安装说明](desktop/macos/README.zh-CN.md)。
+可选安装 **Panelize Link** macOS 菜单栏客户端后，在任意应用里按 `Option + Space`（或 `Command + Shift + Space`）唤起浮动输入框；按 Enter 后，内容会通过现有 Send All 流程发送给当前 Panelize 窗口里的所有 AI。输入框提供内置提示词模式（默认“自动”），会预览所选模式将追加的说明，可用 `Tab` 补全 `/study` 等触发词，并在输入时提示最近 3 条提问。详见 [Panelize Link 安装说明](desktop/macos/README.zh-CN.md)。
 
 ### 灵活布局
 
@@ -75,6 +75,10 @@ Panelize 是一个免费、开源的 Chrome / Edge 扩展：一次输入，同�
 ### Prompt Library
 
 可保存常用提示词，并支持 `{topic}` 这类变量占位符，复用更高效。
+
+### 最近提问与总结缓存
+
+输入内容与最近发送的问题开头匹配时，输入框上方会显示最近 3 条提问，选中即可填入而不直接发送。相同问题的 AI 总结会在 3 天内复用，点“重新汇总”可强制刷新。
 
 ### 隐私优先
 
@@ -137,9 +141,9 @@ Perplexity、Copilot 和文心是可选平台，需要在设置中启用并授�
 
 </details>
 
-### macOS 全局快捷发送（可选）
+### Panelize Link 全局快捷发送（可选，macOS）
 
-需要 macOS 13+、Chrome 或 Edge 正在运行，以及 Panelize 2.62.0+。该功能默认关闭：安装客户端后，在“设置 → 全局快捷输入（macOS）”中开启。它复用现有的 Send All 流程，不会另起一套 AI 调用。安装、使用和排错见 [macOS 客户端文档](desktop/macos/README.zh-CN.md)。
+需要 macOS 13+、Chrome 或 Edge 正在运行，以及 Panelize 2.66.0+。该功能默认关闭：安装客户端后，在“设置 → 全局快捷输入（macOS）”中开启。它复用现有的 Send All 流程，不会另起一套 AI 调用。安装、使用和排错见 [Panelize Link 文档](desktop/macos/README.zh-CN.md)。
 
 ---
 

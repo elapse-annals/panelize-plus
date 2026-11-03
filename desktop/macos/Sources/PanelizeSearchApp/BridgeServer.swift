@@ -14,6 +14,7 @@ final class BridgeServer {
     private let stateQueue = DispatchQueue(label: "com.panelize.search.bridge-state")
     private var pending: [String: (BridgeSendUpdate) -> Void] = [:]
     private var extensionVersion = ""
+    private var browserBundleIdentifier: String?
     private var hostConnected = false
     private var extensionConnected = false
 
@@ -24,11 +25,18 @@ final class BridgeServer {
         stateQueue.sync { hostConnected && extensionConnected }
     }
 
+    /// The browser app that hosts the native bridge, as reported by the host's
+    /// handshake. Nil until a host connects.
+    var connectedBrowserBundleIdentifier: String? {
+        stateQueue.sync { browserBundleIdentifier }
+    }
+
     func start() throws {
-        socket.onPeerConnected = { [weak self] in
+        socket.onPeerConnected = { [weak self] browserBundleIdentifier in
             guard let self else { return }
             self.stateQueue.async {
                 self.hostConnected = true
+                self.browserBundleIdentifier = browserBundleIdentifier
                 self.emitStatus()
             }
         }
@@ -38,6 +46,7 @@ final class BridgeServer {
                 self.hostConnected = false
                 self.extensionConnected = false
                 self.extensionVersion = ""
+                self.browserBundleIdentifier = nil
                 let callbacks = Array(self.pending.values)
                 self.pending.removeAll()
                 return callbacks
@@ -174,7 +183,7 @@ private final class UnixSocketServer {
     private var shouldRun = false
 
     var onMessage: (([String: Any]) -> Void)?
-    var onPeerConnected: (() -> Void)?
+    var onPeerConnected: ((String?) -> Void)?
     var onPeerDisconnected: (() -> Void)?
 
     func start() throws {
@@ -324,8 +333,10 @@ private final class UnixSocketServer {
                             break
                         }
                         authenticated = true
+                        let browserBundleIdentifier = (message["browserBundleId"] as? String)
+                            .flatMap { $0.isEmpty ? nil : $0 }
                         DispatchQueue.main.async { [weak self] in
-                            self?.onPeerConnected?()
+                            self?.onPeerConnected?(browserBundleIdentifier)
                         }
                         continue
                     }

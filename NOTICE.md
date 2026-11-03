@@ -3,6 +3,7 @@
 Panelize Plus is a derivative of [Panelize](https://github.com/Manho/Panelize), distributed under the MIT License (see [LICENSE](LICENSE)).
 
 - Project name: Panelize Plus
+- Chinese name: 百家
 - Author: Ben <benhuang1024@gmail.com>
 - Upstream project: Panelize by Manho (https://github.com/Manho/Panelize)
 

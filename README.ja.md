@@ -1,4 +1,4 @@
-# Panelize
+# Panelize（百家）
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> |
@@ -38,7 +38,7 @@
 
 ## Panelize とは？
 
-Panelize は、1つのプロンプトを ChatGPT、Claude、Gemini、Grok、DeepSeek などの AI チャットに同時に送り、回答を1つのウィンドウで並べて表示する無料・オープンソースの Chrome / Edge 拡張機能です。各パネルは公式サイトをそのまま読み込み、普段のログインを使うため、API キーも追加のサブスクリプションも不要です。
+Panelize（百家）は、1つのプロンプトを ChatGPT、Claude、Gemini、Grok、DeepSeek などの AI チャットに同時に送り、回答を1つのウィンドウで並べて表示する無料・オープンソースの Chrome / Edge 拡張機能です。各パネルは公式サイトをそのまま読み込み、普段のログインを使うため、API キーも追加のサブスクリプションも不要です。
 
 同じプロンプトを複数の AI タブに貼り付けて比較する作業を、1つの画面にまとめる拡張機能です。
 
@@ -56,9 +56,9 @@ Panelize は、1つのプロンプトを ChatGPT、Claude、Gemini、Grok、Deep
 
 統一入力欄から ChatGPT / Claude / Gemini / Grok / Doubao / DeepSeek / Kimi / Qwen / Zhipu (China) / Z.ai (Global) / Yuanbao / MiMo / Meta AI / StepFun / Agnes / Hy AI Studio / Perplexity / Copilot / Wenxin / Google へ同時に送信できます。
 
-### グローバル入力（macOS）
+### Panelize Link グローバル入力（macOS）
 
-オプションの macOS メニューバークライアントを導入すると、どのアプリからでも `Option + Space`（または `Command + Shift + Space`）でフローティング入力欄を開けます。Enter を押すと、現在の Panelize ウィンドウ内のすべての AI に既存の Send All フローで送信されます。入力欄には組み込みのプロンプトモード選択もあり、初期値は「自動」です。詳しくは [macOS クライアントのセットアップ](desktop/macos/README.md) を参照してください。
+**Panelize Link** は任意の macOS メニューバークライアントです。どのアプリからでも `Option + Space`（または `Command + Shift + Space`）でフローティング入力欄を開け、Enter を押すと現在の Panelize ウィンドウ内のすべての AI に既存の Send All フローで送信されます。入力欄には組み込みのプロンプトモード選択（初期値は「自動」）があり、選択中のモードが追加する内容をプレビューし、`/study` などのトリガーワードを `Tab` で補完できます。詳しくは [Panelize Link のセットアップ](desktop/macos/README.md) を参照してください。
 
 ### 柔軟なレイアウト
 
@@ -137,9 +137,9 @@ Perplexity、Copilot、Wenxin は任意のプロバイダーです。設定で�
 
 </details>
 
-### macOS グローバルショートカット（任意）
+### Panelize Link グローバルショートカット（任意・macOS）
 
-macOS 13 以降、Chrome または Edge が起動していること、Panelize 2.62.0 以降が必要です。初期状態では無効です。クライアントをインストールした後、「設定 → グローバル入力（macOS）」で有効にしてください。既存の Send All フローを再利用し、別の AI 送信経路は追加しません。インストール、使い方、トラブルシューティングは [macOS クライアントのドキュメント](desktop/macos/README.md) を参照してください。
+macOS 13 以降、Chrome または Edge が起動していること、Panelize 2.66.0 以降が必要です。初期状態では無効です。クライアントをインストールした後、「設定 → グローバル入力（macOS）」で有効にしてください。既存の Send All フローを再利用し、別の AI 送信経路は追加しません。インストール、使い方、トラブルシューティングは [Panelize Link のドキュメント](desktop/macos/README.md) を参照してください。
 
 ---
 

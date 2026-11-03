@@ -1,5 +1,56 @@
 # Changelog
 
+## 2.74.0 - 2026-11-03
+- The macOS prompt-mode picker now shows a distinct SF Symbol for each mode on the picker and in its menu, with a sparkles fallback when a symbol is unavailable.
+- The extension composer's controls now share one ghost style: 28px height, 8px radius, 16px icons, consistent purple accents and lighter dividers, with Send All as the only solid primary action.
+
+## 2.73.0 - 2026-11-03
+- The macOS composer switches prompt modes with `Tab` and `Shift + Tab`, wrapping at either end; when a trigger completion is showing at the caret, `Tab` still accepts the completion first. The footer legend and the picker's tooltip mention the shortcut.
+
+## 2.72.0 - 2026-11-03
+- A summary reply that arrives as Markdown or plain prose now renders as light Markdown in the overview: headings, bullet and numbered lists, fenced code, bold, italic and inline code. Rendering uses text-only DOM APIs, so the drawer stays CSP-safe and no reply can inject markup.
+
+## 2.71.0 - 2026-11-03
+- The macOS client now brings the browser running the native bridge to the front once the send result confirms the AIs were ready and received the prompt, so the answers are in view. The browser app identifier comes from the native host's handshake instead of being guessed.
+
+## 2.70.0 - 2026-11-03
+- The composer remembers the last three successfully sent questions and offers matching ones above the input as you type a prefix; choosing one fills the input without sending it. Up/Down highlights a suggestion, Enter fills it, and clicking a row works too.
+- The macOS client keeps its own last three questions locally in `UserDefaults` and shows the same suggestions above its composer; the history never crosses the native bridge.
+- AI summaries are cached locally by question text for three days (at most three). A cached summary is labelled in the drawer, and **Summarize again** bypasses the cache and refreshes it.
+
+## 2.69.0 - 2026-11-03
+- The project gained the Chinese name **百家**: the Chinese extension name, settings titles and About text now show `Panelize Plus（百家）`.
+- The English, Chinese and Japanese READMEs, plus `NOTICE.md`, now record the Chinese name.
+
+## 2.68.0 - 2026-11-03
+- The macOS composer moved the prompt-mode picker to the left of the footer and restyled it as a borderless capsule that sizes to its label, with a single chevron.
+- The footer's boxed keycap hints were replaced by a lighter inline shortcut legend.
+- The send button now uses the system accent color with a fixed, centered arrow image and no default button title, so it renders as a clean circle instead of text over the icon.
+- The composer surface is a lighter near-white tint, and the mode picker carries a purple sparkle accent to match the reference palette.
+
+## 2.67.0 - 2026-11-03
+- The macOS composer gained a Spotlight-style soft shadow, a capsule prompt-mode picker, keycap shortcut hints, and a subtle fade/rise animation when it opens or closes.
+- The input area now grows from about three to five lines as you type and scrolls beyond that; clearing the prompt or sending collapses it back.
+- The send button shows a small progress spinner while sending, and connection status uses a shaped icon (checkmark, exclamation mark, and so on) instead of color alone.
+- Added standard editing shortcuts and an Edit menu: Select All, Copy, Paste, Cut, Undo and Redo (Shift-Command-Z).
+- The composer now follows Reduce Motion, Reduce Transparency and Increase Contrast; the mode preview is no longer italic.
+
+## 2.66.0 - 2026-11-03
+- The macOS client is now named **Panelize Link**: the app bundle, menu-bar quit item, settings text and docs use the new name. The bundle identifier and Native Messaging host name are unchanged, so an existing install keeps its settings.
+- Accepting a Tab trigger completion in the macOS composer now appends a space, matching the extension, so you can keep typing the question directly. An existing space after the trigger is not doubled.
+
+## 2.65.0 - 2026-11-03
+- When the macOS composer cannot reach the browser, clicking its orange status (or the menu-bar browser status) opens Panelize's settings page at **Enable global input bridge** and highlights the switch; the browser and extension ID come from the installed native-host manifest.
+
+## 2.64.0 - 2026-11-03
+- The macOS global composer now opens nearer the bottom of the display and dismisses when you click outside it, including the menu-bar icon.
+- In Auto prompt mode, typing a trigger prefix at the end of a line (`/st`) shows a ghost completion (`/study`) at the caret with a shaded `Tab · 学习` hint; Tab accepts it, using the same line-end and whole-word rules as the browser extension.
+- The composer gained a dynamic hairline border, a smaller send button with hover, pressed and disabled states, and a compact footer that shows only a green dot when connected.
+- Existing installs reset a previously saved prompt mode to Auto once on upgrade; choices made afterwards are kept.
+
+## 2.63.0 - 2026-11-02
+- The macOS global composer now previews the selected prompt mode's shipped instruction in a faint italic line under the input, matching the extension's prompt ghost. Auto shows the matched modes or its trigger legend, Default shows nothing, and the Enter/Shift+Enter/Esc shortcut hint stays visible.
+
 ## 2.62.0 - 2026-11-02
 - New installs now start in Auto prompt mode: a question without a trigger word gets no extra instruction, and an explicitly saved mode is preserved.
 - The macOS global composer gained a built-in prompt-mode picker (Auto by default). The choice is saved locally and sent with each prompt, so it applies only to that send without changing the extension's saved mode.

@@ -1,4 +1,4 @@
-# Panelize
+# Panelize (百家)
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> |
@@ -38,7 +38,7 @@
 
 ## Why Panelize?
 
-Panelize is a free, open-source Chrome and Edge extension that sends one prompt to ChatGPT, Claude, Gemini, Grok, DeepSeek and other AI chatbots at the same time and shows their answers side by side in one window. It loads each provider's real website with your existing login, so there are no API keys and no extra subscription.
+Panelize (百家) is a free, open-source Chrome and Edge extension that sends one prompt to ChatGPT, Claude, Gemini, Grok, DeepSeek and other AI chatbots at the same time and shows their answers side by side in one window. It loads each provider's real website with your existing login, so there are no API keys and no extra subscription.
 
 Ever found yourself copying the same prompt across multiple AI tabs just to compare answers? Panelize eliminates that workflow entirely.
 
@@ -56,9 +56,9 @@ Ever found yourself copying the same prompt across multiple AI tabs just to comp
 
 Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, DeepSeek, Kimi, Qwen, Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), and Google simultaneously. See which AI gives you the best answer—no tab switching required.
 
-### 🌍 Global Prompt Sender (macOS)
+### 🌍 Panelize Link (macOS)
 
-An optional macOS menu-bar client opens a floating composer from any app with `Option + Space` (or `Command + Shift + Space`). Press Enter and the prompt goes through the same Send All flow to every AI in your current Panelize window; the composer also offers the built-in prompt modes, defaulting to Auto. See [macOS client setup](desktop/macos/README.md).
+**Panelize Link** is an optional macOS menu-bar client. Open a floating composer from any app with `Option + Space` (or `Command + Shift + Space`); press Enter and the prompt goes through the same Send All flow to every AI in your current Panelize window. The composer offers the built-in prompt modes (defaulting to Auto), previews what the selected mode will append, completes trigger words such as `/study` with `Tab`, and suggests the last three sent questions as you type. See [Panelize Link setup](desktop/macos/README.md).
 
 ### 📐 Flexible Layouts
 
@@ -75,6 +75,10 @@ No API keys. Log into your AI accounts normally, and Panelize uses those session
 ### 📚 Prompt Library
 
 Save your best prompts and reuse them across all providers. Supports variables like `{topic}` for quick customization.
+
+### 🔁 Recent Questions and Summary Cache
+
+The composer suggests your last three sent questions above the input as you type a matching prefix; pick one to fill it in without sending. An AI summary of the same question is reused for up to three days, and **Summarize again** always refreshes it.
 
 ### 🔒 Privacy First
 
@@ -154,9 +158,9 @@ Perplexity, Copilot, and ERNIE (Wenxin) are optional providers. Enable them in S
 
 </details>
 
-### macOS Global Shortcut (Optional)
+### Panelize Link (Optional, macOS)
 
-Requires macOS 13+, Chrome or Edge running, and Panelize 2.62.0+. It is off by default: after installing the client, enable Settings → Global Input (macOS). It reuses the existing Send All flow rather than adding a separate AI pipeline. See [macOS client setup](desktop/macos/README.md) for installation, usage, and troubleshooting.
+Requires macOS 13+, Chrome or Edge running, and Panelize 2.66.0+. It is off by default: after installing the client, enable Settings → Global Input (macOS). It reuses the existing Send All flow rather than adding a separate AI pipeline. See [Panelize Link setup](desktop/macos/README.md) for installation, usage, and troubleshooting.
 
 ---
 

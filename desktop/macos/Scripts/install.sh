@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-APP_NAME="Panelize Search"
+APP_NAME="Panelize Link"
 BUILT_APP="$REPO_ROOT/dist/$APP_NAME.app"
 DEST_APP="$HOME/Applications/$APP_NAME.app"
 EXTENSION_ID="iokalaafkmjffolodkkgbbccmofbglii"
@@ -14,7 +14,7 @@ usage() {
   cat <<'EOF'
 Usage: install.sh [--extension-id <32-char-id>] [--browser chrome|edge]
 
-Builds Panelize Search.app, installs it under ~/Applications, and registers the
+Builds Panelize Link.app, installs it under ~/Applications, and registers the
 user-level Native Messaging host. No sudo is used.
 
 The default ID is the Chrome Web Store Panelize extension. Pass the ID shown on
@@ -83,7 +83,7 @@ HOST_PATH="$DEST_APP/Contents/MacOS/PanelizeSearchBridge"
 cat > "$MANIFEST" <<JSON
 {
   "name": "$HOST_NAME",
-  "description": "Panelize global prompt sender",
+  "description": "Panelize Link global prompt sender",
   "path": "$HOST_PATH",
   "type": "stdio",
   "allowed_origins": [

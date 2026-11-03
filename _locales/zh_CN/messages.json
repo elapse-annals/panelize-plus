@@ -1,6 +1,6 @@
 {
   "extensionName": {
-    "message": "Panelize Plus - 多个 AI 并排对比"
+    "message": "Panelize Plus（百家）- 多个 AI 并排对比"
   },
   "extensionDescription": {
     "message": "一次提问，同时问多个 AI 聊天助手，回答并排对比。直接使用你自己的账号，免费，无需 API Key。"
@@ -15,7 +15,7 @@
     "message": "打开 Panelize"
   },
   "settingsTitle": {
-    "message": "设置： Panelize"
+    "message": "设置： Panelize（百家）"
   },
   "settingsSubtitle": {
     "message": "自定义您的多 AI 比较体验"
@@ -102,7 +102,7 @@
     "message": "全局快捷输入（macOS）"
   },
   "descGlobalInput": {
-    "message": "在任意应用中输入提示词，发送给当前 Panelize 窗口里的所有 AI。需要安装 macOS 客户端。"
+    "message": "在任意应用中输入提示词，发送给当前 Panelize 窗口里的所有 AI。需要安装 Panelize Link 客户端。"
   },
   "labelGlobalSendBridge": {
     "message": "启用全局输入桥接"
@@ -276,7 +276,7 @@
     "message": "下载最新版本"
   },
   "descAbout1": {
-    "message": "Panelize 让您在一个窗口中并排比较多个 AI 聊天机器人。"
+    "message": "Panelize Plus（百家）让您在一个窗口中并排比较多个 AI 聊天机器人。"
   },
   "descAbout2": {
     "message": "采用隐私优先架构构建。所有数据本地存储。"
@@ -615,10 +615,10 @@
     "message": "加载中..."
   },
   "optionsPageTitle": {
-    "message": "Panelize Plus - 设置"
+    "message": "Panelize Plus（百家）- 设置"
   },
   "headerSettingsTitle": {
-    "message": "设置： Panelize"
+    "message": "设置： Panelize（百家）"
   },
   "headerSettingsSubtitle": {
     "message": "自定义您的多 AI 比较体验"
@@ -1613,6 +1613,9 @@
   "composerTriggerCompletionHint": {
     "message": "Tab · $1"
   },
+  "questionHistoryLabel": {
+    "message": "最近提问"
+  },
   "promptTriggersLabel": {
     "message": "触发词（自动模式）"
   },
@@ -1639,6 +1642,9 @@
   },
   "aiSummaryRerun": {
     "message": "重新汇总"
+  },
+  "aiSummaryCached": {
+    "message": "来自最近相同问题的缓存结果。点「重新汇总」可重新生成。"
   },
   "aiSummaryOpenSettings": {
     "message": "设置 AI 汇总"

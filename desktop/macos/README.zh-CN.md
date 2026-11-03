@@ -1,8 +1,8 @@
-# Panelize macOS 全局快捷发送
+# Panelize Link（macOS 全局快捷发送）
 
 这是一个可选的 macOS 菜单栏客户端：在任意应用里按一次快捷键，输入问题后直接通过 Panelize 的 **Send All** 发送给当前所有 AI，不需要先切换到浏览器。
 
-它复用扩展已有的发送流程和 AI 就绪门槛：已就绪的 AI 会收到消息，仍在加载的 AI 会被跳过，浮动窗会显示实际发送数量。客户端不搜索本地提示词或问答记录，也不保存问题与回答。
+它复用扩展已有的发送流程和 AI 就绪门槛：已就绪的 AI 会收到消息，仍在加载的 AI 会被跳过，浮动窗会显示实际发送数量。客户端在本机保留最近 3 条已发送的问题用于输入建议；不搜索本地提示词或问答记录，也不保存回答。
 
 ## 要求
 
@@ -26,14 +26,14 @@
 
 Edge 使用 `--browser edge`。脚本会：
 
-1. 构建 `Panelize Search.app` 并安装到 `~/Applications`；
+1. 构建 `Panelize Link.app` 并安装到 `~/Applications`；
 2. 写入当前用户的 Native Messaging host 配置，只允许指定扩展 ID；
 3. 打印后续步骤。安装不需要 `sudo`，也不会自动加入登录项。
 
 安装后重新加载 Panelize 扩展（或重启浏览器），再打开一次应用：
 
 ```bash
-open "$HOME/Applications/Panelize Search.app"
+open "$HOME/Applications/Panelize Link.app"
 ```
 
 在 Panelize 的设置中打开 **“全局快捷输入（macOS）”**，开启 **“启用全局输入桥接”**。该桥接默认关闭，开启前扩展不会启动应用，也不会维持原生心跳。开启后，浏览器重新连接时会按需在后台启动应用。可选：在“系统设置 > 通用 > 登录项”中把它加入登录启动。若从菜单栏主动退出应用，浏览器不会自动重新拉起它；下次需要手动打开一次。
@@ -41,11 +41,18 @@ open "$HOME/Applications/Panelize Search.app"
 ## 使用
 
 - `Option + Space`（默认）或菜单栏里的“打开快捷输入”唤出浮动窗。
+- 浮窗出现在当前屏幕靠下的位置，带柔和阴影。点击浮窗外部或菜单栏图标即可关闭，`Esc` 也可关闭。
 - 输入问题，按 `Enter` 发送给所有 AI。
-- 发送按钮旁可选择内置提示词模式，默认“自动”。选择保存在本机，只影响当次发送，不会修改扩展里保存的模式。“自动”仅在问题包含 `/study` 等触发词时追加对应模式；“默认”不追加任何内容。
-- `Shift + Enter` 换行；`Esc` 关闭。
+- 输入内容与最近发送的某条问题开头匹配时，输入框上方会显示最近 3 条提问。用 `↑` / `↓` 高亮，`Enter` 填入输入框但不发送，也可以直接点击；`Esc` 先关闭列表，再按一次才关闭浮窗。
+- 底部左侧的胶囊选择器可选择内置提示词模式，默认“自动”。选择保存在本机，只影响当次发送，不会修改扩展里保存的模式。“自动”仅在问题包含 `/study` 等触发词时追加对应模式；“默认”不追加任何内容。升级到 2.64.0 时会把此前保存的模式一次性重置为“自动”，之后的选择仍会保留。输入时按 `Tab` / `Shift + Tab` 可在模式间循环切换；光标处有触发词补全时，`Tab` 优先接受补全。
+- 自动模式下，在行尾输入触发词前缀（如 `/st`）时，光标处会显示剩余部分（`udy`）和带底纹的 `Tab · 学习` 提示，按 `Tab` 补全并追加一个空格。补全遵循扩展的行尾与整词边界规则，只覆盖内置触发词；扩展里自定义的触发词不会同步到客户端。
+- 输入框下方会用浅灰常规字预览当前模式将追加的内容：选择具体模式时显示内置指令，Auto 显示匹配的模式或触发词图例，“默认”不显示；底部用浅色行内提示 Enter / Shift + Enter / Tab / Esc。连接正常时底部只显示绿色对勾图标；未连接、发送中或出错时才显示短文案。未连接时，点击这段状态（或菜单栏里的浏览器状态）会打开扩展设置并定位、高亮“启用全局输入桥接”开关；浏览器和扩展 ID 取自安装时写入的本地桥清单。
+- 输入区会随内容从约 3 行增高到 5 行，超过后内部滚动；发送成功或清空后自动收回。发送过程中，发送按钮内显示小进度指示。
+- `Command + A / C / V / X / Z` 分别全选、复制、粘贴、剪切、撤销，`Shift + Command + Z` 重做；菜单栏的“编辑”菜单提供相同命令。
+- 浮窗会遵循 macOS 的“降低动态效果”“降低透明度”和“增强对比度”：降低透明度时使用不透明背景，增强对比度时加深边框与文字，状态同时用图标形状和颜色表达。
+- `Shift + Enter` 换行；`Esc` 先关闭已展开的建议列表，否则关闭浮窗。
 - 可在菜单栏图标中选择改用 `Command + Shift + Space`。
-- 发送成功后会显示“已发送至 N 个 AI”，并在约 1 秒后自动关闭；失败时保留输入内容并显示原因。
+- 发送成功后会显示“已发送至 N 个 AI”，并把运行本地桥的浏览器前置显示回答，约 1 秒后自动关闭浮窗；失败时保留输入内容并显示原因。
 
 若 Panelize 页面尚未打开，扩展会先打开它，等待 AI 面板就绪后再发送。浏览器未运行、扩展未重新加载或本地桥未安装时，浮动窗会显示“浏览器未连接”，不会把未发送显示成成功。
 
@@ -53,6 +60,9 @@ open "$HOME/Applications/Panelize Search.app"
 
 - 桌面应用与扩展只通过本机 Unix socket 通信；socket 目录权限为 `0700`，socket 与一次性 token 为 `0600`。
 - Native Messaging host 只接受安装时指定的扩展来源，不提供 shell、任意 URL 或文件访问接口。
+- 应用只监听发往其他应用的鼠标按下事件，用于点击外部关闭浮窗；不记录点击或键盘输入，鼠标监听不需要辅助功能权限。
+- 最近 3 条提问保存在本机 `UserDefaults`（`recentQuestions.v1`），不经过本地桥；清除应用偏好设置即可删除。
+- 预览文案编译在客户端内，原生应用不会收到提示词库内容。在扩展里编辑内置模式会改变实际发送内容，但不会同步到客户端预览。
 - 浏览器必须保持运行；退出浏览器后无法发送。
 - 本地构建使用 ad-hoc 签名，未做 Developer ID 签名与公证。自行从源码构建不会经过网络分发；若要公开分发，需要另行签名和公证。
 - 应用显示期间会暂时作为普通 macOS 应用取得键盘焦点，关闭后恢复为仅菜单栏应用。
@@ -63,7 +73,7 @@ open "$HOME/Applications/Panelize Search.app"
 
 1. 确认 Panelize 版本不低于 2.60.0，在扩展管理页重新加载，并在设置中开启“全局快捷输入（macOS）”。
 2. 确认安装时使用的扩展 ID 与 `chrome://extensions` 一致；解压安装每次路径变化可能导致 ID 变化。
-3. 检查 `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.panelize.global_sender.json` 是否存在，且 `path` 指向 `~/Applications/Panelize Search.app/Contents/MacOS/PanelizeSearchBridge`。
+3. 检查 `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.panelize.global_sender.json` 是否存在，且 `path` 指向 `~/Applications/Panelize Link.app/Contents/MacOS/PanelizeSearchBridge`。
 4. 完全退出并重新打开 Chrome，再打开一次应用。
 
 **快捷键没有反应或提示被占用**
@@ -82,11 +92,11 @@ swift test --package-path desktop/macos
 ## 卸载
 
 1. 从菜单栏退出应用。
-2. 删除 `~/Applications/Panelize Search.app`。
+2. 删除 `~/Applications/Panelize Link.app`。
 3. 删除 Native Messaging 配置：
    `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.panelize.global_sender.json`
    （Edge 对应 `Microsoft Edge/NativeMessagingHosts`。）
-4. 可选：删除 `~/Library/Application Support/Panelize Search/`（只包含本地桥的 socket 与 token）。
+4. 可选：删除 `~/Library/Application Support/Panelize Link/`（只包含本地桥的 socket 与 token）。
 
 ## 开发
 
@@ -95,4 +105,4 @@ swift test --package-path desktop/macos
 ./desktop/macos/Scripts/build-app.sh
 ```
 
-构建产物在 `dist/Panelize Search.app`，不会进入扩展发布包。扩展侧的协议测试在 `tests/global-send.test.js` 与 `tests/native-send.test.js`。
+构建产物在 `dist/Panelize Link.app`，不会进入扩展发布包。扩展侧的协议测试在 `tests/global-send.test.js` 与 `tests/native-send.test.js`。

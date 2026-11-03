@@ -248,6 +248,65 @@ test.describe('AI summary reading layout', () => {
   });
 });
 
+test('renders a Markdown fallback reply with headings, lists and code', async ({}, testInfo) => {
+  test.setTimeout(90000);
+  let extensionCopy;
+  let extension;
+  try {
+    extensionCopy = await createPatchedExtensionCopy(manifest => {
+      manifest.host_permissions.push(
+        'https://chat.deepseek.com/*',
+        'https://api.panelize-e2e.test/*'
+      );
+    });
+    extension = await launchExtension({
+      extensionPath: extensionCopy.extensionPath,
+      viewport: { width: 1440, height: 900 }
+    });
+    await extension.context.route('https://chatgpt.com/**', route => route.fulfill({
+      contentType: 'text/html',
+      body: renderChatgptFixture({ composer: 'current' })
+    }));
+    await extension.context.route('https://chat.deepseek.com/**', route => route.fulfill({
+      contentType: 'text/html', body: DEEPSEEK_FIXTURE
+    }));
+    await extension.context.route(`${API_BASE_URL}/chat/completions`, route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        choices: [{ message: { content: '## Comparison\n\n- **Speed**: `fast`\n- Memory use\n\n```\ncode **x**\n```' } }]
+      })
+    }));
+    await seedSummarySettings(extension);
+
+    const page = await openMultiPanel(extension, {
+      providers: ['chatgpt', 'deepseek'], layout: '1x2'
+    });
+    await page.locator('#unified-input').fill(QUESTION);
+    await page.locator('#send-all-btn').click();
+    await expect(page.locator('.adopt-answer-btn').first()).toBeEnabled();
+    await appendAnswer(page, 'https://chatgpt.com/', {
+      attribute: 'data-message-author-role', value: 'assistant'
+    }, 'ChatGPT answer text');
+    await appendAnswer(page, 'https://chat.deepseek.com/', {
+      className: 'ds-markdown'
+    }, 'DeepSeek answer text');
+
+    await page.locator('#ai-summary-btn').click();
+    const overview = page.locator('#ai-summary-overview');
+    await expect(overview.locator('h4')).toHaveText('Comparison');
+    await expect(overview.locator('ul li')).toHaveCount(2);
+    await expect(overview.locator('ul li strong')).toHaveText('Speed');
+    await expect(overview.locator('ul li code')).toHaveText('fast');
+    await expect(overview.locator('pre code')).toHaveText('code **x**');
+    await expect(overview.locator('pre code strong')).toHaveCount(0);
+    await overview.screenshot({ path: testInfo.outputPath('ai-summary-markdown.png') });
+  } finally {
+    await extension?.close();
+    await extensionCopy?.cleanup();
+  }
+});
+
 test('source chips locate quoted passages and older summary paragraphs in provider frames', async ({}, testInfo) => {
   test.setTimeout(60000);
   let extensionCopy;

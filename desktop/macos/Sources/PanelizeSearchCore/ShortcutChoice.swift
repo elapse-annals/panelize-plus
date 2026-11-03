@@ -1,10 +1,14 @@
 import CoreGraphics
 import Foundation
 
+/// The composer's bottom edge sits this far above the visible frame's bottom,
+/// keeping it near the Dock without covering it.
+public let composerBottomFraction: CGFloat = 0.12
+
 public func composerOrigin(visibleFrame: CGRect, panelSize: CGSize) -> CGPoint {
     CGPoint(
         x: visibleFrame.midX - panelSize.width / 2,
-        y: visibleFrame.minY + visibleFrame.height * 0.28
+        y: visibleFrame.minY + visibleFrame.height * composerBottomFraction
     )
 }
 

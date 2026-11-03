@@ -97,6 +97,32 @@ header p {
   border-bottom: none;
 }
 
+.setting-item.setting-highlight {
+  animation: setting-highlight 2.4s ease-out;
+}
+
+@keyframes setting-highlight {
+  0%, 45% {
+    background-color: rgba(74, 144, 226, 0.16);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+[data-theme="dark"] .setting-item.setting-highlight {
+  animation-name: setting-highlight-dark;
+}
+
+@keyframes setting-highlight-dark {
+  0%, 45% {
+    background-color: rgba(86, 156, 255, 0.24);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 .setting-info {
   flex: 1;
 }

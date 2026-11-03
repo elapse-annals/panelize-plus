@@ -15,6 +15,18 @@ public enum PromptModeChoice: String, CaseIterable {
 
     public static let defaultsKey = "promptMode"
     public static let fallback: PromptModeChoice = .auto
+    public static let fallbackSymbolName = "sparkles"
+    public static let autoDefaultMigrationKey = "promptModeAutoDefaultApplied"
+
+    /// Existing installs move to Auto once, so the picker starts where the
+    /// product default says it should. A mode chosen afterwards still wins.
+    public static func applyAutoDefaultMigrationIfNeeded(from defaults: UserDefaults = .standard) {
+        guard !defaults.bool(forKey: autoDefaultMigrationKey) else { return }
+        defaults.set(true, forKey: autoDefaultMigrationKey)
+        if defaults.string(forKey: defaultsKey) != nil {
+            PromptModeChoice.auto.save(to: defaults)
+        }
+    }
 
     public var title: String {
         switch self {
@@ -32,6 +44,27 @@ public enum PromptModeChoice: String, CaseIterable {
             return "头脑风暴"
         case .deep:
             return "深度思考"
+        }
+    }
+
+    /// The SF Symbol that stands for this mode's meaning. Auto keeps the
+    /// picker's original sparkles so the default choice stays recognizable.
+    public var symbolName: String {
+        switch self {
+        case .defaultMode:
+            return "minus.circle"
+        case .auto:
+            return Self.fallbackSymbolName
+        case .concise:
+            return "list.bullet"
+        case .learning:
+            return "graduationcap"
+        case .compete:
+            return "exclamationmark.bubble"
+        case .brainstorm:
+            return "lightbulb"
+        case .deep:
+            return "brain.head.profile"
         }
     }
 
@@ -64,6 +97,17 @@ public enum PromptModeChoice: String, CaseIterable {
 
     public func save(to defaults: UserDefaults = .standard) {
         defaults.set(rawValue, forKey: Self.defaultsKey)
+    }
+
+    /// The next mode in picker order. Cycling wraps at either end, so Tab and
+    /// Shift+Tab reach every mode without opening the menu.
+    public func cycled(forward: Bool = true) -> PromptModeChoice {
+        let all = Self.allCases
+        guard let index = all.firstIndex(of: self) else {
+            return Self.fallback
+        }
+        let offset = forward ? 1 : all.count - 1
+        return all[(index + offset) % all.count]
     }
 
     /// Only a whitelisted wire value is accepted; missing or invalid values

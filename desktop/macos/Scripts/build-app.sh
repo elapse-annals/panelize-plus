@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DESKTOP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$DESKTOP_DIR/../.." && pwd)"
-APP_NAME="Panelize Search"
+APP_NAME="Panelize Link"
 APP_PATH="$REPO_ROOT/dist/$APP_NAME.app"
 VERSION="$(node -p "require('$REPO_ROOT/manifest.json').version")"
 

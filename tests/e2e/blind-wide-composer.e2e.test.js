@@ -428,8 +428,9 @@ test.describe('Blind mode, wide content and composer overhang', () => {
       const input = page.locator('#unified-input');
       await expect(input).toHaveAttribute('rows', '2');
       const barHeight = await page.locator('#input-bar').evaluate(element => element.getBoundingClientRect().height);
-      // Measured on the pre-change 1280 × 800 fixture: bar 84px, textarea 32px.
-      expect(Math.abs(barHeight - 84)).toBeLessThanOrEqual(2);
+      // Measured on the 1280 × 800 fixture: bar 75px (28px control row plus
+      // 8px bottom padding), textarea 47px.
+      expect(Math.abs(barHeight - 75)).toBeLessThanOrEqual(2);
       expect(await input.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(45);
       expect(await input.evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThan(1150);
       await page.screenshot({ path: testInfo.outputPath('composer-two-lines.png') });

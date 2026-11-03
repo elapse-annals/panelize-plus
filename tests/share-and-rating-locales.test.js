@@ -158,6 +158,8 @@ const FEATURE_KEYS = [
   'aiSummaryTitle',
   'aiSummaryCopy',
   'aiSummaryRerun',
+  'aiSummaryCached',
+  'questionHistoryLabel',
   'aiSummaryOpenSettings',
   'aiSummaryDisagreements',
   'aiSummaryCollecting',

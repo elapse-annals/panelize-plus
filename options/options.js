@@ -261,6 +261,21 @@ async function init() {
   setupProviderAccessNotice();
   setupShortcutHelpers();
   refreshAutoSizedSelects();
+  focusHashTarget();
+  window.addEventListener('hashchange', focusHashTarget);
+}
+
+// The macOS client opens this page with a fragment so the user lands on the
+// switch that reconnects the global input bridge instead of the page top.
+function focusHashTarget() {
+  const id = location.hash.slice(1);
+  if (!id) return;
+  const element = document.getElementById(id);
+  const row = element?.closest('.setting-item') || element;
+  if (!row) return;
+  row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  row.classList.add('setting-highlight');
+  setTimeout(() => row.classList.remove('setting-highlight'), 2400);
 }
 
 // T051: Load and display current settings

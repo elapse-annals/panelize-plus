@@ -16,7 +16,7 @@ const REQUEST_TIMEOUT_MS = 45 * 1000;
 const MAX_REMEMBERED_REQUESTS = 32;
 
 /**
- * Owns the native port that a Panelize Search desktop app talks to. Chrome
+ * Owns the native port that a Panelize Link desktop app talks to. Chrome
  * starts the native host when the extension connects; the host's heartbeat
  * keeps this worker responsive, and an alarm reconnects after a host crash.
  *

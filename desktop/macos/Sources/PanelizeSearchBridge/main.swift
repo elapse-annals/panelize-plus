@@ -149,7 +149,10 @@ private final class NativeBridgeHost {
 
         do {
             try writeAll(
-                try NativeMessagingCodec.encode(BridgeMessages.tokenHandshake(token)),
+                try NativeMessagingCodec.encode(BridgeMessages.tokenHandshake(
+                    token,
+                    browserBundleIdentifier: browserBundleIdentifier()
+                )),
                 to: descriptor
             )
             socketWriteLock.lock()
@@ -227,6 +230,20 @@ private final class NativeBridgeHost {
         outputLock.lock()
         defer { outputLock.unlock() }
         FileHandle.standardOutput.write(frame)
+    }
+
+    /// The browser launches this host as its child, so the parent process is
+    /// the browser app whose window the client should bring forward. A helper
+    /// bundle identifier is trimmed back to the browser's own identifier.
+    private func browserBundleIdentifier() -> String? {
+        guard let identifier = NSRunningApplication(processIdentifier: getppid())?.bundleIdentifier,
+              !identifier.isEmpty else {
+            return nil
+        }
+        if let helperRange = identifier.range(of: ".helper") {
+            return String(identifier[..<helperRange.lowerBound])
+        }
+        return identifier
     }
 
     private func launchDesktopApp() {

@@ -84,6 +84,7 @@ final class BridgeProtocolTests: XCTestCase {
     }
 
     func testPromptModeDefaultsAndPersistence() throws {
+        XCTAssertEqual(PromptModeChoice.fallback, .auto)
         let suiteName = "PanelizeSearchTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -93,6 +94,20 @@ final class BridgeProtocolTests: XCTestCase {
         XCTAssertEqual(PromptModeChoice.load(from: defaults), .concise)
         defaults.set("unknown", forKey: PromptModeChoice.defaultsKey)
         XCTAssertEqual(PromptModeChoice.load(from: defaults), .auto)
+    }
+
+    func testAutoDefaultMigrationResetsAnExistingChoiceOnce() throws {
+        let suiteName = "PanelizeSearchTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        PromptModeChoice.compete.save(to: defaults)
+        PromptModeChoice.applyAutoDefaultMigrationIfNeeded(from: defaults)
+        XCTAssertEqual(PromptModeChoice.load(from: defaults), .auto)
+
+        PromptModeChoice.deep.save(to: defaults)
+        PromptModeChoice.applyAutoDefaultMigrationIfNeeded(from: defaults)
+        XCTAssertEqual(PromptModeChoice.load(from: defaults), .deep)
     }
 
     func testPromptModeWireValuesAndMessage() {
@@ -109,6 +124,21 @@ final class BridgeProtocolTests: XCTestCase {
         XCTAssertNil(withoutMode["promptMode"])
         let withMode = BridgeMessages.sendPrompt(requestId: "r1", text: "Hello", promptMode: .auto)
         XCTAssertEqual(withMode["promptMode"] as? String, "auto")
+    }
+
+    func testTokenHandshakeCarriesTheBrowserBundleIdentifier() {
+        let withBrowser = BridgeMessages.tokenHandshake(
+            "token",
+            browserBundleIdentifier: "com.google.Chrome"
+        )
+        XCTAssertEqual(withBrowser["type"] as? String, "bridgeHello")
+        XCTAssertEqual(withBrowser["browserBundleId"] as? String, "com.google.Chrome")
+
+        let withoutBrowser = BridgeMessages.tokenHandshake("token")
+        XCTAssertNil(withoutBrowser["browserBundleId"])
+
+        let emptyBrowser = BridgeMessages.tokenHandshake("token", browserBundleIdentifier: "")
+        XCTAssertNil(emptyBrowser["browserBundleId"])
     }
 
     func testShortcutDefaultsAndPersistence() throws {
