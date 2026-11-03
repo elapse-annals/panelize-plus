@@ -32,17 +32,17 @@ jobs:
       RELEASE_PR_NUMBER: ${{ inputs.pull_request }}
 
     steps:
-      - name: Require main workflow ref
+      - name: Require master workflow ref
         run: |
-          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "Release Publish must be dispatched from main"
+          if [[ "$GITHUB_REF" != "refs/heads/master" ]]; then
+            echo "Release Publish must be dispatched from master"
             exit 1
           fi
 
-      - name: Checkout main
+      - name: Checkout master
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: master
           fetch-depth: 0
 
       - name: Set up Node
@@ -105,8 +105,8 @@ jobs:
 
       - name: Revalidate release target
         run: |
-          git fetch --quiet origin main
-          git merge-base --is-ancestor "$RELEASE_SHA" origin/main
+          git fetch --quiet origin master
+          git merge-base --is-ancestor "$RELEASE_SHA" origin/master
 
           TAG="v${RELEASE_VERSION}"
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then

@@ -23,7 +23,7 @@ const versionState = {
 function createPullRequest(overrides = {}) {
   return {
     head: { ref: 'release/1.2.6', sha: 'head-sha' },
-    base: { ref: 'main' },
+    base: { ref: 'master' },
     merged_at: '2026-07-17T00:00:00Z',
     merge_commit_sha: 'merge-sha',
     ...overrides
@@ -56,7 +56,7 @@ describe('release gate', () => {
       .toThrow(/missing/);
   });
 
-  it('requires a merged release PR targeting main', () => {
+  it('requires a merged release PR targeting master', () => {
     expect(assertMergedReleasePullRequest(createPullRequest(), '1.2.6')).toBe('merge-sha');
     expect(() => assertMergedReleasePullRequest(
       createPullRequest({ merged_at: null }),
@@ -69,13 +69,13 @@ describe('release gate', () => {
     expect(() => assertMergedReleasePullRequest(
       createPullRequest({ base: { ref: 'develop' } }),
       '1.2.6'
-    )).toThrow(/base must be main/);
+    )).toThrow(/base must be master/);
   });
 
-  it('requires the release PR merge to remain in main history', () => {
+  it('requires the release PR merge to remain in master history', () => {
     expect(() => assertReleaseCommitIsInMainHistory('merge-sha', 'newer-sha', true)).not.toThrow();
     expect(() => assertReleaseCommitIsInMainHistory('merge-sha', 'newer-sha', false))
-      .toThrow(/not in main history/);
+      .toThrow(/not in master history/);
   });
 
   it('rejects existing release targets', () => {

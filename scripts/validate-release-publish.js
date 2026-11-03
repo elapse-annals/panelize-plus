@@ -60,7 +60,7 @@ function assertMetadataMatchesPullRequest(repoRoot, pullNumber, expectedHeadSha)
     { cwd: repoRoot, stdio: 'ignore' }
   );
   if (comparison.status !== 0) {
-    throw new Error('Release metadata on main does not match the merged release PR');
+    throw new Error('Release metadata on master does not match the merged release PR');
   }
 }
 

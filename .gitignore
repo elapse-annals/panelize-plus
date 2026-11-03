@@ -64,6 +64,7 @@ web-ext-artifacts/
 # Documentation (local reference only)
 docs/
 research_notes/
+slides/
 
 # Auto Claude data directory
 .auto-claude/

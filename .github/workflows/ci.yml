@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   ci:
@@ -27,7 +27,7 @@ jobs:
           GITHUB_BASE_REF: ${{ github.base_ref }}
           GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
-          git fetch --quiet origin main
+          git fetch --quiet origin master
           node scripts/check-release-pr.js
 
       - name: Unit tests

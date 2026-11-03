@@ -68,7 +68,7 @@ export function resolveCliOptions(argv = process.argv.slice(2), env = process.en
   return {
     version: getArgValue(argv, '--version') || env.RELEASE_VERSION || '',
     changelog: getArgValue(argv, '--changelog') || env.RELEASE_CHANGELOG || '',
-    baseRef: getArgValue(argv, '--base-ref') || env.RELEASE_BASE_REF || 'main',
+    baseRef: getArgValue(argv, '--base-ref') || env.RELEASE_BASE_REF || 'master',
     dryRun: argv.includes('--dry-run') || env.RELEASE_DRY_RUN === '1'
   };
 }

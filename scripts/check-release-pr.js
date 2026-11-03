@@ -16,8 +16,8 @@ async function main() {
   const headRef = process.env.GITHUB_HEAD_REF || '';
   const baseRef = process.env.GITHUB_BASE_REF || '';
 
-  if (baseRef !== 'main') {
-    throw new Error(`Release PR base must be main. Found "${baseRef}"`);
+  if (baseRef !== 'master') {
+    throw new Error(`Release PR base must be master. Found "${baseRef}"`);
   }
 
   const version = getReleaseVersionFromBranch(headRef);
@@ -37,7 +37,7 @@ async function main() {
     version
   );
 
-  console.log(`[release-pr] Validated ${headRef} -> main`);
+  console.log(`[release-pr] Validated ${headRef} -> master`);
 }
 
 main().catch(error => {

@@ -24,13 +24,13 @@ jobs:
     env:
       RELEASE_VERSION: ${{ inputs.version }}
       RELEASE_CHANGELOG: ${{ inputs.changelog }}
-      RELEASE_BASE_REF: main
+      RELEASE_BASE_REF: master
 
     steps:
-      - name: Checkout main
+      - name: Checkout master
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: master
           fetch-depth: 0
 
       - name: Set up Node
@@ -87,5 +87,5 @@ jobs:
             echo "## Release branch ready"
             echo
             echo "Open and merge the release PR before publishing:"
-            echo "https://github.com/${GITHUB_REPOSITORY}/compare/main...release/${RELEASE_VERSION}?expand=1"
+            echo "https://github.com/${GITHUB_REPOSITORY}/compare/master...release/${RELEASE_VERSION}?expand=1"
           } >> "$GITHUB_STEP_SUMMARY"

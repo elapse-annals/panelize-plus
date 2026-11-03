@@ -83,8 +83,8 @@ export function assertMergedReleasePullRequest(pullRequest, targetVersion) {
   if (pullRequest?.head?.ref !== expectedHead) {
     throw new Error(`Release PR head must be ${expectedHead}`);
   }
-  if (pullRequest?.base?.ref !== 'main') {
-    throw new Error('Release PR base must be main');
+  if (pullRequest?.base?.ref !== 'master') {
+    throw new Error('Release PR base must be master');
   }
   if (!pullRequest.merged_at) {
     throw new Error('Release PR must be merged before publishing');
@@ -97,16 +97,16 @@ export function assertMergedReleasePullRequest(pullRequest, targetVersion) {
 }
 
 /**
- * Require the merged release PR commit to remain in the current main history.
+ * Require the merged release PR commit to remain in the current master history.
  *
  * @param {string} mergeCommitSha Release PR merge commit.
- * @param {string} mainCommitSha Current main commit.
- * @param {boolean} isAncestor Whether the release merge commit is an ancestor of main.
+ * @param {string} mainCommitSha Current master commit.
+ * @param {boolean} isAncestor Whether the release merge commit is an ancestor of master.
  */
 export function assertReleaseCommitIsInMainHistory(mergeCommitSha, mainCommitSha, isAncestor) {
   if (!isAncestor) {
     throw new Error(
-      `Release PR merge commit ${mergeCommitSha} is not in main history at ${mainCommitSha}`
+      `Release PR merge commit ${mergeCommitSha} is not in master history at ${mainCommitSha}`
     );
   }
 }
