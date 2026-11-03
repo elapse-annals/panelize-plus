@@ -54,7 +54,7 @@ Ever found yourself copying the same prompt across multiple AI tabs just to comp
 
 ### 🎯 Ask Once, Compare All
 
-Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, DeepSeek, Kimi, Qwen, Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), and Google simultaneously. See which AI gives you the best answer—no tab switching required.
+Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, DeepSeek, Kimi, Qwen, Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), and Google simultaneously. See which AI gives you the best answer—no tab switching required. The composer also accepts images and documents (PDF, Office, text and code files) and sends them to providers that support them.
 
 ### 🌍 Panelize Link (macOS)
 
@@ -62,7 +62,7 @@ Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, De
 
 ### 📐 Flexible Layouts
 
-Choose from 49 different layouts to fit your workflow, with capacity for up to 30 panels. Use 1×2 for a quick comparison, or 1×30 and 2×15 for larger sets. The number of panels you can open depends on the enabled providers.
+Choose from 49 different layouts to fit your workflow, with capacity for up to 30 panels. Use 1×2 for a quick comparison, or 1×30 and 2×15 for larger sets. The number of panels you can open depends on the enabled providers. Focus a single panel to fill the window, switch to a popup window that reopens at its remembered size and position, or turn on wide mode to give each panel 1.5× the width with horizontal scrolling.
 
 <p align="center">
   <img src="assets/screenshots/select-layout.png" alt="Layout Selection" width="600">
@@ -76,14 +76,30 @@ No API keys. Log into your AI accounts normally, and Panelize uses those session
 
 Save your best prompts and reuse them across all providers. Supports variables like `{topic}` for quick customization.
 
+### 🎛️ Prompt Modes
+
+Pick a mode in the composer to append a short instruction to what the AIs receive. **Auto** is the default: typing a trigger word such as `/study` (Learning), `/brief` (Concise), `/challenge` (Challenge), `/brainstorm` (Brainstorm) or `/think` (Deep thinking) applies that mode to this send only, with a ghost preview and `Tab` completion. Modes are ordinary Prompt Library entries, so you can edit their text, change their trigger words, delete them or add your own. **Default** adds nothing.
+
+### 🧠 AI Summary
+
+Merge the answers to the current question into one overview: a verdict, the points the AIs agree on, unique insights, and disagreements shown side by side. Every point names its sources, and clicking a source chip jumps to the quoted passage in that panel. It runs on demand or automatically once 80% of the answers are done, and needs an OpenAI-compatible endpoint (base URL, model, API key) configured in Settings; the AI panels themselves still need no API key.
+
+### 📊 Answer Stats and Blind Mode
+
+**Answer stats** times each answer from send to first text and to completion, tracks which answers you adopt, scores providers, filters by task category and names the best model per category; the three fastest answers wear gold, silver and bronze crowns on their top-bar chips. **Blind mode** hides AI names, evens out page styling and shuffles panel order, so you can judge answers without brand bias.
+
+### 🖼️ Share a Snapshot
+
+Turn the comparison into a shareable image—the current view or every panel—and copy or download it. The snapshot is captured and composed locally and stays on your device.
+
 ### 🔁 Recent Questions and Summary Cache
 
 The composer suggests your last three sent questions above the input as you type a matching prefix; pick one to fill it in without sending. An AI summary of the same question is reused for up to three days, and **Summarize again** always refreshes it.
 
 ### 🔒 Privacy First
 
-- One-click privacy mode across supported providers
-- All data stays in your browser—nothing leaves your machine
+- One-click temporary chat (privacy mode) across supported providers
+- Settings, history and snapshots stay in your browser—only what you send goes to the AI sites you use
 - No tracking, no analytics, no data collection
 - Open source—review the code yourself
 
@@ -181,11 +197,21 @@ That's it. No accounts to create, no API keys to configure.
 |--------|----------|
 | Open Panelize | `Cmd/Ctrl + Shift + E` |
 | Open Prompt Library | `Cmd/Ctrl + Shift + L` |
+| Send to all AIs | `Enter` or `Cmd/Ctrl + Enter` |
+| New line | `Shift + Enter` |
+| Fill inputs without sending | `Cmd/Ctrl + Shift + Enter` |
+| New conversation in all panels | `Cmd/Ctrl + Alt + N` |
+| Focus the composer | `Cmd/Ctrl + Alt + K` |
+| Fast / Balanced / Deep tier | `Cmd/Ctrl + Alt + 1 / 2 / 3` |
 | Toggle wide mode | `Cmd/Ctrl + Alt + W` |
+| Toggle blind mode | `Cmd/Ctrl + Alt + X` |
+| Answer stats / Answer log | `Cmd/Ctrl + Alt + S` / `Cmd/Ctrl + Alt + R` |
+| Share a snapshot | `Cmd/Ctrl + Alt + P` |
+| Jump to panel 1–9 | `Ctrl + Shift + 1 – 9` |
 
-Customize shortcuts at `chrome://extensions/shortcuts`
+The keyboard button in the bottom bar shows the actual bindings and lets you change or clear the in-page shortcuts; it also works inside AI panels. Browser-level shortcuts can be customized at `chrome://extensions/shortcuts`. On macOS, `Alt` is `Option`.
 
-Customize or clear the wide mode shortcut with the keyboard button in the bottom bar. It also works inside AI panels. On macOS, `Alt` is `Option`.
+The bottom bar can switch between manual and popularity-first ordering; popularity-first ranks AIs by this device's answer-stats score and otherwise keeps the manual order. Tier buttons switch all open AIs at once, while Default keeps each site's own setting. Use the settings button beside the tiers to see the actual modes and per-panel results, and retry any panel that failed. See the [provider tier table](PROVIDER_MODES.md) for each provider's modes, defaults and account limits.
 
 ---
 
