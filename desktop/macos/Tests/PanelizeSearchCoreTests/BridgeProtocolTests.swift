@@ -147,6 +147,8 @@ final class BridgeProtocolTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         XCTAssertEqual(ShortcutChoice.load(from: defaults), .optionSpace)
+        ShortcutChoice.controlSpace.save(to: defaults)
+        XCTAssertEqual(ShortcutChoice.load(from: defaults), .controlSpace)
         ShortcutChoice.commandShiftSpace.save(to: defaults)
         XCTAssertEqual(ShortcutChoice.load(from: defaults), .commandShiftSpace)
     }

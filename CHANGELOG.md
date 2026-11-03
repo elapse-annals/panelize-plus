@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.75.0 - 2026-11-03
+- Panelize Link adds `Control + Space` as a global-shortcut option; `Option + Space` remains the default, and all three shortcuts are selectable from the menu-bar icon.
+
 ## 2.74.0 - 2026-11-03
 - The macOS prompt-mode picker now shows a distinct SF Symbol for each mode on the picker and in its menu, with a sparkles fallback when a symbol is unavailable.
 - The extension composer's controls now share one ghost style: 28px height, 8px radius, 16px icons, consistent purple accents and lighter dividers, with Send All as the only solid primary action.

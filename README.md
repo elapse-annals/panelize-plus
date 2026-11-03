@@ -58,7 +58,7 @@ Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, De
 
 ### 🌍 Panelize Link (macOS)
 
-**Panelize Link** is an optional macOS menu-bar client. Open a floating composer from any app with `Option + Space` (or `Command + Shift + Space`); press Enter and the prompt goes through the same Send All flow to every AI in your current Panelize window. The composer offers the built-in prompt modes (defaulting to Auto), previews what the selected mode will append, completes trigger words such as `/study` with `Tab`, and suggests the last three sent questions as you type. See [Panelize Link setup](desktop/macos/README.md).
+**Panelize Link** is an optional macOS menu-bar client. Open a floating composer from any app with `Option + Space` (default; `Control + Space` or `Command + Shift + Space` can be chosen instead); press Enter and the prompt goes through the same Send All flow to every AI in your current Panelize window. The composer offers the built-in prompt modes (defaulting to Auto), previews what the selected mode will append, completes trigger words such as `/study` with `Tab`, and suggests the last three sent questions as you type. See [Panelize Link setup](desktop/macos/README.md).
 
 ### 📐 Flexible Layouts
 

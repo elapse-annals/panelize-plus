@@ -58,7 +58,7 @@ Panelize（百家）は、1つのプロンプトを ChatGPT、Claude、Gemini、
 
 ### Panelize Link グローバル入力（macOS）
 
-**Panelize Link** は任意の macOS メニューバークライアントです。どのアプリからでも `Option + Space`（または `Command + Shift + Space`）でフローティング入力欄を開け、Enter を押すと現在の Panelize ウィンドウ内のすべての AI に既存の Send All フローで送信されます。入力欄には組み込みのプロンプトモード選択（初期値は「自動」）があり、選択中のモードが追加する内容をプレビューし、`/study` などのトリガーワードを `Tab` で補完できます。詳しくは [Panelize Link のセットアップ](desktop/macos/README.md) を参照してください。
+**Panelize Link** は任意の macOS メニューバークライアントです。どのアプリからでも `Option + Space`（デフォルト。`Control + Space` または `Command + Shift + Space` も選択可）でフローティング入力欄を開け、Enter を押すと現在の Panelize ウィンドウ内のすべての AI に既存の Send All フローで送信されます。入力欄には組み込みのプロンプトモード選択（初期値は「自動」）があり、選択中のモードが追加する内容をプレビューし、`/study` などのトリガーワードを `Tab` で補完できます。詳しくは [Panelize Link のセットアップ](desktop/macos/README.md) を参照してください。
 
 ### 柔軟なレイアウト
 

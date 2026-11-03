@@ -58,7 +58,7 @@ Panelize（百家）是一个免费、开源的 Chrome / Edge 扩展：一次输
 
 ### Panelize Link 系统级快捷发送（macOS）
 
-可选安装 **Panelize Link** macOS 菜单栏客户端后，在任意应用里按 `Option + Space`（或 `Command + Shift + Space`）唤起浮动输入框；按 Enter 后，内容会通过现有 Send All 流程发送给当前 Panelize 窗口里的所有 AI。输入框提供内置提示词模式（默认“自动”），会预览所选模式将追加的说明，可用 `Tab` 补全 `/study` 等触发词，并在输入时提示最近 3 条提问。详见 [Panelize Link 安装说明](desktop/macos/README.zh-CN.md)。
+可选安装 **Panelize Link** macOS 菜单栏客户端后，在任意应用里按 `Option + Space`（默认，也可改为 `Control + Space` 或 `Command + Shift + Space`）唤起浮动输入框；按 Enter 后，内容会通过现有 Send All 流程发送给当前 Panelize 窗口里的所有 AI。输入框提供内置提示词模式（默认“自动”），会预览所选模式将追加的说明，可用 `Tab` 补全 `/study` 等触发词，并在输入时提示最近 3 条提问。详见 [Panelize Link 安装说明](desktop/macos/README.zh-CN.md)。
 
 ### 灵活布局
 

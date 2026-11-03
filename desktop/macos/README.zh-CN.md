@@ -78,7 +78,7 @@ open "$HOME/Applications/Panelize Link.app"
 
 **快捷键没有反应或提示被占用**
 
-在菜单栏图标中选择另一个快捷键。`Option + Space` 可能被其他输入法或快捷工具占用。
+在菜单栏图标中选择另一个快捷键（`Control + Space` 或 `Command + Shift + Space`）。`Option + Space` 可能被其他输入法或快捷工具占用。
 
 **构建失败**
 

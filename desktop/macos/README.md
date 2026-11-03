@@ -78,7 +78,7 @@ If the Panelize page is not open, the extension opens it first and waits for the
 
 **The shortcut does nothing or reports a conflict**
 
-Pick the other shortcut from the menu-bar icon. `Option + Space` may be taken by an input method or another utility.
+Pick another shortcut (`Control + Space` or `Command + Shift + Space`) from the menu-bar icon. `Option + Space` may be taken by an input method or another utility.
 
 **The build fails**
 

@@ -13,6 +13,7 @@ public func composerOrigin(visibleFrame: CGRect, panelSize: CGSize) -> CGPoint {
 }
 
 public enum ShortcutChoice: String, CaseIterable {
+    case controlSpace
     case optionSpace
     case commandShiftSpace
 
@@ -21,6 +22,8 @@ public enum ShortcutChoice: String, CaseIterable {
 
     public var title: String {
         switch self {
+        case .controlSpace:
+            return "⌃ Space"
         case .optionSpace:
             return "⌥ Space"
         case .commandShiftSpace:
@@ -30,6 +33,8 @@ public enum ShortcutChoice: String, CaseIterable {
 
     public var detail: String {
         switch self {
+        case .controlSpace:
+            return "Control + Space"
         case .optionSpace:
             return "Option + Space（默认）"
         case .commandShiftSpace:

@@ -50,6 +50,8 @@ final class GlobalShortcutManager {
 
         let modifiers: UInt32
         switch choice {
+        case .controlSpace:
+            modifiers = UInt32(controlKey)
         case .optionSpace:
             modifiers = UInt32(optionKey)
         case .commandShiftSpace:
