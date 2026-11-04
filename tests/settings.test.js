@@ -67,6 +67,15 @@ describe('settings module', () => {
       expect(result.shareWatermarkEnabled).toBe(true);
     });
 
+    it('starts with no AI summary profiles and no active profile', async () => {
+      chrome.storage.sync.get.mockImplementation(async (defaults) => defaults);
+
+      const result = await getSettings();
+
+      expect(result.aiSummaryProfiles).toBe(null);
+      expect(result.aiSummaryActiveProfileId).toBe('');
+    });
+
     it('should notify when an answer is done by default', async () => {
       chrome.storage.sync.get.mockImplementation(async (defaults) => defaults);
 
@@ -228,6 +237,46 @@ describe('settings module', () => {
       expect(result.imported).toEqual(['theme']);
       expect(result.skipped).toEqual(['invalidKey']);
       expect(result.errors).toHaveProperty('invalidKey');
+    });
+
+    it('maps a legacy AI summary configuration to one default profile', async () => {
+      const result = await importSettings({
+        aiSummaryBaseUrl: 'https://legacy.test/v1',
+        aiSummaryModel: 'legacy-model',
+      });
+
+      expect(chrome.storage.sync.set).toHaveBeenCalledWith({
+        aiSummaryBaseUrl: 'https://legacy.test/v1',
+        aiSummaryModel: 'legacy-model',
+        aiSummaryProfiles: [{
+          id: 'default',
+          name: '',
+          baseUrl: 'https://legacy.test/v1',
+          model: 'legacy-model'
+        }],
+        aiSummaryActiveProfileId: 'default'
+      });
+      expect(result.imported).toEqual(expect.arrayContaining([
+        'aiSummaryProfiles',
+        'aiSummaryActiveProfileId'
+      ]));
+    });
+
+    it('keeps the profile list supplied by a current backup', async () => {
+      const profiles = [{ id: 'p1', name: '', baseUrl: 'https://one.test/v1', model: 'm1' }];
+      await importSettings({
+        aiSummaryProfiles: profiles,
+        aiSummaryActiveProfileId: 'p1',
+        aiSummaryBaseUrl: 'https://legacy.test/v1',
+        aiSummaryModel: 'legacy-model'
+      });
+
+      expect(chrome.storage.sync.set).toHaveBeenCalledWith({
+        aiSummaryProfiles: profiles,
+        aiSummaryActiveProfileId: 'p1',
+        aiSummaryBaseUrl: 'https://legacy.test/v1',
+        aiSummaryModel: 'legacy-model'
+      });
     });
   });
 

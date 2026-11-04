@@ -1,6 +1,13 @@
 import { DEFAULT_GOOGLE_PROVIDER_MODE } from './google-mode.js';
 import { DEFAULT_PROVIDER_IDS, DEFAULT_PROVIDER_ORDER, DEFAULT_STARTUP_PROVIDER_IDS } from './provider-defaults.js';
 import { DEFAULT_LOCALE, normalizeLocale } from './locale.js';
+import {
+  AI_SUMMARY_ACTIVE_PROFILE_STORAGE_KEY,
+  AI_SUMMARY_PROFILES_STORAGE_KEY,
+  DEFAULT_AI_SUMMARY_BASE_URL,
+  DEFAULT_AI_SUMMARY_MODEL,
+  DEFAULT_AI_SUMMARY_PROFILE_ID
+} from './ai-summary-profiles.js';
 
 const DEFAULT_SETTINGS = {
   enabledProviders: DEFAULT_PROVIDER_IDS,
@@ -28,8 +35,10 @@ const DEFAULT_SETTINGS = {
   shareWatermarkEnabled: true,  // Adds the "Compared with Panelize" strip to shared snapshots
   answerCompleteNotificationEnabled: true,  // System notification when the first AI in a round finishes answering
   aiSummaryAutoEnabled: true,  // Summarize every round once all its AIs finish answering
-  aiSummaryBaseUrl: 'https://apihub.agnes-ai.com/v1',  // OpenAI-compatible API base URL for the AI summary; the API key stays in chrome.storage.local
+  aiSummaryBaseUrl: 'https://apihub.agnes-ai.com/v1',  // Legacy single-config fields; profiles below take precedence, and these are read only while migrating
   aiSummaryModel: 'agnes-3.0-flash',
+  [AI_SUMMARY_PROFILES_STORAGE_KEY]: null,  // [{id, name, baseUrl, model}]; API keys stay in chrome.storage.local keyed by id
+  [AI_SUMMARY_ACTIVE_PROFILE_STORAGE_KEY]: '',  // Profile used by the next AI summary
   enterKeyBehavior: {
     enabled: true,
     preset: 'default',  // 'default', 'swapped', 'slack', 'discord', 'custom'
@@ -175,6 +184,20 @@ export async function importSettings(settings) {
       skipped.push(key);
       errors[key] = 'Setting key not recognized';
     }
+  }
+
+  // Backups from before profiles existed carry one legacy configuration.
+  // Turn it into a profile so it still applies after the upgrade.
+  if (!Object.hasOwn(imported, AI_SUMMARY_PROFILES_STORAGE_KEY)
+    && (Object.hasOwn(imported, 'aiSummaryBaseUrl') || Object.hasOwn(imported, 'aiSummaryModel'))) {
+    const normalize = value => (typeof value === 'string' ? value.trim() : '');
+    imported[AI_SUMMARY_PROFILES_STORAGE_KEY] = [{
+      id: DEFAULT_AI_SUMMARY_PROFILE_ID,
+      name: '',
+      baseUrl: normalize(imported.aiSummaryBaseUrl) || DEFAULT_AI_SUMMARY_BASE_URL,
+      model: normalize(imported.aiSummaryModel) || DEFAULT_AI_SUMMARY_MODEL
+    }];
+    imported[AI_SUMMARY_ACTIVE_PROFILE_STORAGE_KEY] = DEFAULT_AI_SUMMARY_PROFILE_ID;
   }
 
   await saveSettings(imported);

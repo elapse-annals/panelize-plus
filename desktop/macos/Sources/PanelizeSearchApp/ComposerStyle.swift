@@ -17,6 +17,11 @@ enum ComposerMetrics {
     static let shadowRadius: CGFloat = 20
     static let shadowOffsetY: CGFloat = -6
 
+    static let historyPanelCornerRadius: CGFloat = 14
+    static let historyPanelShadowRadius: CGFloat = 12
+    /// The history panel is narrower than the input card.
+    static let historyPanelSideInset: CGFloat = 28
+
     static let sendButtonSize: CGFloat = 28
     static let progressSize: CGFloat = 14
     static let statusIconSize: CGFloat = 10
@@ -38,6 +43,7 @@ enum ComposerFonts {
     static let hintKey = NSFont.systemFont(ofSize: 10, weight: .medium)
     static let mode = NSFont.systemFont(ofSize: 11.5, weight: .medium)
     static let suggestion = NSFont.systemFont(ofSize: 13.5, weight: .regular)
+    static let historyHeader = NSFont.systemFont(ofSize: 11, weight: .medium)
     static let modeChevronPointSize: CGFloat = 8
 }
 

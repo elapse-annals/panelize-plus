@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.79.0 - 2026-11-04
+- The macOS client's recent-question suggestions now sit flush above the input card as their own narrower panel, tucked behind the card, with a “Recent questions” header and its own surface and shadow, so the list no longer reads as part of the input box. Pressing Down on the last suggestion returns the highlight to the input.
+
+## 2.78.0 - 2026-11-04
+- Starting a new conversation now clears each AI panel's leftover composer draft (text and attachments) after the provider confirms or the confirmation times out, so stale content is not appended to the next question. The unified question box, its uploaded images and content the user starts typing in a panel during the wait are kept.
+
+## 2.77.0 - 2026-11-04
+- The macOS composer's footer legend now spells out `Tab 切换模式` instead of the `⇥ 模式` keycap symbol, so the mode-switch shortcut is readable at a glance.
+- `Tab` / `Shift + Tab` cycles prompt modes only while the input is empty; with text present, `Tab` no longer changes the mode, so it does not interrupt typing.
+
+## 2.76.0 - 2026-11-04
+- AI summary accepts several OpenAI-compatible API profiles, each with its own base URL, API key and model. The summary drawer switches between them; the setting applies to the next summary, and API keys still stay on this device.
+- The AI summary settings page manages the profile list, selects the default profile, and saves and tests all profiles at once.
+
+## 2.75.1 - 2026-11-04
+- The macOS installer now derives the unpacked extension's ID from the checkout path instead of defaulting to the Chrome Web Store Panelize ID, so the native-host manifest matches the extension this repository loads and Panelize Link connects out of the box.
+- The Panelize Link docs explain the derived default and the “This page has been blocked by Chrome” (`ERR_BLOCKED_BY_CLIENT`) page that appears when the manifest's extension ID is not the loaded one.
+
 ## 2.75.0 - 2026-11-03
 - Panelize Link adds `Control + Space` as a global-shortcut option; `Option + Space` remains the default, and all three shortcuts are selectable from the menu-bar icon.
 

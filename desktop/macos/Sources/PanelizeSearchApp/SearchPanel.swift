@@ -70,13 +70,16 @@ final class PromptTextView: NSTextView {
         if event.keyCode == 48,
            event.modifierFlags.intersection([.control, .option, .command]).isEmpty,
            !hasMarkedText() {
-            // An inline trigger completion wins; otherwise Tab cycles the
-            // prompt mode, Shift+Tab backwards.
+            // An inline trigger completion wins. Otherwise Tab cycles the
+            // prompt mode only while the input is empty, Shift+Tab backwards;
+            // with text present it leaves the prompt untouched.
             let shift = event.modifierFlags.contains(.shift)
             if !shift, onTabCompletion?() == true {
                 return
             }
-            onCyclePromptMode?(!shift)
+            if string.isEmpty {
+                onCyclePromptMode?(!shift)
+            }
             return
         }
 
@@ -334,6 +337,18 @@ private final class SendButton: NSButton {
 }
 
 private final class ComposerBackdropView: NSVisualEffectView {
+    private let cornerRadius: CGFloat
+
+    init(frame frameRect: NSRect = .zero, cornerRadius: CGFloat = ComposerMetrics.cornerRadius) {
+        self.cornerRadius = cornerRadius
+        super.init(frame: frameRect)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     override func layout() {
         super.layout()
         updateBorder()
@@ -357,7 +372,7 @@ private final class ComposerBackdropView: NSVisualEffectView {
 
     private func updateBorder() {
         wantsLayer = true
-        layer?.cornerRadius = ComposerMetrics.cornerRadius
+        layer?.cornerRadius = cornerRadius
         layer?.cornerCurve = .continuous
         layer?.masksToBounds = true
         layer?.borderWidth = 1 / (window?.backingScaleFactor ?? 2)
@@ -406,7 +421,17 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
     private let backdrop = ComposerBackdropView()
     private let surfaceView = ComposerSurfaceView(frame: .zero)
     private let shadowView = ComposerShadowView(frame: .zero)
+    private let historyPanelShadow = ComposerShadowView(
+        cornerRadius: ComposerMetrics.historyPanelCornerRadius,
+        shadowRadius: ComposerMetrics.historyPanelShadowRadius
+    )
+    private let historyPanelBackdrop = ComposerBackdropView(
+        cornerRadius: ComposerMetrics.historyPanelCornerRadius
+    )
+    private let historyPanelSurface = ComposerSurfaceView(style: .historyPanel)
     private var scrollHeightConstraint: NSLayoutConstraint?
+    private var cardHeightConstraint: NSLayoutConstraint?
+    private var historyPanelHeight: CGFloat = 0
     private var currentInputHeight = ComposerMetrics.baseInputHeight
     private var hideGeneration = 0
     private var isHiding = false
@@ -948,15 +973,19 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         guard let panel = window else { return }
         let desired = desiredInputHeight()
         let desiredSuggestion = historyView.contentHeight
+        historyPanelHeight = desiredSuggestion
+        updateHistoryPanelVisibility()
         guard abs(desired - currentInputHeight) > 0.5
                 || abs(desiredSuggestion - currentSuggestionHeight) > 0.5 else { return }
         currentInputHeight = desired
         currentSuggestionHeight = desiredSuggestion
 
+        let desiredCard = composerCardHeight(inputHeight: desired)
         var frame = panel.frame
         frame.size = composerWindowSize
         let apply = {
             self.scrollHeightConstraint?.constant = desired
+            self.cardHeightConstraint?.constant = desiredCard
             self.historyHeightConstraint?.constant = desiredSuggestion
         }
 
@@ -966,6 +995,7 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
                 context.duration = 0.16
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 self.scrollHeightConstraint?.animator().constant = desired
+                self.cardHeightConstraint?.animator().constant = desiredCard
                 self.historyHeightConstraint?.animator().constant = desiredSuggestion
                 panel.animator().setFrame(frame, display: true)
             } completionHandler: { [weak self] in
@@ -979,6 +1009,16 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
             panel.contentView?.layoutSubtreeIfNeeded()
             textView.scrollRangeToVisible(textView.selectedRange())
         }
+    }
+
+    /// The history panel and its shadow show only while rows are available.
+    /// With reduced transparency the material backdrop is hidden, like the card.
+    private func updateHistoryPanelVisibility() {
+        let visible = historyPanelHeight > 0
+        historyPanelShadow.isHidden = !visible
+        historyPanelBackdrop.isHidden = !visible
+            || ComposerAccessibilityOptions.current.reduceTransparency
+        historyPanelSurface.isHidden = !visible
     }
 
     // ===== Recent question suggestions =====
@@ -1013,7 +1053,13 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
     private func moveHistorySelection(_ delta: Int) -> Bool {
         guard !historyMatches.isEmpty else { return false }
         if let selection = historySelection {
-            historySelection = (selection + delta + historyMatches.count) % historyMatches.count
+            let next = selection + delta
+            if delta > 0, next >= historyMatches.count {
+                // Down past the last row returns to the input.
+                historySelection = nil
+            } else {
+                historySelection = (next + historyMatches.count) % historyMatches.count
+            }
         } else {
             historySelection = delta > 0 ? 0 : historyMatches.count - 1
         }
@@ -1062,6 +1108,10 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         backdrop.refreshAppearance()
         surfaceView.refreshAppearance()
         shadowView.refreshAppearance()
+        historyPanelBackdrop.refreshAppearance()
+        historyPanelSurface.refreshAppearance()
+        historyPanelShadow.refreshAppearance()
+        updateHistoryPanelVisibility()
         previewLabel.textColor = ComposerTheme.previewColor(
             increaseContrast: options.increaseContrast
         )
@@ -1144,9 +1194,15 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         guard let panel = window else { return }
         let inset = ComposerMetrics.shadowInset
 
-        rootView.cardView = backdrop
         rootView.onOutsideClick = { [weak self] in self?.hide() }
         panel.contentView = rootView
+
+        // The history panel sits above the card but behind it in the stack, so
+        // the card's top edge covers the panel's bottom padding.
+        rootView.addSubview(historyPanelShadow)
+        rootView.addSubview(historyPanelBackdrop)
+        rootView.addSubview(historyPanelSurface)
+        rootView.addSubview(historyView)
 
         shadowView.translatesAutoresizingMaskIntoConstraints = false
         rootView.addSubview(shadowView)
@@ -1167,6 +1223,23 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         let content = ComposerContentView()
         content.translatesAutoresizingMaskIntoConstraints = false
         rootView.addSubview(content)
+
+        // The recent-question list is its own panel above the card: separate
+        // shadow, material and surface, so it never reads as part of the input.
+        historyPanelShadow.translatesAutoresizingMaskIntoConstraints = false
+
+        historyPanelBackdrop.material = .popover
+        historyPanelBackdrop.blendingMode = .behindWindow
+        historyPanelBackdrop.state = .active
+        historyPanelBackdrop.wantsLayer = true
+        historyPanelBackdrop.layer?.cornerRadius = ComposerMetrics.historyPanelCornerRadius
+        historyPanelBackdrop.layer?.cornerCurve = .continuous
+        historyPanelBackdrop.layer?.masksToBounds = true
+        historyPanelBackdrop.translatesAutoresizingMaskIntoConstraints = false
+
+        historyPanelSurface.translatesAutoresizingMaskIntoConstraints = false
+
+        rootView.cardViews = [backdrop, historyPanelBackdrop]
 
         textView.isRichText = false
         textView.allowsUndo = true
@@ -1293,7 +1366,6 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         footer.addSubview(footerLeft)
         footer.addSubview(footerRight)
 
-        content.addSubview(historyView)
         content.addSubview(scrollView)
         content.addSubview(placeholder)
         content.addSubview(previewLabel)
@@ -1303,24 +1375,59 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
             equalToConstant: ComposerMetrics.baseInputHeight
         )
         scrollHeightConstraint = scrollHeight
-        let historyHeight = historyView.heightAnchor.constraint(equalToConstant: 0)
+        let cardHeight = backdrop.heightAnchor.constraint(
+            equalToConstant: composerCardHeight(inputHeight: currentInputHeight)
+        )
+        cardHeightConstraint = cardHeight
+        let historyHeight = historyPanelBackdrop.heightAnchor.constraint(equalToConstant: 0)
         historyHeightConstraint = historyHeight
 
         NSLayoutConstraint.activate([
-            shadowView.leadingAnchor.constraint(equalTo: rootView.leadingAnchor, constant: inset),
-            shadowView.trailingAnchor.constraint(equalTo: rootView.trailingAnchor, constant: -inset),
-            shadowView.topAnchor.constraint(equalTo: rootView.topAnchor, constant: inset),
-            shadowView.bottomAnchor.constraint(equalTo: rootView.bottomAnchor, constant: -inset),
+            shadowView.leadingAnchor.constraint(equalTo: backdrop.leadingAnchor),
+            shadowView.trailingAnchor.constraint(equalTo: backdrop.trailingAnchor),
+            shadowView.topAnchor.constraint(equalTo: backdrop.topAnchor),
+            shadowView.bottomAnchor.constraint(equalTo: backdrop.bottomAnchor),
 
             backdrop.leadingAnchor.constraint(equalTo: rootView.leadingAnchor, constant: inset),
             backdrop.trailingAnchor.constraint(equalTo: rootView.trailingAnchor, constant: -inset),
-            backdrop.topAnchor.constraint(equalTo: rootView.topAnchor, constant: inset),
             backdrop.bottomAnchor.constraint(equalTo: rootView.bottomAnchor, constant: -inset),
+            cardHeight,
 
             surfaceView.leadingAnchor.constraint(equalTo: backdrop.leadingAnchor),
             surfaceView.trailingAnchor.constraint(equalTo: backdrop.trailingAnchor),
             surfaceView.topAnchor.constraint(equalTo: backdrop.topAnchor),
             surfaceView.bottomAnchor.constraint(equalTo: backdrop.bottomAnchor),
+
+            historyPanelBackdrop.leadingAnchor.constraint(
+                equalTo: backdrop.leadingAnchor,
+                constant: ComposerMetrics.historyPanelSideInset
+            ),
+            historyPanelBackdrop.trailingAnchor.constraint(
+                equalTo: backdrop.trailingAnchor,
+                constant: -ComposerMetrics.historyPanelSideInset
+            ),
+            // Tuck the panel's bottom padding behind the card so the two read as one
+// stack, with the input card in front.
+            historyPanelBackdrop.bottomAnchor.constraint(
+                equalTo: backdrop.topAnchor,
+                constant: composerHistoryPanelOverlap
+            ),
+            historyHeight,
+
+            historyPanelShadow.leadingAnchor.constraint(equalTo: historyPanelBackdrop.leadingAnchor),
+            historyPanelShadow.trailingAnchor.constraint(equalTo: historyPanelBackdrop.trailingAnchor),
+            historyPanelShadow.topAnchor.constraint(equalTo: historyPanelBackdrop.topAnchor),
+            historyPanelShadow.bottomAnchor.constraint(equalTo: historyPanelBackdrop.bottomAnchor),
+
+            historyPanelSurface.leadingAnchor.constraint(equalTo: historyPanelBackdrop.leadingAnchor),
+            historyPanelSurface.trailingAnchor.constraint(equalTo: historyPanelBackdrop.trailingAnchor),
+            historyPanelSurface.topAnchor.constraint(equalTo: historyPanelBackdrop.topAnchor),
+            historyPanelSurface.bottomAnchor.constraint(equalTo: historyPanelBackdrop.bottomAnchor),
+
+            historyView.leadingAnchor.constraint(equalTo: historyPanelBackdrop.leadingAnchor),
+            historyView.trailingAnchor.constraint(equalTo: historyPanelBackdrop.trailingAnchor),
+            historyView.topAnchor.constraint(equalTo: historyPanelBackdrop.topAnchor),
+            historyView.bottomAnchor.constraint(equalTo: historyPanelBackdrop.bottomAnchor),
 
             content.leadingAnchor.constraint(
                 equalTo: backdrop.leadingAnchor,
@@ -1339,14 +1446,9 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
                 constant: -ComposerMetrics.contentInsetBottom
             ),
 
-            historyView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            historyView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            historyView.topAnchor.constraint(equalTo: content.topAnchor),
-            historyHeight,
-
             scrollView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: historyView.bottomAnchor),
+            scrollView.topAnchor.constraint(equalTo: content.topAnchor),
             scrollHeight,
 
             placeholder.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 2),

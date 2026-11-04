@@ -9,12 +9,16 @@ final class ComposerContentView: NSView {
 /// The window's content view. The composer card is inset to leave room for the
 /// custom shadow; clicks in that transparent margin dismiss the panel.
 final class ComposerRootView: NSView {
-    weak var cardView: NSView?
+    /// The card and the history panel above it. Their union includes the gap
+    /// between them, so clicks there drag rather than dismiss the composer.
+    var cardViews: [NSView] = []
     var onOutsideClick: (() -> Void)?
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        if let cardView, cardView.frame.contains(point) {
+        let frames = cardViews.filter { !$0.isHidden }.map(\.frame)
+        let region = frames.dropFirst().reduce(frames.first ?? .zero) { $0.union($1) }
+        if region.contains(point) {
             window?.performDrag(with: event)
         } else {
             onOutsideClick?()
@@ -27,7 +31,19 @@ final class ComposerRootView: NSView {
 /// A transparent layer that only renders the card's soft shadow. It never
 /// receives clicks and does not affect the visual effect view above it.
 final class ComposerShadowView: NSView {
-    override init(frame frameRect: NSRect) {
+    private let cornerRadius: CGFloat
+    private let shadowRadius: CGFloat
+    private let shadowOffsetY: CGFloat
+
+    init(
+        frame frameRect: NSRect = .zero,
+        cornerRadius: CGFloat = ComposerMetrics.cornerRadius,
+        shadowRadius: CGFloat = ComposerMetrics.shadowRadius,
+        shadowOffsetY: CGFloat = ComposerMetrics.shadowOffsetY
+    ) {
+        self.cornerRadius = cornerRadius
+        self.shadowRadius = shadowRadius
+        self.shadowOffsetY = shadowOffsetY
         super.init(frame: frameRect)
         wantsLayer = true
     }
@@ -66,12 +82,12 @@ final class ComposerShadowView: NSView {
             in: effectiveAppearance
         )
         layer.shadowOpacity = 1
-        layer.shadowRadius = ComposerMetrics.shadowRadius
-        layer.shadowOffset = CGSize(width: 0, height: ComposerMetrics.shadowOffsetY)
+        layer.shadowRadius = shadowRadius
+        layer.shadowOffset = CGSize(width: 0, height: shadowOffsetY)
         layer.shadowPath = CGPath(
             roundedRect: bounds,
-            cornerWidth: ComposerMetrics.cornerRadius,
-            cornerHeight: ComposerMetrics.cornerRadius,
+            cornerWidth: cornerRadius,
+            cornerHeight: cornerRadius,
             transform: nil
         )
         layer.masksToBounds = false
@@ -82,7 +98,15 @@ final class ComposerShadowView: NSView {
 /// reference's white input field, or an opaque replacement when the user asks
 /// macOS to reduce transparency.
 final class ComposerSurfaceView: NSView {
-    override init(frame frameRect: NSRect) {
+    enum Style {
+        case card
+        case historyPanel
+    }
+
+    private let style: Style
+
+    init(frame frameRect: NSRect = .zero, style: Style = .card) {
+        self.style = style
         super.init(frame: frameRect)
         wantsLayer = true
     }
@@ -118,18 +142,24 @@ final class ComposerSurfaceView: NSView {
     private func updateAppearance() {
         guard let layer else { return }
         let options = ComposerAccessibilityOptions.current
-        layer.cornerRadius = ComposerMetrics.cornerRadius
+        layer.cornerRadius = style == .card
+            ? ComposerMetrics.cornerRadius
+            : ComposerMetrics.historyPanelCornerRadius
         layer.cornerCurve = .continuous
         layer.masksToBounds = true
         layer.borderWidth = 1 / (window?.backingScaleFactor ?? 2)
         effectiveAppearance.performAsCurrentDrawingAppearance {
             let background: NSColor
             if options.reduceTransparency {
-                background = .windowBackgroundColor
+                background = style == .card ? .windowBackgroundColor : .controlBackgroundColor
             } else if ComposerTheme.isDark(effectiveAppearance) {
-                background = NSColor.white.withAlphaComponent(0.05)
+                background = style == .card
+                    ? NSColor.white.withAlphaComponent(0.05)
+                    : NSColor.black.withAlphaComponent(0.12)
             } else {
-                background = NSColor.white.withAlphaComponent(0.70)
+                background = style == .card
+                    ? NSColor.white.withAlphaComponent(0.70)
+                    : NSColor.black.withAlphaComponent(0.05)
             }
             layer.backgroundColor = background.cgColor
             layer.borderColor = ComposerTheme.borderColor(
@@ -150,7 +180,7 @@ final class ShortcutHintView: NSView {
     private let items = [
         Item(key: "↵", label: "发送"),
         Item(key: "⇧↵", label: "换行"),
-        Item(key: "⇥", label: "模式"),
+        Item(key: "Tab", label: "切换模式"),
         Item(key: "esc", label: "关闭")
     ]
 

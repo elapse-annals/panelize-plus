@@ -18,7 +18,7 @@ From the repository root:
 ./desktop/macos/Scripts/install.sh --browser chrome
 ```
 
-The Chrome Web Store build uses the default extension ID. For an unpacked development build, pass the ID shown at `chrome://extensions`:
+By default the installer uses the ID Chrome assigns to this checkout when it is loaded unpacked from the repository root, so the native-host manifest matches the extension it ships with. If the extension is loaded from another path, or from the Chrome Web Store, pass the ID shown at `chrome://extensions`:
 
 ```bash
 ./desktop/macos/Scripts/install.sh --browser chrome --extension-id YOUR_EXTENSION_ID
@@ -43,10 +43,10 @@ In Panelize's settings, open **Global Input (macOS)** and turn on **Enable globa
 - `Option + Space` (default) or the menu-bar item “打开快捷输入” opens the floating composer.
 - The composer opens near the bottom of the current display with a soft shadow. Click anywhere outside it, or click the menu-bar icon, to close it; `Esc` also works.
 - Type a prompt and press `Enter` to send it to all AIs.
-- The three most recently sent questions appear above the input when what you type is the beginning of one. Use `Up` / `Down` to highlight, `Enter` to fill it in without sending, or click a row; `Esc` closes the list first, then the panel.
-- Choose a prompt mode from the capsule picker at the left of the footer; it defaults to Auto. The choice is saved on this Mac and applies only to that send, without changing the mode saved in the extension. Auto appends a mode only when the question contains a trigger word such as `/study`; Default appends nothing. Upgrading to 2.64.0 resets a previously saved mode to Auto once; choices made afterwards are kept. Press `Tab` / `Shift + Tab` while typing to cycle modes; when a trigger completion is showing, `Tab` accepts the completion instead.
+- The three most recently sent questions appear above the input when what you type is the beginning of one. The list floats in its own panel, titled “Recent questions” and narrower than the input card, sitting flush above it and tucked behind it, so it is not mistaken for the input itself. Use `Up` / `Down` to highlight, `Enter` to fill it in without sending, or click a row; pressing `Down` on the last row clears the highlight and returns to the input. `Esc` closes the list first, then the panel.
+- Choose a prompt mode from the capsule picker at the left of the footer; it defaults to Auto. The choice is saved on this Mac and applies only to that send, without changing the mode saved in the extension. Auto appends a mode only when the question contains a trigger word such as `/study`; Default appends nothing. Upgrading to 2.64.0 resets a previously saved mode to Auto once; choices made afterwards are kept. Press `Tab` / `Shift + Tab` while the input is empty to cycle modes; when a trigger completion is showing, `Tab` accepts the completion instead. With text present, `Tab` does not change the mode.
 - In Auto mode, typing a trigger prefix at the end of a line (`/st`) shows the rest of the trigger (`udy`) and a shaded `Tab · 学习` hint at the caret. Press `Tab` to accept it and add a space. Completion follows the extension's line-end and whole-word rules and only covers the built-in triggers; triggers customized in the extension are not mirrored in the client.
-- The line under the input previews what the selected mode will append: a built-in mode shows its shipped instruction in faint text, Auto shows the matched mode or its trigger legend, and Default shows nothing. The footer keeps light inline hints for `Enter / Shift + Enter / Tab / Esc`. When connected, it shows only a green check icon; short text appears when the bridge is disconnected, a send is in progress, or an error occurs. While disconnected, clicking that status (or the menu-bar browser status) opens Panelize's settings page at **Enable global input bridge** and highlights the switch; the browser and extension ID come from the installed native-host manifest.
+- The line under the input previews what the selected mode will append: a built-in mode shows its shipped instruction in faint text, Auto shows the matched mode or its trigger legend, and Default shows nothing. The footer keeps light inline hints for `Enter`, `Shift + Enter`, `Tab` (switch mode) and `Esc`. When connected, it shows only a green check icon; short text appears when the bridge is disconnected, a send is in progress, or an error occurs. While disconnected, clicking that status (or the menu-bar browser status) opens Panelize's settings page at **Enable global input bridge** and highlights the switch; the browser and extension ID come from the installed native-host manifest.
 - The input grows from about three to five lines as you type and scrolls beyond that; sending or clearing the prompt collapses it again. The send button shows a small spinner while the prompt is being sent.
 - `Command + A / C / V / X / Z` select all, copy, paste, cut and undo; `Shift + Command + Z` redoes. The same commands are available from the Edit menu.
 - The composer follows macOS Reduce Motion, Reduce Transparency and Increase Contrast. With Reduce Transparency it uses an opaque background; with Increase Contrast it strengthens borders and text, and status always uses a distinct icon shape as well as color.
@@ -75,6 +75,10 @@ If the Panelize page is not open, the extension opens it first and waits for the
 2. Confirm the extension ID used at install time matches `chrome://extensions`. An unpacked build can get a new ID when its path changes.
 3. Check that `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.panelize.global_sender.json` exists and its `path` points to `~/Applications/Panelize Link.app/Contents/MacOS/PanelizeSearchBridge`.
 4. Quit Chrome completely, reopen it, and open the app once more.
+
+**Clicking the status opens “This page has been blocked by Chrome” (`ERR_BLOCKED_BY_CLIENT`)**
+
+The native-host manifest names an extension ID that Chrome has not loaded, or that is disabled. Rerun the installer so it derives the ID from this checkout, or pass the ID shown at `chrome://extensions` with `--extension-id`.
 
 **The shortcut does nothing or reports a conflict**
 

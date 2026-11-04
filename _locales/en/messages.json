@@ -1739,6 +1739,51 @@
   "descAiSummary": {
     "message": "Merge every AI's answer into one summary through an OpenAI-compatible API. Each point names the AIs it came from."
   },
+  "labelAiSummaryProfiles": {
+    "message": "Models"
+  },
+  "descAiSummaryProfiles": {
+    "message": "Add one or more OpenAI-compatible API setups. Summaries use the selected model; switching applies to the next summary."
+  },
+  "labelAiSummaryProfileName": {
+    "message": "Name (optional)"
+  },
+  "labelAiSummaryProfileBaseUrl": {
+    "message": "API base URL"
+  },
+  "labelAiSummaryProfileApiKey": {
+    "message": "API key"
+  },
+  "labelAiSummaryProfileModel": {
+    "message": "Model"
+  },
+  "labelAiSummaryProfileActive": {
+    "message": "Use for summaries"
+  },
+  "labelAiSummaryProfileRemove": {
+    "message": "Remove"
+  },
+  "btnAiSummaryAddProfile": {
+    "message": "Add model"
+  },
+  "msgAiSummaryProfileIncomplete": {
+    "message": "Fill in the base URL and model for $1."
+  },
+  "msgAiSummaryProfileLimit": {
+    "message": "At most $1 models can be added."
+  },
+  "msgAiSummaryProfileTesting": {
+    "message": "Testing $1…"
+  },
+  "msgAiSummaryProfileApiKeyMissing": {
+    "message": "Add an API key for $1 before testing."
+  },
+  "aiSummaryProfileSelect": {
+    "message": "Summary model"
+  },
+  "aiSummaryProfileUnconfigured": {
+    "message": "Not set up"
+  },
   "labelAiSummaryBaseUrl": {
     "message": "API base URL"
   },
@@ -1767,7 +1812,7 @@
     "message": "Save and test"
   },
   "descAiSummarySave": {
-    "message": "Asks for access to the API's site, then sends a short test request"
+    "message": "Saves every model above, then asks for access to the API's site and sends a short test request"
   },
   "btnAiSummarySave": {
     "message": "Save and test"

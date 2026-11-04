@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { AI_SUMMARY_API_KEY_STORAGE_KEY } from '../../modules/ai-summary.js';
+import {
+  AI_SUMMARY_ACTIVE_PROFILE_STORAGE_KEY,
+  AI_SUMMARY_API_KEYS_STORAGE_KEY,
+  AI_SUMMARY_PROFILES_STORAGE_KEY
+} from '../../modules/ai-summary-profiles.js';
 import { createPatchedExtensionCopy, launchExtension, openMultiPanel } from './extension-harness.js';
 import { renderChatgptFixture } from './fixtures/chatgpt-fixture.js';
 
@@ -436,6 +441,91 @@ test('automatic summary opens the drawer only after the summary arrives', async 
     await expect(page.locator('#ai-summary-overview')).toHaveText(SUMMARY.overview);
   } finally {
     releaseSummary?.();
+    await extension?.close();
+    await extensionCopy?.cleanup();
+  }
+});
+
+test('switching the summary profile applies to the next summary only', async ({}, testInfo) => {
+  test.setTimeout(90000);
+  let extensionCopy;
+  let extension;
+  const requests = [];
+  const secondApiBaseUrl = 'https://api.panelize-e2e-2.test/v1';
+  try {
+    extensionCopy = await createPatchedExtensionCopy(manifest => {
+      manifest.host_permissions.push(
+        'https://chat.deepseek.com/*',
+        'https://api.panelize-e2e.test/*',
+        'https://api.panelize-e2e-2.test/*'
+      );
+    });
+    extension = await launchExtension({
+      extensionPath: extensionCopy.extensionPath,
+      viewport: { width: 1440, height: 900 }
+    });
+    await extension.context.route('https://chatgpt.com/**', route => route.fulfill({
+      contentType: 'text/html', body: renderChatgptFixture({ composer: 'current' })
+    }));
+    await extension.context.route('https://chat.deepseek.com/**', route => route.fulfill({
+      contentType: 'text/html', body: DEEPSEEK_FIXTURE
+    }));
+    const fulfillSummary = route => {
+      requests.push({
+        url: route.request().url(),
+        body: route.request().postDataJSON()
+      });
+      return route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({ choices: [{ message: { content: JSON.stringify(SUMMARY) } }] })
+      });
+    };
+    await extension.context.route(`${API_BASE_URL}/chat/completions`, fulfillSummary);
+    await extension.context.route(`${secondApiBaseUrl}/chat/completions`, fulfillSummary);
+
+    await extension.serviceWorker.evaluate(async ({ baseUrl, secondBaseUrl, keys }) => {
+      await chrome.storage.sync.set({
+        [keys.profiles]: [
+          { id: 'p1', name: 'First', baseUrl, model: 'model-one' },
+          { id: 'p2', name: 'Second', baseUrl: secondBaseUrl, model: 'model-two' }
+        ],
+        [keys.active]: 'p1',
+        aiSummaryAutoEnabled: false
+      });
+      await chrome.storage.local.set({
+        [keys.apiKeys]: { p1: 'key-one', p2: 'key-two' }
+      });
+    }, {
+      baseUrl: API_BASE_URL,
+      secondBaseUrl: secondApiBaseUrl,
+      keys: {
+        profiles: AI_SUMMARY_PROFILES_STORAGE_KEY,
+        active: AI_SUMMARY_ACTIVE_PROFILE_STORAGE_KEY,
+        apiKeys: AI_SUMMARY_API_KEYS_STORAGE_KEY
+      }
+    });
+
+    const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
+    await sendQuestionWithTwoAnswers(page);
+    await page.locator('#ai-summary-btn').click();
+    await expect(page.locator('#ai-summary-result')).toBeVisible({ timeout: 15000 });
+    await expect.poll(() => requests.length).toBe(1);
+    expect(requests[0].body.model).toBe('model-one');
+    expect(requests[0].url).toContain(API_BASE_URL);
+
+    const select = page.locator('#ai-summary-profile-select');
+    await expect(select).toBeVisible();
+    await select.selectOption('p2');
+    // Switching leaves the current result alone and does not ask the API.
+    await expect(page.locator('#ai-summary-result')).toBeVisible();
+    expect(requests).toHaveLength(1);
+
+    await page.locator('#ai-summary-rerun-btn').click();
+    await expect.poll(() => requests.length, { timeout: 30000 }).toBe(2);
+    expect(requests[1].body.model).toBe('model-two');
+    expect(requests[1].url).toContain(secondApiBaseUrl);
+    await page.screenshot({ path: testInfo.outputPath('ai-summary-profile-switch.png') });
+  } finally {
     await extension?.close();
     await extensionCopy?.cleanup();
   }

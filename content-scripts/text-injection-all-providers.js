@@ -279,6 +279,9 @@
     'button[aria-label*="Attached file"]',
     'img[src^="blob:"]'
   ].join(', ');
+  // Only click a control inside an attachment preview when its own label says
+  // it removes something; a preview itself usually opens a viewer.
+  const COMPOSER_ATTACHMENT_REMOVE_LABEL = /remove|delete|dismiss|close|移除|删除|清除|取消/i;
   const MULTI_PANEL_EXTENSION_ORIGIN = getExtensionOrigin();
   const SLOW_COMPOSER_PROVIDERS = new Set([
     'deepseek', 'kimi', 'doubao', 'chatglm', 'zai-global', 'yuanbao', 'mimo', 'meta-ai',
@@ -2071,10 +2074,22 @@
     }));
   }
 
-  function clearRichTextInput(provider, element) {
-    element.focus();
+  function clearRichTextInput(provider, element, { focus = true } = {}) {
+    if (focus) {
+      element.focus();
+    }
 
     if (provider !== 'kimi' && provider !== 'doubao') {
+      element.innerHTML = '';
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
+
+    // Slate-based composers need a focused selection to clear. When the host
+    // is restoring focus to its own composer, fall back to the DOM reset so
+    // clearing a panel never steals the caret.
+    if (!focus) {
       element.innerHTML = '';
       element.dispatchEvent(new Event('input', { bubbles: true }));
       element.dispatchEvent(new Event('change', { bubbles: true }));
@@ -2128,6 +2143,75 @@
       resetGoogleSearchFillSession();
     }
 
+    return true;
+  }
+
+  // Best-effort removal of composer attachments. Providers render previews in
+  // different ways, so only an explicit remove/delete control inside a visible
+  // preview is clicked; an unrecognized preview is left untouched.
+  function removeProviderComposerAttachments(provider, composer) {
+    const container = getNewChatComposerContainer(provider, composer);
+    if (!container) return 0;
+
+    let removed = 0;
+    try {
+      container.querySelectorAll('input[type="file"]').forEach(input => {
+        if (input.value) input.value = '';
+      });
+
+      const previews = [...container.querySelectorAll(NEW_CHAT_ATTACHMENT_PREVIEW_SELECTORS)]
+        .filter(isVisibleElement)
+        .slice(0, 20);
+
+      previews.forEach(preview => {
+        const controls = preview.matches('button, [role="button"]')
+          ? [preview]
+          : [...preview.querySelectorAll('button, [role="button"]')];
+        const control = controls.find(element => isVisibleElement(element) &&
+          COMPOSER_ATTACHMENT_REMOVE_LABEL.test(
+            `${element.getAttribute('aria-label') || ''} ${element.getAttribute('title') || ''} ${element.textContent || ''}`
+          ));
+        if (!control) return;
+        control.click();
+        removed += 1;
+      });
+    } catch (error) {
+      console.warn('[Text Injection] Could not clear composer attachments:', error);
+    }
+    return removed;
+  }
+
+  function clearProviderComposer(provider, providerMode, {
+    focus = true,
+    clearImages = false,
+    onlyIfDirty = false
+  } = {}) {
+    if (!provider) return false;
+
+    if (provider === 'google') {
+      const input = findGoogleInput(providerMode);
+      if (!input) return false;
+      if (onlyIfDirty && String(input.value || '').trim() === '') return false;
+      return clearGoogleInput(providerMode);
+    }
+
+    const element = findProviderInput(provider);
+    if (!element) return false;
+
+    const hasText = getNewChatComposerText(element) !== '';
+    const hasAttachments = clearImages && hasNewChatComposerAttachments(provider, element);
+    if (onlyIfDirty && !hasText && !hasAttachments) return false;
+
+    const isTextarea = element.tagName === 'TEXTAREA' || element.tagName === 'INPUT';
+    if (isTextarea) {
+      setFormControlValue(element, '');
+    } else {
+      clearRichTextInput(provider, element, { focus });
+    }
+
+    if (clearImages) {
+      removeProviderComposerAttachments(provider, element);
+    }
     return true;
   }
 
@@ -3260,22 +3344,69 @@
     return { identity, providerMode };
   }
 
+  // Starting a new conversation should not let a leftover composer draft (from
+  // a failed send, Fill, or a provider-restored draft) ride along with the next
+  // question. The host is restoring focus to its unified composer here, so this
+  // path never focuses the provider editor.
+  function clearComposerAfterNewChat(provider, providerMode) {
+    try {
+      clearProviderComposer(provider, providerMode, {
+        focus: false,
+        clearImages: true,
+        onlyIfDirty: true
+      });
+    } catch (error) {
+      console.warn('[New Chat] Could not clear the composer:', error);
+    }
+  }
+
+  // While the provider confirms the new chat (up to 12s), the user may click
+  // into this panel and start typing. A trusted interaction means the draft is
+  // theirs, not leftover content, so it must survive the cleanup.
+  function watchNewChatUserInteraction() {
+    let interacted = false;
+    const mark = event => {
+      if (event.isTrusted) interacted = true;
+    };
+    document.addEventListener('pointerdown', mark, true);
+    document.addEventListener('keydown', mark, true);
+    return {
+      get interacted() {
+        return interacted;
+      },
+      stop() {
+        document.removeEventListener('pointerdown', mark, true);
+        document.removeEventListener('keydown', mark, true);
+      }
+    };
+  }
+
   async function verifyNewChatRequest(data, detectedProvider, { baseline = null, recovery = false } = {}) {
     const { identity, providerMode, failure } = resolveNewChatRequest(data, detectedProvider);
     if (failure) return failure;
     const provider = detectedProvider;
 
     const baselineIsAlreadyFresh = isAlreadyFreshNewChatState(baseline, provider, providerMode);
-    const result = await waitForNewChatState(provider, providerMode, {
-      baseline,
-      timeoutMs: NEW_CHAT_CONFIRMATION_TIMEOUT_MS,
-      stableMs: recovery ? NEW_CHAT_RECOVERY_STABLE_MS : NEW_CHAT_CLICK_STABLE_MS,
-      requireTransition: Boolean(baseline) && !baselineIsAlreadyFresh,
-      // A navigation recovery or host-driven verification has no trusted
-      // before/after DOM snapshot. Require the provider's canonical new-chat
-      // route before a blank, still-hydrating page can count as ready.
-      requireCanonicalFreshUrl: recovery || data.type === 'VERIFY_NEW_CHAT'
-    });
+    const interaction = watchNewChatUserInteraction();
+    let result;
+    try {
+      result = await waitForNewChatState(provider, providerMode, {
+        baseline,
+        timeoutMs: NEW_CHAT_CONFIRMATION_TIMEOUT_MS,
+        stableMs: recovery ? NEW_CHAT_RECOVERY_STABLE_MS : NEW_CHAT_CLICK_STABLE_MS,
+        requireTransition: Boolean(baseline) && !baselineIsAlreadyFresh,
+        // A navigation recovery or host-driven verification has no trusted
+        // before/after DOM snapshot. Require the provider's canonical new-chat
+        // route before a blank, still-hydrating page can count as ready.
+        requireCanonicalFreshUrl: recovery || data.type === 'VERIFY_NEW_CHAT'
+      });
+    } finally {
+      interaction.stop();
+    }
+
+    if (!interaction.interacted) {
+      clearComposerAfterNewChat(provider, providerMode);
+    }
 
     if (result.verified) return { ...identity, provider: detectedProvider, status: 'verified' };
     return {
@@ -3317,11 +3448,13 @@
       } catch (error) {
         console.warn('[New Chat] Provider new-chat control failed:', error);
         clearPendingNewChatRequest(storageKey);
+        clearComposerAfterNewChat(detectedProvider, providerMode);
         return { ...identity, provider: detectedProvider, status: 'failed', reason: 'click-error' };
       }
 
       if (!started) {
         clearPendingNewChatRequest(storageKey);
+        clearComposerAfterNewChat(detectedProvider, providerMode);
         return { ...identity, provider: detectedProvider, status: 'failed', reason: 'control-not-found' };
       }
 
@@ -5179,19 +5312,14 @@
           : null;
 
         if (provider === 'google') {
-          clearGoogleInput(providerMode);
+          clearProviderComposer(provider, providerMode);
           console.log('[Text Injection] Input cleared for', provider, 'mode:', providerMode);
           return;
         }
 
-        const element = findProviderInput(provider);
-        if (element) {
-          const isTextarea = element.tagName === 'TEXTAREA' || element.tagName === 'INPUT';
-          if (isTextarea) {
-            setFormControlValue(element, '');
-          } else {
-            clearRichTextInput(provider, element);
-          }
+        if (clearProviderComposer(provider, null, {
+          clearImages: event.data.clearImages === true
+        })) {
           console.log('[Text Injection] Input cleared for', provider);
         }
       }
@@ -5258,6 +5386,7 @@
           submitNewChatRequest({ ...event.data, provider: event.data.provider || provider }, provider, 'NEW_CHAT');
         } else {
           clickNewChatButton(provider, providerMode);
+          clearComposerAfterNewChat(provider, providerMode);
         }
       } else {
         console.warn('[Text Injection] Provider not detected for NEW_CHAT');

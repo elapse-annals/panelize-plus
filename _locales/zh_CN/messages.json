@@ -1718,6 +1718,51 @@
   "descAiSummary": {
     "message": "通过 OpenAI 兼容 API 将所有 AI 的回答合并为一份汇总，每个要点都标注来自哪些 AI。"
   },
+  "labelAiSummaryProfiles": {
+    "message": "模型"
+  },
+  "descAiSummaryProfiles": {
+    "message": "添加一套或多套 OpenAI 兼容 API 配置。汇总使用选中的模型；切换只影响下一次汇总。"
+  },
+  "labelAiSummaryProfileName": {
+    "message": "名称（可选）"
+  },
+  "labelAiSummaryProfileBaseUrl": {
+    "message": "API 地址"
+  },
+  "labelAiSummaryProfileApiKey": {
+    "message": "API Key"
+  },
+  "labelAiSummaryProfileModel": {
+    "message": "模型"
+  },
+  "labelAiSummaryProfileActive": {
+    "message": "用作汇总模型"
+  },
+  "labelAiSummaryProfileRemove": {
+    "message": "删除"
+  },
+  "btnAiSummaryAddProfile": {
+    "message": "添加模型"
+  },
+  "msgAiSummaryProfileIncomplete": {
+    "message": "请填写 $1 的 API 地址和模型。"
+  },
+  "msgAiSummaryProfileLimit": {
+    "message": "最多只能添加 $1 个模型。"
+  },
+  "msgAiSummaryProfileTesting": {
+    "message": "正在测试 $1…"
+  },
+  "msgAiSummaryProfileApiKeyMissing": {
+    "message": "请先为 $1 填写 API Key 再测试。"
+  },
+  "aiSummaryProfileSelect": {
+    "message": "汇总模型"
+  },
+  "aiSummaryProfileUnconfigured": {
+    "message": "未配置"
+  },
   "labelAiSummaryBaseUrl": {
     "message": "API 地址"
   },
@@ -1746,7 +1791,7 @@
     "message": "保存并测试"
   },
   "descAiSummarySave": {
-    "message": "先请求访问该 API 站点的权限，再发送一个简短的测试请求"
+    "message": "保存上方所有模型，再请求访问该 API 站点的权限并发送一个简短的测试请求"
   },
   "btnAiSummarySave": {
     "message": "保存并测试"

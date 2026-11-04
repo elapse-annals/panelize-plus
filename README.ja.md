@@ -1,4 +1,4 @@
-# Panelize（百家）
+# Panelize Plus（百家）
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> |
@@ -6,10 +6,10 @@
   <a href="README.ja.md"><strong>日本語</strong></a>
 </p>
 
+> **Panelize Plus（百家）** は [Manho](https://github.com/Manho) による [Panelize](https://github.com/Manho/Panelize) の個人向け派生版（MIT ライセンス）で、Ben が [elapse-annals/panelize-plus](https://github.com/elapse-annals/panelize-plus) で保守しています。元プロジェクトの考え方 — 1回の入力ですべての AI へ、各パネルは公式サイト、普段のアカウントのまま — を保ち、AI まとめ、回答統計、プロンプトモード、macOS メニューバークライアントなどを追加しています。上流の Panelize は元のプロジェクトです（[上流の Panelize](#上流の-panelize)）。
+
 <p align="center">
-  <img src="assets/screenshots/promo-en.gif" alt="Panelize デモ：複数の AI に一度に質問して回答を並べて比較" width="800">
-  <br>
-  <a href="https://youtu.be/kCRXBVeXbrA">▶ 高画質の動画を見る</a> · <a href="https://panelize.dev">🌐 panelize.dev</a>
+  <img src="assets/screenshots/promo-en.gif" alt="Panelize Plus デモ：複数の AI に一度に質問して回答を並べて比較" width="800">
 </p>
 
 <p align="center">
@@ -17,36 +17,53 @@
 </p>
 
 <p align="center">
-  <a href="https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii"><img src="https://img.shields.io/chrome-web-store/v/iokalaafkmjffolodkkgbbccmofbglii?label=Chrome%20Web%20Store&color=4285F4" alt="Chrome Web Store version"></a>
-  <a href="https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii"><img src="https://img.shields.io/chrome-web-store/users/iokalaafkmjffolodkkgbbccmofbglii?color=brightgreen" alt="Chrome Web Store users"></a>
-  <a href="https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii"><img src="https://img.shields.io/chrome-web-store/rating/iokalaafkmjffolodkkgbbccmofbglii" alt="Chrome Web Store rating"></a>
-  <a href="https://github.com/Manho/Panelize/stargazers"><img src="https://img.shields.io/github/stars/Manho/Panelize?style=flat" alt="GitHub stars"></a>
+  <a href="https://github.com/elapse-annals/panelize-plus/releases/latest"><img src="https://img.shields.io/github/v/release/elapse-annals/panelize-plus?label=release" alt="Panelize Plus リリース"></a>
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
-  <img src="https://img.shields.io/badge/Edge-supported-0078D7.svg" alt="Edge">
+  <img src="https://img.shields.io/badge/Chrome%20%2F%20Edge-unpacked-4285F4.svg" alt="Chrome / Edge">
+  <a href="https://github.com/Manho/Panelize/stargazers"><img src="https://img.shields.io/github/stars/Manho/Panelize?style=flat" alt="上流 Panelize の GitHub stars"></a>
 </p>
 
 <p align="center">
-  <a href="https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii"><img src="https://img.shields.io/badge/Chrome%20%E3%81%AB%E7%84%A1%E6%96%99%E3%81%A7%E8%BF%BD%E5%8A%A0-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome に無料で追加"></a>
+  <a href="#インストール"><img src="https://img.shields.io/badge/%E3%82%BD%E3%83%BC%E3%82%B9%E3%81%8B%E3%82%89%20Panelize%20Plus%20%E3%82%92%E8%AA%AD%E3%81%BF%E8%BE%BC%E3%82%80-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="ソースから Panelize Plus を読み込む"></a>
 </p>
 
 <p align="center">
   <sub>無料 · API キー不要 · ログイン済みの AI アカウントをそのまま利用</sub><br>
-  <sub>Panelize が役に立ったら、GitHub で ⭐ を付けていただけると他の人にも届きやすくなります。</sub>
+  <sub>Panelize Plus は <a href="https://github.com/Manho/Panelize">Panelize</a> の派生版です。元プロジェクトへの ⭐ も歓迎です。</sub>
 </p>
 
 ---
 
-## Panelize とは？
+## Panelize Plus とは？
 
-Panelize（百家）は、1つのプロンプトを ChatGPT、Claude、Gemini、Grok、DeepSeek などの AI チャットに同時に送り、回答を1つのウィンドウで並べて表示する無料・オープンソースの Chrome / Edge 拡張機能です。各パネルは公式サイトをそのまま読み込み、普段のログインを使うため、API キーも追加のサブスクリプションも不要です。
+Panelize Plus（百家）は、1つのプロンプトを ChatGPT、Claude、Gemini、Grok、DeepSeek などの AI チャットに同時に送り、回答を1つのウィンドウで並べて表示する無料・オープンソースの Chrome / Edge 拡張機能です。各パネルは公式サイトをそのまま読み込み、普段のログインを使うため、API キーも追加のサブスクリプションも不要です。
 
 同じプロンプトを複数の AI タブに貼り付けて比較する作業を、1つの画面にまとめる拡張機能です。
 
 **1つの入力で、複数 AI の回答を同時に比較できます。**
 
 <p align="center">
-  <img src="assets/screenshots/main-panel.png" alt="Panelize Main Interface" width="800">
+  <img src="assets/screenshots/main-panel.png" alt="Panelize Plus Main Interface" width="800">
 </p>
+
+---
+
+## Panelize Plus の変更点
+
+Panelize Plus は上流 Panelize **v2.0.1**（2026-10-23）から独立した履歴（`2.1.0` → `2.75.1`）で続いています。上流と比べて、このフォークは次を追加しています。
+
+| 分野 | 変更内容 |
+| --- | --- |
+| **AI まとめ** | 同じ質問への回答を結論・一致点・独自の洞察・並列表示の相違点にまとめ、各要点の出典チップから元の回答の該当箇所へ移動できます。ストリーミング表示、質問ごとに3日間のキャッシュ、回答の80%完了時の自動実行に対応し、任意の OpenAI 互換 API を使用します。 |
+| **回答統計とブラインドモード** | 回答ごとに最初の文字と完了までの時間、採用状況、プロバイダーのスコアを記録し、タスクカテゴリで絞り込み、カテゴリ別の最適モデルを表示します。直近30日を重視し、最も速い3つの回答に金・銀・銅の王冠を付けます。ブラインドモードは AI 名を隠し、ページの見た目を揃え、パネル順をシャッフルします。 |
+| **プロンプトモード** | モードはトリガーワードを持つ Prompt Library の項目です。**自動**は送信ごとに適用し、ゴーストプレビューと `Tab` 補完に対応します。深い思考モードと、敵対的レビューを行うチャレンジモードを追加。プロンプトは中国語（表示用）と英語（送信用）の2版を保持できます。 |
+| **入力欄とパネル** | 画像・ドキュメント添付、送信前の準備完了ゲート、最近の質問候補、AI ごとの状態チップ、クリックで該当パネルへ移動、パネル容量とレイアウトの自動調整、ポップアップの位置・サイズ記憶、ワイドモード、スワイプ時の端フィードバック。 |
+| **Panelize Link（macOS）** | 任意のメニューバークライアント。グローバルショートカット（既定は `Option + Space`）でフローティング入力欄を開き、プロンプトモード選択、`Tab` 補完、最近の質問に対応します。既存の Send All フローで送信し、Native Messaging ブリッジは既定で無効、設定から有効にできます。 |
+| **プロバイダー** | StepFun、Agnes、Perplexity、Copilot、Wenxin を追加（後の3つは任意）。請求形態のマーカー（レート制限を含む）や各サイトの操作修正も追加しています。 |
+| **ブランドと言語** | **Panelize Plus（百家）** に改名し、パッケージ名と「About」のクレジットを更新。インターフェースは簡体中文と英語（既定は中文）に絞り、他の8言語パックを削除しました。 |
+| **既定設定** | 新規インストールは保守者のエクスポート設定（有効なプロバイダーと順序、起動パネル、既定の「深い思考」モード、設定済みの AI まとめエンドポイント）で始まります。API キーは端末内にのみ保存されます。 |
+
+変更の全量は [CHANGELOG.md](CHANGELOG.md) にあります。上流の新機能と修正は `upstream` リモート経由で `master` にマージします（[上流の Panelize](#上流の-panelize)）。
 
 ---
 
@@ -139,27 +156,28 @@ Perplexity、Copilot、Wenxin は任意のプロバイダーです。設定で�
 
 ## インストール
 
-### Chrome Web Store（推奨）
+Panelize Plus は Chrome Web Store で公開していません。このリポジトリから読み込んでください。（元の Panelize はストアで公開されています。詳しくは[上流の Panelize](#上流の-panelize)を参照。）
 
-1. [Chrome Web Store ページ](https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii) を開く
-2. **Add to Chrome** をクリック
-3. インストール後、`Cmd/Ctrl + Shift + E` で Panelize を開く
+### ソースから読み込む（推奨）
 
-> **Edge でも利用可能：** Chrome Web Store からそのままインストールできます。
-
-<details>
-<summary><strong>手動インストール（開発者向け）</strong></summary>
-
-1. このリポジトリのソースコードをダウンロード
+1. このリポジトリを clone またはダウンロード
 2. `chrome://extensions/`（または `edge://extensions/`）を開く
 3. デベロッパーモードを有効化
-4. 「パッケージ化されていない拡張機能を読み込む」でフォルダを選択
+4. 「パッケージ化されていない拡張機能を読み込む」でプロジェクトフォルダを選択
+5. `Cmd/Ctrl + Shift + E` で Panelize Plus を開く
+
+> **Edge でも利用可能：** 同じ展開済みフォルダを読み込めます。
+
+<details>
+<summary><strong>Chrome Web Store から元の Panelize をインストール</strong></summary>
+
+Manho による元の [Panelize](https://github.com/Manho/Panelize) は [Chrome Web Store](https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii) で公開されています。インストールされるのは上流の機能で、上記の Panelize Plus の変更は含まれません。
 
 </details>
 
 ### Panelize Link グローバルショートカット（任意・macOS）
 
-macOS 13 以降、Chrome または Edge が起動していること、Panelize 2.66.0 以降が必要です。初期状態では無効です。クライアントをインストールした後、「設定 → グローバル入力（macOS）」で有効にしてください。既存の Send All フローを再利用し、別の AI 送信経路は追加しません。インストール、使い方、トラブルシューティングは [Panelize Link のドキュメント](desktop/macos/README.md) を参照してください。
+macOS 13 以降、Chrome または Edge が起動していること、Panelize Plus 2.66.0 以降が必要です。初期状態では無効です。クライアントをインストールした後、「設定 → グローバル入力（macOS）」で有効にしてください。既存の Send All フローを再利用し、別の AI 送信経路は追加しません。インストール、使い方、トラブルシューティングは [Panelize Link のドキュメント](desktop/macos/README.md) を参照してください。
 
 ---
 
@@ -176,7 +194,7 @@ macOS 13 以降、Chrome または Edge が起動していること、Panelize 2
 
 | 操作 | ショートカット |
 |------|----------------|
-| Panelize を開く | `Cmd/Ctrl + Shift + E` |
+| Panelize Plus を開く | `Cmd/Ctrl + Shift + E` |
 | Prompt Library を開く | `Cmd/Ctrl + Shift + L` |
 | すべての AI に送信 | `Enter` または `Cmd/Ctrl + Enter` |
 | 改行 | `Shift + Enter` |
@@ -199,24 +217,27 @@ macOS 13 以降、Chrome または Edge が起動していること、Panelize 2
 ## よくある質問
 
 **ChatGPT、Claude、Gemini に同じ質問を一度にするには？**
-→ Panelize をインストールし、`Cmd/Ctrl + Shift + E` で開いてプロバイダーとレイアウトを選び、プロンプトを入力して **Send All** をクリックします。回答はそれぞれのパネルに表示されます。
+→ Panelize Plus をインストールし、`Cmd/Ctrl + Shift + E` で開いてプロバイダーとレイアウトを選び、プロンプトを入力して **Send All** をクリックします。回答はそれぞれのパネルに表示されます。
 
 **無料ですか？API キーは必要ですか？**
 → 無料で、MIT ライセンスです。API キーは不要です。各パネルは公式サイトそのもので、普段のアカウントでログインして使います。ChatGPT Plus や Claude Pro などの有料プランもそのまま使えます。
 
+**Panelize Plus と Panelize の違いは？**
+→ Panelize Plus は Manho の Panelize の派生版です。公式サイトを並べるパネル体験を保ち、AI まとめ、より詳しい回答統計、プロンプトモード、macOS の Panelize Link クライアントなどを追加しています。詳しくは [Panelize Plus の変更点](#panelize-plus-の変更点) を参照してください。上流の Panelize は元のプロジェクトとして続いています。
+
 **ChatHub や ChatALL との違いは？**
-→ ChatHub や ChatALL は複数のモデルを1つのチャット画面にまとめます。Panelize は各社の公式サイトをそのまま表示するので、プラン、モデル選択、チャット履歴は各アカウントに残ります。
+→ ChatHub や ChatALL は複数のモデルを1つのチャット画面にまとめます。Panelize Plus は各社の公式サイトをそのまま表示するので、プラン、モデル選択、チャット履歴は各アカウントに残ります。
 
 ## トラブルシューティング
 
 **ログイン画面が表示される場合**
-→ 先に通常タブで対象サービスへログインし、Panelize を再読み込みしてください。
+→ 先に通常タブで対象サービスへログインし、Panelize Plus を再読み込みしてください。
 
 **ショートカットが動作しない場合**
 → `chrome://extensions/shortcuts` で競合を確認してください。
 
 **サポートが必要な場合**
-→ [Issue を作成](https://github.com/Manho/Panelize/issues)
+→ [Issue を作成](https://github.com/elapse-annals/panelize-plus/issues)
 
 ---
 
@@ -224,12 +245,29 @@ macOS 13 以降、Chrome または Edge が起動していること、Panelize 2
 
 コントリビューション歓迎です。
 
-- 🐛 バグ報告
+- 🐛 Panelize Plus の不具合はこのリポジトリへ報告
 - 💡 機能提案
 - 🔧 Pull Request
+
+元のプロジェクトにも当てはまる修正は [Manho/Panelize](https://github.com/Manho/Panelize/issues) へお願いします。
+
+---
+
+## 上流の Panelize
+
+Panelize Plus は Manho による [Panelize](https://github.com/Manho/Panelize) の派生作品で、MIT License の下で利用しています。上流の Panelize は元のプロジェクトであり、そのコミュニティ、Chrome Web Store リリース、[panelize.dev](https://panelize.dev) のドキュメントの場所です。
+
+派生関係とクレジットは [NOTICE.md](NOTICE.md) に記録しています。このリポジトリは `upstream` git リモートを保持し、上流の変更を `master` にマージします。
+
+```bash
+git fetch upstream
+git merge upstream/master
+```
+
+Panelize Plus 固有の変更は独立したコミット履歴に保たれ、上流と区別できます。
 
 ---
 
 ## License
 
-MIT License。詳細は [LICENSE](LICENSE) を参照してください。
+MIT License。詳細は [LICENSE](LICENSE) を参照してください。Panelize Plus は Manho の Panelize の派生版です（[NOTICE.md](NOTICE.md)）。

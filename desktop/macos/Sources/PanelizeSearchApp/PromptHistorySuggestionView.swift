@@ -17,7 +17,17 @@ final class PromptHistorySuggestionView: NSView {
     override var mouseDownCanMoveWindow: Bool { false }
 
     var contentHeight: CGFloat {
-        composerSuggestionHeight(rowCount: suggestions.count)
+        composerHistoryPanelHeight(rowCount: suggestions.count)
+    }
+
+    /// Rows start below the "最近提问" header.
+    private var rowOriginY: CGFloat {
+        composerHistoryPanelPadding + composerHistoryHeaderHeight + composerHistoryHeaderGap
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
     }
 
     func present(_ questions: [String], selectedIndex: Int?) {
@@ -76,7 +86,7 @@ final class PromptHistorySuggestionView: NSView {
 
     private func rowIndex(at point: NSPoint) -> Int? {
         guard !suggestions.isEmpty else { return nil }
-        let offset = point.y - composerSuggestionVerticalPadding
+        let offset = point.y - rowOriginY
         guard offset >= 0 else { return nil }
         let stride = composerSuggestionRowHeight + composerSuggestionRowSpacing
         let index = Int(offset / stride)
@@ -89,11 +99,29 @@ final class PromptHistorySuggestionView: NSView {
         super.draw(dirtyRect)
         guard !suggestions.isEmpty else { return }
 
-        let rowWidth = bounds.width - 8
+        let options = ComposerAccessibilityOptions.current
+        let header = "最近提问" as NSString
+        let headerAttributes: [NSAttributedString.Key: Any] = [
+            .font: ComposerFonts.historyHeader,
+            .foregroundColor: options.increaseContrast
+                ? NSColor.labelColor
+                : NSColor.secondaryLabelColor
+        ]
+        let headerSize = header.size(withAttributes: headerAttributes)
+        let headerRect = NSRect(
+            x: 12,
+            y: composerHistoryPanelPadding
+                + (composerHistoryHeaderHeight - headerSize.height) / 2,
+            width: bounds.width - 24,
+            height: headerSize.height
+        )
+        header.draw(in: headerRect, withAttributes: headerAttributes)
+
+        let rowWidth = bounds.width - composerHistoryPanelPadding * 2
         for (index, question) in suggestions.enumerated() {
             let rowRect = NSRect(
-                x: 4,
-                y: composerSuggestionVerticalPadding
+                x: composerHistoryPanelPadding,
+                y: rowOriginY
                     + CGFloat(index) * (composerSuggestionRowHeight + composerSuggestionRowSpacing),
                 width: rowWidth,
                 height: composerSuggestionRowHeight
@@ -101,12 +129,7 @@ final class PromptHistorySuggestionView: NSView {
 
             if index == selectedIndex || index == hoveredIndex {
                 NSColor.controlAccentColor.withAlphaComponent(0.14).setFill()
-                NSBezierPath(roundedRect: rowRect, xRadius: 7, yRadius: 7).fill()
-            }
-
-            if index > 0 {
-                NSColor.separatorColor.withAlphaComponent(0.45).setFill()
-                NSRect(x: rowRect.minX + 8, y: rowRect.minY, width: rowRect.width - 16, height: 1).fill()
+                NSBezierPath(roundedRect: rowRect, xRadius: 8, yRadius: 8).fill()
             }
 
             let paragraph = NSMutableParagraphStyle()
@@ -123,9 +146,9 @@ final class PromptHistorySuggestionView: NSView {
                 ]
             )
             let textRect = NSRect(
-                x: rowRect.minX + 8,
+                x: rowRect.minX + 6,
                 y: rowRect.midY - ComposerFonts.suggestion.capHeight / 2 - 1,
-                width: rowRect.width - 16,
+                width: rowRect.width - 12,
                 height: ComposerFonts.suggestion.pointSize + 4
             )
             text.draw(with: textRect, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])

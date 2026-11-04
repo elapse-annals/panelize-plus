@@ -23,10 +23,20 @@ import {
 } from '../modules/google-mode.js';
 import { applyTheme } from '../modules/theme-manager.js';
 import {
-  AI_SUMMARY_API_KEY_STORAGE_KEY,
   getSummaryOriginPattern,
+  isSummaryConfigured,
   requestSummary
 } from '../modules/ai-summary.js';
+import {
+  AI_SUMMARY_ACTIVE_PROFILE_STORAGE_KEY,
+  AI_SUMMARY_API_KEYS_STORAGE_KEY,
+  AI_SUMMARY_PROFILES_STORAGE_KEY,
+  MAX_AI_SUMMARY_PROFILES,
+  createAiSummaryProfileId,
+  getAiSummaryProfileLabel,
+  loadAiSummarySetup,
+  saveAiSummarySetup
+} from '../modules/ai-summary-profiles.js';
 import {
   getAllPrompts,
   savePrompt,
@@ -331,7 +341,7 @@ async function loadSettings() {
     globalSendBridgeToggle.checked = settings.globalSendBridgeEnabled === true;
   }
 
-  loadAiSummarySettings(settings);
+  await loadAiSummarySettings(settings);
 
   // Enter key behavior settings
   const enterBehavior = settings.enterKeyBehavior || {
@@ -654,6 +664,19 @@ function setupStorageChangeListener() {
         console.error('Error syncing provider order:', error);
       });
     }
+
+    // Keep the AI summary list in step with another window, but never replace
+    // inputs the user is currently editing.
+    if (changes[AI_SUMMARY_PROFILES_STORAGE_KEY]
+      || changes[AI_SUMMARY_ACTIVE_PROFILE_STORAGE_KEY]
+      || (areaName === 'local' && changes[AI_SUMMARY_API_KEYS_STORAGE_KEY])) {
+      const profilesContainer = document.getElementById('ai-summary-profiles');
+      if (!profilesContainer?.contains(document.activeElement)) {
+        refreshAiSummaryProfiles().catch((error) => {
+          console.error('Error syncing the AI summary models:', error);
+        });
+      }
+    }
   });
 }
 
@@ -862,6 +885,7 @@ function setupEventListeners() {
     // Re-translate the entire page
     translatePage();
     await renderProviderList();
+    await refreshAiSummaryProfiles();
 
     // Show success message (now in the new language)
     showStatus('success', t('msgLanguageUpdated'));
@@ -1025,6 +1049,19 @@ function setupEventListeners() {
     showStatus('success', enabled ? t('msgAiSummaryAutoEnabled') : t('msgAiSummaryAutoDisabled'));
   });
   document.getElementById('ai-summary-save-btn')?.addEventListener('click', saveAndTestAiSummary);
+  document.getElementById('ai-summary-add-profile-btn')?.addEventListener('click', addAiSummaryProfileRow);
+  const aiSummaryProfilesContainer = document.getElementById('ai-summary-profiles');
+  aiSummaryProfilesContainer?.addEventListener('click', (event) => {
+    const removeButton = event.target.closest?.('[data-action="remove-profile"]');
+    if (removeButton) {
+      removeAiSummaryProfileRow(removeButton.closest('.ai-summary-profile'));
+    }
+  });
+  aiSummaryProfilesContainer?.addEventListener('change', (event) => {
+    if (event.target.matches?.('input[name="ai-summary-active-profile"]')) {
+      updateAiSummaryProfileControls(aiSummaryProfilesContainer);
+    }
+  });
 
   const providerSortModeSelect = document.getElementById('provider-sort-mode-select');
   if (providerSortModeSelect) {
@@ -1165,57 +1202,272 @@ async function resetSettingsOnly() {
   }
 }
 
-async function loadAiSummarySettings(settings) {
-  const baseUrlInput = document.getElementById('ai-summary-base-url');
-  if (!baseUrlInput) {
+function createAiSummaryProfileField(field, inputType, value, { labelKey, maxLength, placeholder } = {}) {
+  const label = document.createElement('label');
+  label.className = `ai-summary-profile-field ai-summary-profile-field-${field}`;
+  const labelText = document.createElement('span');
+  labelText.textContent = t(labelKey);
+  const input = document.createElement('input');
+  input.type = inputType;
+  input.className = 'ai-summary-input';
+  input.dataset.field = field;
+  input.value = value || '';
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  if (maxLength) {
+    input.maxLength = maxLength;
+  }
+  if (placeholder) {
+    input.placeholder = placeholder;
+  }
+  label.append(labelText, input);
+  return label;
+}
+
+function createAiSummaryProfileRow(profile, apiKey, activeProfileId) {
+  const row = document.createElement('div');
+  row.className = 'ai-summary-profile';
+  row.dataset.profileId = profile.id;
+
+  const header = document.createElement('div');
+  header.className = 'ai-summary-profile-header';
+
+  const activeLabel = document.createElement('label');
+  activeLabel.className = 'ai-summary-profile-active';
+  const radio = document.createElement('input');
+  radio.type = 'radio';
+  radio.name = 'ai-summary-active-profile';
+  radio.value = profile.id;
+  radio.checked = profile.id === activeProfileId;
+  const activeText = document.createElement('span');
+  activeText.textContent = t('labelAiSummaryProfileActive');
+  activeLabel.append(radio, activeText);
+
+  const removeButton = document.createElement('button');
+  removeButton.type = 'button';
+  removeButton.className = 'ai-summary-profile-remove';
+  removeButton.dataset.action = 'remove-profile';
+  removeButton.textContent = t('labelAiSummaryProfileRemove');
+  header.append(activeLabel, removeButton);
+
+  const fields = document.createElement('div');
+  fields.className = 'ai-summary-profile-fields';
+  fields.append(
+    createAiSummaryProfileField('name', 'text', profile.name, {
+      labelKey: 'labelAiSummaryProfileName',
+      maxLength: 60
+    }),
+    createAiSummaryProfileField('model', 'text', profile.model, {
+      labelKey: 'labelAiSummaryProfileModel',
+      maxLength: 200,
+      placeholder: 'gpt-4o-mini'
+    }),
+    createAiSummaryProfileField('baseUrl', 'url', profile.baseUrl, {
+      labelKey: 'labelAiSummaryProfileBaseUrl',
+      maxLength: 500,
+      placeholder: 'https://api.openai.com/v1'
+    }),
+    createAiSummaryProfileField('apiKey', 'password', apiKey, {
+      labelKey: 'labelAiSummaryProfileApiKey'
+    })
+  );
+
+  row.append(header, fields);
+  return row;
+}
+
+function ensureAiSummaryProfileSelection(container) {
+  if (!container) {
     return;
   }
-  baseUrlInput.value = settings.aiSummaryBaseUrl || '';
-  document.getElementById('ai-summary-model').value = settings.aiSummaryModel || '';
-  document.getElementById('ai-summary-auto-toggle').checked = settings.aiSummaryAutoEnabled === true;
-  try {
-    const stored = await chrome.storage.local.get({ [AI_SUMMARY_API_KEY_STORAGE_KEY]: '' });
-    document.getElementById('ai-summary-api-key').value = stored[AI_SUMMARY_API_KEY_STORAGE_KEY] || '';
-  } catch (error) {
-    console.warn('Failed to load the AI summary API key:', error);
+  const radios = [...container.querySelectorAll('input[name="ai-summary-active-profile"]')];
+  if (radios.length > 0 && !radios.some(radio => radio.checked)) {
+    radios[0].checked = true;
   }
+}
+
+function updateAiSummaryProfileControls(container = document.getElementById('ai-summary-profiles')) {
+  if (!container) {
+    return;
+  }
+  const rows = [...container.querySelectorAll('.ai-summary-profile')];
+  const addButton = document.getElementById('ai-summary-add-profile-btn');
+  if (addButton) {
+    addButton.disabled = rows.length >= MAX_AI_SUMMARY_PROFILES;
+  }
+  rows.forEach(row => {
+    const removeButton = row.querySelector('[data-action="remove-profile"]');
+    if (removeButton) {
+      removeButton.disabled = rows.length <= 1;
+    }
+  });
+}
+
+function renderAiSummaryProfiles({ profiles, activeProfileId, apiKeys }) {
+  const container = document.getElementById('ai-summary-profiles');
+  if (!container) {
+    return;
+  }
+  container.replaceChildren(...profiles.map(profile => createAiSummaryProfileRow(
+    profile,
+    apiKeys[profile.id] || '',
+    activeProfileId
+  )));
+  ensureAiSummaryProfileSelection(container);
+  updateAiSummaryProfileControls(container);
+}
+
+async function refreshAiSummaryProfiles() {
+  const state = await loadAiSummarySetup();
+  renderAiSummaryProfiles(state);
+}
+
+function addAiSummaryProfileRow() {
+  const container = document.getElementById('ai-summary-profiles');
+  if (!container) {
+    return;
+  }
+  if (container.querySelectorAll('.ai-summary-profile').length >= MAX_AI_SUMMARY_PROFILES) {
+    showStatus('error', t('msgAiSummaryProfileLimit', [String(MAX_AI_SUMMARY_PROFILES)]));
+    return;
+  }
+  const row = createAiSummaryProfileRow(
+    { id: createAiSummaryProfileId(), name: '', baseUrl: '', model: '' },
+    '',
+    ''
+  );
+  container.append(row);
+  ensureAiSummaryProfileSelection(container);
+  updateAiSummaryProfileControls(container);
+  row.querySelector('[data-field="baseUrl"]')?.focus();
+}
+
+function removeAiSummaryProfileRow(row) {
+  const container = document.getElementById('ai-summary-profiles');
+  if (!container || !row) {
+    return;
+  }
+  if (container.querySelectorAll('.ai-summary-profile').length <= 1) {
+    return;
+  }
+  const wasActive = row.querySelector('input[name="ai-summary-active-profile"]')?.checked === true;
+  row.remove();
+  if (wasActive) {
+    ensureAiSummaryProfileSelection(container);
+  }
+  updateAiSummaryProfileControls(container);
+}
+
+function readAiSummaryProfileRows() {
+  const container = document.getElementById('ai-summary-profiles');
+  const rows = [...(container?.querySelectorAll('.ai-summary-profile') || [])];
+  if (rows.length === 0) {
+    return { error: 'empty' };
+  }
+
+  const profiles = [];
+  const apiKeys = {};
+  let activeProfileId = '';
+  for (const [index, row] of rows.entries()) {
+    const profile = {
+      id: row.dataset.profileId || createAiSummaryProfileId(),
+      name: row.querySelector('[data-field="name"]')?.value.trim() || '',
+      baseUrl: row.querySelector('[data-field="baseUrl"]')?.value.trim() || '',
+      model: row.querySelector('[data-field="model"]')?.value.trim() || ''
+    };
+    if (!profile.baseUrl || !profile.model || !getSummaryOriginPattern(profile.baseUrl)) {
+      return { error: 'incomplete', index, profile };
+    }
+    profiles.push(profile);
+    const apiKey = row.querySelector('[data-field="apiKey"]')?.value.trim() || '';
+    if (apiKey) {
+      apiKeys[profile.id] = apiKey;
+    }
+    if (row.querySelector('input[name="ai-summary-active-profile"]')?.checked) {
+      activeProfileId = profile.id;
+    }
+  }
+  if (!activeProfileId) {
+    activeProfileId = profiles[0].id;
+  }
+  return { profiles, apiKeys, activeProfileId };
+}
+
+function describeAiSummaryProfile(profile, index) {
+  return profile?.name || profile?.model || `#${index + 1}`;
+}
+
+async function loadAiSummarySettings(settings) {
+  const autoToggle = document.getElementById('ai-summary-auto-toggle');
+  if (!autoToggle) {
+    return;
+  }
+  autoToggle.checked = settings.aiSummaryAutoEnabled === true;
+  await refreshAiSummaryProfiles();
 }
 
 async function saveAndTestAiSummary() {
   const result = document.getElementById('ai-summary-test-result');
   const button = document.getElementById('ai-summary-save-btn');
-  const config = {
-    baseUrl: document.getElementById('ai-summary-base-url').value.trim(),
-    apiKey: document.getElementById('ai-summary-api-key').value.trim(),
-    model: document.getElementById('ai-summary-model').value.trim()
-  };
-  const originPattern = getSummaryOriginPattern(config.baseUrl);
-  if (!originPattern || !config.apiKey || !config.model) {
+  const parsed = readAiSummaryProfileRows();
+  if (parsed.error) {
+    const message = parsed.error === 'incomplete'
+      ? t('msgAiSummaryProfileIncomplete', [describeAiSummaryProfile(parsed.profile, parsed.index)])
+      : t('msgAiSummaryIncomplete');
+    result.textContent = message;
+    showStatus('error', message);
+    return;
+  }
+
+  const activeProfile = parsed.profiles.find(profile => profile.id === parsed.activeProfileId);
+  if (!activeProfile) {
     result.textContent = t('msgAiSummaryIncomplete');
     showStatus('error', t('msgAiSummaryIncomplete'));
     return;
   }
+  const origins = [...new Set(parsed.profiles
+    .filter(profile => parsed.apiKeys[profile.id])
+    .map(profile => getSummaryOriginPattern(profile.baseUrl))
+    .filter(Boolean))];
 
-  // The permission prompt needs the click's user gesture, so ask first.
-  let granted = false;
-  try {
-    granted = await chrome.permissions.request({ origins: [originPattern] });
-  } catch (error) {
-    console.warn('AI summary permission request failed:', error);
+  // The permission prompt needs the click's user gesture, so ask before any
+  // other await. A denied prompt still saves the rules, as before.
+  let granted = origins.length === 0;
+  if (origins.length > 0) {
+    try {
+      granted = await chrome.permissions.request({ origins });
+    } catch (error) {
+      console.warn('AI summary permission request failed:', error);
+    }
   }
 
-  await saveSettings({ aiSummaryBaseUrl: config.baseUrl, aiSummaryModel: config.model });
-  await chrome.storage.local.set({ [AI_SUMMARY_API_KEY_STORAGE_KEY]: config.apiKey });
-  if (!granted) {
+  await saveAiSummarySetup(parsed);
+  if (origins.length > 0 && !granted) {
     result.textContent = t('msgAiSummaryPermissionDenied');
     showStatus('error', t('msgAiSummaryPermissionDenied'));
     return;
   }
 
+  const activeKey = parsed.apiKeys[activeProfile.id] || '';
+  if (!isSummaryConfigured({
+    baseUrl: activeProfile.baseUrl,
+    model: activeProfile.model,
+    apiKey: activeKey
+  })) {
+    const message = t('msgAiSummaryProfileApiKeyMissing', [getAiSummaryProfileLabel(activeProfile) || activeProfile.model]);
+    result.textContent = message;
+    showStatus('error', message);
+    return;
+  }
+
   button.disabled = true;
-  result.textContent = t('msgAiSummaryTesting');
+  result.textContent = t('msgAiSummaryProfileTesting', [getAiSummaryProfileLabel(activeProfile) || activeProfile.model]);
   try {
-    await requestSummary({ config, messages: [{ role: 'user', content: 'Reply with OK.' }], timeoutMs: 30000 });
+    await requestSummary({
+      config: { baseUrl: activeProfile.baseUrl, model: activeProfile.model, apiKey: activeKey },
+      messages: [{ role: 'user', content: 'Reply with OK.' }],
+      timeoutMs: 30000
+    });
     result.textContent = t('msgAiSummaryTestOk');
     showStatus('success', t('msgAiSummaryTestOk'));
   } catch (error) {

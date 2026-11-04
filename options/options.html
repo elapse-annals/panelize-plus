@@ -174,33 +174,17 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <div class="setting-label" data-i18n="labelAiSummaryBaseUrl">API base URL</div>
-            <div class="setting-description" data-i18n="descAiSummaryBaseUrl">For example https://api.openai.com/v1. /chat/completions is added when missing.</div>
+            <div class="setting-label" data-i18n="labelAiSummaryProfiles">Models</div>
+            <div class="setting-description" data-i18n="descAiSummaryProfiles">
+              Add one or more OpenAI-compatible API setups. Summaries use the selected model; switching applies to the next summary.
+            </div>
           </div>
           <div class="setting-control">
-            <input type="url" id="ai-summary-base-url" class="ai-summary-input" placeholder="https://api.openai.com/v1" autocomplete="off" spellcheck="false" />
+            <button type="button" class="btn btn-secondary" id="ai-summary-add-profile-btn" data-i18n="btnAiSummaryAddProfile">Add model</button>
           </div>
         </div>
 
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label" data-i18n="labelAiSummaryApiKey">API key</div>
-            <div class="setting-description" data-i18n="descAiSummaryApiKey">Kept on this device only; never synced or exported.</div>
-          </div>
-          <div class="setting-control">
-            <input type="password" id="ai-summary-api-key" class="ai-summary-input" autocomplete="off" spellcheck="false" />
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label" data-i18n="labelAiSummaryModel">Model</div>
-            <div class="setting-description" data-i18n="descAiSummaryModel">The model name the API expects, such as gpt-4o-mini or deepseek-chat.</div>
-          </div>
-          <div class="setting-control">
-            <input type="text" id="ai-summary-model" class="ai-summary-input" placeholder="gpt-4o-mini" autocomplete="off" spellcheck="false" />
-          </div>
-        </div>
+        <div id="ai-summary-profiles" class="ai-summary-profiles"></div>
 
         <div class="setting-item">
           <div class="setting-info">
@@ -218,7 +202,7 @@
         <div class="setting-item">
           <div class="setting-info">
             <div class="setting-label" data-i18n="labelAiSummarySave">Save and test</div>
-            <div class="setting-description" id="ai-summary-test-result" data-i18n="descAiSummarySave">Asks for access to the API's site, then sends a short test request</div>
+            <div class="setting-description" id="ai-summary-test-result" data-i18n="descAiSummarySave">Saves every model above, then asks for access to the API's site and sends a short test request</div>
           </div>
           <div class="setting-control">
             <button class="btn btn-secondary" id="ai-summary-save-btn" data-i18n="btnAiSummarySave">Save and test</button>

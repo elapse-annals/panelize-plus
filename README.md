@@ -1,4 +1,4 @@
-# Panelize (百家)
+# Panelize Plus（百家）
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> |
@@ -6,10 +6,10 @@
   <a href="README.ja.md"><strong>日本語</strong></a>
 </p>
 
+> **Panelize Plus（百家）** is a personal, MIT-licensed fork of [Panelize](https://github.com/Manho/Panelize) by [Manho](https://github.com/Manho), maintained by Ben at [elapse-annals/panelize-plus](https://github.com/elapse-annals/panelize-plus). It keeps the original idea — one prompt to every AI, each provider's real website, the account you already use — and builds on it with AI summary, answer stats, prompt modes, a macOS menu-bar client and more. Upstream Panelize remains the original project; see [Upstream Panelize](#upstream-panelize).
+
 <p align="center">
-  <img src="assets/screenshots/promo-en.gif" alt="Panelize demo: ask ChatGPT, Claude, Gemini and DeepSeek at once and compare answers side by side" width="800">
-  <br>
-  <a href="https://youtu.be/kCRXBVeXbrA">▶ Watch the HD video</a> · <a href="https://panelize.dev">🌐 panelize.dev</a>
+  <img src="assets/screenshots/promo-en.gif" alt="Panelize Plus demo: ask ChatGPT, Claude, Gemini and DeepSeek at once and compare answers side by side" width="800">
 </p>
 
 <p align="center">
@@ -17,36 +17,53 @@
 </p>
 
 <p align="center">
-  <a href="https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii"><img src="https://img.shields.io/chrome-web-store/v/iokalaafkmjffolodkkgbbccmofbglii?label=Chrome%20Web%20Store&color=4285F4" alt="Chrome Web Store version"></a>
-  <a href="https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii"><img src="https://img.shields.io/chrome-web-store/users/iokalaafkmjffolodkkgbbccmofbglii?color=brightgreen" alt="Chrome Web Store users"></a>
-  <a href="https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii"><img src="https://img.shields.io/chrome-web-store/rating/iokalaafkmjffolodkkgbbccmofbglii" alt="Chrome Web Store rating"></a>
-  <a href="https://github.com/Manho/Panelize/stargazers"><img src="https://img.shields.io/github/stars/Manho/Panelize?style=flat" alt="GitHub stars"></a>
+  <a href="https://github.com/elapse-annals/panelize-plus/releases/latest"><img src="https://img.shields.io/github/v/release/elapse-annals/panelize-plus?label=release" alt="Panelize Plus release"></a>
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
-  <img src="https://img.shields.io/badge/Edge-supported-0078D7.svg" alt="Edge">
+  <img src="https://img.shields.io/badge/Chrome%20%2F%20Edge-unpacked-4285F4.svg" alt="Chrome / Edge">
+  <a href="https://github.com/Manho/Panelize/stargazers"><img src="https://img.shields.io/github/stars/Manho/Panelize?style=flat" alt="Upstream Panelize GitHub stars"></a>
 </p>
 
 <p align="center">
-  <a href="https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii"><img src="https://img.shields.io/badge/Add%20to%20Chrome%20%E2%80%94%20it%27s%20free-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Add to Chrome — it's free"></a>
+  <a href="#installation"><img src="https://img.shields.io/badge/Load%20Panelize%20Plus-from%20source-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Load Panelize Plus from source"></a>
 </p>
 
 <p align="center">
   <sub>Free · No API keys · Works with your existing AI logins</sub><br>
-  <sub>If Panelize saves you time, a ⭐ on GitHub helps other people find it.</sub>
+  <sub>Panelize Plus is a fork of <a href="https://github.com/Manho/Panelize">Panelize</a>; stars for the original project are welcome upstream.</sub>
 </p>
 
 ---
 
-## Why Panelize?
+## Why Panelize Plus?
 
-Panelize (百家) is a free, open-source Chrome and Edge extension that sends one prompt to ChatGPT, Claude, Gemini, Grok, DeepSeek and other AI chatbots at the same time and shows their answers side by side in one window. It loads each provider's real website with your existing login, so there are no API keys and no extra subscription.
+Panelize Plus（百家）is a free, open-source Chrome and Edge extension that sends one prompt to ChatGPT, Claude, Gemini, Grok, DeepSeek and other AI chatbots at the same time and shows their answers side by side in one window. It loads each provider's real website with your existing login, so there are no API keys and no extra subscription.
 
-Ever found yourself copying the same prompt across multiple AI tabs just to compare answers? Panelize eliminates that workflow entirely.
+Ever found yourself copying the same prompt across multiple AI tabs just to compare answers? Panelize Plus eliminates that workflow entirely.
 
 **One window. One prompt. Multiple AI responses—instantly.**
 
 <p align="center">
-  <img src="assets/screenshots/main-panel.png" alt="Panelize Main Interface" width="800">
+  <img src="assets/screenshots/main-panel.png" alt="Panelize Plus Main Interface" width="800">
 </p>
+
+---
+
+## What Panelize Plus Changes
+
+Panelize Plus starts from upstream Panelize **v2.0.1** (2026-10-23) and continues on its own history (`2.1.0` → `2.75.1`). Compared with upstream, this fork adds:
+
+| Area | What's different |
+| --- | --- |
+| **AI summary** | Merges the round's answers into a verdict, agreements, unique insights and side-by-side disagreements, with source chips that jump to the quoted passage. Streams its reply, caches by question for three days, and can run automatically once 80% of the answers are done, through any OpenAI-compatible endpoint. |
+| **Answer stats & blind mode** | Times each answer to first text and to completion, tracks which answers you adopt, scores providers, filters by task category, names the best model per category, weights the last 30 days, and crowns the three fastest answers. Blind mode hides AI names, evens out page styling and shuffles panel order. |
+| **Prompt modes** | Modes are Prompt Library entries with trigger words; **Auto** applies them per send, with a ghost preview and `Tab` completion. Adds Deep thinking and an adversarial Challenge mode. Prompts can carry separate Chinese (shown) and English (sent) text. |
+| **Composer & panels** | Image and document attachments, a readiness gate before sending, recent-question suggestions, per-AI status chips, click-to-locate, panel capacity and layout auto-adjust, popup position/size memory, wide mode and swipe feedback. |
+| **Panelize Link (macOS)** | Optional menu-bar client with a global shortcut (`Option + Space` by default), a floating composer, prompt-mode picker, `Tab` completion and recent questions; it sends through the existing Send All flow over an opt-in Native Messaging bridge. |
+| **Providers** | Adds StepFun, Agnes, Perplexity, Copilot and Wenxin (the last three optional), plus provider billing markers (including rate-limited) and many site-control fixes. |
+| **Brand & language** | Renamed to **Panelize Plus（百家）**, with a new package name and About credits. The interface is reduced to Simplified Chinese and English, with Chinese as the default; the other eight language packs were removed. |
+| **Defaults** | Fresh installs start from the maintainer's exported configuration — enabled providers and order, startup panels, Deep thinking as the default prompt mode, and a preconfigured AI summary endpoint (the API key stays on your device). |
+
+The full change list is in [CHANGELOG.md](CHANGELOG.md). Upstream features and fixes that arrive later are merged into `master` through the `upstream` remote; see [Upstream Panelize](#upstream-panelize).
 
 ---
 
@@ -58,7 +75,7 @@ Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, De
 
 ### 🌍 Panelize Link (macOS)
 
-**Panelize Link** is an optional macOS menu-bar client. Open a floating composer from any app with `Option + Space` (default; `Control + Space` or `Command + Shift + Space` can be chosen instead); press Enter and the prompt goes through the same Send All flow to every AI in your current Panelize window. The composer offers the built-in prompt modes (defaulting to Auto), previews what the selected mode will append, completes trigger words such as `/study` with `Tab`, and suggests the last three sent questions as you type. See [Panelize Link setup](desktop/macos/README.md).
+**Panelize Link** is an optional macOS menu-bar client. Open a floating composer from any app with `Option + Space` (default; `Control + Space` or `Command + Shift + Space` can be chosen instead); press Enter and the prompt goes through the same Send All flow to every AI in your current Panelize Plus window. The composer offers the built-in prompt modes (defaulting to Auto), previews what the selected mode will append, completes trigger words such as `/study` with `Tab`, and suggests the last three sent questions as you type. See [Panelize Link setup](desktop/macos/README.md).
 
 ### 📐 Flexible Layouts
 
@@ -70,7 +87,7 @@ Choose from 49 different layouts to fit your workflow, with capacity for up to 3
 
 ### ⚡ Zero Setup
 
-No API keys. Log into your AI accounts normally, and Panelize uses those sessions.
+No API keys. Log into your AI accounts normally, and Panelize Plus uses those sessions.
 
 ### 📚 Prompt Library
 
@@ -156,34 +173,35 @@ Perplexity, Copilot, and ERNIE (Wenxin) are optional providers. Enable them in S
 
 ## Installation
 
-### Chrome Web Store (Recommended)
+Panelize Plus is not published to the Chrome Web Store; load it from this repository. (The original Panelize is on the store — see [Upstream Panelize](#upstream-panelize).)
 
-1. Visit the [Chrome Web Store](https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii) page
-2. Click **"Add to Chrome"**
-3. Done! Press `Cmd/Ctrl + Shift + E` to open Panelize
+### Load from source (Recommended)
 
-> **Works on Edge too:** Install directly from the Chrome Web Store.
+1. Clone or download this repository
+2. Go to `chrome://extensions/` (or `edge://extensions/`)
+3. Enable **Developer mode**
+4. Click **Load unpacked** and select the project folder
+5. Press `Cmd/Ctrl + Shift + E` to open Panelize Plus
+
+> **Works on Edge too:** Edge can load the same unpacked folder.
 
 <details>
-<summary><strong>Manual Installation (for developers)</strong></summary>
+<summary><strong>Upstream Panelize from the Chrome Web Store</strong></summary>
 
-1. Download the source code from this repository
-2. Go to `chrome://extensions/` (or `edge://extensions/`)
-3. Enable "Developer mode"
-4. Click "Load unpacked" and select the extracted folder
+The original [Panelize](https://github.com/Manho/Panelize) by Manho is published on the [Chrome Web Store](https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii). Installing it gives you upstream features, not the Panelize Plus changes listed above.
 
 </details>
 
 ### Panelize Link (Optional, macOS)
 
-Requires macOS 13+, Chrome or Edge running, and Panelize 2.66.0+. It is off by default: after installing the client, enable Settings → Global Input (macOS). It reuses the existing Send All flow rather than adding a separate AI pipeline. See [Panelize Link setup](desktop/macos/README.md) for installation, usage, and troubleshooting.
+Requires macOS 13+, Chrome or Edge running, and Panelize Plus 2.66.0+. It is off by default: after installing the client, enable Settings → Global Input (macOS). It reuses the existing Send All flow rather than adding a separate AI pipeline. See [Panelize Link setup](desktop/macos/README.md) for installation, usage, and troubleshooting.
 
 ---
 
 ## Quick Start
 
 1. **Log into your AI accounts** — Visit ChatGPT, Claude, etc. and log in as usual
-2. **Press `Cmd/Ctrl + Shift + E`** — Opens the Panelize window
+2. **Press `Cmd/Ctrl + Shift + E`** — Opens the Panelize Plus window
 3. **Pick a layout** — Choose how many AI panels you want
 4. **Type and send** — Your prompt goes to all panels at once
 
@@ -195,7 +213,7 @@ That's it. No accounts to create, no API keys to configure.
 
 | Action | Shortcut |
 |--------|----------|
-| Open Panelize | `Cmd/Ctrl + Shift + E` |
+| Open Panelize Plus | `Cmd/Ctrl + Shift + E` |
 | Open Prompt Library | `Cmd/Ctrl + Shift + L` |
 | Send to all AIs | `Enter` or `Cmd/Ctrl + Enter` |
 | New line | `Shift + Enter` |
@@ -218,13 +236,16 @@ The bottom bar can switch between manual and popularity-first ordering; populari
 ## FAQ
 
 **How do I ask ChatGPT, Claude and Gemini the same question at once?**
-→ Install Panelize, open it with `Cmd/Ctrl + Shift + E`, pick the providers and a layout, type your prompt and click **Send All**. Each answer appears in its own panel.
+→ Install Panelize Plus, open it with `Cmd/Ctrl + Shift + E`, pick the providers and a layout, type your prompt and click **Send All**. Each answer appears in its own panel.
 
-**Is Panelize free? Do I need API keys?**
+**Is Panelize Plus free? Do I need API keys?**
 → Yes, it is free and MIT-licensed. No API keys are needed: each panel is the provider's own website, signed in with your normal account. Paid plans such as ChatGPT Plus or Claude Pro work as usual.
 
-**How is Panelize different from ChatHub or ChatALL?**
-→ ChatHub and ChatALL put many models behind one chat interface. Panelize shows each provider's real website instead, so you keep your own plans, model pickers and chat history. See [Panelize vs ChatHub](https://panelize.dev/alternatives/chathub/).
+**How is Panelize Plus different from Panelize?**
+→ Panelize Plus is a fork of Panelize by Manho. It keeps the side-by-side website panels and adds AI summary, deeper answer stats, prompt modes, the macOS Panelize Link client and more. See [What Panelize Plus Changes](#what-panelize-plus-changes). Upstream Panelize continues as the original project.
+
+**How is Panelize Plus different from ChatHub or ChatALL?**
+→ ChatHub and ChatALL put many models behind one chat interface. Panelize Plus shows each provider's real website instead, so you keep your own plans, model pickers and chat history.
 
 **Which AI chatbots are supported?**
 → ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Qwen, Doubao, Zhipu, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin) and Google AI Mode. See [Supported AI Providers](#supported-ai-providers).
@@ -232,16 +253,16 @@ The bottom bar can switch between manual and popularity-first ordering; populari
 ## Troubleshooting
 
 **AI provider shows login page?**
-→ Log into that provider in a regular browser tab first, then refresh Panelize.
+→ Log into that provider in a regular browser tab first, then refresh Panelize Plus.
 
 **Shortcuts not working?**
 → Check for conflicts at `chrome://extensions/shortcuts`
 
 **Qwen (Global) looks logged out after signing in?**
-→ In Settings, enable Qwen (Global) and approve access to both `chat.qwen.ai` and `auth.qwen.ai`, then reload the panel. Existing users may need to approve the added authentication origin after updating Panelize. If Qwen has already invalidated the session, sign in again on its website first.
+→ In Settings, enable Qwen (Global) and approve access to both `chat.qwen.ai` and `auth.qwen.ai`, then reload the panel. Existing users may need to approve the added authentication origin after updating Panelize Plus. If Qwen has already invalidated the session, sign in again on its website first.
 
 **Need more help?**
-→ [Open an issue](https://github.com/Manho/Panelize/issues)
+→ [Open an issue](https://github.com/elapse-annals/panelize-plus/issues)
 
 ---
 
@@ -282,21 +303,38 @@ The live suite catches provider site changes that fixtures cannot. For each prov
 ## Contributing
 
 Found a bug? Have an idea? Contributions are welcome:
-- 🐛 Report bugs via [GitHub Issues](https://github.com/Manho/Panelize/issues)
+- 🐛 Report bugs or ask about Panelize Plus changes via [GitHub Issues](https://github.com/elapse-annals/panelize-plus/issues)
 - 💡 Suggest features
-- 🔧 Submit pull requests
+- 🔧 Submit pull requests to this repository
+
+Fixes that also apply to the original project belong in [Manho/Panelize](https://github.com/Manho/Panelize/issues) instead.
+
+---
+
+## Upstream Panelize
+
+Panelize Plus is a derivative work of [Panelize](https://github.com/Manho/Panelize) by Manho, used under the MIT License. Upstream Panelize is the original project and the place for its community, Chrome Web Store release and documentation at [panelize.dev](https://panelize.dev).
+
+The fork and its attribution are recorded in [NOTICE.md](NOTICE.md). This repository keeps an `upstream` git remote and merges upstream changes into `master`:
+
+```bash
+git fetch upstream
+git merge upstream/master
+```
+
+Panelize Plus-specific changes are kept on their own commit history so they can be separated from upstream.
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE) for details. Panelize Plus is derived from Panelize by Manho; see [NOTICE.md](NOTICE.md).
 
 ---
 
 <p align="center">
   <strong>Open source & privacy-focused</strong><br>
-  Available in English and Simplified Chinese
+  Interface available in English and Simplified Chinese · READMEs in English, Chinese and Japanese
 </p>
 
 <p align="center">

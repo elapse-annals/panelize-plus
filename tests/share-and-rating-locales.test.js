@@ -177,6 +177,21 @@ const FEATURE_KEYS = [
   'aiSummaryCopied',
   'sectionAiSummary',
   'descAiSummary',
+  'labelAiSummaryProfiles',
+  'descAiSummaryProfiles',
+  'labelAiSummaryProfileName',
+  'labelAiSummaryProfileBaseUrl',
+  'labelAiSummaryProfileApiKey',
+  'labelAiSummaryProfileModel',
+  'labelAiSummaryProfileActive',
+  'labelAiSummaryProfileRemove',
+  'btnAiSummaryAddProfile',
+  'msgAiSummaryProfileIncomplete',
+  'msgAiSummaryProfileLimit',
+  'msgAiSummaryProfileTesting',
+  'msgAiSummaryProfileApiKeyMissing',
+  'aiSummaryProfileSelect',
+  'aiSummaryProfileUnconfigured',
   'labelAiSummaryBaseUrl',
   'descAiSummaryBaseUrl',
   'labelAiSummaryApiKey',
@@ -253,7 +268,11 @@ describe('share and rating strings', () => {
       aiSummaryBusy: ['$1'],
       aiSummaryMissing: ['$1'],
       answerStatsBestCategorySummary: ['$1', '$2', '$3', '$4'],
-      msgAiSummaryTestFailed: ['$1']
+      msgAiSummaryTestFailed: ['$1'],
+      msgAiSummaryProfileIncomplete: ['$1'],
+      msgAiSummaryProfileLimit: ['$1'],
+      msgAiSummaryProfileTesting: ['$1'],
+      msgAiSummaryProfileApiKeyMissing: ['$1']
     };
     locales.forEach((locale) => {
       const messages = JSON.parse(readFileSync(resolve(LOCALES_DIR, locale, 'messages.json'), 'utf8'));

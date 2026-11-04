@@ -156,6 +156,15 @@ import {
   requestSummary,
   shouldExpandSummary
 } from '../modules/ai-summary.js';
+import {
+  AI_SUMMARY_ACTIVE_PROFILE_STORAGE_KEY,
+  AI_SUMMARY_API_KEYS_STORAGE_KEY,
+  AI_SUMMARY_PROFILES_STORAGE_KEY,
+  getAiSummaryProfileLabel,
+  loadAiSummarySetup,
+  resolveAiSummaryConfig,
+  saveAiSummaryActiveProfileId
+} from '../modules/ai-summary-profiles.js';
 import { parseOverviewBlocks, renderOverviewBlocks } from '../modules/ai-summary-overview.js';
 import { filterAnswerLogRounds, getAnswerLogProviderIds, renderAnswerLog } from '../modules/answer-log.js';
 import {
@@ -1585,9 +1594,7 @@ async function loadSettings() {
       wideContentEnabled: true,
       providerNotes: null,
       answerCompleteNotificationEnabled: true,
-      aiSummaryAutoEnabled: true,
-      aiSummaryBaseUrl: 'https://apihub.agnes-ai.com/v1',
-      aiSummaryModel: 'agnes-3.0-flash'
+      aiSummaryAutoEnabled: true
     });
 
     providerNotes = settings.providerNotes || {};
@@ -1596,9 +1603,7 @@ async function loadSettings() {
     isWideContentEnabled = settings.wideContentEnabled === true;
     isAnswerCompleteNotificationEnabled = settings.answerCompleteNotificationEnabled !== false;
     aiSummaryConfig.autoEnabled = settings.aiSummaryAutoEnabled === true;
-    aiSummaryConfig.baseUrl = settings.aiSummaryBaseUrl || '';
-    aiSummaryConfig.model = settings.aiSummaryModel || '';
-    void loadAiSummaryApiKey();
+    await reloadAiSummarySetup();
     document.body.classList.toggle('blind-mode', isBlindModeEnabled);
     document.body.classList.toggle('wide-content', isWideContentEnabled);
     currentOpenMode = settings.openMode || 'tab';
@@ -4260,6 +4265,11 @@ function handleAnswerTimingMessage(panel, data) {
 const answerTextsByRound = new Map();
 const answerQuestionsByRound = new Map();
 const aiSummaryConfig = { autoEnabled: false, baseUrl: '', model: '', apiKey: '' };
+// Profiles keep their metadata in sync storage; keys are this device's only.
+let aiSummaryProfiles = [];
+let aiSummaryApiKeys = {};
+let aiSummaryActiveProfileId = '';
+let aiSummarySetupLoadId = 0;
 const autoSummarizedRoundIds = new Set();
 const remindedAiSummaryRoundIds = new Set();
 const pendingAnswerTextRequests = new Map();
@@ -4278,22 +4288,90 @@ let aiSummaryState = {
 };
 let aiSummaryController = null;
 
-async function loadAiSummaryApiKey() {
+async function reloadAiSummarySetup() {
+  const loadId = ++aiSummarySetupLoadId;
   try {
-    const stored = await chrome.storage.local.get({ [AI_SUMMARY_API_KEY_STORAGE_KEY]: '' });
-    aiSummaryConfig.apiKey = stored[AI_SUMMARY_API_KEY_STORAGE_KEY] || '';
+    const state = await loadAiSummarySetup();
+    // A later reload won; discard this response so an older storage read
+    // cannot overwrite the newest profile list.
+    if (loadId !== aiSummarySetupLoadId) {
+      return;
+    }
+    aiSummaryProfiles = state.profiles;
+    aiSummaryApiKeys = state.apiKeys;
+    aiSummaryActiveProfileId = state.activeProfileId;
+    applyAiSummaryProfileConfig();
   } catch (error) {
-    console.warn('[Multi-Panel] Failed to load the AI summary API key:', error);
+    console.warn('[Multi-Panel] Failed to load the AI summary profiles:', error);
   }
 }
 
-function applyAiSummaryConfigChanges(changes, areaName) {
-  if (areaName === 'local' && changes[AI_SUMMARY_API_KEY_STORAGE_KEY]) {
-    aiSummaryConfig.apiKey = changes[AI_SUMMARY_API_KEY_STORAGE_KEY].newValue || '';
+function applyAiSummaryProfileConfig() {
+  const config = resolveAiSummaryConfig(aiSummaryProfiles, aiSummaryApiKeys, aiSummaryActiveProfileId);
+  aiSummaryActiveProfileId = config.profileId || '';
+  aiSummaryConfig.baseUrl = config.baseUrl;
+  aiSummaryConfig.model = config.model;
+  aiSummaryConfig.apiKey = config.apiKey;
+  renderAiSummaryProfileSelect();
+}
+
+function renderAiSummaryProfileSelect() {
+  const select = document.getElementById('ai-summary-profile-select');
+  if (!select) {
+    return;
   }
+  if (aiSummaryProfiles.length === 0) {
+    select.replaceChildren();
+    select.hidden = true;
+    select.disabled = true;
+    return;
+  }
+  const options = aiSummaryProfiles.map(profile => {
+    const option = document.createElement('option');
+    option.value = profile.id;
+    const label = getAiSummaryProfileLabel(profile) || profile.id;
+    const configured = isSummaryConfigured({
+      baseUrl: profile.baseUrl,
+      model: profile.model,
+      apiKey: aiSummaryApiKeys[profile.id] || ''
+    });
+    option.textContent = configured
+      ? label
+      : `${label} — ${getLocalizedText('aiSummaryProfileUnconfigured', 'Not set up')}`;
+    return option;
+  });
+  select.replaceChildren(...options);
+  select.value = aiSummaryActiveProfileId || aiSummaryProfiles[0].id;
+  select.hidden = false;
+  select.disabled = aiSummaryProfiles.length <= 1;
+}
+
+function chooseAiSummaryProfile(profileId) {
+  const profile = aiSummaryProfiles.find(candidate => candidate.id === profileId);
+  if (!profile) {
+    return;
+  }
+  // Switching changes only the next summary; the current result stays.
+  aiSummaryActiveProfileId = profile.id;
+  aiSummaryConfig.baseUrl = profile.baseUrl;
+  aiSummaryConfig.model = profile.model;
+  aiSummaryConfig.apiKey = aiSummaryApiKeys[profile.id] || '';
+  void saveAiSummaryActiveProfileId(profile.id).catch((error) => {
+    console.warn('[Multi-Panel] Failed to save the AI summary profile:', error);
+  });
+}
+
+function applyAiSummaryConfigChanges(changes, areaName) {
   if (changes.aiSummaryAutoEnabled) aiSummaryConfig.autoEnabled = changes.aiSummaryAutoEnabled.newValue === true;
-  if (changes.aiSummaryBaseUrl) aiSummaryConfig.baseUrl = changes.aiSummaryBaseUrl.newValue || '';
-  if (changes.aiSummaryModel) aiSummaryConfig.model = changes.aiSummaryModel.newValue || '';
+
+  const profilesChanged = changes[AI_SUMMARY_PROFILES_STORAGE_KEY]
+    || changes[AI_SUMMARY_ACTIVE_PROFILE_STORAGE_KEY]
+    || changes.aiSummaryBaseUrl
+    || changes.aiSummaryModel
+    || (areaName === 'local' && (changes[AI_SUMMARY_API_KEYS_STORAGE_KEY] || changes[AI_SUMMARY_API_KEY_STORAGE_KEY]));
+  if (profilesChanged) {
+    void reloadAiSummarySetup();
+  }
 }
 
 // The drawer grows out of the toolbar button and shrinks back into it.
@@ -4587,6 +4665,9 @@ async function runAiSummary(roundId, { collect = false, autoOpen = false, forceR
   if (!round) {
     return;
   }
+  // A profile switch while this run is in flight must not change what it
+  // asks for or what it writes to the cache.
+  const config = { ...aiSummaryConfig };
   aiSummaryController?.abort();
   const controller = new AbortController();
   aiSummaryController = controller;
@@ -4640,8 +4721,8 @@ async function runAiSummary(roundId, { collect = false, autoOpen = false, forceR
   if (!forceRefresh && question) {
     const cached = matchAiSummaryCache(await loadAiSummaryCache(), {
       question,
-      baseUrl: aiSummaryConfig.baseUrl,
-      model: aiSummaryConfig.model,
+      baseUrl: config.baseUrl,
+      model: config.model,
       language,
       panels: summaryPanels
     });
@@ -4663,13 +4744,13 @@ async function runAiSummary(roundId, { collect = false, autoOpen = false, forceR
     }
   }
 
-  if (!isSummaryConfigured(aiSummaryConfig)) {
+  if (!isSummaryConfigured(config)) {
     setState({ status: 'error', needsSetup: true, error: getLocalizedText('aiSummaryNotConfigured', 'Set up an OpenAI-compatible API in Settings to summarize answers.') });
     return;
   }
 
   try {
-    const granted = await chrome.permissions.contains({ origins: [getSummaryOriginPattern(aiSummaryConfig.baseUrl)] });
+    const granted = await chrome.permissions.contains({ origins: [getSummaryOriginPattern(config.baseUrl)] });
     if (!granted) {
       setState({ status: 'error', needsSetup: true, missing, error: getLocalizedText('aiSummaryNoPermission', 'Panelize has no access to the API site. Use Save and test in Settings to allow it.') });
       return;
@@ -4694,7 +4775,7 @@ async function runAiSummary(roundId, { collect = false, autoOpen = false, forceR
       language
     });
     const content = await requestSummary({
-      config: aiSummaryConfig,
+      config,
       messages,
       signal: controller.signal,
       onProgress: (receivedChars) => {
@@ -4710,7 +4791,7 @@ async function runAiSummary(roundId, { collect = false, autoOpen = false, forceR
     }
     void saveAiSummaryCacheEntry(createAiSummaryCacheEntry({
       question,
-      config: aiSummaryConfig,
+      config,
       language,
       panels: summaryPanels,
       sources,
@@ -4976,6 +5057,9 @@ function setupAiSummary() {
   document.getElementById('ai-summary-btn')?.addEventListener('click', toggleAiSummaryDrawer);
   document.getElementById('close-ai-summary-drawer')?.addEventListener('click', closeAiSummaryDrawer);
   document.getElementById('ai-summary-expand-btn')?.addEventListener('click', toggleAiSummaryExpanded);
+  document.getElementById('ai-summary-profile-select')?.addEventListener('change', (event) => {
+    chooseAiSummaryProfile(event.target.value);
+  });
   document.getElementById('ai-summary-drawer')?.addEventListener('click', handleAiSummaryDrawerClick);
   document.getElementById('ai-summary-copy-btn')?.addEventListener('click', () => { void copyAiSummary(); });
   document.getElementById('ai-summary-rerun-btn')?.addEventListener('click', () => {

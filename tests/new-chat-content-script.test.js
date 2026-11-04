@@ -329,4 +329,122 @@ describe('new chat content script result protocol', () => {
       status: 'verified'
     })]);
   });
+
+  it('clears a leftover composer draft after an unconfirmed new chat', async () => {
+    vi.useFakeTimers();
+    const { composer } = createChatgptDom({
+      draft: 'stale draft',
+      hasConversation: true,
+      resetOnClick: false
+    });
+
+    dispatchMultiPanelMessage({
+      type: 'NEW_CHAT',
+      requestId: 'req-clear-unconfirmed',
+      panelId: 'panel-chatgpt',
+      provider: 'chatgpt'
+    });
+    await vi.advanceTimersByTimeAsync(12500);
+
+    expect(composer.textContent).toBe('');
+    // A recovery test earlier re-evaluates the content script, so a second
+    // listener can post the same result twice in this suite.
+    expect(getNewChatResults()).toContainEqual(expect.objectContaining({
+      requestId: 'req-clear-unconfirmed',
+      status: 'unconfirmed',
+      reason: 'confirmation-timeout'
+    }));
+  });
+
+  it('clears the composer after a requestId-less new chat', () => {
+    const { composer } = createChatgptDom({
+      draft: 'legacy draft',
+      hasConversation: false,
+      resetOnClick: false
+    });
+
+    dispatchMultiPanelMessage({ type: 'NEW_CHAT' });
+
+    expect(composer.textContent).toBe('');
+  });
+
+  it('keeps a draft the user typed while the new chat was confirming', async () => {
+    vi.useFakeTimers();
+    const { composer } = createChatgptDom({
+      draft: '',
+      hasConversation: false,
+      resetOnClick: false
+    });
+
+    dispatchMultiPanelMessage({
+      type: 'NEW_CHAT',
+      requestId: 'req-user-typing',
+      panelId: 'panel-chatgpt',
+      provider: 'chatgpt'
+    });
+
+    composer.textContent = 'typed by me';
+    const keydown = new window.Event('keydown', { bubbles: true });
+    Object.defineProperty(keydown, 'isTrusted', { configurable: true, value: true });
+    document.dispatchEvent(keydown);
+
+    await vi.advanceTimersByTimeAsync(12500);
+
+    expect(composer.textContent).toBe('typed by me');
+    expect(getNewChatResults()).toContainEqual(expect.objectContaining({
+      requestId: 'req-user-typing',
+      status: 'unconfirmed',
+      reason: 'confirmation-timeout'
+    }));
+  });
+
+  it('clears the composer when the new-chat control throws', async () => {
+    vi.useFakeTimers();
+    const { button, composer } = createChatgptDom({ draft: 'kept draft' });
+    button.click = () => {
+      throw new Error('click failed');
+    };
+
+    dispatchMultiPanelMessage({
+      type: 'NEW_CHAT',
+      requestId: 'req-click-error',
+      panelId: 'panel-chatgpt',
+      provider: 'chatgpt'
+    });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(composer.textContent).toBe('');
+    expect(getNewChatResults()).toContainEqual(expect.objectContaining({
+      requestId: 'req-click-error',
+      status: 'failed',
+      reason: 'click-error'
+    }));
+  });
+
+  it('removes composer attachments when CLEAR_INPUT asks to clear images', () => {
+    document.body.innerHTML = `
+      <form data-chatgpt-composer>
+        <div id="prompt-textarea" contenteditable="true">draft</div>
+        <div data-testid="attachment-preview">
+          <span>file.png</span>
+          <button type="button" aria-label="Remove file">x</button>
+        </div>
+      </form>
+    `;
+    const composer = document.getElementById('prompt-textarea');
+    const preview = document.querySelector('[data-testid="attachment-preview"]');
+    const remove = preview.querySelector('button');
+    [composer, preview, remove].forEach(markVisible);
+    remove.addEventListener('click', () => preview.remove());
+
+    window.PanelizeChatgptComposer = {
+      EDITOR_SELECTORS: ['#prompt-textarea'],
+      findEditor: () => document.querySelector('#prompt-textarea')
+    };
+
+    dispatchMultiPanelMessage({ type: 'CLEAR_INPUT', clearImages: true });
+
+    expect(composer.textContent).toBe('');
+    expect(document.querySelector('[data-testid="attachment-preview"]')).toBeNull();
+  });
 });

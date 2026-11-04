@@ -28,7 +28,41 @@ final class ComposerLayoutTests: XCTestCase {
         XCTAssertEqual(composerSuggestionHeight(rowCount: 3), 98)
         XCTAssertEqual(composerSuggestionHeight(rowCount: 9), 98)
         XCTAssertEqual(composerContentHeight(inputHeight: 74, suggestionHeight: 0), 164)
-        XCTAssertEqual(composerContentHeight(inputHeight: 74, suggestionHeight: 98), 262)
+    }
+
+    func testCardHeightIgnoresTheHistoryPanel() {
+        XCTAssertEqual(composerCardHeight(inputHeight: 74), 164)
+        XCTAssertEqual(composerCardHeight(inputHeight: 104), 194)
+        XCTAssertEqual(composerCardHeight(inputHeight: 128), 218)
+    }
+
+    func testHistoryPanelHeightIncludesHeaderAndRows() {
+        XCTAssertEqual(composerHistoryPanelHeight(rowCount: 0), 0)
+        XCTAssertEqual(
+            composerHistoryPanelHeight(rowCount: 1),
+            composerHistoryPanelPadding * 2
+                + composerHistoryHeaderHeight
+                + composerHistoryHeaderGap
+                + composerSuggestionHeight(rowCount: 1)
+        )
+        XCTAssertEqual(composerHistoryPanelHeight(rowCount: 3), 132)
+        XCTAssertEqual(composerHistoryPanelHeight(rowCount: 9), 132)
+    }
+
+    func testContentHeightAddsVisibleHistoryPanel() {
+        XCTAssertEqual(
+            composerContentHeight(inputHeight: 74, suggestionHeight: 0),
+            composerCardHeight(inputHeight: 74)
+        )
+        XCTAssertEqual(
+            composerContentHeight(inputHeight: 74, suggestionHeight: 132),
+            composerCardHeight(inputHeight: 74) + 132 - composerHistoryPanelOverlap
+        )
+        XCTAssertEqual(composerContentHeight(inputHeight: 74, suggestionHeight: 132), 290)
+        XCTAssertEqual(
+            composerContentHeight(inputHeight: 74, suggestionHeight: 2),
+            composerCardHeight(inputHeight: 74)
+        )
     }
 
     func testWindowOriginKeepsContentAtComposerPosition() {

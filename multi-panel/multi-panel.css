@@ -4164,6 +4164,31 @@ body.panel-shuffling #panel-grid, body.panel-shuffling #panel-selectors { pointe
   flex-shrink: 0;
 }
 
+/* Picks the profile used by the next summary; the current result stays. */
+.ai-summary-profile-select {
+  min-width: 0;
+  max-width: 220px;
+  height: 30px;
+  padding: 4px 8px;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  background-color: #fff;
+  color: #2b2f36;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ai-summary-profile-select:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+[data-theme="dark"] .ai-summary-profile-select {
+  border-color: #555;
+  background-color: #2d2d2d;
+  color: #e0e0e0;
+}
+
 .ai-summary-body {
   font-size: 15px;
   line-height: 1.75;
