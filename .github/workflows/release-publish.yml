@@ -74,41 +74,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  macos:
-    needs: validate
-    runs-on: macos-15
-    permissions:
-      contents: read
-    env:
-      RELEASE_VERSION: ${{ inputs.version }}
-
-    steps:
-      - name: Checkout validated release commit
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.validate.outputs.release_sha }}
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Check desktop prompt definitions
-        run: node scripts/sync-desktop-prompts.js --check
-
-      - name: Build macOS client
-        run: bash scripts/release/package-macos-app.sh
-
-      - name: Upload macOS client
-        uses: actions/upload-artifact@v4
-        with:
-          name: panelize-${{ inputs.version }}-macos
-          path: dist/release-${{ inputs.version }}/panelize-link-${{ inputs.version }}-macos-arm64.zip
-          if-no-files-found: error
-          retention-days: 14
-
   publish:
-    needs: [validate, macos]
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -128,12 +95,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: panelize-${{ inputs.version }}-publish
-          path: dist/release-${{ inputs.version }}
-
-      - name: Download macOS client
-        uses: actions/download-artifact@v4
-        with:
-          name: panelize-${{ inputs.version }}-macos
           path: dist/release-${{ inputs.version }}
 
       - name: Revalidate release target
@@ -166,7 +127,6 @@ jobs:
           gh release create "$TAG" \
             "${RELEASE_DIR}/panelize-${RELEASE_VERSION}-release.zip" \
             "${RELEASE_DIR}/panelize-${RELEASE_VERSION}-cws.zip" \
-            "${RELEASE_DIR}/panelize-link-${RELEASE_VERSION}-macos-arm64.zip" \
             --verify-tag \
             --title "Panelize ${RELEASE_VERSION}" \
             --notes-file "${RELEASE_DIR}/release-notes.md"

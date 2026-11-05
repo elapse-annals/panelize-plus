@@ -118,4 +118,11 @@ swift test --package-path desktop/macos
 ./desktop/macos/Scripts/build-app.sh
 ```
 
-The build lands in `dist/Panelize Link.app` and is not included in extension release packages; the release pipeline attaches it separately as `panelize-link-<version>-macos-arm64.zip`. Extension-side protocol tests live in `tests/unit/platform/global-send.test.js` and `tests/unit/background/native-send.test.js`.
+The build lands in `dist/Panelize Link.app` and is not included in extension release packages. On an Apple silicon Mac, package it and attach it to the release published by Release Publish:
+
+```bash
+RELEASE_VERSION=x.y.z ./scripts/release/package-macos-app.sh
+gh release upload "vx.y.z" "dist/release-x.y.z/panelize-link-x.y.z-macos-arm64.zip"
+```
+
+Extension-side protocol tests live in `tests/unit/platform/global-send.test.js` and `tests/unit/background/native-send.test.js`.

@@ -118,4 +118,11 @@ swift test --package-path desktop/macos
 ./desktop/macos/Scripts/build-app.sh
 ```
 
-构建产物在 `dist/Panelize Link.app`，不会进入扩展发布包；发布流水线会把它单独打包为 `panelize-link-<version>-macos-arm64.zip` 附加到 Release。扩展侧的协议测试在 `tests/unit/platform/global-send.test.js` 与 `tests/unit/background/native-send.test.js`。
+构建产物在 `dist/Panelize Link.app`，不会进入扩展发布包。在 Apple silicon Mac 上打包，并补传到 Release Publish 创建的 Release：
+
+```bash
+RELEASE_VERSION=x.y.z ./scripts/release/package-macos-app.sh
+gh release upload "vx.y.z" "dist/release-x.y.z/panelize-link-x.y.z-macos-arm64.zip"
+```
+
+扩展侧的协议测试在 `tests/unit/platform/global-send.test.js` 与 `tests/unit/background/native-send.test.js`。
