@@ -250,10 +250,17 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         }
     }
 
+    func windowDidBecomeKey(_ notification: Notification) {
+        // A short focus pulse, matching the extension's composer edge sweep.
+        content.pulseCardFocus()
+    }
+
     func windowDidResignKey(_ notification: Notification) {
         // Keep the composer on screen when macOS declines to activate an
         // accessory app from the hotkey. Escape, the shortcut and a successful
-        // send all dismiss it; losing key focus alone should not.
+        // send all dismiss it; losing key focus alone should not. Hover
+        // emphasis tracks the pointer with .activeAlways, so it stays correct
+        // while the panel is inactive.
     }
 
     private func startDismissMonitoring() {
@@ -497,8 +504,7 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
 
     private func setBusy(_ busy: Bool) {
         content.textView.isEditable = !busy
-        content.sendButton.isEnabled = !busy
-        content.sendButton.isBusy = busy
+        content.sendButton.setSending(busy, animated: true)
         content.modePicker.isEnabled = !busy
         if busy {
             suggestions.dismissCompletion()

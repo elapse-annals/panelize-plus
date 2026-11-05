@@ -1803,7 +1803,7 @@
     "message": "The model name the API expects, such as gpt-4o-mini or deepseek-chat."
   },
   "labelAiSummaryAuto": {
-    "message": "Summarize when 80% of answers are done"
+    "message": "Summarize when 70% of answers are done"
   },
   "descAiSummaryAuto": {
     "message": "Off: summarize only with the AI summary button in the toolbar"

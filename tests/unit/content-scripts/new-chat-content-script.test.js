@@ -206,6 +206,129 @@ describe('new chat content script result protocol', () => {
     })]);
   });
 
+  it('clears a restored conversation that only the provider answer selector matches', async () => {
+    vi.useFakeTimers();
+    window.happyDOM.setURL('https://chat.z.ai/c/old-conversation');
+    document.body.innerHTML = `
+      <textarea class="input-scroll" placeholder="How can I help you today?"></textarea>
+      <div class="chat-assistant"><div id="response-content-container">previous answer</div></div>
+      <button type="button" aria-label="New Chat">New Chat</button>
+    `;
+    const composer = document.querySelector('textarea.input-scroll');
+    const answer = document.getElementById('response-content-container');
+    const button = document.querySelector('button[aria-label="New Chat"]');
+    [composer, answer, button].forEach(markVisible);
+    const clicks = vi.fn();
+    button.addEventListener('click', () => {
+      clicks();
+      answer.remove();
+    });
+
+    dispatchMultiPanelMessage({
+      type: 'NEW_CHAT',
+      requestId: 'req-ensure-zai',
+      panelId: 'panel-zai',
+      provider: 'zai-global',
+      ensureFresh: true
+    });
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(clicks).toHaveBeenCalledTimes(1);
+    expect(getNewChatResults()).toEqual([expect.objectContaining({
+      requestId: 'req-ensure-zai',
+      panelId: 'panel-zai',
+      provider: 'zai-global',
+      status: 'verified'
+    })]);
+  });
+
+  it('clears a restored Yuanbao conversation even though its entry URL is a chat id', async () => {
+    vi.useFakeTimers();
+    window.happyDOM.setURL('https://yuanbao.tencent.com/chat/otherChatId');
+    document.body.innerHTML = `
+      <div class="ql-editor" contenteditable="true" data-placeholder="请输入"></div>
+      <div class="agent-chat__bubble--ai"><span class="agent-chat__speech-text">previous answer</span></div>
+      <div role="button" aria-label="New Chat">New Chat</div>
+    `;
+    const composer = document.querySelector('.ql-editor');
+    const answer = document.querySelector('.agent-chat__speech-text');
+    const button = document.querySelector('[role="button"][aria-label="New Chat"]');
+    [composer, answer, button].forEach(markVisible);
+    const clicks = vi.fn();
+    button.addEventListener('click', () => {
+      clicks();
+      answer.remove();
+    });
+
+    dispatchMultiPanelMessage({
+      type: 'NEW_CHAT',
+      requestId: 'req-ensure-yuanbao',
+      panelId: 'panel-yuanbao',
+      provider: 'yuanbao',
+      ensureFresh: true
+    });
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(clicks).toHaveBeenCalledTimes(1);
+    expect(getNewChatResults()).toEqual([expect.objectContaining({
+      requestId: 'req-ensure-yuanbao',
+      provider: 'yuanbao',
+      status: 'verified'
+    })]);
+  });
+
+  it('clicks for a provider without known conversation nodes when the URL is a conversation', async () => {
+    vi.useFakeTimers();
+    window.happyDOM.setURL('https://grok.com/c/some-chat');
+    document.body.innerHTML = `
+      <div class="tiptap" contenteditable="true"></div>
+      <a href="/" aria-label="New Chat">New Chat</a>
+    `;
+    const composer = document.querySelector('.tiptap');
+    const button = document.querySelector('a[href="/"]');
+    [composer, button].forEach(markVisible);
+    const clicks = vi.fn();
+    button.addEventListener('click', clicks);
+
+    dispatchMultiPanelMessage({
+      type: 'NEW_CHAT',
+      requestId: 'req-ensure-grok',
+      panelId: 'panel-grok',
+      provider: 'grok',
+      ensureFresh: true
+    });
+    await vi.advanceTimersByTimeAsync(1000);
+
+    // The fixture's control is a link to the root, so the click itself counts
+    // as the reset; the point is that ensureFresh did not skip the click.
+    expect(clicks).toHaveBeenCalledTimes(1);
+    expect(getNewChatResults()).toEqual([expect.objectContaining({
+      requestId: 'req-ensure-grok',
+      provider: 'grok',
+      status: 'verified'
+    })]);
+  });
+
+  it('navigates to the new-chat URL when a provider has no button selectors', async () => {
+    window.happyDOM.setURL('https://www.perplexity.ai/search/old-thread');
+    document.body.innerHTML = `
+      <div id="ask-input" contenteditable="true" role="textbox"></div>
+      <div>previous answer</div>
+    `;
+    markVisible(document.getElementById('ask-input'));
+
+    dispatchMultiPanelMessage({
+      type: 'NEW_CHAT',
+      requestId: 'req-perplexity-fallback',
+      panelId: 'panel-perplexity',
+      provider: 'perplexity',
+      ensureFresh: true
+    });
+    await vi.waitFor(() => {
+      expect(window.location.href).toBe('https://www.perplexity.ai/');
+    });
+  });
+
   it('does not treat a successful click as proof when the page stays unchanged', async () => {
     vi.useFakeTimers();
     const { clicks } = createChatgptDom({ draft: '', hasConversation: false, resetOnClick: false });

@@ -1782,7 +1782,7 @@
     "message": "API 使用的模型名，例如 gpt-4o-mini 或 deepseek-chat。"
   },
   "labelAiSummaryAuto": {
-    "message": "80% 的回答完成后自动汇总"
+    "message": "70% 的回答完成后自动汇总"
   },
   "descAiSummaryAuto": {
     "message": "关闭时只在点击工具栏的 AI 汇总按钮时汇总"

@@ -521,21 +521,25 @@ describe('isRoundReadyForSummary', () => {
 });
 
 describe('isRoundReadyForAutoSummary', () => {
-  const createFivePanelRound = () => createRound({
+  const createTenPanelRound = () => createRound({
     id: 'r2',
     createdAt: 1000,
     text: 'Q',
-    panels: ['chatgpt', 'gemini', 'deepseek', 'kimi', 'grok'].map((providerId, index) => ({ id: `p${index + 1}`, providerId }))
+    panels: ['chatgpt', 'gemini', 'deepseek', 'kimi', 'qwen-cn', 'yuanbao', 'chatglm', 'zai-global', 'mimo', 'grok']
+      .map((providerId, index) => ({ id: `p${index + 1}`, providerId }))
   });
 
-  it('starts once 80% of the answers finished and two have text', () => {
-    let next = createFivePanelRound();
-    ['p1', 'p2', 'p3'].forEach((id, index) => {
+  it('starts once 70% of the answers finished and two have text', () => {
+    let next = createTenPanelRound();
+    const texts = new Map();
+    for (let index = 0; index < 6; index += 1) {
+      const id = `p${index + 1}`;
       next = applyTimingEvent(next, id, 'complete', 2000 + index);
-    });
-    const texts = new Map([['p1', 'A'], ['p2', 'B'], ['p3', 'C']]);
+      texts.set(id, `Answer ${index + 1}`);
+    }
     expect(isRoundReadyForAutoSummary(next, texts)).toBe(false);
-    next = applyTimingEvent(next, 'p4', 'complete', 3000);
+    next = applyTimingEvent(next, 'p7', 'complete', 3000);
+    texts.set('p7', 'Answer 7');
     expect(isRoundReadyForAutoSummary(next, texts)).toBe(true);
     expect(isRoundReadyForAutoSummary(next, new Map([['p1', 'A']]))).toBe(false);
   });

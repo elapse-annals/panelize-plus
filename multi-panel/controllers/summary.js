@@ -36,6 +36,7 @@ import {
   matchAiSummaryCache,
   saveAiSummaryCacheEntry
 } from '../../modules/answers/ai-summary-cache.js';
+import { getSummaryColumnStart } from '../../modules/panels/summary-placement.js';
 import { getLocalizedText, showToast } from './ui.js';
 import { PANELIZE_GET_ANSWER_TEXT, PANELIZE_LOCATE_ANSWER_TEXT } from './protocol.js';
 
@@ -195,9 +196,27 @@ export function createSummaryController({
     return Boolean(getAiSummaryCard()) && !getAiSummaryCard().hidden;
   }
 
-  // The card adds a trailing grid column, so handles and edge buttons must be
-  // measured again whenever it appears, leaves or changes its footprint.
+  // The card follows the columns the panels occupy in the first row, so unused
+  // layout columns stay to its right instead of separating it from the last AI.
+  function updateAiSummaryGridPlacement() {
+    const card = getAiSummaryCard();
+    if (!card) return;
+    const panelTops = getPanelsController().panels
+      .map(panel => document.getElementById(panel.id))
+      .filter(element => element && element.offsetParent !== null)
+      .map(element => Math.round(element.offsetTop));
+    const columnStart = getSummaryColumnStart(panelTops);
+    if (columnStart === null) {
+      card.style.removeProperty('grid-column-start');
+    } else {
+      card.style.gridColumnStart = String(columnStart);
+    }
+  }
+
+  // The card adds a grid column, so handles and edge buttons must be measured
+  // again whenever it appears, leaves or changes its footprint.
   function refreshAiSummaryLayout() {
+    updateAiSummaryGridPlacement();
     getLayoutController().panelResize?.refresh();
     getPresentationController().updatePanelEdgeButtons?.();
   }
@@ -952,6 +971,18 @@ export function createSummaryController({
       const toolbar = document.getElementById('toolbar');
       if (inputBar) observer.observe(inputBar);
       if (toolbar) observer.observe(toolbar);
+    }
+    // Panels and layouts change the column after the last AI.
+    const grid = document.getElementById('panel-grid');
+    if (grid && typeof MutationObserver === 'function') {
+      const observer = new MutationObserver(() => {
+        if (!isAiSummaryCardVisible()) return;
+        window.requestAnimationFrame(refreshAiSummaryLayout);
+      });
+      observer.observe(grid, { childList: true, attributes: true, attributeFilter: ['class'] });
+    }
+    if (isAiSummaryCardVisible()) {
+      window.requestAnimationFrame(refreshAiSummaryLayout);
     }
   }
 

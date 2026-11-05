@@ -44,6 +44,7 @@ export function createWindowModeController({
       ]);
       // popup 类型的窗口 type 为 'popup'
       isPopupWindow = currentWindow.type === 'popup';
+      document.body.classList.toggle('popup-window', isPopupWindow);
       currentOpenMode = settings.openMode;
       if (isPopupWindow) {
         trackPopupWindowBounds(currentWindow.id);

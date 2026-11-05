@@ -7,12 +7,16 @@
 }
 
 /* The frame itself comes from .panel-item (see panels.css); only the grid
-   placement is summary-specific. */
+   placement is summary-specific. summary.js moves the start line to the column
+   after the last AI panel; -1 keeps it trailing before any panel exists. */
 .ai-summary-panel {
   grid-column: -1 / span 1;
   grid-row: 1 / -1;
   min-width: 0;
   min-height: 0;
+  width: var(--ai-summary-card-width);
+  max-width: 100%;
+  justify-self: start;
   order: 9999;
 }
 
@@ -37,6 +41,14 @@
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+}
+
+/* In a popup window the reading card docks to the window's right edge, so the
+   narrow viewport keeps every pixel for text. */
+.popup-window .ai-summary-panel.ai-summary-expanded {
+  right: 0;
+  width: min(520px, 100vw);
+  border-radius: 12px 0 0 12px;
 }
 
 .ai-summary-panel.ai-summary-expanded .ai-summary-body {

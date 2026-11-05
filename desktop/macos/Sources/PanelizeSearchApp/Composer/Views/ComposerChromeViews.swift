@@ -34,6 +34,7 @@ final class ComposerShadowView: NSView {
     private let cornerRadius: CGFloat
     private let shadowRadius: CGFloat
     private let shadowOffsetY: CGFloat
+    private(set) var cardEmphasized = false
 
     init(
         frame frameRect: NSRect = .zero,
@@ -55,12 +56,12 @@ final class ComposerShadowView: NSView {
 
     override func layout() {
         super.layout()
-        updateShadow()
+        updateShadow(animated: false)
     }
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
-        updateShadow()
+        updateShadow(animated: false)
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -68,10 +69,16 @@ final class ComposerShadowView: NSView {
     override var mouseDownCanMoveWindow: Bool { false }
 
     func refreshAppearance() {
-        updateShadow()
+        updateShadow(animated: false)
     }
 
-    private func updateShadow() {
+    func setEmphasized(_ emphasized: Bool, animated: Bool) {
+        guard cardEmphasized != emphasized else { return }
+        cardEmphasized = emphasized
+        updateShadow(animated: animated)
+    }
+
+    private func updateShadow(animated: Bool) {
         guard let layer else { return }
         let options = ComposerAccessibilityOptions.current
         layer.shadowColor = ComposerTheme.resolve(
@@ -82,8 +89,6 @@ final class ComposerShadowView: NSView {
             in: effectiveAppearance
         )
         layer.shadowOpacity = 1
-        layer.shadowRadius = shadowRadius
-        layer.shadowOffset = CGSize(width: 0, height: shadowOffsetY)
         layer.shadowPath = CGPath(
             roundedRect: bounds,
             cornerWidth: cornerRadius,
@@ -91,6 +96,27 @@ final class ComposerShadowView: NSView {
             transform: nil
         )
         layer.masksToBounds = false
+
+        let radius = shadowRadius * (cardEmphasized ? 1.2 : 1)
+        let offset = CGSize(
+            width: 0,
+            height: shadowOffsetY * (cardEmphasized ? 1.15 : 1)
+        )
+        if animated && !options.reduceMotion {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = ComposerMotion.cardDuration
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                context.allowsImplicitAnimation = true
+                layer.shadowRadius = radius
+                layer.shadowOffset = offset
+            }
+        } else {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.shadowRadius = radius
+            layer.shadowOffset = offset
+            CATransaction.commit()
+        }
     }
 }
 
@@ -104,6 +130,13 @@ final class ComposerSurfaceView: NSView {
     }
 
     private let style: Style
+    private(set) var cardEmphasized = false
+    /// Called when the pointer enters or leaves the card. Only the card
+    /// surface installs a tracking area; the history panel stays quiet.
+    var onHoverChanged: ((Bool) -> Void)? {
+        didSet { updateTrackingAreas() }
+    }
+    private var hoverTrackingArea: NSTrackingArea?
 
     init(frame frameRect: NSRect = .zero, style: Style = .card) {
         self.style = style
@@ -118,17 +151,42 @@ final class ComposerSurfaceView: NSView {
 
     override func layout() {
         super.layout()
-        updateAppearance()
+        updateAppearance(animated: false)
     }
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
-        updateAppearance()
+        updateAppearance(animated: false)
     }
 
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
-        updateAppearance()
+        updateAppearance(animated: false)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverTrackingArea {
+            removeTrackingArea(hoverTrackingArea)
+            self.hoverTrackingArea = nil
+        }
+        guard style == .card, onHoverChanged != nil else { return }
+        let area = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        hoverTrackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        onHoverChanged?(true)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        onHoverChanged?(false)
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -136,10 +194,16 @@ final class ComposerSurfaceView: NSView {
     override var mouseDownCanMoveWindow: Bool { false }
 
     func refreshAppearance() {
-        updateAppearance()
+        updateAppearance(animated: false)
     }
 
-    private func updateAppearance() {
+    func setEmphasized(_ emphasized: Bool, animated: Bool) {
+        guard cardEmphasized != emphasized else { return }
+        cardEmphasized = emphasized
+        updateAppearance(animated: animated)
+    }
+
+    private func updateAppearance(animated: Bool) {
         guard let layer else { return }
         let options = ComposerAccessibilityOptions.current
         layer.cornerRadius = style == .card
@@ -162,10 +226,25 @@ final class ComposerSurfaceView: NSView {
                     : NSColor.black.withAlphaComponent(0.05)
             }
             layer.backgroundColor = background.cgColor
-            layer.borderColor = ComposerTheme.borderColor(
+
+            let border = ComposerTheme.borderColor(
                 in: effectiveAppearance,
-                increaseContrast: options.increaseContrast
+                increaseContrast: options.increaseContrast,
+                emphasized: cardEmphasized
             ).cgColor
+            if animated && !options.reduceMotion {
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = ComposerMotion.cardDuration
+                    context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                    context.allowsImplicitAnimation = true
+                    layer.borderColor = border
+                }
+            } else {
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                layer.borderColor = border
+                CATransaction.commit()
+            }
         }
     }
 }

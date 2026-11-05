@@ -308,6 +308,23 @@ test.describe('Composer controls browser fixtures', () => {
       const page = await openConfiguredMultiPanel(extension, { providers: ['chatgpt'], layout: '1x1' });
       await expect(page.locator('#composer-shell')).toBeVisible();
       await page.locator('#input-bar').screenshot({ path: testInfo.outputPath('composer-light.png') });
+
+      // Motion: the card lifts on hover and the send button answers the
+      // pointer, while the resting appearance stays untouched.
+      const restShadow = await page.locator('#composer-shell')
+        .evaluate(shell => getComputedStyle(shell).boxShadow);
+      await page.locator('#composer-shell').hover();
+      await expect.poll(() => page.locator('#composer-shell')
+        .evaluate(shell => getComputedStyle(shell).boxShadow)).not.toBe(restShadow);
+
+      const send = page.locator('#send-all-btn');
+      const sendScale = () => send.evaluate(button => {
+        const value = getComputedStyle(button).transform;
+        return value === 'none' ? 1 : new DOMMatrixReadOnly(value).a;
+      });
+      await send.hover();
+      await expect.poll(sendScale).toBeGreaterThan(1.01);
+      await page.mouse.move(0, 0);
       const levelColors = [];
       for (const tier of ['fast', 'balanced', 'deep']) {
         await page.locator('#tier-menu-btn').click();
@@ -339,6 +356,22 @@ test.describe('Composer controls browser fixtures', () => {
       await page.locator('#input-bar').screenshot({ path: testInfo.outputPath('composer-narrow.png') });
 
       await page.emulateMedia({ reducedMotion: 'reduce' });
+      const sendButton = page.locator('#send-all-btn');
+      const sendStyle = await sendButton.evaluate(button => {
+        const style = getComputedStyle(button);
+        const value = style.transform;
+        return {
+          duration: style.transitionDuration,
+          scale: value === 'none' ? 1 : new DOMMatrixReadOnly(value).a
+        };
+      });
+      expect(sendStyle.duration).toBe('0s');
+      await sendButton.hover();
+      await expect.poll(() => sendButton.evaluate(button => {
+        const value = getComputedStyle(button).transform;
+        return value === 'none' ? 1 : new DOMMatrixReadOnly(value).a;
+      })).toBeCloseTo(1, 3);
+      await page.mouse.move(0, 0);
       // Also cover a media preference change while a pulse is already active.
       await page.locator('#composer-shell').evaluate(shell => shell.classList.add('composer-pulse'));
       expect(await page.locator('#composer-shell').evaluate(shell =>

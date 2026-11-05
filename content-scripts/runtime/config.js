@@ -252,6 +252,49 @@
       '[data-message-role="assistant"]'
     ].join(', ');
 
+    // Providers whose conversation nodes are known well enough to trust a zero
+    // count. Providers without an entry still use the generic selectors above,
+    // but an old conversation there may be invisible to them, so a blank result
+    // is only believed when the page is also on its canonical new-chat URL.
+    const NEW_CHAT_CONVERSATION_SELECTORS = {
+      chatgpt: {
+        user: '[data-message-role="user"], [data-message-author-role="user"]',
+        assistant: '[data-message-role="assistant"], [data-message-author-role="assistant"], ' +
+          '[data-assistant-markdown-root], [data-markdown-text-style="assistant-message"]'
+      },
+      claude: {
+        user: '[data-testid="user-message"]',
+        assistant: '[data-testid="assistant-message"]'
+      },
+      gemini: {
+        user: 'user-query',
+        assistant: 'model-response'
+      },
+      kimi: {
+        user: '.chat-content-item-user',
+        assistant: '.chat-content-item-assistant .markdown'
+      },
+      'qwen-cn': {
+        user: '.chat-user-message',
+        assistant: '.answer-common-card .qk-markdown'
+      },
+      deepseek: {
+        assistant: '.ds-markdown'
+      },
+      chatglm: {
+        assistant: '.answer .markdown-body'
+      },
+      'zai-global': {
+        assistant: '.chat-assistant #response-content-container'
+      },
+      mimo: {
+        assistant: '.markdown-blocks'
+      },
+      yuanbao: {
+        assistant: '.agent-chat__bubble--ai .agent-chat__speech-text'
+      }
+    };
+
     const NEW_CHAT_ATTACHMENT_PREVIEW_SELECTORS = [
       '[role="list"][aria-label="Conversation attachments"] > *',
       '[aria-label="Conversation attachments"] > *',
@@ -869,6 +912,7 @@
       get NEW_CHAT_CLICK_STABLE_MS() { return NEW_CHAT_CLICK_STABLE_MS; },
       get NEW_CHAT_CONFIRMATION_POLL_MS() { return NEW_CHAT_CONFIRMATION_POLL_MS; },
       get NEW_CHAT_CONFIRMATION_TIMEOUT_MS() { return NEW_CHAT_CONFIRMATION_TIMEOUT_MS; },
+      get NEW_CHAT_CONVERSATION_SELECTORS() { return NEW_CHAT_CONVERSATION_SELECTORS; },
       get NEW_CHAT_PENDING_MAX_AGE_MS() { return NEW_CHAT_PENDING_MAX_AGE_MS; },
       get NEW_CHAT_PENDING_STORAGE_PREFIX() { return NEW_CHAT_PENDING_STORAGE_PREFIX; },
       get NEW_CHAT_RECOVERY_STABLE_MS() { return NEW_CHAT_RECOVERY_STABLE_MS; },

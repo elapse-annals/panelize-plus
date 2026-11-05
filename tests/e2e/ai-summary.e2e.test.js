@@ -69,7 +69,7 @@ async function seedSummarySettings(extension, { auto = false } = {}) {
 }
 
 // Sends a question and gives both panels an answer, which is what lets the
-// automatic summary reach its 80% threshold.
+// automatic summary reach its 70% threshold.
 async function sendQuestionWithTwoAnswers(page) {
   await page.locator('#unified-input').fill(QUESTION);
   await page.locator('#send-all-btn').click();
@@ -740,6 +740,52 @@ test('shows the summary card only while a usable profile is configured', async (
     }, AI_SUMMARY_API_KEYS_STORAGE_KEY);
     await expect(card).toBeHidden({ timeout: 10000 });
     await expect.poll(columnCount).toBe(2);
+  } finally {
+    await extension?.close();
+    await extensionCopy?.cleanup();
+  }
+});
+
+test('keeps the summary card right after the last panel and leaves unused columns to its right', async ({}, testInfo) => {
+  test.setTimeout(90000);
+  let extensionCopy;
+  let extension;
+  try {
+    extensionCopy = await createPatchedExtensionCopy(() => {});
+    extension = await launchExtension({ extensionPath: extensionCopy.extensionPath, viewport: { width: 1440, height: 900 } });
+    await extension.context.route('https://chatgpt.com/**', route => route.fulfill({
+      contentType: 'text/html', body: renderChatgptFixture({ composer: 'current' })
+    }));
+
+    // One AI in a three-column layout leaves two unused columns.
+    const page = await openMultiPanel(extension, { providers: ['chatgpt'], layout: '1x3' });
+    const card = page.locator('#ai-summary-panel');
+    await extension.serviceWorker.evaluate(async ({ profilesKey, keysKey }) => {
+      await chrome.storage.sync.set({
+        [profilesKey]: [{ id: 'default', name: '', baseUrl: 'https://api.panelize-e2e.test/v1', model: 'e2e-mock' }]
+      });
+      await chrome.storage.local.set({ [keysKey]: { default: 'e2e-dummy-key' } });
+    }, {
+      profilesKey: AI_SUMMARY_PROFILES_STORAGE_KEY,
+      keysKey: AI_SUMMARY_API_KEYS_STORAGE_KEY
+    });
+    await expect(card).toBeVisible({ timeout: 10000 });
+
+    // The layout keeps its three columns; the card takes the one after the AI.
+    const columnCount = await page.locator('#panel-grid').evaluate(grid => (
+      getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length
+    ));
+    expect(columnCount).toBe(3);
+
+    const panelBox = await page.locator('#panel-grid .panel-item').first().boundingBox();
+    const cardBox = await card.boundingBox();
+    expect(panelBox).not.toBeNull();
+    expect(cardBox).not.toBeNull();
+    // The 2px grid gap is the only separation from the last AI.
+    expect(Math.abs(cardBox.x - (panelBox.x + panelBox.width + 2))).toBeLessThanOrEqual(1);
+    expect(cardBox.width).toBeGreaterThanOrEqual(320);
+    expect(cardBox.width).toBeLessThanOrEqual(460);
+    await page.screenshot({ path: testInfo.outputPath('ai-summary-after-last-panel.png') });
   } finally {
     await extension?.close();
     await extensionCopy?.cleanup();

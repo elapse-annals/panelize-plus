@@ -16,6 +16,8 @@ struct ComposerActions {
 /// Builds the view tree and forwards UI actions without owning send state.
 final class ComposerContent: NSObject {
     private var actions: ComposerActions?
+    private var isCardHovered = false
+    private var cardPulseGeneration = 0
     lazy var layout = ComposerLayoutController(content: self)
 
     let textView = PromptTextView()
@@ -74,6 +76,9 @@ final class ComposerContent: NSObject {
         rootView.addSubview(backdrop)
 
         surfaceView.translatesAutoresizingMaskIntoConstraints = false
+        surfaceView.onHoverChanged = { [weak self] hovered in
+            self?.setCardHovered(hovered)
+        }
         rootView.addSubview(surfaceView)
 
         let content = ComposerContentView()
@@ -340,6 +345,33 @@ final class ComposerContent: NSObject {
         modePicker.refreshAppearance()
         shortcutHintView.refreshAppearance()
         textView.frame = scrollView.contentView.bounds
+    }
+
+    /// Hover/focus emphasis on the card: a slightly stronger edge and a
+    /// deeper shadow, animated so it reads as the same control reacting.
+    func setCardHovered(_ hovered: Bool, animated: Bool = true) {
+        guard isCardHovered != hovered else { return }
+        isCardHovered = hovered
+        applyCardEmphasis(hovered, animated: animated)
+    }
+
+    /// Mirrors the extension's focus sweep: emphasize briefly, then settle
+    /// back to the current hover state.
+    func pulseCardFocus() {
+        guard !ComposerAccessibilityOptions.current.reduceMotion else { return }
+        cardPulseGeneration += 1
+        let generation = cardPulseGeneration
+        applyCardEmphasis(true, animated: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) { [weak self] in
+            guard let self, self.cardPulseGeneration == generation else { return }
+            self.applyCardEmphasis(self.isCardHovered, animated: true)
+        }
+    }
+
+    private func applyCardEmphasis(_ emphasized: Bool, animated: Bool) {
+        backdrop.setEmphasized(emphasized, animated: animated)
+        surfaceView.setEmphasized(emphasized, animated: animated)
+        shadowView.setEmphasized(emphasized, animated: animated)
     }
 
     func applyAccessibilityOptions() {

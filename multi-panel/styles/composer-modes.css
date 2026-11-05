@@ -322,9 +322,9 @@
 /* A draft taller than one line overhangs the panels instead of shrinking them;
    --composer-overflow is the extra textarea height (see resizeTextarea). */
 #input-bar .composer-shell { margin-top: calc(-1 * var(--composer-overflow, 0px)); }
-#input-bar.composer-expanded .composer-shell { box-shadow: 0 -8px 24px rgba(30, 42, 70, .12); }
-[data-theme="dark"] #input-bar.composer-expanded .composer-shell { box-shadow: 0 -8px 24px #0006; }
-[data-theme="dark"] .composer-shell { --composer-edge: #41414e; background: #26262b; box-shadow: 0 3px 16px #0001; }
+#input-bar.composer-expanded .composer-shell { box-shadow: var(--composer-lift), 0 -8px 24px rgba(30, 42, 70, .12); }
+[data-theme="dark"] #input-bar.composer-expanded .composer-shell { box-shadow: var(--composer-lift), 0 -8px 24px #0006; }
+[data-theme="dark"] .composer-shell { --composer-edge: #41414e; background: #26262b; box-shadow: var(--composer-lift), 0 3px 16px #0001; }
 [data-theme="dark"] .composer-shell:focus-within { --composer-edge: #6e6588; }
 [data-theme="dark"] .composer-control, [data-theme="dark"] .tier-option { color: #b4b2c2; }
 [data-theme="dark"] .tier-menu-list { background: #26262b; border-color: #41414e; box-shadow: 0 8px 28px #0008; }
@@ -367,9 +367,63 @@
   #tier-menu-label { display: none; }
   #input-bar .composer-controls-left { gap: 4px; }
 }
+/* Composer motion: interaction feedback only. Resting colors, shape and
+   layout stay exactly as before; hover lifts the card's existing shadow and
+   the primary action answers the pointer. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .composer-shell:hover {
+    --composer-lift: 0 10px 26px rgba(30, 42, 70, .11);
+    border-color: color-mix(in srgb, var(--composer-edge) 80%, var(--tier-color));
+  }
+  [data-theme="dark"] .composer-shell:hover {
+    --composer-lift: 0 10px 26px rgba(0, 0, 0, .3);
+  }
+  #input-bar:not([data-new-chat-busy]):not([data-ai-preparing]) .send-btn:hover:not(:disabled) {
+    transform: scale(1.045);
+    box-shadow: 0 4px 12px rgba(80, 64, 150, .28);
+  }
+}
+#input-bar .send-btn {
+  transform-origin: center;
+  transition:
+    background-color .2s cubic-bezier(.2, .8, .2, 1),
+    color .2s cubic-bezier(.2, .8, .2, 1),
+    box-shadow .2s cubic-bezier(.2, .8, .2, 1),
+    transform .18s cubic-bezier(.2, .8, .2, 1),
+    opacity .18s ease;
+}
+#input-bar .fill-btn,
+#input-bar .input-btn,
+#input-bar .clear-btn,
+#input-bar .tier-details-btn {
+  transform-origin: center;
+  transition:
+    background-color .18s ease,
+    color .18s ease,
+    border-color .18s ease,
+    opacity .18s ease,
+    transform .16s cubic-bezier(.2, .8, .2, 1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  #input-bar:not([data-new-chat-busy]):not([data-ai-preparing]) .send-btn:active:not(:disabled) {
+    transform: scale(.94);
+    box-shadow: 0 1px 2px rgba(80, 64, 150, .22);
+    transition-duration: .08s;
+  }
+  #input-bar .fill-btn:active:not(:disabled) { transform: scale(.97); }
+  #input-bar .input-btn:active:not(:disabled),
+  #input-bar .clear-btn:active:not(:disabled),
+  #input-bar .tier-details-btn:active:not(:disabled) { transform: scale(.92); }
+  #input-bar .fill-btn:active:not(:disabled),
+  #input-bar .input-btn:active:not(:disabled),
+  #input-bar .clear-btn:active:not(:disabled),
+  #input-bar .tier-details-btn:active:not(:disabled) { transition-duration: .08s; }
+}
 @media (prefers-reduced-motion: reduce) {
   .app-title-plus { animation: none; }
-  .composer-shell, .composer-control, .tier-option, #input-bar .tier-menu-btn, .shortcut-bubble { transition: none; }
+  .composer-shell, .composer-control, .tier-option, #input-bar .tier-menu-btn, .shortcut-bubble,
+  #input-bar .input-btn, #input-bar .clear-btn, #input-bar .fill-btn, #input-bar .send-btn,
+  #input-bar .tier-details-btn { transition: none; }
   .composer-shell.composer-pulse::before { animation: none; }
   .composer-shell.composer-pulse:not([data-tier="default"])::after { animation: none; }
 }

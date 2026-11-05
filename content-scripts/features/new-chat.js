@@ -199,9 +199,11 @@
       }
 
       const selectors = getConfigController().NEW_CHAT_BUTTON_SELECTORS[provider];
-      if (!selectors) {
+      if (!selectors || selectors.length === 0) {
+        // Some providers (Perplexity, Wenxin, StepFun, …) have no stable
+        // new-chat control; keep going so the text search and URL fallback
+        // below can still reset the panel.
         console.warn('[Text Injection] No new chat button selectors for provider:', provider);
-        return false;
       }
 
       // In a narrow Doubao panel the sidebar is a drawer: its control may be
@@ -214,8 +216,10 @@
         : isSameOriginNewChatCandidate;
 
       // Try to find and click button
-      const button = getDomController().findDeepFirstVisibleElement(selectors, acceptCandidate) ||
-        getDomController().findFirstVisibleElement(selectors, acceptCandidate);
+      const button = selectors?.length
+        ? getDomController().findDeepFirstVisibleElement(selectors, acceptCandidate) ||
+          getDomController().findFirstVisibleElement(selectors, acceptCandidate)
+        : null;
       if (button) {
         console.log('[Text Injection] Clicking new chat button via visible selector match');
         button.click();
@@ -437,16 +441,30 @@
       return Boolean(getDoubaoController().findDoubaoOverlay());
     }
 
+    // Only providers with known conversation nodes can be judged blank from the
+    // DOM alone. For the others the generic selectors are still the best effort,
+    // but a zero count may just mean the site renders turns differently.
+    function getNewChatTurnSelectors(provider) {
+      const providerSelectors = getConfigController().NEW_CHAT_CONVERSATION_SELECTORS?.[provider];
+      return {
+        user: providerSelectors?.user || getConfigController().SNAPSHOT_USER_TURN_SELECTORS,
+        assistant: providerSelectors?.assistant || getConfigController().NEW_CHAT_ASSISTANT_TURN_SELECTORS,
+        detection: providerSelectors ? 'trusted' : 'best-effort'
+      };
+    }
+
     function captureNewChatState(provider, providerMode) {
       const composer = getNewChatComposer(provider, providerMode);
+      const turns = getNewChatTurnSelectors(provider);
       return {
         url: window.location.href,
         composerFound: Boolean(composer && getDomController().isVisibleElement(composer)),
         composerCovered: isNewChatComposerCovered(provider, composer),
         composerEmpty: isNewChatComposerEmpty(provider, composer),
         composerTextLength: getNewChatComposerText(composer).length,
-        userMessageCount: countVisibleNewChatMessages(getConfigController().SNAPSHOT_USER_TURN_SELECTORS),
-        assistantMessageCount: countVisibleNewChatMessages(getConfigController().NEW_CHAT_ASSISTANT_TURN_SELECTORS)
+        userMessageCount: countVisibleNewChatMessages(turns.user),
+        assistantMessageCount: countVisibleNewChatMessages(turns.assistant),
+        conversationDetection: turns.detection
       };
     }
 
@@ -724,8 +742,13 @@
             return { ...identity, provider, status: 'unconfirmed', reason: 'composer-not-found' };
           }
           // Nothing to clear: clicking a provider's new-chat control on a blank
-          // page can add an empty entry to its own history.
-          if (isBlankConversation(baseline)) {
+          // page can add an empty entry to its own history. A provider whose
+          // conversation nodes are unknown may still be showing an old chat the
+          // generic selectors miss, so believe that blank state only when the
+          // page is also on its canonical new-chat URL.
+          if (isBlankConversation(baseline) &&
+            (baseline.conversationDetection === 'trusted' ||
+              isCanonicalFreshNewChatUrl(provider, providerMode))) {
             return { ...identity, provider, status: 'verified' };
           }
         } else {

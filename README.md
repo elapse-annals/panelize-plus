@@ -54,7 +54,7 @@ Panelize Plus starts from upstream Panelize **v2.0.1** (2026-10-23) and continue
 
 | Area | What's different |
 | --- | --- |
-| **AI summary** | Merges the round's answers into a verdict, agreements, unique insights and side-by-side disagreements, with source chips that jump to the quoted passage. Streams its reply, caches by question for three days, and can run automatically once 80% of the answers are done, through any OpenAI-compatible endpoint. |
+| **AI summary** | Merges the round's answers into a verdict, agreements, unique insights and side-by-side disagreements, with source chips that jump to the quoted passage. Streams its reply, caches by question for three days, and can run automatically once 70% of the answers are done, through any OpenAI-compatible endpoint. |
 | **Answer stats & blind mode** | Times each answer to first text and to completion, tracks which answers you adopt, scores providers, filters by task category, names the best model per category, weights the last 30 days, and crowns the three fastest answers. Blind mode hides AI names, evens out page styling and shuffles panel order. |
 | **Prompt modes** | Modes are Prompt Library entries with trigger words; **Auto** applies them per send, with a ghost preview and `Tab` completion. Adds Deep thinking and an adversarial Challenge mode. Prompts can carry separate Chinese (shown) and English (sent) text. |
 | **Composer & panels** | Image and document attachments, a readiness gate before sending, recent-question suggestions, per-AI status chips, click-to-locate, panel capacity and layout auto-adjust, popup position/size memory, wide mode and swipe feedback. |
@@ -99,7 +99,7 @@ Pick a mode in the composer to append a short instruction to what the AIs receiv
 
 ### 🧠 AI Summary
 
-Merge the answers to the current question into one overview: a verdict, the points the AIs agree on, unique insights, and disagreements shown side by side. Every point names its sources, and clicking a source chip jumps to the quoted passage in that panel. It runs on demand or automatically once 80% of the answers are done, and needs an OpenAI-compatible endpoint (base URL, model, API key) configured in Settings; the AI panels themselves still need no API key.
+Merge the answers to the current question into one overview: a verdict, the points the AIs agree on, unique insights, and disagreements shown side by side. Every point names its sources, and clicking a source chip jumps to the quoted passage in that panel. It runs on demand or automatically once 70% of the answers are done, and needs an OpenAI-compatible endpoint (base URL, model, API key) configured in Settings; the AI panels themselves still need no API key.
 
 ### 📊 Answer Stats and Blind Mode
 

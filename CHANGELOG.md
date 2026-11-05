@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.85.1 - 2026-11-05
+- New conversation no longer reports a provider as confirmed when it cannot recognise the page's old conversation. Providers without known message nodes now only skip the click on their canonical new-chat URL, so ChatGPT, DeepSeek, ChatGLM, Z.ai, MiMo, Yuanbao and the other affected sites are reset again; Gemini and Qwen keep their existing blank-page behaviour.
+- Providers without a new-chat button selector (Perplexity, Wenxin, Copilot, StepFun, Agnes, Hy AI Studio) now fall back to their new-chat URL instead of failing immediately with "control not found".
+
+## 2.85.0 - 2026-11-05
+- The extension composer now reacts like the z.ai input box: the card lifts its existing shadow on hover and keeps the focus ring, tier glow and expanded shadow intact, while the send, fill, attach, clear and mapping buttons get short hover/press transitions. Resting colors, shape and layout are unchanged.
+- The macOS client composer gains the same interaction motion: the send button scales and blends its accent on hover, presses with a short rebound and animates between enabled, disabled and sending states; the card's border and shadow respond to hover and to the window regaining focus.
+- All new motion is skipped when the extension's `prefers-reduced-motion` is set or macOS Reduce Motion is on.
+- The AI summary card now sits immediately after the last AI panel instead of at the far right of the layout: its column follows the panels' first row, keeps the 320–460px card width, and leaves any unused layout columns to its right. In a popup window the expanded reading overlay docks to the window's right edge instead of keeping a 24px inset.
+- Automatic summaries now start once 70% of a round's answers have finished (was 80%) and at least two have readable text; the options label, READMEs and feature overview say 70%.
+
 ## 2.84.1 - 2026-11-05
 - Update checks no longer fail when GitHub's REST API is rate limited or unreachable: when `releases/latest` fails, the check reads the version published in `data/version-info.json` from `raw.githubusercontent.com` and compares against that. Both requests now time out after 10 seconds instead of hanging, and the release page remains the download destination.
 

@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS = {
   openMode: 'tab',  // 'tab' or 'popup'
   shareWatermarkEnabled: true,  // Adds the "Compared with Panelize" strip to shared snapshots
   answerCompleteNotificationEnabled: true,  // System notification when the first AI in a round finishes answering
-  aiSummaryAutoEnabled: true,  // Summarize every round once all its AIs finish answering
+  aiSummaryAutoEnabled: true,  // Summarize every round once 70% of its answers finish
   aiSummaryBaseUrl: 'https://apihub.agnes-ai.com/v1',  // Legacy single-config fields; profiles below take precedence, and these are read only while migrating
   aiSummaryModel: 'agnes-3.0-flash',
   [AI_SUMMARY_PROFILES_STORAGE_KEY]: null,  // [{id, name, baseUrl, model}]; API keys stay in chrome.storage.local keyed by id

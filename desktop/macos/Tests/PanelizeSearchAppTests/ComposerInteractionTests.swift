@@ -58,6 +58,27 @@ final class ComposerInteractionTests: XCTestCase {
         XCTAssertFalse(panel.isVisible)
     }
 
+    func testSendButtonBusyStateDisablesAndRestores() {
+        content.sendButton.setSending(true, animated: false)
+        XCTAssertFalse(content.sendButton.isEnabled)
+        XCTAssertTrue(content.sendButton.isBusy)
+
+        content.sendButton.setSending(false, animated: false)
+        XCTAssertTrue(content.sendButton.isEnabled)
+        XCTAssertFalse(content.sendButton.isBusy)
+    }
+
+    func testCardBorderEmphasisIsStrongerThanResting() throws {
+        let appearance = try XCTUnwrap(NSAppearance(named: .aqua))
+        let resting = ComposerTheme.borderColor(in: appearance, increaseContrast: false)
+        let emphasized = ComposerTheme.borderColor(
+            in: appearance,
+            increaseContrast: false,
+            emphasized: true
+        )
+        XCTAssertGreaterThan(emphasized.alphaComponent, resting.alphaComponent)
+    }
+
     func testDownPastLastHistorySuggestionReturnsToTheInput() {
         let suggestions = suggestions()
         suggestions.recordQuestion("explain first")

@@ -193,3 +193,46 @@ test('registers and sends through the new optional providers', async ({}, testIn
     await extensionCopy?.cleanup();
   }
 });
+
+test('new chat falls back to the entry URL when a provider has no button selector', async ({}, testInfo) => {
+  test.setTimeout(90000);
+
+  let extensionCopy;
+  let extension;
+  try {
+    const origin = 'https://www.perplexity.ai';
+    extensionCopy = await createPatchedExtensionCopy(manifest => {
+      manifest.host_permissions.push(...OPTIONAL_PROVIDER_CONFIGS.perplexity.origins);
+    });
+    extension = await launchExtension({ extensionPath: extensionCopy.extensionPath });
+
+    const requestedPaths = [];
+    await extension.context.route(`${origin}/**`, route => {
+      requestedPaths.push(new URL(route.request().url()).pathname);
+      return route.fulfill({
+        status: 200,
+        contentType: 'text/html; charset=utf-8',
+        body: providerFixture('perplexity')
+      });
+    });
+
+    const page = await openMultiPanel(extension, {
+      providers: ['perplexity'],
+      enabledProviders: ['perplexity'],
+      layout: '1x1'
+    });
+    const frame = page.frameLocator(`#panel-grid iframe[src^="${origin}"]`);
+    await expect(frame.locator('#ask-input')).toBeVisible();
+
+    // Stand in for a provider that restores a conversation at a non-entry path.
+    await frame.locator('#ask-input').evaluate(() => history.pushState({}, '', '/search/old-thread'));
+    await page.locator('#new-chat-btn').click();
+
+    await expect.poll(() => requestedPaths.includes('/')).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('new-chat-url-fallback.png') });
+    await page.close();
+  } finally {
+    await extension?.close();
+    await extensionCopy?.cleanup();
+  }
+});

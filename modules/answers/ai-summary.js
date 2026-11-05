@@ -29,7 +29,7 @@ export const MAX_DISAGREEMENT_POSITIONS = 3;
 // Items backed by at least this share of the summarized answers are highlighted.
 export const STRONG_SUPPORT_RATIO = 0.8;
 // The automatic summary starts once this share of a round's answers finished.
-export const AUTO_SUMMARY_READY_RATIO = 0.8;
+export const AUTO_SUMMARY_READY_RATIO = 0.7;
 
 export function normalizeChatCompletionsUrl(baseUrl) {
   const trimmed = typeof baseUrl === 'string' ? baseUrl.trim().replace(/\/+$/, '') : '';

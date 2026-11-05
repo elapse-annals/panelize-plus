@@ -119,13 +119,32 @@ describe('getPanelGridMetrics', () => {
       paddingRight: '2px',
       clientWidth: 1432,
       scrollWidth: 1432,
-      hasSummaryColumn: true,
+      summaryIndex: 2,
       minWidth: 400
     });
     expect(metrics.widths).toEqual([498, 498]);
     expect(metrics.summaryWidth).toBe(420);
+    expect(metrics.summaryIndex).toBe(-1);
     // 1432 - 4 padding - 8 gaps (three tracks) - 420 card.
     expect(metrics.available).toBe(1000);
+  });
+
+  it('keeps a summary card in an unused layout column among the weighted tracks', () => {
+    const metrics = getPanelGridMetrics({
+      templateColumns: '498px 420px 498px',
+      columnGap: '4px',
+      paddingLeft: '2px',
+      paddingRight: '2px',
+      clientWidth: 1432,
+      scrollWidth: 1432,
+      summaryIndex: 1,
+      minWidth: 400
+    });
+    expect(metrics.widths).toEqual([498, 420, 498]);
+    expect(metrics.summaryWidth).toBe(420);
+    expect(metrics.summaryIndex).toBe(1);
+    // 1432 - 4 padding - 8 gaps; the card's track stays in the weights.
+    expect(metrics.available).toBe(1420);
   });
 
   it('ignores a trailing track when no summary card is visible', () => {
@@ -136,7 +155,6 @@ describe('getPanelGridMetrics', () => {
       paddingRight: '2px',
       clientWidth: 1432,
       scrollWidth: 1432,
-      hasSummaryColumn: false,
       minWidth: 400
     });
     expect(metrics.widths).toEqual([498, 498, 420]);

@@ -34,6 +34,17 @@ enum ComposerMetrics {
     static let hintGroupSpacing: CGFloat = 10
 }
 
+/// Interaction feedback shared by the composer's animated surfaces. Every
+/// duration here is skipped when Reduce Motion is on.
+enum ComposerMotion {
+    static let hoverScale: CGFloat = 1.04
+    static let pressScale: CGFloat = 0.94
+    static let hoverDuration: CFTimeInterval = 0.16
+    static let pressDuration: CFTimeInterval = 0.08
+    static let cardDuration: CFTimeInterval = 0.18
+    static let crossfadeDuration: CFTimeInterval = 0.12
+}
+
 enum ComposerFonts {
     static let input = NSFont.systemFont(ofSize: 20, weight: .regular)
     static let preview = NSFont.systemFont(ofSize: 11.5, weight: .regular)
@@ -82,11 +93,21 @@ enum ComposerTheme {
         return resolved
     }
 
-    static func borderColor(in appearance: NSAppearance, increaseContrast: Bool) -> NSColor {
+    static func borderColor(
+        in appearance: NSAppearance,
+        increaseContrast: Bool,
+        emphasized: Bool = false
+    ) -> NSColor {
         if isDark(appearance) {
-            return NSColor.white.withAlphaComponent(increaseContrast ? 0.35 : 0.18)
+            let alpha: CGFloat = increaseContrast
+                ? (emphasized ? 0.44 : 0.35)
+                : (emphasized ? 0.26 : 0.18)
+            return NSColor.white.withAlphaComponent(alpha)
         }
-        return NSColor.black.withAlphaComponent(increaseContrast ? 0.28 : 0.12)
+        let alpha: CGFloat = increaseContrast
+            ? (emphasized ? 0.36 : 0.28)
+            : (emphasized ? 0.20 : 0.12)
+        return NSColor.black.withAlphaComponent(alpha)
     }
 
     static func shadowColor(in appearance: NSAppearance, increaseContrast: Bool) -> NSColor {

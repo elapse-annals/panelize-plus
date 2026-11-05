@@ -94,8 +94,13 @@ export function isValidColumnWeights(weights, count) {
 }
 
 /**
- * Splits the grid's computed columns into resizeable panel columns and the
- * trailing AI summary card column, which has no resize handle.
+ * Splits the grid's computed columns into resizeable panel columns and the AI
+ * summary card's column, which has no resize handle.
+ *
+ * A card after every layout column lives in an implicit trailing track: it is
+ * left out of `widths` and deducted from the available width. A card in an
+ * unused explicit column keeps that track in `widths` (the saved column weights
+ * still cover the layout's columns) and is reported through `summaryIndex`.
  * @param {{
  *   templateColumns: string,
  *   columnGap: string,
@@ -103,7 +108,7 @@ export function isValidColumnWeights(weights, count) {
  *   paddingRight: string,
  *   clientWidth: number,
  *   scrollWidth: number,
- *   hasSummaryColumn?: boolean,
+ *   summaryIndex?: number,
  *   minWidth?: number
  * }} metrics
  * @returns {{
@@ -111,6 +116,7 @@ export function isValidColumnWeights(weights, count) {
  *   gap: number,
  *   paddingLeft: number,
  *   summaryWidth: number,
+ *   summaryIndex: number,
  *   minWidth: number,
  *   available: number,
  *   scrolls: boolean
@@ -123,13 +129,14 @@ export function getPanelGridMetrics({
   paddingRight,
   clientWidth,
   scrollWidth,
-  hasSummaryColumn = false,
+  summaryIndex = -1,
   minWidth = 0
 }) {
   const tracks = String(templateColumns || '').split(' ').map(parseFloat).filter(Number.isFinite);
-  const hasCard = hasSummaryColumn && tracks.length > 1;
-  const widths = hasCard ? tracks.slice(0, -1) : tracks;
-  const summaryWidth = hasCard ? tracks[tracks.length - 1] : 0;
+  const hasCard = Number.isInteger(summaryIndex) && summaryIndex >= 0 && summaryIndex < tracks.length;
+  const trailingCard = hasCard && summaryIndex === tracks.length - 1;
+  const widths = trailingCard ? tracks.slice(0, -1) : tracks;
+  const summaryWidth = hasCard ? tracks[summaryIndex] : 0;
   const gap = parseFloat(columnGap) || 0;
   const left = parseFloat(paddingLeft) || 0;
   const right = parseFloat(paddingRight) || 0;
@@ -138,16 +145,26 @@ export function getPanelGridMetrics({
     gap,
     paddingLeft: left,
     summaryWidth,
+    // Inside the layout columns the card's track still carries a column weight.
+    summaryIndex: hasCard && !trailingCard ? summaryIndex : -1,
     minWidth: Number(minWidth) || 0,
     // Gaps span every track, including the one before the summary card.
-    available: clientWidth - left - right - gap * Math.max(0, tracks.length - 1) - summaryWidth,
+    available: clientWidth - left - right - gap * Math.max(0, tracks.length - 1)
+      - (trailingCard ? summaryWidth : 0),
     scrolls: scrollWidth > clientWidth + 1
   };
 }
 
+function readSummaryColumnIndex(card, trackCount) {
+  const start = parseInt(window.getComputedStyle(card).gridColumnStart, 10);
+  // Without a placed start line the card falls back to the trailing column.
+  return Number.isInteger(start) && start > 0 ? start - 1 : Math.max(0, trackCount - 1);
+}
+
 function readGrid(grid) {
   const style = window.getComputedStyle(grid);
-  // The card sits in an implicit trailing column and has no resize handle.
+  const tracks = String(style.gridTemplateColumns || '').split(' ').map(parseFloat).filter(Number.isFinite);
+  // The card has no resize handle, wherever summary.js placed it.
   const card = [...grid.children].find(element => element.classList.contains('ai-summary-panel'));
   const hasSummaryColumn = Boolean(card && !card.hidden
     && !card.classList.contains('ai-summary-expanded')
@@ -159,7 +176,7 @@ function readGrid(grid) {
     paddingRight: style.paddingRight,
     clientWidth: grid.clientWidth,
     scrollWidth: grid.scrollWidth,
-    hasSummaryColumn,
+    summaryIndex: hasSummaryColumn ? readSummaryColumnIndex(card, tracks.length) : -1,
     minWidth: parseFloat(style.getPropertyValue('--panel-min-width')) || 0
   });
 }
@@ -198,12 +215,18 @@ export async function setupPanelResize({ grid, getLayout, getWideScale = () => 1
   };
 
   const renderHandles = () => {
-    const { widths, gap, paddingLeft } = readGrid(grid);
-    const count = Math.max(0, widths.length - 1);
-    while (layer.children.length > count) {
+    const { widths, gap, paddingLeft, summaryIndex } = readGrid(grid);
+    // The summary card has no handle: skip the gaps on both of its sides.
+    const handleIndexes = [];
+    for (let index = 0; index < widths.length - 1; index += 1) {
+      if (summaryIndex < 0 || (index !== summaryIndex - 1 && index !== summaryIndex)) {
+        handleIndexes.push(index);
+      }
+    }
+    while (layer.children.length > handleIndexes.length) {
       layer.lastElementChild.remove();
     }
-    while (layer.children.length < count) {
+    while (layer.children.length < handleIndexes.length) {
       const handle = document.createElement('div');
       handle.className = 'panel-resize-handle';
       handle.tabIndex = 0;
@@ -211,15 +234,21 @@ export async function setupPanelResize({ grid, getLayout, getWideScale = () => 1
       handle.setAttribute('aria-orientation', 'vertical');
       handle.setAttribute('aria-label', label);
       handle.title = label;
-      handle.dataset.index = String(layer.children.length);
       layer.appendChild(handle);
     }
+    // Keep the existing elements so a pointer capture survives a refresh.
     let edge = paddingLeft;
-    Array.from(layer.children).forEach((handle, index) => {
+    let nextHandle = 0;
+    for (let index = 0; index < widths.length - 1; index += 1) {
       edge += widths[index];
-      handle.style.left = `${edge + gap / 2 - PANEL_RESIZE_HANDLE_WIDTH / 2}px`;
+      if (handleIndexes[nextHandle] === index) {
+        const handle = layer.children[nextHandle];
+        handle.dataset.index = String(index);
+        handle.style.left = `${edge + gap / 2 - PANEL_RESIZE_HANDLE_WIDTH / 2}px`;
+        nextHandle += 1;
+      }
       edge += gap;
-    });
+    }
   };
 
   const applyWeights = (weights, minWidth, count, available) => {
