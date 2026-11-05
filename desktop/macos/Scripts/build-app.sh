@@ -8,27 +8,18 @@ APP_NAME="Panelize Link"
 APP_PATH="$REPO_ROOT/dist/$APP_NAME.app"
 VERSION="$(node -p "require('$REPO_ROOT/manifest.json').version")"
 
-# Release builds ship one app for both Apple silicon and Intel Macs. Local
-# builds stay native unless PANELIZE_MACOS_UNIVERSAL=1 is set.
-ARCH_ARGS=""
-if [[ "${PANELIZE_MACOS_UNIVERSAL:-0}" == "1" ]]; then
-  ARCH_ARGS="--arch arm64 --arch x86_64"
-fi
-
 node "$REPO_ROOT/scripts/sync-desktop-prompts.js"
 
 swift build \
   --package-path "$DESKTOP_DIR" \
   --configuration release \
-  $ARCH_ARGS \
   --product PanelizeSearchApp
 swift build \
   --package-path "$DESKTOP_DIR" \
   --configuration release \
-  $ARCH_ARGS \
   --product PanelizeSearchBridge
 
-BIN_DIR="$(swift build --package-path "$DESKTOP_DIR" --configuration release $ARCH_ARGS --show-bin-path)"
+BIN_DIR="$(swift build --package-path "$DESKTOP_DIR" --configuration release --show-bin-path)"
 rm -rf "$APP_PATH"
 mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
 

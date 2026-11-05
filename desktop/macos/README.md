@@ -6,13 +6,13 @@ It reuses the extension's send flow and readiness gate: ready AIs receive the pr
 
 ## Requirements
 
-- macOS 13 or later
+- macOS 13 or later on Apple silicon (arm64)
 - Chrome or Edge running with Panelize 2.59.0 or later (the prompt-mode picker needs Panelize 2.62.0 or later and the matching rebuilt native host)
 - Xcode Command Line Tools (to build from source)
 
 ## Install
 
-Download `panelize-link-<version>-macos-universal.zip` from [Releases](https://github.com/elapse-annals/panelize-plus/releases) and unzip it, then register the app with the installer from a repository checkout:
+Download `panelize-link-<version>-macos-arm64.zip` from [Releases](https://github.com/elapse-annals/panelize-plus/releases) and unzip it, then register the app with the installer from a repository checkout:
 
 ```bash
 ./desktop/macos/Scripts/install.sh --browser chrome --app "$HOME/Downloads/Panelize Link.app"
@@ -118,4 +118,4 @@ swift test --package-path desktop/macos
 ./desktop/macos/Scripts/build-app.sh
 ```
 
-The build lands in `dist/Panelize Link.app` and is not included in extension release packages; the release pipeline attaches it separately as `panelize-link-<version>-macos-universal.zip`. Extension-side protocol tests live in `tests/unit/platform/global-send.test.js` and `tests/unit/background/native-send.test.js`.
+The build lands in `dist/Panelize Link.app` and is not included in extension release packages; the release pipeline attaches it separately as `panelize-link-<version>-macos-arm64.zip`. Extension-side protocol tests live in `tests/unit/platform/global-send.test.js` and `tests/unit/background/native-send.test.js`.

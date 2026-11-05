@@ -1,7 +1,7 @@
 # Changelog
 
 ## 2.88.0 - 2026-11-05
-- Release Publish now builds the macOS client too: a macOS runner compiles Panelize Link as a universal Apple silicon and Intel app, checks the generated prompt definitions, and attaches `panelize-link-x.y.z-macos-universal.zip` to the GitHub Release, with the release notes naming the asset.
+- Release Publish now builds the macOS client too: a macOS runner compiles Panelize Link for Apple silicon (arm64), checks the generated prompt definitions, and attaches `panelize-link-x.y.z-macos-arm64.zip` to the GitHub Release, with the release notes naming the asset.
 - `install.sh --app` installs and registers an already-downloaded `Panelize Link.app`, so the release build works without a local Swift toolchain; the macOS docs cover the ad-hoc signed first launch and the download install path.
 
 ## 2.87.1 - 2026-11-05

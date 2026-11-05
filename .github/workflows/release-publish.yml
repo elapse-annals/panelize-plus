@@ -76,7 +76,7 @@ jobs:
 
   macos:
     needs: validate
-    runs-on: macos-latest
+    runs-on: macos-15
     permissions:
       contents: read
     env:
@@ -103,7 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: panelize-${{ inputs.version }}-macos
-          path: dist/release-${{ inputs.version }}/panelize-link-${{ inputs.version }}-macos-universal.zip
+          path: dist/release-${{ inputs.version }}/panelize-link-${{ inputs.version }}-macos-arm64.zip
           if-no-files-found: error
           retention-days: 14
 
@@ -166,7 +166,7 @@ jobs:
           gh release create "$TAG" \
             "${RELEASE_DIR}/panelize-${RELEASE_VERSION}-release.zip" \
             "${RELEASE_DIR}/panelize-${RELEASE_VERSION}-cws.zip" \
-            "${RELEASE_DIR}/panelize-link-${RELEASE_VERSION}-macos-universal.zip" \
+            "${RELEASE_DIR}/panelize-link-${RELEASE_VERSION}-macos-arm64.zip" \
             --verify-tag \
             --title "Panelize ${RELEASE_VERSION}" \
             --notes-file "${RELEASE_DIR}/release-notes.md"

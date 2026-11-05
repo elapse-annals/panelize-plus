@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build Panelize Link as a universal app and zip it for a GitHub Release.
-# Runs on macOS only, because the app is built with Swift and packaged with
-# ditto. The extension's release zips do not include the client.
+# Build Panelize Link for Apple silicon and zip it for a GitHub Release.
+# Runs on an arm64 macOS host, because the app is built with Swift and
+# packaged with ditto. The extension's release zips do not include the client.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -11,14 +11,14 @@ VERSION="${RELEASE_VERSION:-$(node -p "require('$REPO_ROOT/manifest.json').versi
 APP_NAME="Panelize Link"
 APP_PATH="$REPO_ROOT/dist/$APP_NAME.app"
 OUT_DIR="$REPO_ROOT/dist/release-$VERSION"
-ZIP_PATH="$OUT_DIR/panelize-link-$VERSION-macos-universal.zip"
+ZIP_PATH="$OUT_DIR/panelize-link-$VERSION-macos-arm64.zip"
 
-if [[ "$(uname -s)" != "Darwin" ]]; then
-  echo "[package-macos-app] The macOS client can only be packaged on macOS." >&2
+if [[ "$(uname -s)" != "Darwin" || "$(uname -m)" != "arm64" ]]; then
+  echo "[package-macos-app] The macOS client requires an arm64 macOS host." >&2
   exit 1
 fi
 
-PANELIZE_MACOS_UNIVERSAL=1 "$REPO_ROOT/desktop/macos/Scripts/build-app.sh"
+"$REPO_ROOT/desktop/macos/Scripts/build-app.sh"
 
 for binary in PanelizeSearchApp PanelizeSearchBridge; do
   if [[ ! -x "$APP_PATH/Contents/MacOS/$binary" ]]; then
@@ -27,8 +27,8 @@ for binary in PanelizeSearchApp PanelizeSearchBridge; do
   fi
 
   architectures="$(lipo -archs "$APP_PATH/Contents/MacOS/$binary")"
-  if [[ "$architectures" != *arm64* || "$architectures" != *x86_64* ]]; then
-    echo "[package-macos-app] $binary is not universal: $architectures" >&2
+  if [[ "$architectures" != "arm64" ]]; then
+    echo "[package-macos-app] $binary is not arm64 only: $architectures" >&2
     exit 1
   fi
 done

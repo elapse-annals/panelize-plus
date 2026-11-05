@@ -6,13 +6,13 @@
 
 ## 要求
 
-- macOS 13 或更高版本
+- macOS 13 或更高版本（Apple silicon / arm64）
 - Chrome 或 Edge 正在运行，并已安装 Panelize 2.59.0 或更高版本（提示词模式选择器需要 Panelize 2.62.0 或更高版本，以及重新构建的原生宿主）
 - Xcode Command Line Tools（用于从源码构建）
 
 ## 安装
 
-从 [Releases](https://github.com/elapse-annals/panelize-plus/releases) 下载 `panelize-link-<version>-macos-universal.zip` 并解压，然后在仓库 checkout 中用安装脚本注册：
+从 [Releases](https://github.com/elapse-annals/panelize-plus/releases) 下载 `panelize-link-<version>-macos-arm64.zip` 并解压，然后在仓库 checkout 中用安装脚本注册：
 
 ```bash
 ./desktop/macos/Scripts/install.sh --browser chrome --app "$HOME/Downloads/Panelize Link.app"
@@ -118,4 +118,4 @@ swift test --package-path desktop/macos
 ./desktop/macos/Scripts/build-app.sh
 ```
 
-构建产物在 `dist/Panelize Link.app`，不会进入扩展发布包；发布流水线会把它单独打包为 `panelize-link-<version>-macos-universal.zip` 附加到 Release。扩展侧的协议测试在 `tests/unit/platform/global-send.test.js` 与 `tests/unit/background/native-send.test.js`。
+构建产物在 `dist/Panelize Link.app`，不会进入扩展发布包；发布流水线会把它单独打包为 `panelize-link-<version>-macos-arm64.zip` 附加到 Release。扩展侧的协议测试在 `tests/unit/platform/global-send.test.js` 与 `tests/unit/background/native-send.test.js`。

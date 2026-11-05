@@ -72,7 +72,7 @@ describe('release gate', () => {
       'Chrome Web Store package: `panelize-1.2.6-cws.zip`'
     );
     expect(buildReleaseNotes(changelog, '1.2.6')).toContain(
-      'macOS client (universal, ad-hoc signed): `panelize-link-1.2.6-macos-universal.zip`'
+      'macOS client (arm64, ad-hoc signed): `panelize-link-1.2.6-macos-arm64.zip`'
     );
   });
 });
