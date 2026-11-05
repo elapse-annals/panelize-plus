@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.87.1 - 2026-11-05
+- Release Publish no longer requires a merged `release/x.y.z` pull request: dispatching it from `master` validates the synchronized version files, the dated changelog section and that the target tag and release are still missing, then builds, tags and publishes. The release branch check remains for release PRs.
+
 ## 2.87.0 - 2026-11-05
 - Prompts now send exactly the text the app shows. `content` is what the library, mode menu, placeholder and send preview display and what the AIs receive; `contentEn` is only a fallback for a prompt whose `content` is empty. Selecting a bilingual prompt into the composer no longer sends its hidden English variant when left unedited.
 - The prompt editor's English field and the import/export guide describe the fallback role, and the docs no longer claim Chinese display with English sending.

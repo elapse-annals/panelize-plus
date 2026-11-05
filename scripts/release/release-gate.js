@@ -71,47 +71,6 @@ export function assertReleaseMetadata(versionState, changelog, targetVersion) {
 }
 
 /**
- * Validate the GitHub pull request used for a release.
- *
- * @param {Object} pullRequest GitHub pull request response.
- * @param {string} targetVersion Expected release version.
- * @returns {string} Merge commit SHA.
- */
-export function assertMergedReleasePullRequest(pullRequest, targetVersion) {
-  const expectedHead = `release/${targetVersion}`;
-
-  if (pullRequest?.head?.ref !== expectedHead) {
-    throw new Error(`Release PR head must be ${expectedHead}`);
-  }
-  if (pullRequest?.base?.ref !== 'master') {
-    throw new Error('Release PR base must be master');
-  }
-  if (!pullRequest.merged_at) {
-    throw new Error('Release PR must be merged before publishing');
-  }
-  if (typeof pullRequest.merge_commit_sha !== 'string' || pullRequest.merge_commit_sha.length === 0) {
-    throw new Error('Release PR is missing its merge commit SHA');
-  }
-
-  return pullRequest.merge_commit_sha;
-}
-
-/**
- * Require the merged release PR commit to remain in the current master history.
- *
- * @param {string} mergeCommitSha Release PR merge commit.
- * @param {string} mainCommitSha Current master commit.
- * @param {boolean} isAncestor Whether the release merge commit is an ancestor of master.
- */
-export function assertReleaseCommitIsInMainHistory(mergeCommitSha, mainCommitSha, isAncestor) {
-  if (!isAncestor) {
-    throw new Error(
-      `Release PR merge commit ${mergeCommitSha} is not in master history at ${mainCommitSha}`
-    );
-  }
-}
-
-/**
  * Ensure the release tag and GitHub Release do not exist yet.
  *
  * @param {{tagExists: boolean, releaseExists: boolean}} state Existing target state.

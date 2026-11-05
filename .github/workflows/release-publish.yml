@@ -7,10 +7,6 @@ on:
         description: 'Version to publish (x.y.z)'
         required: true
         type: string
-      pull_request:
-        description: 'Merged release pull request number'
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -24,12 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
     outputs:
       release_sha: ${{ steps.release_gate.outputs.release_sha }}
     env:
       RELEASE_VERSION: ${{ inputs.version }}
-      RELEASE_PR_NUMBER: ${{ inputs.pull_request }}
 
     steps:
       - name: Require master workflow ref
@@ -54,7 +48,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate merged release pull request
+      - name: Validate release commit
         id: release_gate
         env:
           GITHUB_TOKEN: ${{ github.token }}

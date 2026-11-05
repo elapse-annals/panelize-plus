@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { BUMP_COMMIT_FILES } from '../../../scripts/release/release-utils.js';
 import {
-  assertMergedReleasePullRequest,
   assertReleaseChangedFiles,
-  assertReleaseCommitIsInMainHistory,
   assertReleaseMetadata,
   assertReleaseTargetsMissing,
   buildReleaseNotes,
@@ -19,16 +17,6 @@ const versionState = {
   packageLockRootPackage: '1.2.6',
   versionInfo: '1.2.6'
 };
-
-function createPullRequest(overrides = {}) {
-  return {
-    head: { ref: 'release/1.2.6', sha: 'head-sha' },
-    base: { ref: 'master' },
-    merged_at: '2026-07-17T00:00:00Z',
-    merge_commit_sha: 'merge-sha',
-    ...overrides
-  };
-}
 
 describe('release gate', () => {
   it('extracts a version from a release branch', () => {
@@ -54,28 +42,6 @@ describe('release gate', () => {
     )).toThrow(/out of sync/);
     expect(() => assertReleaseMetadata(versionState, '# Changelog\n', '1.2.6'))
       .toThrow(/missing/);
-  });
-
-  it('requires a merged release PR targeting master', () => {
-    expect(assertMergedReleasePullRequest(createPullRequest(), '1.2.6')).toBe('merge-sha');
-    expect(() => assertMergedReleasePullRequest(
-      createPullRequest({ merged_at: null }),
-      '1.2.6'
-    )).toThrow(/must be merged/);
-    expect(() => assertMergedReleasePullRequest(
-      createPullRequest({ head: { ref: 'release/1.2.5' } }),
-      '1.2.6'
-    )).toThrow(/head must be/);
-    expect(() => assertMergedReleasePullRequest(
-      createPullRequest({ base: { ref: 'develop' } }),
-      '1.2.6'
-    )).toThrow(/base must be master/);
-  });
-
-  it('requires the release PR merge to remain in master history', () => {
-    expect(() => assertReleaseCommitIsInMainHistory('merge-sha', 'newer-sha', true)).not.toThrow();
-    expect(() => assertReleaseCommitIsInMainHistory('merge-sha', 'newer-sha', false))
-      .toThrow(/not in master history/);
   });
 
   it('rejects existing release targets', () => {
