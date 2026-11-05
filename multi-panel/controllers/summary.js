@@ -13,14 +13,12 @@ import {
   hasSummaryContent,
   isRetryableSummaryError,
   isRoundReadyForAutoSummary,
-  isRoundReadyForSummary,
   isStronglySupported,
   isSummaryConfigured,
   parseSummaryResponse,
   pickAnchorText,
-  replaceSourceIds,
   requestSummary,
-  shouldExpandSummary
+  replaceSourceIds
 } from '../../modules/answers/ai-summary.js';
 import {
   AI_SUMMARY_ACTIVE_PROFILE_STORAGE_KEY,
@@ -43,6 +41,7 @@ import { PANELIZE_GET_ANSWER_TEXT, PANELIZE_LOCATE_ANSWER_TEXT } from './protoco
 
 export function createSummaryController({
   getAnswersController,
+  getLayoutController,
   getPanelsController,
   getPresentationController,
   getSharingController
@@ -67,8 +66,6 @@ export function createSummaryController({
   let aiSummarySetupLoadId = 0;
 
   const autoSummarizedRoundIds = new Set();
-
-  const remindedAiSummaryRoundIds = new Set();
 
   const pendingAnswerTextRequests = new Map();
 
@@ -114,6 +111,7 @@ export function createSummaryController({
     aiSummaryConfig.model = config.model;
     aiSummaryConfig.apiKey = config.apiKey;
     renderAiSummaryProfileSelect();
+    syncAiSummaryCard();
   }
 
   function renderAiSummaryProfileSelect() {
@@ -175,141 +173,234 @@ export function createSummaryController({
     }
   }
 
-  // The drawer grows out of the toolbar button and shrinks back into it.
-  const AI_SUMMARY_OPEN_MS = 420;
-
-  const AI_SUMMARY_CLOSE_MS = 280;
+  // The card is the trailing answer of the grid while the summary API is
+  // configured. Without a configuration it stays hidden unless the toolbar
+  // button reveals it temporarily so the setup button is reachable.
+  let aiSummaryCardTransient = false;
+  let aiSummaryWasConfigured = false;
 
   // With at least this many summarized AIs, a point all of them back shows one
   // "All N AIs" badge instead of a chip per AI.
   const AI_SUMMARY_ALL_SOURCES_MIN = 3;
 
-  let aiSummaryDrawerAnimation = null;
-
-  // Counts real closes, so an automatic summary that finishes later does not
-  // reopen a drawer the user closed while it was running.
-  let aiSummaryDrawerCloseCount = 0;
-
-  function isAiSummaryDrawerOpen() {
-    const drawer = document.getElementById('ai-summary-drawer');
-    return drawer?.hidden === false && !drawer.classList.contains('ai-summary-closing');
+  function getAiSummaryCard() {
+    return document.getElementById('ai-summary-panel');
   }
 
-  // Keyframes that place the drawer at the button, scaled down to a dot.
-  function getAiSummaryCollapsedFrame(drawer) {
-    const button = document.getElementById('ai-summary-btn');
-    const drawerRect = drawer.getBoundingClientRect();
-    const buttonRect = button?.getBoundingClientRect();
-    if (buttonRect && buttonRect.width) {
-      const x = buttonRect.left + buttonRect.width / 2 - drawerRect.left;
-      const y = buttonRect.top + buttonRect.height / 2 - drawerRect.top;
-      drawer.style.transformOrigin = `${x}px ${y}px`;
-    } else {
-      drawer.style.transformOrigin = 'top right';
+  function isAiSummaryCardExpanded() {
+    return Boolean(getAiSummaryCard()?.classList.contains('ai-summary-expanded'));
+  }
+
+  function isAiSummaryCardVisible() {
+    return Boolean(getAiSummaryCard()) && !getAiSummaryCard().hidden;
+  }
+
+  // The card adds a trailing grid column, so handles and edge buttons must be
+  // measured again whenever it appears, leaves or changes its footprint.
+  function refreshAiSummaryLayout() {
+    getLayoutController().panelResize?.refresh();
+    getPresentationController().updatePanelEdgeButtons?.();
+  }
+
+  // The close button belongs to the temporary no-configuration card only; a
+  // configured summary stays in the grid and is dismissed through the overlay.
+  function setAiSummaryCloseVisible() {
+    const close = document.getElementById('close-ai-summary-panel');
+    if (close) {
+      close.hidden = !(isAiSummaryCardVisible() && aiSummaryCardTransient && !isSummaryConfigured(aiSummaryConfig));
     }
-    return { transform: 'scale(0.04)', opacity: 0, borderRadius: '50vh', filter: 'blur(8px)' };
   }
 
-  function animateAiSummaryDrawer(drawer, opening) {
-    aiSummaryDrawerAnimation?.cancel();
-    aiSummaryDrawerAnimation = null;
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduceMotion || typeof drawer.animate !== 'function') {
-      return null;
+  // The configuration arrives asynchronously and can change while the page is
+  // open. Show the card whenever a usable profile exists, and take it away when
+  // the last profile is removed.
+  function syncAiSummaryCard() {
+    const card = getAiSummaryCard();
+    if (!card) return;
+    const configured = isSummaryConfigured(aiSummaryConfig);
+    if (configured) {
+      const wasTransient = aiSummaryCardTransient;
+      aiSummaryCardTransient = false;
+      // Leaving the "set up the API" state once a usable profile arrives.
+      if (wasTransient || (aiSummaryWasConfigured === false && aiSummaryState.needsSetup)) {
+        aiSummaryState = {
+          roundId: aiSummaryState.roundId,
+          status: 'idle',
+          sources: [],
+          missing: [],
+          summary: null,
+          error: '',
+          needsSetup: false,
+          fromCache: false,
+          cachedAt: null
+        };
+        updateAiSummaryButtonBusy();
+      }
+      showAiSummaryCard();
+    } else if (aiSummaryWasConfigured) {
+      aiSummaryCardTransient = false;
+      aiSummaryController?.abort();
+      aiSummaryController = null;
+      aiSummaryState = {
+        roundId: aiSummaryState.roundId,
+        status: 'idle',
+        sources: [],
+        missing: [],
+        summary: null,
+        error: '',
+        needsSetup: false,
+        fromCache: false,
+        cachedAt: null
+      };
+      updateAiSummaryButtonBusy();
+      hideAiSummaryCard({ restoreFocus: true });
     }
-    const collapsed = getAiSummaryCollapsedFrame(drawer);
-    const expanded = { transform: 'scale(1)', opacity: 1, borderRadius: getComputedStyle(drawer).borderRadius, filter: 'blur(0)' };
-    const frames = opening
-      ? [collapsed, { ...expanded, transform: 'scale(1.012)', offset: 0.72 }, expanded]
-      : [expanded, { ...collapsed, opacity: 0.6, offset: 0.7 }, collapsed];
-    aiSummaryDrawerAnimation = drawer.animate(frames, {
-      duration: opening ? AI_SUMMARY_OPEN_MS : AI_SUMMARY_CLOSE_MS,
-      easing: opening ? 'cubic-bezier(0.2, 0.9, 0.25, 1)' : 'cubic-bezier(0.5, 0, 0.75, 0)'
-    });
-    return aiSummaryDrawerAnimation;
+    aiSummaryWasConfigured = configured;
+    setAiSummaryCloseVisible();
   }
 
-  function openAiSummaryDrawer() {
-    const drawer = document.getElementById('ai-summary-drawer');
-    if (!drawer || isAiSummaryDrawerOpen()) return;
-    drawer.classList.remove('ai-summary-closing');
-    drawer.hidden = false;
-    const button = document.getElementById('ai-summary-btn');
-    button?.setAttribute('aria-expanded', 'true');
-    button?.classList.remove('ai-summary-ready');
+  function showAiSummaryCard({ exitFocus = false } = {}) {
+    const card = getAiSummaryCard();
+    if (!card) return;
+    // A focused panel hides the card (and its grid column); leave focus first.
+    if (exitFocus && getPanelsController().focusedPanelId) {
+      getPanelsController().setFocusedPanel(null);
+    }
+    if (card.hidden) {
+      card.hidden = false;
+      requestAnimationFrame(refreshAiSummaryLayout);
+    }
     renderAiSummary();
-    animateAiSummaryDrawer(drawer, true);
+    setAiSummaryCloseVisible();
   }
 
-  function closeAiSummaryDrawer() {
-    const drawer = document.getElementById('ai-summary-drawer');
-    if (!drawer || !isAiSummaryDrawerOpen()) return;
-    aiSummaryDrawerCloseCount += 1;
-    const button = document.getElementById('ai-summary-btn');
-    button?.setAttribute('aria-expanded', 'false');
-    const finish = () => {
-      drawer.classList.remove('ai-summary-closing');
-      drawer.hidden = true;
-      // The button gives a little bounce as it takes the drawer in.
-      button?.classList.remove('ai-summary-absorb');
-      void button?.offsetWidth;
-      button?.classList.add('ai-summary-absorb');
-    };
-    const animation = animateAiSummaryDrawer(drawer, false);
-    if (!animation) {
-      finish();
+  function hideAiSummaryCard({ restoreFocus = false } = {}) {
+    const card = getAiSummaryCard();
+    if (!card) return;
+    if (isSummaryConfigured(aiSummaryConfig) && !aiSummaryCardTransient) return;
+    if (isAiSummaryCardExpanded()) {
+      setAiSummaryExpanded(false, { refresh: false });
+    }
+    if (card.hidden) return;
+    card.hidden = true;
+    aiSummaryCardTransient = false;
+    refreshAiSummaryLayout();
+    setAiSummaryCloseVisible();
+    if (restoreFocus) document.getElementById('ai-summary-btn')?.focus();
+  }
+
+  // The reading overlay floats at the right, below the toolbar and above the
+  // shared composer, so the rest of the comparison and the input stay usable.
+  function updateAiSummaryOverlayBounds() {
+    const card = getAiSummaryCard();
+    if (!card) return;
+    if (!isAiSummaryCardExpanded()) {
+      card.style.removeProperty('--ai-summary-overlay-top');
+      card.style.removeProperty('--ai-summary-overlay-bottom');
       return;
     }
-    drawer.classList.add('ai-summary-closing');
-    // A cancelled close (the drawer reopened) leaves the drawer showing.
-    animation.addEventListener('finish', () => {
-      if (aiSummaryDrawerAnimation === animation) aiSummaryDrawerAnimation = null;
-      finish();
-    });
+    const toolbar = document.getElementById('toolbar');
+    const toolbarBottom = toolbar ? Math.ceil(toolbar.getBoundingClientRect().bottom) : 0;
+    card.style.setProperty('--ai-summary-overlay-top', `${toolbarBottom + 8}px`);
+    const inputBar = document.getElementById('input-bar');
+    const height = inputBar ? Math.ceil(inputBar.getBoundingClientRect().height) : 0;
+    card.style.setProperty('--ai-summary-overlay-bottom', `${height + 24}px`);
   }
 
-  // A finished summary picks the width by its length (see shouldExpandSummary);
-  // a manual toggle holds until the next summary and across openings.
-  function setAiSummaryExpanded(expanded) {
-    document.getElementById('ai-summary-drawer')?.classList.toggle('ai-summary-expanded', expanded);
-    const button = document.getElementById('ai-summary-expand-btn');
-    if (!button) return;
-    const label = expanded
-      ? getLocalizedText('aiSummaryShrink', 'Shrink')
-      : getLocalizedText('aiSummaryExpand', 'Expand');
-    button.setAttribute('aria-pressed', String(expanded));
-    button.title = label;
-    button.setAttribute('aria-label', label);
-    button.querySelector('.material-symbols-outlined').textContent = expanded ? 'close_fullscreen' : 'open_in_full';
+  // Reading mode lifts the card out of the grid; the grid itself never moves.
+  function setAiSummaryExpanded(expanded, { refresh = true, focus = false } = {}) {
+    const card = getAiSummaryCard();
+    if (!card || (expanded && card.hidden)) return;
+    card.classList.toggle('ai-summary-expanded', expanded);
+    updateAiSummaryOverlayBounds();
+    document.getElementById('main-content')?.classList.toggle('ai-summary-expanded', expanded);
+    const expandButton = document.getElementById('ai-summary-expand-btn');
+    if (expandButton) {
+      const label = expanded
+        ? getLocalizedText('aiSummaryShrink', 'Shrink')
+        : getLocalizedText('aiSummaryExpand', 'Expand');
+      expandButton.setAttribute('aria-pressed', String(expanded));
+      expandButton.title = label;
+      expandButton.setAttribute('aria-label', label);
+      expandButton.querySelector('.material-symbols-outlined').textContent = expanded ? 'close_fullscreen' : 'open_in_full';
+    }
+    // The toolbar button controls the overlay; the card's presence is separate.
+    document.getElementById('ai-summary-btn')?.setAttribute('aria-expanded', String(expanded));
+    if (expanded && focus) expandButton?.focus();
+    if (refresh) requestAnimationFrame(refreshAiSummaryLayout);
   }
 
   function toggleAiSummaryExpanded() {
-    const drawer = document.getElementById('ai-summary-drawer');
-    setAiSummaryExpanded(!drawer?.classList.contains('ai-summary-expanded'));
+    setAiSummaryExpanded(!isAiSummaryCardExpanded());
   }
 
-  // Clicks on empty space or text toggle the width; controls, source chips and
-  // finishing a text selection do not.
-  function handleAiSummaryDrawerClick(event) {
-    const drawer = event.currentTarget;
-    if (drawer.classList.contains('ai-summary-closing')) return;
-    const target = event.target;
-    if (target instanceof Element && target.closest('button, a, input, textarea, select, .ai-summary-source')) return;
-    const selection = window.getSelection?.();
-    if (selection && !selection.isCollapsed && drawer.contains(selection.anchorNode)) return;
-    toggleAiSummaryExpanded();
-  }
-
-  function toggleAiSummaryDrawer() {
-    if (isAiSummaryDrawerOpen()) {
-      closeAiSummaryDrawer();
+  function handleAiSummaryCardKeydown(event) {
+    if (event.key !== 'Escape' || event.isComposing) return;
+    // The profile select owns Escape while its dropdown is open.
+    if (event.target instanceof Element && event.target.closest('select')) return;
+    if (isAiSummaryCardExpanded()) {
+      event.preventDefault();
+      setAiSummaryExpanded(false);
+      document.getElementById('ai-summary-expand-btn')?.focus();
       return;
     }
-    openAiSummaryDrawer();
+    if (aiSummaryCardTransient && !isSummaryConfigured(aiSummaryConfig)) {
+      event.preventDefault();
+      hideAiSummaryCard({ restoreFocus: true });
+    }
+  }
+
+  // A click anywhere outside the reading overlay closes it; the card itself
+  // stays in the grid. Clicks inside an AI iframe never reach this document,
+  // so the window blur handler covers that case.
+  function handleAiSummaryOutsidePointerDown(event) {
+    if (!isAiSummaryCardExpanded()) return;
+    if (event.target instanceof Element && event.target.closest('#ai-summary-btn')) return;
+    const card = getAiSummaryCard();
+    if (card && event.target instanceof Node && card.contains(event.target)) return;
+    setAiSummaryExpanded(false);
+  }
+
+  function handleAiSummaryWindowBlur() {
+    if (!isAiSummaryCardExpanded()) return;
+    // Let focus settle before checking whether it moved into a panel frame.
+    window.setTimeout(() => {
+      if (isAiSummaryCardExpanded() && document.activeElement?.tagName === 'IFRAME') {
+        setAiSummaryExpanded(false);
+      }
+    }, 0);
+  }
+
+  function handleAiSummaryButtonClick() {
+    if (isAiSummaryCardExpanded()) {
+      setAiSummaryExpanded(false);
+      return;
+    }
+    if (!isSummaryConfigured(aiSummaryConfig)) {
+      aiSummaryCardTransient = true;
+      aiSummaryState = {
+        roundId: aiSummaryState.roundId || getAnswersController().latestAnswerRoundId,
+        status: 'error',
+        sources: [],
+        missing: [],
+        summary: null,
+        error: getLocalizedText('aiSummaryNotConfigured', 'Set up an OpenAI-compatible API in Settings to summarize answers.'),
+        needsSetup: true,
+        fromCache: false,
+        cachedAt: null
+      };
+      showAiSummaryCard({ exitFocus: true });
+      setAiSummaryExpanded(true, { focus: true });
+      updateAiSummaryButtonBusy();
+      renderAiSummary();
+      return;
+    }
+    showAiSummaryCard({ exitFocus: true });
+    setAiSummaryExpanded(true, { focus: true });
     // Summarize the latest round unless it is already summarized or running.
-    if (getAnswersController().latestAnswerRoundId && (aiSummaryState.roundId !== getAnswersController().latestAnswerRoundId
-      || ['idle', 'error'].includes(aiSummaryState.status))) {
-      void runAiSummary(getAnswersController().latestAnswerRoundId, { collect: true });
+    const roundId = getAnswersController().latestAnswerRoundId;
+    if (roundId && (aiSummaryState.roundId !== roundId || ['idle', 'error'].includes(aiSummaryState.status))) {
+      void runAiSummary(roundId, { collect: true });
     }
   }
 
@@ -328,18 +419,15 @@ export function createSummaryController({
       fromCache: false,
       cachedAt: null
     };
-    document.getElementById('ai-summary-btn')?.classList.remove('ai-summary-ready');
     updateAiSummaryButtonBusy();
     renderAiSummary();
   }
 
-  // A ring spins around the button while answers are read or summarized, and
-  // turns green once the summary is done.
+  // A ring spins around the button while answers are read or summarized.
   function updateAiSummaryButtonBusy() {
     const busy = ['collecting', 'running'].includes(aiSummaryState.status);
     const button = document.getElementById('ai-summary-btn');
     button?.classList.toggle('ai-summary-busy', busy);
-    button?.classList.toggle('ai-summary-done', aiSummaryState.status === 'done');
     button?.setAttribute('aria-busy', String(busy));
   }
 
@@ -350,21 +438,8 @@ export function createSummaryController({
       return;
     }
     autoSummarizedRoundIds.add(roundId);
-    // The drawer opens only once there is a summary to read (see runAiSummary).
-    void runAiSummary(roundId, { autoOpen: true });
-  }
-
-  // Rings the AI summary button once the latest round is ready and the drawer is
-  // closed, so a finished comparison is not missed. Needs a configured API.
-  function maybeRemindAiSummary(roundId) {
-    const round = getAnswersController().answerRounds.get(roundId);
-    if (roundId !== getAnswersController().latestAnswerRoundId || remindedAiSummaryRoundIds.has(roundId)
-      || autoSummarizedRoundIds.has(roundId) || isAiSummaryDrawerOpen()
-      || !isSummaryConfigured(aiSummaryConfig) || !isRoundReadyForSummary(round, getRoundAnswerTexts(round))) {
-      return;
-    }
-    remindedAiSummaryRoundIds.add(roundId);
-    document.getElementById('ai-summary-btn')?.classList.add('ai-summary-ready');
+    // The persistent card shows collecting/running and then the result.
+    void runAiSummary(roundId);
   }
 
   // Texts of the panels still showing the round's answer.
@@ -465,7 +540,7 @@ export function createSummaryController({
       .filter(({ panel }) => getAnswersController().isPanelInAnswerRound(round, panel));
   }
 
-  async function runAiSummary(roundId, { collect = false, autoOpen = false, forceRefresh = false } = {}) {
+  async function runAiSummary(roundId, { collect = false, forceRefresh = false } = {}) {
     const round = getAnswersController().answerRounds.get(roundId);
     if (!round) {
       return;
@@ -477,7 +552,6 @@ export function createSummaryController({
     const controller = new AbortController();
     aiSummaryController = controller;
     const isCurrent = () => aiSummaryController === controller;
-    const drawerCloseCountAtStart = aiSummaryDrawerCloseCount;
     const setState = (state) => {
       if (!isCurrent()) return;
       aiSummaryState = {
@@ -541,10 +615,7 @@ export function createSummaryController({
           fromCache: true,
           cachedAt: cached.createdAt
         });
-        if (isCurrent()) setAiSummaryExpanded(shouldExpandSummary(cached.summary));
-        // A cached hit never opens the drawer by itself; ring the button so the
-        // user can read it when they choose.
-        if (autoOpen) document.getElementById('ai-summary-btn')?.classList.add('ai-summary-ready');
+        // The persistent card now shows the cached result without an API call.
         return;
       }
     }
@@ -589,7 +660,7 @@ export function createSummaryController({
       });
       const summary = parseSummaryResponse(content, sources.map(source => source.sourceId));
       if (!hasSummaryContent(summary)) {
-        // A reply that parsed to nothing is no result: keep the drawer closed
+        // A reply that parsed to nothing is no result: keep the card hidden
         // for an automatic summary and report it when the user asks.
         setState({ status: 'error', sources, missing, error: getLocalizedText('aiSummaryEmpty', 'The summary came back empty. Try again or use another model.') });
         return;
@@ -603,11 +674,6 @@ export function createSummaryController({
         summary
       }));
       setState({ status: 'done', sources, missing, summary });
-      // Each finished summary picks the drawer width by how much it says.
-      if (isCurrent()) setAiSummaryExpanded(shouldExpandSummary(summary));
-      // An automatic summary opens the drawer only now, and not if the user
-      // closed it while this summary was running.
-      if (autoOpen && isCurrent() && aiSummaryDrawerCloseCount === drawerCloseCountAtStart) openAiSummaryDrawer();
     } catch (error) {
       if (controller.signal.aborted && !isCurrent()) return;
       console.warn('[Multi-Panel] AI summary failed:', error);
@@ -762,21 +828,27 @@ export function createSummaryController({
   }
 
   function renderAiSummary() {
-    const drawer = document.getElementById('ai-summary-drawer');
-    if (!drawer || drawer.hidden) {
+    const card = document.getElementById('ai-summary-panel');
+    if (!card || card.hidden) {
       return;
     }
     const byId = id => document.getElementById(id);
     const state = aiSummaryState;
     const round = state.roundId ? getAnswersController().answerRounds.get(state.roundId) : null;
 
-    const title = round?.promptSummary || getLocalizedText('aiSummaryTitle', 'AI summary');
+    // The card header names the answerer; the question is its subtitle.
+    const title = getLocalizedText('aiSummaryTitle', 'AI summary');
+    const question = round?.promptSummary || '';
     byId('ai-summary-title-text').textContent = title;
-    byId('ai-summary-title').title = title;
+    byId('ai-summary-question').textContent = question;
+    byId('ai-summary-question').hidden = !question;
+    byId('ai-summary-title').title = question || title;
 
     const status = byId('ai-summary-status');
     status.classList.toggle('error', state.status === 'error');
-    drawer.dataset.fromCache = String(state.fromCache === true);
+    card.dataset.state = state.status;
+    card.dataset.fromCache = String(state.fromCache === true);
+    card.querySelector('.ai-summary-skeleton').hidden = !['collecting', 'running'].includes(state.status);
     const statusText = {
       idle: round
         ? getLocalizedText('aiSummaryIdle', 'Waiting for the answers. Use Summarize again to summarize now.')
@@ -823,9 +895,6 @@ export function createSummaryController({
     byId('ai-summary-unique-section').hidden = !summary?.unique?.length;
     byId('ai-summary-disagreements').replaceChildren(...(summary?.disagreements || []).map(item => createAiSummaryDisagreement(item, sourcesById, round, state.sources.length)));
     byId('ai-summary-disagreements-section').hidden = !summary?.disagreements.length;
-    // Shown blocks fade in one after another (see .ai-summary-reveal).
-    [...result.querySelectorAll('.ai-summary-reveal:not([hidden]), .ai-summary-article-paragraph, .ai-summary-unique-group, .ai-summary-disagreement')]
-      .forEach((element, index) => element.style.setProperty('--ai-summary-index', String(index)));
 
     const missing = byId('ai-summary-missing');
     const showMissing = state.missing.length > 0 && ['running', 'done', 'error'].includes(state.status);
@@ -859,50 +928,31 @@ export function createSummaryController({
   }
 
   function setupAiSummary() {
-    document.getElementById('ai-summary-btn')?.addEventListener('click', toggleAiSummaryDrawer);
-    document.getElementById('close-ai-summary-drawer')?.addEventListener('click', closeAiSummaryDrawer);
+    document.getElementById('ai-summary-btn')?.addEventListener('click', handleAiSummaryButtonClick);
+    document.getElementById('close-ai-summary-panel')?.addEventListener('click', () => hideAiSummaryCard({ restoreFocus: true }));
     document.getElementById('ai-summary-expand-btn')?.addEventListener('click', toggleAiSummaryExpanded);
     document.getElementById('ai-summary-profile-select')?.addEventListener('change', (event) => {
       chooseAiSummaryProfile(event.target.value);
     });
-    document.getElementById('ai-summary-drawer')?.addEventListener('click', handleAiSummaryDrawerClick);
     document.getElementById('ai-summary-copy-btn')?.addEventListener('click', () => { void copyAiSummary(); });
     document.getElementById('ai-summary-rerun-btn')?.addEventListener('click', () => {
       const roundId = aiSummaryState.roundId || getAnswersController().latestAnswerRoundId;
       if (roundId) void runAiSummary(roundId, { collect: true, forceRefresh: true });
     });
     document.getElementById('ai-summary-settings-btn')?.addEventListener('click', () => chrome.runtime.openOptionsPage());
-    document.getElementById('ai-summary-drawer')?.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeAiSummaryDrawer();
-        document.getElementById('ai-summary-btn')?.focus();
-      }
-    });
-    // A click anywhere else closes the drawer. The button toggles it itself.
-    document.addEventListener('pointerdown', (event) => {
-      if (!isAiSummaryDrawerOpen()) return;
-      const target = event.target;
-      if (target instanceof Node && (document.getElementById('ai-summary-drawer')?.contains(target)
-        || document.getElementById('ai-summary-btn')?.contains(target))) {
-        return;
-      }
-      closeAiSummaryDrawer();
-    }, true);
-    // Clicks inside a panel never reach this page; the page loses focus to the
-    // panel's frame instead. The frame must be under the pointer, so a panel
-    // that focuses itself does not close the drawer.
-    window.addEventListener('blur', () => {
-      setTimeout(() => {
-        const active = document.activeElement;
-        if (isAiSummaryDrawerOpen() && active?.tagName === 'IFRAME' && active.matches(':hover')) {
-          closeAiSummaryDrawer();
-        }
-      }, 0);
-    });
-    document.getElementById('ai-summary-btn')?.addEventListener('animationend', (event) => {
-      if (event.animationName === 'ai-summary-absorb') event.currentTarget.classList.remove('ai-summary-absorb');
-    });
+    const card = document.getElementById('ai-summary-panel');
+    card?.addEventListener('keydown', handleAiSummaryCardKeydown);
+    document.addEventListener('pointerdown', handleAiSummaryOutsidePointerDown);
+    window.addEventListener('blur', handleAiSummaryWindowBlur);
+    // A growing draft or a collapsed toolbar changes the free area; keep the
+    // overlay between the toolbar and the composer.
+    if (typeof ResizeObserver === 'function') {
+      const observer = new ResizeObserver(() => updateAiSummaryOverlayBounds());
+      const inputBar = document.getElementById('input-bar');
+      const toolbar = document.getElementById('toolbar');
+      if (inputBar) observer.observe(inputBar);
+      if (toolbar) observer.observe(toolbar);
+    }
   }
 
   return {
@@ -911,7 +961,6 @@ export function createSummaryController({
     handleAnswerTextMessage,
     handleLocateAnswerResult,
     maybeAutoSummarize,
-    maybeRemindAiSummary,
     reloadAiSummarySetup,
     renderAiSummary,
     setupAiSummary,

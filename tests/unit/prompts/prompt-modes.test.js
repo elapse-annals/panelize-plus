@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
+import { checkDesktopPromptsInSync } from '../../../scripts/sync-desktop-prompts.js';
 import {
   COMPETE_PROMPT_TEXTS,
   COMPETE_PROMPT_MIGRATED_KEY,
   DEFAULT_PROMPT_MODE,
+  DEEP_PROMPT_TEXTS,
+  DEEP_PROMPT_MIGRATED_KEY,
   PROMPT_MODES,
   PROMPT_MODE_IDS,
   PROMPT_MODES_SEEDED_KEY,
@@ -17,6 +20,7 @@ import {
   ensureDefaultModePrompts,
   ensureDefaultModeTriggers,
   migrateCompetePrompt,
+  migrateDeepPrompt,
   normalizePromptTriggers,
   restoreDefaultModePrompts,
   resolvePromptModeForText,
@@ -85,7 +89,7 @@ describe('built-in prompt modes', () => {
 
     expect(getPromptModeSuffix('compete', tr)).toBe('比较一下。');
     expect(getPromptModeSuffix('learning', () => '')).toContain('Answer as a teacher');
-    expect(getPromptModeSuffix('deep', translate)).toBe('Think step by step: break the problem down, identify assumptions, analyze root causes, compare options and verify in reverse; before the final conclusion, list your reasoning steps in detail and state any uncertainty.');
+    expect(getPromptModeSuffix('deep', translate)).toBe(DEEP_PROMPT_TEXTS.current.en);
     expect(getPromptModeSuffix(null, translate)).toBe('');
     expect(getPromptModeSuffix('verbose', translate)).toBe('');
   });
@@ -566,6 +570,48 @@ describe('migrating the built-in Challenge prompt', () => {
   });
 });
 
+describe('migrating the built-in Deep thinking prompt', () => {
+  const { previous, current } = DEEP_PROMPT_TEXTS;
+
+  it('rewrites the untouched Chinese and English instructions in place', async () => {
+    const prompts = [
+      { id: 1, title: '深度思考', modeKey: 'deep', isMode: true, content: previous.zh },
+      { id: 2, title: 'Deep thinking', modeKey: 'deep', isMode: true, content: previous.en }
+    ];
+    const updatePrompt = vi.fn(async (id, updates) => {
+      Object.assign(prompts.find(prompt => prompt.id === id), updates);
+    });
+    const storage = memoryStorage();
+
+    expect(await migrateDeepPrompt({ getAllPrompts: async () => prompts, updatePrompt, storage })).toBe(2);
+    expect(prompts.map(prompt => prompt.content)).toEqual([current.zh, current.en]);
+    expect(storage.data[DEEP_PROMPT_MIGRATED_KEY]).toBe(true);
+  });
+
+  it('keeps edited text and never touches another modeKey', async () => {
+    const prompts = [
+      { id: 1, modeKey: 'deep', isMode: true, content: '我自己的指令。' },
+      { id: 2, modeKey: 'compete', isMode: true, content: previous.zh }
+    ];
+    const updatePrompt = vi.fn(async () => {});
+
+    expect(await migrateDeepPrompt({
+      getAllPrompts: async () => prompts, updatePrompt, storage: memoryStorage()
+    })).toBe(0);
+    expect(updatePrompt).not.toHaveBeenCalled();
+    expect(prompts[0].content).toBe('我自己的指令。');
+  });
+
+  it('runs once per device', async () => {
+    const prompts = [{ id: 1, modeKey: 'deep', content: previous.zh }];
+    const updatePrompt = vi.fn(async (id, updates) => { Object.assign(prompts[0], updates); });
+    const options = { getAllPrompts: async () => prompts, updatePrompt, storage: memoryStorage() };
+
+    expect(await migrateDeepPrompt(options)).toBe(1);
+    expect(await migrateDeepPrompt(options)).toBe(0);
+  });
+});
+
 describe('cleaning up imported sample prompts', () => {
   const samples = [
     { title: 'Writing Coach', content: 'Improve   my writing.' },
@@ -608,5 +654,11 @@ describe('cleaning up imported sample prompts', () => {
       .rejects.toThrow('fetch');
     expect(storage.data.samplePromptsCleanedV2).toBeUndefined();
     expect(library.items).toHaveLength(1);
+  });
+});
+
+describe('desktop client prompt sync', () => {
+  it('keeps macOS PromptModeDefinitions.swift in sync with extension prompt modes', () => {
+    expect(checkDesktopPromptsInSync()).toBe(true);
   });
 });

@@ -144,6 +144,11 @@ test.describe('AI summary reading layout', () => {
       const page = await openMultiPanel(extension, {
         providers: ['chatgpt', 'deepseek'], layout: '1x2'
       });
+      // A usable profile keeps the summary card as the last answer of the grid.
+      const card = page.locator('#ai-summary-panel');
+      await expect(card).toBeVisible();
+      await expect(page.locator('#panel-grid > :last-child')).toHaveId('ai-summary-panel');
+      await expect(page.locator('#close-ai-summary-panel')).toBeHidden();
       const order = await page.locator('.toolbar-right').evaluate(toolbar => [...toolbar.children].map(element => (
         element.id || (element.classList.contains('toolbar-divider') ? 'divider' : '')
       )));
@@ -168,17 +173,27 @@ test.describe('AI summary reading layout', () => {
         className: 'ds-markdown'
       }, 'DeepSeek answer text');
 
+      // The toolbar button opens this same card as a quick reading overlay.
       await page.locator('#ai-summary-btn').click();
-      const drawer = page.locator('#ai-summary-drawer');
-      await expect(drawer).toBeVisible();
-      await expect(page.locator('#ai-summary-title-text')).toHaveText(QUESTION);
+      await expect(card).toBeVisible();
+      await expect(card).toHaveClass(/ai-summary-expanded/);
+      await expect(page.locator('#ai-summary-btn')).toHaveAttribute('aria-expanded', 'true');
+      // The summary is the last answer card in the panel grid, not a drawer.
+      await expect(card).toHaveCount(1);
+      await expect(page.locator('#panel-grid > :last-child')).toHaveId('ai-summary-panel');
+      await expect(card).not.toHaveClass(/panel-item/);
+      await expect(page.locator('#ai-summary-title-text')).toHaveText('AI 汇总');
+      await expect(page.locator('#ai-summary-question')).toHaveText(QUESTION);
       await expect(page.locator('#ai-summary-title')).toHaveAttribute('title', QUESTION);
-      await expect(page.locator('#ai-summary-title .material-symbols-outlined')).toHaveText('auto_awesome');
-      const header = page.locator('#ai-summary-title').locator('..');
-      await expect(header).toHaveCSS('padding', '8px 14px');
-      await expect(page.locator('#ai-summary-title')).toHaveCSS('font-size', '15px');
-      await expect(page.locator('#ai-summary-title')).toHaveCSS('white-space', 'nowrap');
+      await expect(page.locator('.ai-summary-badge')).toHaveText('auto_awesome');
+      const header = page.locator('.ai-summary-header');
+      await expect(header).toHaveCSS('padding', '3px 8px');
+      await expect(header).toHaveCSS('background-color', 'rgb(249, 249, 249)');
+      await expect(header).toHaveCSS('background-image', 'none');
+      await expect(page.locator('#ai-summary-title-text')).toHaveCSS('font-size', '13px');
+      await expect(page.locator('#ai-summary-title-text')).toHaveCSS('white-space', 'nowrap');
       await expect(page.locator('#ai-summary-result')).toBeVisible({ timeout: 15000 });
+      await expect(card).toHaveAttribute('data-state', 'done');
 
       const consensus = page.locator('#ai-summary-consensus');
       await expect(consensus.locator('.ai-summary-article-heading')).toHaveText(['Core idea', 'Practical use']);
@@ -201,39 +216,80 @@ test.describe('AI summary reading layout', () => {
       await expect(uniqueGroups.locator('.ai-summary-unique-list li')).toHaveCount(3);
       expect(requests).toHaveLength(1);
       expect(requests[0].model).toBe('e2e-mock');
-      await expect.poll(() => page.locator('#ai-summary-result').evaluate(element => (
-        [...element.querySelectorAll('.ai-summary-reveal:not([hidden]), .ai-summary-article-paragraph, .ai-summary-unique-group, .ai-summary-disagreement')]
-          .every(item => Number(getComputedStyle(item).opacity) >= 0.99)
-      ))).toBe(true);
-      await drawer.hover();
-      await expect.poll(() => drawer.evaluate(element => getComputedStyle(element).backgroundColor))
+      // A finished summary is static: no looping or one-shot decoration.
+      const finishedAnimations = await card.evaluate(element => ({
+        card: getComputedStyle(element).animationName,
+        borderContent: getComputedStyle(element, '::before').content,
+        headerAfter: getComputedStyle(element.querySelector('.ai-summary-header'), '::after').animationName,
+        verdictAfter: getComputedStyle(element.querySelector('#ai-summary-verdict'), '::after').animationName,
+        result: getComputedStyle(element.querySelector('#ai-summary-result')).animationName
+      }));
+      expect(finishedAnimations).toEqual({
+        card: 'none',
+        borderContent: 'none',
+        headerAfter: 'none',
+        verdictAfter: 'none',
+        result: 'none'
+      });
+      await expect.poll(() => card.evaluate(element => getComputedStyle(element).backgroundColor))
         .toBe('rgb(255, 255, 255)');
-      const lightHeaderBackground = await header.evaluate(element => getComputedStyle(element).backgroundImage);
+      const lightHeaderBackground = await header.evaluate(element => getComputedStyle(element).backgroundColor);
+      expect(lightHeaderBackground).toBe('rgb(249, 249, 249)');
       const strongChip = consensus.locator('.ai-summary-article-paragraph.ai-summary-strong .ai-summary-source').first();
       await page.screenshot({ path: testInfo.outputPath('ai-summary-light.png') });
       await page.locator('html').evaluate(element => element.setAttribute('data-theme', 'dark'));
-      await expect.poll(() => drawer.evaluate(element => getComputedStyle(element).backgroundColor))
-        .toBe('rgb(43, 43, 47)');
-      const darkHeaderBackground = await header.evaluate(element => getComputedStyle(element).backgroundImage);
-      expect(darkHeaderBackground).not.toBe(lightHeaderBackground);
+      await expect.poll(() => card.evaluate(element => getComputedStyle(element).backgroundColor))
+        .toBe('rgb(45, 45, 45)');
+      const darkHeaderBackground = await header.evaluate(element => getComputedStyle(element).backgroundColor);
+      expect(darkHeaderBackground).toBe('rgb(58, 58, 58)');
       await expect.poll(() => strongChip.evaluate(element => getComputedStyle(element).color))
         .toBe('rgb(129, 199, 132)');
       await page.screenshot({ path: testInfo.outputPath('ai-summary-dark.png') });
       await page.locator('html').evaluate(element => element.setAttribute('data-theme', 'light'));
-      await expect.poll(() => drawer.evaluate(element => getComputedStyle(element).backgroundColor))
+      await expect.poll(() => card.evaluate(element => getComputedStyle(element).backgroundColor))
         .toBe('rgb(255, 255, 255)');
 
-      // A short summary opens in the narrow drawer.
-      await expect(drawer).not.toHaveClass(/ai-summary-expanded/);
-      const widthBeforeExpand = await drawer.evaluate(element => element.getBoundingClientRect().width);
+      // The toolbar and the card's expand button both toggle the quick overlay.
+      await page.locator('#ai-summary-btn').click();
+      await expect(card).not.toHaveClass(/ai-summary-expanded/);
+      await expect(page.locator('#ai-summary-btn')).toHaveAttribute('aria-expanded', 'false');
+      await expect(card).toBeVisible();
+      const widthBeforeExpand = await card.evaluate(element => element.getBoundingClientRect().width);
       await page.locator('#ai-summary-expand-btn').click();
-      await expect(drawer).toHaveClass(/ai-summary-expanded/);
+      await expect(card).toHaveClass(/ai-summary-expanded/);
       await expect(page.locator('#ai-summary-expand-btn')).toHaveAttribute('aria-pressed', 'true');
-      await expect.poll(() => drawer.evaluate(element => element.getBoundingClientRect().width))
+      await expect.poll(() => card.evaluate(element => element.getBoundingClientRect().width))
         .toBeGreaterThan(widthBeforeExpand);
       await page.locator('#ai-summary-expand-btn').click();
-      await expect(drawer).not.toHaveClass(/ai-summary-expanded/);
+      await expect(card).not.toHaveClass(/ai-summary-expanded/);
       await expect(page.locator('#ai-summary-expand-btn')).toHaveAttribute('aria-pressed', 'false');
+
+      // Clicking outside the overlay collapses it; the card stays in the grid.
+      await page.locator('#ai-summary-btn').click();
+      await expect(card).toHaveClass(/ai-summary-expanded/);
+      const overlayBounds = await page.evaluate(() => {
+        const card = document.querySelector('#ai-summary-panel').getBoundingClientRect();
+        const input = document.querySelector('#input-bar').getBoundingClientRect();
+        const toolbar = document.querySelector('#toolbar').getBoundingClientRect();
+        return {
+          cardTop: card.top,
+          cardRight: card.right,
+          cardBottom: card.bottom,
+          cardWidth: card.width,
+          toolbarBottom: toolbar.bottom,
+          inputTop: input.top,
+          viewportWidth: window.innerWidth
+        };
+      });
+      expect(overlayBounds.cardBottom).toBeLessThanOrEqual(overlayBounds.inputTop);
+      expect(overlayBounds.cardTop).toBeGreaterThanOrEqual(overlayBounds.toolbarBottom);
+      expect(overlayBounds.viewportWidth - overlayBounds.cardRight).toBeLessThanOrEqual(25);
+      expect(overlayBounds.cardWidth).toBeLessThanOrEqual(520);
+      await page.locator('#unified-input').click();
+      await expect(page.locator('#unified-input')).toBeFocused();
+      await expect(card).not.toHaveClass(/ai-summary-expanded/);
+      await expect(card).toBeVisible();
+      await expect(page.locator('#ai-summary-btn')).toHaveAttribute('aria-expanded', 'false');
 
       await page.locator('#ai-summary-copy-btn').click();
       await expect.poll(() => page.evaluate(() => window.__testClipboardWrites.at(-1)))
@@ -246,6 +302,28 @@ test.describe('AI summary reading layout', () => {
       expect(copied).toContain('[ChatGPT, DeepSeek]');
       expect(copied).toContain('- A point raised by DeepSeek.');
       expect(copied).toContain('- A point raised by ChatGPT.');
+
+      // The card adds a trailing grid column, but it never becomes a resize
+      // handle: only the boundary between the two AI panels is draggable.
+      const gridState = await page.locator('#panel-grid').evaluate(grid => ({
+        columns: getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length,
+        handles: grid.querySelectorAll('.panel-resize-handle').length
+      }));
+      expect(gridState).toEqual({ columns: 3, handles: 1 });
+
+      // Blind mode shuffles panel order but the summary stays the last answer.
+      await page.locator('#blind-mode-btn').click();
+      await expect(card).toHaveCSS('order', '9999');
+      await expect(page.locator('#panel-grid > :last-child')).toHaveId('ai-summary-panel');
+      await page.locator('#blind-mode-btn').click();
+
+      // A configured card has no close button; it stays in the grid until the
+      // last usable profile is removed.
+      await expect(page.locator('#close-ai-summary-panel')).toBeHidden();
+      await expect(card).toBeVisible();
+      await expect.poll(() => page.locator('#panel-grid').evaluate(grid => (
+        getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length
+      ))).toBe(3);
     } finally {
       await extension?.close();
       await extensionCopy?.cleanup();
@@ -366,6 +444,9 @@ test('source chips locate quoted passages and older summary paragraphs in provid
     await deepseek.evaluate(html => document.getElementById('thread').insertAdjacentHTML('beforeend', html), deepseekAnswer);
     await page.locator('#ai-summary-btn').click();
     await expect(page.locator('#ai-summary-result')).toBeVisible({ timeout: 15000 });
+    // Collapse the quick overlay so clicks land on the card inside the grid.
+    await page.locator('#ai-summary-btn').click();
+    await expect(page.locator('#ai-summary-btn')).toHaveAttribute('aria-expanded', 'false');
 
     await page.locator('#ai-summary-verdict .ai-summary-source').click();
     await expect(chatgpt.locator('#retry')).toHaveClass(/panelize-quote-highlight/);
@@ -396,7 +477,7 @@ test('source chips locate quoted passages and older summary paragraphs in provid
   }
 });
 
-test('automatic summary opens the drawer only after the summary arrives', async ({}, testInfo) => {
+test('automatic summary shows its loading state and result in the persistent card', async ({}, testInfo) => {
   test.setTimeout(90000);
   let extensionCopy;
   let extension;
@@ -424,21 +505,30 @@ test('automatic summary opens the drawer only after the summary arrives', async 
     });
     await seedSummarySettings(extension, { auto: true });
     const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
+    const card = page.locator('#ai-summary-panel');
+    await expect(card).toBeVisible();
+    await expect(page.locator('#ai-summary-btn')).toHaveAttribute('aria-expanded', 'false');
 
     await sendQuestionWithTwoAnswers(page);
     await expect.poll(() => requests.length, { timeout: 30000 }).toBe(1);
-    // The request is in flight; the drawer must stay closed until there is a
-    // summary to read, and the button must not ring as if one were ready.
-    const drawer = page.locator('#ai-summary-drawer');
-    await expect(drawer).toBeHidden();
-    await expect(page.locator('#ai-summary-btn')).toHaveAttribute('aria-expanded', 'false');
+    // The request is in flight: the persistent card carries the loading state
+    // while the overlay stays closed.
+    await expect(card).toHaveAttribute('data-state', /collecting|running/);
+    await expect(card.locator('.ai-summary-skeleton')).toBeVisible();
+    await expect(card.locator('.ai-summary-progress')).toBeVisible();
+    const loadingAnimation = await card.locator('.ai-summary-skeleton span').first()
+      .evaluate(element => getComputedStyle(element).animationName);
+    expect(loadingAnimation).not.toBe('none');
+    await expect(page.locator('#ai-summary-btn')).toHaveClass(/ai-summary-busy/);
     await expect(page.locator('#ai-summary-btn')).not.toHaveClass(/ai-summary-ready/);
     await page.screenshot({ path: testInfo.outputPath('ai-summary-auto-pending.png') });
 
     releaseSummary();
-    await expect(drawer).toBeVisible({ timeout: 15000 });
+    await expect(card).toHaveAttribute('data-state', 'done', { timeout: 15000 });
     await expect(page.locator('#ai-summary-result')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('#ai-summary-overview')).toHaveText(SUMMARY.overview);
+    const doneAnimation = await card.evaluate(element => getComputedStyle(element).animationName);
+    expect(doneAnimation).toBe('none');
   } finally {
     releaseSummary?.();
     await extension?.close();
@@ -531,7 +621,7 @@ test('switching the summary profile applies to the next summary only', async ({}
   }
 });
 
-test('an empty automatic summary leaves the drawer closed', async ({}, testInfo) => {
+test('an empty automatic summary stays visible with an error', async ({}, testInfo) => {
   test.setTimeout(90000);
   let extensionCopy;
   let extension;
@@ -556,23 +646,100 @@ test('an empty automatic summary leaves the drawer closed', async ({}, testInfo)
     });
     await seedSummarySettings(extension, { auto: true });
     const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
+    const card = page.locator('#ai-summary-panel');
+    await expect(card).toBeVisible();
 
     await sendQuestionWithTwoAnswers(page);
     await expect.poll(() => requests.length, { timeout: 30000 }).toBe(1);
     const button = page.locator('#ai-summary-btn');
     await expect(button).not.toHaveClass(/ai-summary-busy/, { timeout: 15000 });
-    // No result: no drawer, no ready ring, no toast.
-    await expect(page.locator('#ai-summary-drawer')).toBeHidden();
+    // The persistent card reports the empty reply; no result, no ready ring.
+    await expect(card).toHaveAttribute('data-state', 'error');
+    await expect(page.locator('#ai-summary-result')).toBeHidden();
+    const status = page.locator('#ai-summary-status');
+    await expect(status).toHaveClass(/error/, { timeout: 15000 });
+    await expect(status).not.toHaveText('');
     await expect(button).not.toHaveClass(/ai-summary-ready/);
     await expect(page.locator('.panelize-toast')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('ai-summary-auto-empty.png') });
 
-    // Asking by hand still explains why there is nothing to show.
+    // Quick view opens the same card and keeps the explanation.
     await button.click();
-    await expect(page.locator('#ai-summary-drawer')).toBeVisible();
-    const status = page.locator('#ai-summary-status');
+    await expect(card).toHaveClass(/ai-summary-expanded/);
+    await expect(card).toBeVisible();
     await expect(status).toHaveClass(/error/, { timeout: 15000 });
     await expect(status).not.toHaveText('');
+  } finally {
+    await extension?.close();
+    await extensionCopy?.cleanup();
+  }
+});
+
+test('shows the summary card only while a usable profile is configured', async ({}, testInfo) => {
+  test.setTimeout(90000);
+  let extensionCopy;
+  let extension;
+  try {
+    extensionCopy = await createPatchedExtensionCopy(manifest => {
+      manifest.host_permissions.push('https://chat.deepseek.com/*');
+    });
+    extension = await launchExtension({ extensionPath: extensionCopy.extensionPath, viewport: { width: 1440, height: 900 } });
+    await extension.context.route('https://chatgpt.com/**', route => route.fulfill({
+      contentType: 'text/html', body: renderChatgptFixture({ composer: 'current' })
+    }));
+    await extension.context.route('https://chat.deepseek.com/**', route => route.fulfill({
+      contentType: 'text/html', body: DEEPSEEK_FIXTURE
+    }));
+
+    const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
+    const card = page.locator('#ai-summary-panel');
+    const columnCount = () => page.locator('#panel-grid').evaluate(grid => (
+      getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length
+    ));
+
+    // No API key: the card is not part of the grid.
+    await expect(card).toBeHidden();
+    await expect.poll(columnCount).toBe(2);
+
+    // The toolbar button still opens a temporary card that points at Settings.
+    await page.locator('#ai-summary-btn').click();
+    await expect(card).toBeVisible();
+    await expect(card).toHaveClass(/ai-summary-expanded/);
+    await expect(page.locator('#ai-summary-btn')).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#ai-summary-settings-btn')).toBeVisible();
+    await expect(page.locator('#close-ai-summary-panel')).toBeVisible();
+
+    // The overlay is out of the grid; collapsing it puts the card in its column.
+    await page.locator('#ai-summary-btn').click();
+    await expect(card).not.toHaveClass(/ai-summary-expanded/);
+    await expect.poll(columnCount).toBe(3);
+
+    await page.locator('#close-ai-summary-panel').click();
+    await expect(card).toBeHidden();
+    await expect(page.locator('#ai-summary-btn')).toHaveAttribute('aria-expanded', 'false');
+    await expect.poll(columnCount).toBe(2);
+
+    // Saving a profile and key pins the card; removing the key takes it away.
+    await extension.serviceWorker.evaluate(async ({ profilesKey, keysKey }) => {
+      await chrome.storage.sync.set({
+        [profilesKey]: [{ id: 'default', name: '', baseUrl: 'https://api.panelize-e2e.test/v1', model: 'e2e-mock' }]
+      });
+      await chrome.storage.local.set({ [keysKey]: { default: 'e2e-dummy-key' } });
+    }, {
+      profilesKey: AI_SUMMARY_PROFILES_STORAGE_KEY,
+      keysKey: AI_SUMMARY_API_KEYS_STORAGE_KEY
+    });
+    await expect(card).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#close-ai-summary-panel')).toBeHidden();
+    await expect(page.locator('#ai-summary-settings-btn')).toBeHidden();
+    await expect.poll(columnCount).toBe(3);
+    await page.screenshot({ path: testInfo.outputPath('ai-summary-pinned.png') });
+
+    await extension.serviceWorker.evaluate(async keysKey => {
+      await chrome.storage.local.set({ [keysKey]: {} });
+    }, AI_SUMMARY_API_KEYS_STORAGE_KEY);
+    await expect(card).toBeHidden({ timeout: 10000 });
+    await expect.poll(columnCount).toBe(2);
   } finally {
     await extension?.close();
     await extensionCopy?.cleanup();

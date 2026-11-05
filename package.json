@@ -1,6 +1,6 @@
 {
   "name": "panelize-plus",
-  "version": "2.81.0",
+  "version": "2.83.0",
   "description": "Compare AI chatbots side-by-side",
   "author": "Ben <benhuang1024@gmail.com>",
   "repository": {
@@ -15,6 +15,8 @@
     "release:prepare": "node scripts/release/prepare-release.js",
     "release:prepare:dry-run": "node scripts/release/prepare-release.js --dry-run",
     "release:prep": "npm run release:prepare && npm run release:package",
+    "sync:prompts": "node scripts/sync-desktop-prompts.js",
+    "sync:prompts:check": "node scripts/sync-desktop-prompts.js --check",
     "test": "vitest",
     "test:unit": "vitest run",
     "test:watch": "vitest --watch",

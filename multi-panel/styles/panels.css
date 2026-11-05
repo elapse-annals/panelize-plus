@@ -434,8 +434,9 @@
   pointer-events: none;
 }
 
-/* Panel Item */
-.panel-item {
+/* Panel Item (the summary card is one more answer with the same frame). */
+.panel-item,
+.ai-summary-panel {
   position: relative;
   display: flex;
   flex-direction: column;

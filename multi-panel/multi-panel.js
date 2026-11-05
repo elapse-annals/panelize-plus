@@ -157,6 +157,7 @@ const answers = createAnswersController({
 
 const summary = createSummaryController({
   getAnswersController: () => answers,
+  getLayoutController: () => layout,
   getPanelsController: () => panels,
   getPresentationController: () => presentation,
   getSharingController: () => sharing

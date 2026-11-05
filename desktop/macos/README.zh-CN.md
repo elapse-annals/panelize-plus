@@ -63,7 +63,7 @@ open "$HOME/Applications/Panelize Link.app"
 - Native Messaging host 只接受安装时指定的扩展来源，不提供 shell、任意 URL 或文件访问接口。
 - 应用只监听发往其他应用的鼠标按下事件，用于点击外部关闭浮窗；不记录点击或键盘输入，鼠标监听不需要辅助功能权限。
 - 最近 3 条提问保存在本机 `UserDefaults`（`recentQuestions.v1`），不经过本地桥；清除应用偏好设置即可删除。
-- 预览文案编译在客户端内，原生应用不会收到提示词库内容。在扩展里编辑内置模式会改变实际发送内容，但不会同步到客户端预览。
+- 内置模式预览文案与触发词在构建与开发期由 `scripts/sync-desktop-prompts.js` 从扩展的 `_locales/zh_CN/messages.json` 和 `modules/prompts/prompt-modes.js` 统一生成，保证单一真值；运行时原生应用不会收到提示词库内容。在扩展里编辑内置模式会改变实际发送内容，但不会同步到客户端本地预览。
 - 浏览器必须保持运行；退出浏览器后无法发送。
 - 本地构建使用 ad-hoc 签名，未做 Developer ID 签名与公证。自行从源码构建不会经过网络分发；若要公开分发，需要另行签名和公证。
 - 应用显示期间会暂时作为普通 macOS 应用取得键盘焦点，关闭后恢复为仅菜单栏应用。

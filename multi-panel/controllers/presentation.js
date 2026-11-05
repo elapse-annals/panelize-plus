@@ -390,6 +390,7 @@ export function createPresentationController({
     scrollPanels,
     setPageStyleModes,
     setupPanelEdgeNavigation,
+    updatePanelEdgeButtons,
     updatePageStyleButtons,
   };
 }

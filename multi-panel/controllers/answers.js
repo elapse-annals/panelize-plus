@@ -134,7 +134,6 @@ export function createAnswersController({
       }
     }
     getSummaryController().maybeAutoSummarize(round.id);
-    getSummaryController().maybeRemindAiSummary(round.id);
   }
 
   // ===== AI Summary =====

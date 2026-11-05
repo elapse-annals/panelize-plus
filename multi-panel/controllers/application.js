@@ -14,7 +14,8 @@ import {
   cleanupSamplePrompts,
   ensureDefaultModePrompts,
   ensureDefaultModeTriggers,
-  migrateCompetePrompt
+  migrateCompetePrompt,
+  migrateDeepPrompt
 } from '../../modules/prompts/prompt-modes.js';
 import { getLocalizedText, refreshThemeAwareProviderIcons, showToast } from './ui.js';
 
@@ -82,6 +83,9 @@ export function createApplicationController({
     await migrateCompetePrompt({
       getAllPrompts, updatePrompt, storage: chrome.storage?.local
     }).catch(error => console.warn('Could not update the built-in Challenge prompt', error));
+    await migrateDeepPrompt({
+      getAllPrompts, updatePrompt, storage: chrome.storage?.local
+    }).catch(error => console.warn('Could not update the built-in Deep thinking prompt', error));
     await ensureDefaultModeTriggers({
       getAllPrompts, updatePrompt, storage: chrome.storage?.local
     }).catch(error => console.warn('Could not add the built-in mode trigger words', error));

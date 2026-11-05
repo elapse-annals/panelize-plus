@@ -103,7 +103,8 @@
 [data-theme="dark"] .panel-edge-btn { border-color: #ffffff14; background: #2d2d32b3; color: #9a98a6; }
 [data-theme="dark"] .panel-edge-btn:hover, [data-theme="dark"] .panel-edge-btn:focus-visible { background: #3a3a40f2; color: #e0dfe6; }
 
-[data-theme="dark"] .panel-item {
+[data-theme="dark"] .panel-item,
+[data-theme="dark"] .ai-summary-panel {
   background: #2d2d2d;
 }
 
@@ -125,7 +126,8 @@
   color: #aaa;
 }
 
-[data-theme="dark"] .panel-google-mode-select {
+[data-theme="dark"] .panel-google-mode-select,
+[data-theme="dark"] .ai-summary-profile-select {
   background-color: #333;
   border-color: #555;
   color: #e0e0e0;

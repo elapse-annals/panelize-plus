@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.83.0 - 2026-11-05
+- The Deep thinking mode now appends a critical-analysis brief instead of the step-by-step reasoning instruction: conclusion first, verified facts separated from inference, independent judgment, multi-angle trade-offs, and concrete verification or rollback steps, in Chinese and English. Its menu hint now describes the new instruction.
+- Existing libraries get an unedited built-in Deep thinking prompt rewritten in place once per device; user edits and renamed titles are kept, and prompts under another mode are never touched.
+- The macOS client's generated prompt definitions and preview test follow the new instruction from the same source of truth.
+
+## 2.82.0 - 2026-11-05
+- The AI summary is now the last AI answer: once a summary profile is configured, it stays in the panel grid as a full-height trailing card with the same white frame and header as every AI panel, so it always reads after the AIs and never covers the rightmost one. Without a usable profile the card stays out of the grid, and the toolbar button opens a temporary setup card instead. The card stays last in blind mode, hides with focus mode, and is excluded from panel resize handles.
+- The toolbar AI summary button now opens or closes a right-side reading overlay instead of hiding the card; the card itself stays in the grid, Escape or a click outside the overlay collapses it, and the close button only appears on the temporary setup card. The overlay is capped at 520px, floats below the toolbar and above the shared composer, so the rest of the comparison and the input stay visible and usable.
+- The result view is static and built for reading: the glass gradient, moving outline, header and verdict sheens, staggered reveals and settle sweep are gone. Only collecting/running keep the skeleton shimmer, progress bar and busy ring.
+- Column resize, wide mode, edge scrolling and panel insertion treat the summary as a trailing grid column; adding or removing the last profile shows or hides the card and refreshes the layout while keeping saved column weights unchanged.
+
+## 2.81.1 - 2026-11-05
+- Unify macOS client and extension prompt mode definitions into a single source of truth: `scripts/sync-desktop-prompts.js` generates `PromptModeDefinitions.swift` directly from `_locales/zh_CN/messages.json` and `modules/prompts/prompt-modes.js`, eliminating duplicate manual prompt definitions in native source.
+- Add `npm run sync:prompts`, build integration in `build-app.sh`, and a unit test assertion to verify that desktop prompt definitions stay synchronized with extension localization files.
+
 ## 2.81.0 - 2026-11-05
 - Updates and downloads now point at this repository: update checks read the newest published release of `elapse-annals/panelize-plus`, the background commit lookup follows `master`, and the options page's static download link opens this repository's releases. The `panelize-${version}-release.zip` asset name and version comparison rules are unchanged.
 - The support prompt after successful sends now invites a GitHub star (`Star` / `去 Star`) and opens this repository in a new tab. The first prompt at 20 successful sends, the 50-send `Later` interval and the dismissed state are unchanged.

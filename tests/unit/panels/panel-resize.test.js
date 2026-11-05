@@ -6,6 +6,7 @@ import {
   PANEL_RESIZE_MIN_WIDTH,
   getColumnTemplate,
   getColumnWeights,
+  getPanelGridMetrics,
   getWideColumnTemplate,
   isValidColumnWeights,
   resizeColumns,
@@ -89,6 +90,57 @@ describe('getWideColumnTemplate', () => {
     expect(getWideColumnTemplate([1, 1], 700, 400)).toBe('672px 672px');
     expect(getWideColumnTemplate(Array(8).fill(1), 1402, 320)).toBe(Array(8).fill('672px').join(' '));
     expect(getWideColumnTemplate([1.25, 0.75], 700, 400)).toBe('840px 504px');
+  });
+});
+
+describe('getPanelGridMetrics', () => {
+  it('keeps every track as a resizeable panel column without a summary card', () => {
+    const metrics = getPanelGridMetrics({
+      templateColumns: '498px 498px',
+      columnGap: '4px',
+      paddingLeft: '2px',
+      paddingRight: '2px',
+      clientWidth: 1004,
+      scrollWidth: 1004,
+      minWidth: 400
+    });
+    expect(metrics.widths).toEqual([498, 498]);
+    expect(metrics.summaryWidth).toBe(0);
+    expect(metrics.minWidth).toBe(400);
+    expect(metrics.available).toBe(996);
+    expect(metrics.scrolls).toBe(false);
+  });
+
+  it('drops the trailing summary column from the resizeable tracks', () => {
+    const metrics = getPanelGridMetrics({
+      templateColumns: '498px 498px 420px',
+      columnGap: '4px',
+      paddingLeft: '2px',
+      paddingRight: '2px',
+      clientWidth: 1432,
+      scrollWidth: 1432,
+      hasSummaryColumn: true,
+      minWidth: 400
+    });
+    expect(metrics.widths).toEqual([498, 498]);
+    expect(metrics.summaryWidth).toBe(420);
+    // 1432 - 4 padding - 8 gaps (three tracks) - 420 card.
+    expect(metrics.available).toBe(1000);
+  });
+
+  it('ignores a trailing track when no summary card is visible', () => {
+    const metrics = getPanelGridMetrics({
+      templateColumns: '498px 498px 420px',
+      columnGap: '4px',
+      paddingLeft: '2px',
+      paddingRight: '2px',
+      clientWidth: 1432,
+      scrollWidth: 1432,
+      hasSummaryColumn: false,
+      minWidth: 400
+    });
+    expect(metrics.widths).toEqual([498, 498, 420]);
+    expect(metrics.summaryWidth).toBe(0);
   });
 });
 

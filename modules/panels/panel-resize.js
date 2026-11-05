@@ -93,20 +93,75 @@ export function isValidColumnWeights(weights, count) {
     && weights.every((weight) => Number.isFinite(weight) && weight > 0);
 }
 
-function readGrid(grid) {
-  const style = window.getComputedStyle(grid);
-  const widths = style.gridTemplateColumns.split(' ').map(parseFloat).filter(Number.isFinite);
-  const gap = parseFloat(style.columnGap) || 0;
-  const paddingLeft = parseFloat(style.paddingLeft) || 0;
-  const paddingRight = parseFloat(style.paddingRight) || 0;
+/**
+ * Splits the grid's computed columns into resizeable panel columns and the
+ * trailing AI summary card column, which has no resize handle.
+ * @param {{
+ *   templateColumns: string,
+ *   columnGap: string,
+ *   paddingLeft: string,
+ *   paddingRight: string,
+ *   clientWidth: number,
+ *   scrollWidth: number,
+ *   hasSummaryColumn?: boolean,
+ *   minWidth?: number
+ * }} metrics
+ * @returns {{
+ *   widths: number[],
+ *   gap: number,
+ *   paddingLeft: number,
+ *   summaryWidth: number,
+ *   minWidth: number,
+ *   available: number,
+ *   scrolls: boolean
+ * }}
+ */
+export function getPanelGridMetrics({
+  templateColumns,
+  columnGap,
+  paddingLeft,
+  paddingRight,
+  clientWidth,
+  scrollWidth,
+  hasSummaryColumn = false,
+  minWidth = 0
+}) {
+  const tracks = String(templateColumns || '').split(' ').map(parseFloat).filter(Number.isFinite);
+  const hasCard = hasSummaryColumn && tracks.length > 1;
+  const widths = hasCard ? tracks.slice(0, -1) : tracks;
+  const summaryWidth = hasCard ? tracks[tracks.length - 1] : 0;
+  const gap = parseFloat(columnGap) || 0;
+  const left = parseFloat(paddingLeft) || 0;
+  const right = parseFloat(paddingRight) || 0;
   return {
     widths,
     gap,
-    paddingLeft,
-    minWidth: parseFloat(style.getPropertyValue('--panel-min-width')) || 0,
-    available: grid.clientWidth - paddingLeft - paddingRight - gap * Math.max(0, widths.length - 1),
-    scrolls: grid.scrollWidth > grid.clientWidth + 1
+    paddingLeft: left,
+    summaryWidth,
+    minWidth: Number(minWidth) || 0,
+    // Gaps span every track, including the one before the summary card.
+    available: clientWidth - left - right - gap * Math.max(0, tracks.length - 1) - summaryWidth,
+    scrolls: scrollWidth > clientWidth + 1
   };
+}
+
+function readGrid(grid) {
+  const style = window.getComputedStyle(grid);
+  // The card sits in an implicit trailing column and has no resize handle.
+  const card = [...grid.children].find(element => element.classList.contains('ai-summary-panel'));
+  const hasSummaryColumn = Boolean(card && !card.hidden
+    && !card.classList.contains('ai-summary-expanded')
+    && card.offsetParent !== null);
+  return getPanelGridMetrics({
+    templateColumns: style.gridTemplateColumns,
+    columnGap: style.columnGap,
+    paddingLeft: style.paddingLeft,
+    paddingRight: style.paddingRight,
+    clientWidth: grid.clientWidth,
+    scrollWidth: grid.scrollWidth,
+    hasSummaryColumn,
+    minWidth: parseFloat(style.getPropertyValue('--panel-min-width')) || 0
+  });
 }
 
 /**

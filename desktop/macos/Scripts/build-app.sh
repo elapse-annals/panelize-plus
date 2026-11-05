@@ -8,6 +8,8 @@ APP_NAME="Panelize Link"
 APP_PATH="$REPO_ROOT/dist/$APP_NAME.app"
 VERSION="$(node -p "require('$REPO_ROOT/manifest.json').version")"
 
+node "$REPO_ROOT/scripts/sync-desktop-prompts.js"
+
 swift build \
   --package-path "$DESKTOP_DIR" \
   --configuration release \

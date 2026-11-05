@@ -63,7 +63,7 @@ If the Panelize page is not open, the extension opens it first and waits for the
 - The Native Messaging host accepts only the extension origin configured at install time. It offers no shell, arbitrary URL, or file access.
 - The app listens only to mouse-down events delivered to other apps so it can dismiss the composer on an outside click. It does not record clicks or keyboard input, and mouse monitoring does not require Accessibility permission.
 - The last three questions stay in this Mac's `UserDefaults` (`recentQuestions.v1`) and never cross the native bridge; clearing the app's preferences removes them.
-- The preview text is compiled into the client; the native app never receives Prompt Library content. Editing a built-in mode in the extension changes what is sent but is not reflected in the native preview.
+- Built-in prompt mode previews and trigger definitions are generated at build time from the extension's `_locales/zh_CN/messages.json` and `modules/prompts/prompt-modes.js` via `scripts/sync-desktop-prompts.js`, ensuring a single source of truth; at runtime, the native app never receives Prompt Library content. Editing a built-in mode in the extension changes what is sent but is not reflected in the native preview.
 - The browser must stay running; sending is unavailable after it quits.
 - Local builds are ad-hoc signed, not Developer ID signed or notarized. Building from source avoids network distribution; public distribution needs separate signing and notarization.
 - While visible, the app temporarily becomes a regular macOS app to take keyboard focus, then returns to menu-bar-only mode when hidden.

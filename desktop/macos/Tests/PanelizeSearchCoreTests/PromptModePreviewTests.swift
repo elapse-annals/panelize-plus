@@ -31,10 +31,10 @@ final class PromptModePreviewTests: XCTestCase {
             PromptModePreview.text(for: .brainstorm),
             "请进行头脑风暴：给出多个不同角度、尽量多样甚至大胆的思路，简要说明各自优缺点，不急于下结论。"
         )
-        XCTAssertEqual(
-            PromptModePreview.text(for: .deep),
-            "请逐步思考拆解问题，识别假设，分析根因，比较方案，反向验证，并在给出最终结论前，详细列出你的推导步骤，说明不确定性。"
-        )
+        let deep = PromptModePreview.text(for: .deep) ?? ""
+        XCTAssertTrue(deep.hasPrefix("请以严谨、客观、具有批判性思维的专家身份分析问题。"))
+        XCTAssertTrue(deep.contains("四、最终目标"))
+        XCTAssertTrue(deep.hasSuffix("并给出最合理、可执行的建议。"))
         let compete = PromptModePreview.text(for: .compete) ?? ""
         XCTAssertTrue(compete.hasPrefix("请充当上面这条消息的对抗性但公正的同行审稿人"))
         XCTAssertTrue(compete.contains("最后向我提出 3–5 个尖锐的澄清问题"))

@@ -1,108 +1,145 @@
-/* AI summary drawer: inside #main-content, so it sits between the toolbar
-   and the composer and never covers either. */
-.ai-summary-drawer {
-  position: absolute;
-  top: 8px;
-  right: 0;
-  bottom: 8px;
-  z-index: 900;
-  display: flex;
-  flex-direction: column;
-  width: min(560px, 100%);
-  border-radius: 16px 0 0 16px;
-  overflow: hidden;
-  /* Translucent so the panels stay readable behind it; solid while hovered or
-     focused. A click widens it (see .ai-summary-expanded). */
-  background: rgba(255, 255, 255, 0.82);
-  -webkit-backdrop-filter: blur(10px) saturate(1.2);
-  backdrop-filter: blur(10px) saturate(1.2);
-  box-shadow: -12px 0 40px rgba(15, 23, 42, 0.18), -1px 0 0 rgba(15, 23, 42, 0.06);
-  transition: width 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s;
+/* AI summary answer card: the trailing column of #panel-grid. Styled as one
+   more answer from Panelize itself, so it reads after every AI panel. */
+#panel-grid {
+  /* Width of the implicit trailing column the summary card occupies. */
+  --ai-summary-card-width: clamp(320px, 30vw, 460px);
+  grid-auto-columns: var(--ai-summary-card-width);
 }
 
-.ai-summary-drawer:hover,
-.ai-summary-drawer:focus-within {
-  background: #fff;
+/* The frame itself comes from .panel-item (see panels.css); only the grid
+   placement is summary-specific. */
+.ai-summary-panel {
+  grid-column: -1 / span 1;
+  grid-row: 1 / -1;
+  min-width: 0;
+  min-height: 0;
+  order: 9999;
 }
 
-/* Expanded so long summaries are easy to read. */
-.ai-summary-drawer.ai-summary-expanded {
-  width: min(1080px, 96%);
-}
-
-/* Clicking the header or body toggles the width; the cursor hints which way. */
-.ai-summary-drawer .modal-header,
-.ai-summary-body {
-  cursor: zoom-in;
-}
-
-.ai-summary-drawer.ai-summary-expanded .modal-header,
-.ai-summary-drawer.ai-summary-expanded .ai-summary-body {
-  cursor: zoom-out;
-}
-
-.ai-summary-drawer button {
-  cursor: pointer;
-}
-
-.ai-summary-drawer button:disabled {
-  cursor: default;
-}
-
-/* Closing: keep the width it had while it shrinks into the button. */
-.ai-summary-drawer.ai-summary-closing {
-  pointer-events: none;
-  transition: none;
-}
-
-.ai-summary-drawer[hidden] {
+.ai-summary-panel[hidden] {
   display: none;
 }
 
-.ai-summary-drawer .modal-header {
-  gap: 8px;
-  padding: 8px 14px;
-  background: linear-gradient(135deg, rgba(25, 118, 210, 0.08), rgba(124, 77, 255, 0.06));
+/* Reading mode: the card lifts out of the grid without moving panels. */
+.ai-summary-panel.ai-summary-expanded {
+  position: fixed;
+  /* Float over the rightmost panel, below the toolbar and above the composer,
+     so the rest of the comparison stays readable. */
+  top: var(--ai-summary-overlay-top, 64px);
+  right: 24px;
+  bottom: var(--ai-summary-overlay-bottom, 24px);
+  left: auto;
+  z-index: 1000;
+  width: min(520px, calc(100vw - 48px));
+  height: auto;
+  max-width: none;
+  margin: 0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
 }
 
-.ai-summary-drawer .modal-header h3 {
+.ai-summary-panel.ai-summary-expanded .ai-summary-body {
+  padding: 24px 32px 32px;
+  font-size: 15px;
+}
+
+.ai-summary-panel.ai-summary-expanded .ai-summary-question {
+  font-size: 12px;
+}
+
+.ai-summary-panel button {
+  cursor: pointer;
+}
+
+.ai-summary-panel button:disabled {
+  cursor: default;
+}
+
+.ai-summary-header {
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.ai-summary-header .close-btn[hidden] {
+  display: none;
+}
+
+.ai-summary-heading {
+  gap: 6px;
+}
+
+.ai-summary-heading .ai-summary-badge {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 13px;
+  background: linear-gradient(135deg, #1976d2, #7c4dff);
+}
+
+.ai-summary-heading-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.ai-summary-heading .ai-summary-question {
+  font-size: 11px;
+  font-weight: 400;
+  color: #7a808c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-summary-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  font-size: 15px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.ai-summary-drawer .modal-header h3 .material-symbols-outlined {
+  gap: 2px;
   flex-shrink: 0;
-  font-size: 18px;
 }
 
-#ai-summary-title-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+@container (max-width: 430px) {
+  .ai-summary-heading .ai-summary-question {
+    display: none;
+  }
+
+  .ai-summary-profile-select {
+    max-width: 120px;
+  }
+
+  .ai-summary-actions {
+    gap: 0;
+  }
 }
 
-.ai-summary-drawer .modal-header-actions {
-  flex-shrink: 0;
+@container (max-width: 360px) {
+  .ai-summary-profile-select {
+    max-width: 96px;
+  }
 }
 
 /* Picks the profile used by the next summary; the current result stays. */
 .ai-summary-profile-select {
   min-width: 0;
-  max-width: 220px;
-  height: 30px;
-  padding: 4px 8px;
-  border: 1px solid #dadce0;
-  border-radius: 6px;
-  background-color: #fff;
-  color: #2b2f36;
-  font-size: 12px;
+  max-width: 150px;
+  height: 24px;
+  padding: 0 24px 0 6px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='M3.5 5.25L7 8.75l3.5-3.5' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 6px center;
+  background-repeat: no-repeat;
+  background-size: 14px 14px;
+  color: #333;
+  font-size: 11px;
+  appearance: none;
   cursor: pointer;
 }
 
@@ -111,16 +148,17 @@
   opacity: 0.8;
 }
 
-[data-theme="dark"] .ai-summary-profile-select {
-  border-color: #555;
-  background-color: #2d2d2d;
-  color: #e0e0e0;
-}
-
 .ai-summary-body {
-  font-size: 15px;
-  line-height: 1.75;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 16px 20px;
+  font-size: 14px;
+  line-height: 1.7;
   color: #2b2f36;
+  scrollbar-width: thin;
 }
 
 .ai-summary-status:empty {
@@ -134,21 +172,73 @@
   word-break: break-word;
 }
 
+/* Placeholder rows while the summary is being written. */
+.ai-summary-skeleton {
+  display: grid;
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+
+.ai-summary-skeleton[hidden] {
+  display: none;
+}
+
+.ai-summary-skeleton span {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg,
+    rgba(25, 118, 210, 0.08), rgba(124, 77, 255, 0.16), rgba(25, 118, 210, 0.08));
+  background-size: 220% 100%;
+  animation: ai-summary-skeleton-flow 1.6s ease-in-out infinite;
+}
+
+.ai-summary-skeleton span:nth-child(1) { width: 88%; }
+.ai-summary-skeleton span:nth-child(2) { width: 70%; }
+.ai-summary-skeleton span:nth-child(3) { width: 54%; }
+
+@keyframes ai-summary-skeleton-flow {
+  from { background-position: 120% 50%; }
+  to { background-position: -120% 50%; }
+}
+
+/* A 2px indeterminate bar under the header while the summary is written. */
+.ai-summary-progress {
+  display: none;
+  height: 2px;
+  overflow: hidden;
+  background: rgba(25, 118, 210, 0.1);
+}
+
+.ai-summary-panel[data-state="running"] .ai-summary-progress,
+.ai-summary-panel[data-state="collecting"] .ai-summary-progress {
+  display: block;
+}
+
+.ai-summary-progress span {
+  display: block;
+  width: 38%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, #1976d2, #7c4dff, transparent);
+  animation: ai-summary-progress 1.4s ease-in-out infinite;
+}
+
+@keyframes ai-summary-progress {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(300%); }
+}
+
+/* Focus mode hides the summary card and its trailing column entirely. */
+#main-content.panel-focus-active .ai-summary-panel {
+  display: none;
+}
+
+/* Reading mode hides the edge scroll buttons behind the overlay. */
+#main-content.ai-summary-expanded .panel-edge-btn {
+  display: none;
+}
+
 .ai-summary-status.error {
   color: #d32f2f;
-}
-
-.ai-summary-reveal,
-.ai-summary-article-paragraph,
-.ai-summary-unique-group,
-.ai-summary-disagreement {
-  animation: ai-summary-reveal 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--ai-summary-index, 0) * 50ms + 120ms);
-}
-
-@keyframes ai-summary-reveal {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: none; }
 }
 
 .ai-summary-verdict[hidden],
@@ -158,14 +248,30 @@
 }
 
 .ai-summary-verdict {
+  position: relative;
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  margin: 0 0 24px;
+  margin: 0 0 22px;
   padding: 14px 16px;
-  border-left: 4px solid #1976d2;
+  overflow: hidden;
+  border-left: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #e3f2fd, #ede7f6);
+  background:
+    linear-gradient(135deg, rgba(227, 242, 253, 0.9), rgba(237, 231, 246, 0.9));
+  box-shadow: inset 0 0 0 1px rgba(124, 77, 255, 0.12), 0 6px 18px rgba(25, 118, 210, 0.08);
+}
+
+/* Gradient bar over the flat left edge, so the wide mode keeps its radius. */
+.ai-summary-verdict::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  pointer-events: none;
+  background: linear-gradient(180deg, #1976d2, #7c4dff);
 }
 
 .ai-summary-verdict-icon {
@@ -472,18 +578,6 @@
   color: #1976d2;
 }
 
-/* A finished round: the button rings and pulses until the drawer is opened. */
-#ai-summary-btn.ai-summary-ready {
-  color: #1976d2;
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.35);
-  animation: ai-summary-remind 1.2s ease-in-out 3;
-}
-
-@keyframes ai-summary-remind {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.55); }
-  50% { box-shadow: 0 0 0 6px rgba(25, 118, 210, 0); }
-}
-
 /* While summarizing, a ring spins around the button. */
 #ai-summary-btn {
   position: relative;
@@ -509,55 +603,29 @@
   to { transform: rotate(360deg); }
 }
 
-/* A finished summary: a green ring until the next question. */
-#ai-summary-btn.ai-summary-done {
-  color: #2e7d32;
-}
-
-#ai-summary-btn.ai-summary-done::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 2px solid #2e7d32;
-  pointer-events: none;
-}
-
-/* The button bounces as the closing drawer shrinks into it. */
-#ai-summary-btn.ai-summary-absorb {
-  animation: ai-summary-absorb 0.36s cubic-bezier(0.3, 1.6, 0.5, 1);
-}
-
-@keyframes ai-summary-absorb {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.5); }
-  40% { transform: scale(1.18); }
-  100% { transform: scale(1); box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  #ai-summary-btn.ai-summary-ready,
-  #ai-summary-btn.ai-summary-absorb,
-  .ai-summary-reveal,
-  .ai-summary-article-paragraph,
-  .ai-summary-unique-group,
-  .ai-summary-disagreement { animation: none; }
-  .ai-summary-drawer { transition: none; }
+  .ai-summary-skeleton span,
+  .ai-summary-progress span { animation: none; }
   #ai-summary-btn.ai-summary-busy::after { animation-duration: 2.4s; }
 }
 
 
-[data-theme="dark"] .ai-summary-drawer {
-  background: rgba(40, 40, 44, 0.82);
-  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.55), -1px 0 0 rgba(255, 255, 255, 0.06);
+[data-theme="dark"] .ai-summary-panel.ai-summary-expanded {
+  background: #2d2d2d;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
 }
 
-[data-theme="dark"] .ai-summary-drawer:hover,
-[data-theme="dark"] .ai-summary-drawer:focus-within {
-  background: #2b2b2f;
+[data-theme="dark"] .ai-summary-heading .ai-summary-badge {
+  color: #fff;
 }
 
-[data-theme="dark"] .ai-summary-drawer .modal-header {
-  background: linear-gradient(135deg, rgba(144, 202, 249, 0.1), rgba(179, 157, 219, 0.08));
+[data-theme="dark"] .ai-summary-heading .ai-summary-question {
+  color: #9aa0ac;
+}
+
+[data-theme="dark"] .ai-summary-skeleton span {
+  background: linear-gradient(90deg,
+    rgba(144, 202, 249, 0.08), rgba(179, 157, 219, 0.2), rgba(144, 202, 249, 0.08));
 }
 
 [data-theme="dark"] #ai-summary-btn.ai-summary-busy {
@@ -568,19 +636,6 @@
   border-color: rgba(144, 202, 249, 0.18);
   border-top-color: #90caf9;
   border-right-color: #90caf9;
-}
-
-[data-theme="dark"] #ai-summary-btn.ai-summary-done {
-  color: #81c784;
-}
-
-[data-theme="dark"] #ai-summary-btn.ai-summary-done::after {
-  border-color: #81c784;
-}
-
-[data-theme="dark"] #ai-summary-btn.ai-summary-ready {
-  color: #90caf9;
-  box-shadow: 0 0 0 3px rgba(144, 202, 249, 0.35);
 }
 
 [data-theme="dark"] .ai-summary-body {

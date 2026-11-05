@@ -47,9 +47,9 @@ async function sendQuestionWithTwoAnswers(page) {
   await appendAnswer(page, 'https://chat.deepseek.com/', {
     className: 'ds-markdown'
   }, 'DeepSeek answer text');
-  // Both answers are read once the summary button starts ringing; the manual
-  // summary also collects missing texts on demand.
-  await expect(page.locator('#ai-summary-btn')).toHaveClass(/ai-summary-ready/, { timeout: 15000 });
+  // The persistent card carries the question for this round; the manual
+  // summary also collects any missing answer texts on demand.
+  await expect(page.locator('#ai-summary-question')).toHaveText(QUESTION);
 }
 
 test.describe('AI summary cache', () => {
@@ -99,6 +99,9 @@ test.describe('AI summary cache', () => {
       const page = await openMultiPanel(extension, {
         providers: ['chatgpt', 'deepseek'], layout: '1x2'
       });
+      const card = page.locator('#ai-summary-panel');
+      await expect(card).toBeVisible();
+      await expect(page.locator('#close-ai-summary-panel')).toBeHidden();
 
       await sendQuestionWithTwoAnswers(page);
       await page.locator('#ai-summary-btn').click();
@@ -111,15 +114,18 @@ test.describe('AI summary cache', () => {
         return stored.aiSummaryCache?.length ?? 0;
       }).toBe(1);
 
-      await page.locator('#close-ai-summary-drawer').click();
-      await expect(page.locator('#ai-summary-drawer')).toBeHidden();
+      // The card stays in the grid; the toolbar button only closes the overlay.
+      await page.locator('#ai-summary-btn').click();
+      await expect(card).not.toHaveClass(/ai-summary-expanded/);
+      await expect(card).toBeVisible();
 
       // Ask the same question again; the cached summary comes back without a
       // second API request.
       await sendQuestionWithTwoAnswers(page);
+      await expect(card).toBeVisible();
       await page.locator('#ai-summary-btn').click();
-      await expect(page.locator('#ai-summary-drawer')).toBeVisible();
-      await expect(page.locator('#ai-summary-drawer')).toHaveAttribute('data-from-cache', 'true');
+      await expect(card).toHaveClass(/ai-summary-expanded/);
+      await expect(card).toHaveAttribute('data-from-cache', 'true');
       await expect(page.locator('#ai-summary-result')).toBeVisible();
       await expect(page.locator('#ai-summary-status')).toContainText('缓存');
       expect(requests).toHaveLength(1);
@@ -127,7 +133,7 @@ test.describe('AI summary cache', () => {
       // The rerun button always bypasses the cache.
       await page.locator('#ai-summary-rerun-btn').click();
       await expect.poll(() => requests.length).toBe(2);
-      await expect(page.locator('#ai-summary-drawer')).toHaveAttribute('data-from-cache', 'false');
+      await expect(page.locator('#ai-summary-panel')).toHaveAttribute('data-from-cache', 'false');
     } finally {
       await extension?.close();
       await extensionCopy?.cleanup();

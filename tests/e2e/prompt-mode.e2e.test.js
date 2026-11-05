@@ -1,10 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { launchExtension, openMultiPanel } from './support/extension-harness.js';
 import { renderChatgptFixture } from './fixtures/chatgpt-fixture.js';
+import { DEEP_PROMPT_TEXTS } from '../../modules/prompts/prompt-modes.js';
 
 // The instruction appended for the concise mode, as shipped in _locales/en.
 const CONCISE_INSTRUCTION = 'Be as concise as possible';
-const DEEP_INSTRUCTION = 'Think step by step: break the problem down, identify assumptions, analyze root causes, compare options and verify in reverse; before the final conclusion, list your reasoning steps in detail and state any uncertainty.';
+const DEEP_INSTRUCTION = DEEP_PROMPT_TEXTS.current.en;
+// The fixture reads the composer's textContent, which joins the line breaks
+// the extension inserts without a separator.
+const DEEP_INSTRUCTION_SENT = DEEP_INSTRUCTION.replace(/\n/g, '');
 
 function readFixture(page) {
   const frame = page.frames().find(candidate => candidate.url().startsWith('https://chatgpt.com/'));
@@ -95,7 +99,7 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
       await expect.poll(async () => (await readFixture(page))?.sends).toBe(1);
       const sent = (await readFixture(page)).sentTexts[0];
       expect(sent).toBe('Explain closures');
-      expect(sent).not.toContain(DEEP_INSTRUCTION);
+      expect(sent).not.toContain(DEEP_INSTRUCTION_SENT);
       await expect(page.locator('#prompt-mode-btn')).toHaveAttribute('data-mode', 'deep');
       expect(await extension.serviceWorker.evaluate(async () =>
         (await chrome.storage.sync.get('selectedPromptMode')).selectedPromptMode
@@ -131,7 +135,7 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
       const page = await openChatgptPanel(extension);
       const input = page.locator('#unified-input');
       await chooseMode(page, 'Deep thinking');
-      await expect(input).toHaveAttribute('placeholder', /Appends: Think step by step/);
+      await expect(input).toHaveAttribute('placeholder', /Appends: Act as a rigorous, objective/);
 
       await input.fill('Question');
       await expect(page.locator('#prompt-ghost .prompt-ghost-suffix')).toHaveText(DEEP_INSTRUCTION);
@@ -139,7 +143,7 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
       await expect.poll(async () => (await readFixture(page))?.sentTexts.length).toBe(1);
       const directSent = (await readFixture(page)).sentTexts[0];
       expect(directSent.startsWith('Question')).toBe(true);
-      expect(directSent).toContain(DEEP_INSTRUCTION);
+      expect(directSent).toContain(DEEP_INSTRUCTION_SENT);
 
       await chooseMode(page, 'Auto');
       await input.fill('/think Another question');
@@ -150,7 +154,7 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
       const autoSent = (await readFixture(page)).sentTexts[1];
       expect(autoSent.startsWith('Another question')).toBe(true);
       expect(autoSent).not.toContain('/think');
-      expect(autoSent).toContain(DEEP_INSTRUCTION);
+      expect(autoSent).toContain(DEEP_INSTRUCTION_SENT);
     } finally {
       await extension.close();
     }

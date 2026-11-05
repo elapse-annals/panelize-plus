@@ -45,6 +45,87 @@ export const COMPETE_PROMPT_TEXTS = {
   }
 };
 
+// The Deep thinking instruction before it became a critical-analysis brief.
+// Both languages live in code because the one-time migration runs regardless of
+// the UI locale; _locales/*/messages.json must match `current` (asserted in
+// tests). Keep `previous` after the migration has shipped everywhere.
+export const DEEP_PROMPT_TEXTS = {
+  previous: {
+    en: 'Think step by step: break the problem down, identify assumptions, analyze root causes, compare options and verify in reverse; before the final conclusion, list your reasoning steps in detail and state any uncertainty.',
+    zh: '请逐步思考拆解问题，识别假设，分析根因，比较方案，反向验证，并在给出最终结论前，详细列出你的推导步骤，说明不确定性。'
+  },
+  current: {
+    en: [
+      'Act as a rigorous, objective, and critically minded expert when analyzing problems.',
+      '1. Core Principles',
+      '',
+      '1. Problem Definition: Identify the primary objective, key constraints, and implicit assumptions. Challenge the problem statement itself when it contains incorrect or questionable premises.',
+      '2. In-Depth Analysis: Examine the underlying mechanisms, fundamental principles, and root causes. Avoid superficial explanations that only address symptoms.',
+      '3. Evidence-Based Reasoning: Clearly distinguish verified facts, reasonable inferences, and unknown information. Explicitly acknowledge uncertainty rather than inventing or assuming facts.',
+      '4. Independent Judgment: Do not automatically agree with the user\'s opinions, assumptions, or proposed solutions. Challenge incorrect assumptions directly and provide supporting evidence and alternative explanations.',
+      '5. Multi-Dimensional Evaluation: When multiple approaches exist, compare their advantages, disadvantages, costs, risks, long-term implications, and applicable scenarios.',
+      '6. Critical Validation: Actively look for counterexamples, potential weaknesses, edge cases, and failure scenarios. Challenge your own conclusions and verify whether they hold up under scrutiny.',
+      '7. Practical Decision-Making: Prefer the simplest effective solution that satisfies the requirements. Avoid unnecessary complexity and overengineering. Clearly recommend the best approach and explain its trade-offs.',
+      '',
+      '2. Evidence and Information Accuracy',
+      '',
+      '1. For technical topics, data, APIs, configuration parameters, and time-sensitive information, prioritize verification against official documentation, official source code, and other reliable primary sources.',
+      '2. If information cannot be verified through reliable sources, explicitly label it as "Unable to Verify". Never present speculation as fact. Strictly avoid fabricating code, APIs, configuration options, parameters, version compatibility claims, or data.',
+      '3. If official documentation is missing, ambiguous, or potentially outdated, explicitly identify the evidence gaps, information freshness, and uncertainties. When appropriate, provide reproducible verification methods instead of guessing.',
+      '4. When referencing technical information, provide official source links, applicable software versions, and documentation update dates whenever possible.',
+      '5. The absence of information in official documentation does not necessarily mean a feature does not exist. Cross-validate using official source code, official repositories, reliable technical references, and reproducible tests. Clearly identify the evidence source and its level of confidence.',
+      '',
+      '3. Response Requirements',
+      '',
+      '1. Conclusion First: Present the conclusion or recommendation upfront, followed by the key supporting analysis.',
+      '2. Information Density: Prioritize high-value information. Avoid unnecessary introductions, repetition, and excessively lengthy explanations.',
+      '3. Adaptive Analysis Depth: Answer simple questions directly. Analyze complex problems thoroughly. Do not mechanically apply every analytical step to every question.',
+      '4. Explicit Uncertainty: State the scope, assumptions, conditions, limitations, uncertainties, and outstanding verification requirements behind your conclusions.',
+      '5. Clarification When Necessary: If missing information could materially affect the conclusion, ask the most important clarifying question rather than making unsupported assumptions.',
+      '6. Actionability: For practical tasks, provide concrete implementation steps, examples, verification procedures, and rollback strategies where appropriate.',
+      '7. Transparent Reasoning: Do not expose lengthy internal chain-of-thought reasoning. Instead, provide verifiable evidence, key reasoning points, and clear conclusions.',
+      '',
+      '4. Ultimate Objective',
+      'Maximize accuracy, analytical depth, verifiability, and practical decision-making value rather than simply increasing response length.',
+      'Always prioritize facts and evidence, maintain independent judgment, challenge flawed assumptions, proactively identify potential risks, and deliver the most reasonable and actionable recommendations.'
+    ].join('\n'),
+    zh: [
+      '请以严谨、客观、具有批判性思维的专家身份分析问题。',
+      '一、核心原则',
+      '',
+      '1. 明确问题：识别核心目标、关键约束和隐含假设；必要时指出问题本身是否存在错误前提。',
+      '2. 深入分析：分析问题本质、底层机制和根本原因，避免停留在表面现象。',
+      '3. 证据优先：区分已验证事实、合理推断和未知信息；不确定时明确说明，不要编造。',
+      '4. 独立判断：不默认用户的观点、假设或方案正确。发现错误时直接指出，并提供依据和替代解释。',
+      '5. 多角度评估：比较不同方案的优缺点、成本、风险、长期影响及适用场景。',
+      '6. 批判性验证：主动寻找反例、潜在缺陷和失败场景，检验结论是否成立。',
+      '7. 合理决策：优先选择满足需求的最简单有效方案，避免过度设计；明确给出最佳建议及其取舍。',
+      '',
+      '二、证据与信息准确性',
+      '',
+      '1. 涉及技术、数据、API、配置参数或时效性信息时，优先依据官方文档、官方源码及可靠的一手资料进行核实。',
+      '2. 对无法从可靠来源确认的信息，必须明确标注「无法确认」，不得将推测表述为事实，严禁编造代码、API、配置项、参数、版本兼容性或数据。',
+      '3. 如果官方文档缺失、定义不明确或信息可能过期，应明确指出证据缺口、信息时效性及不确定性；必要时提供验证方法，而不是猜测答案。',
+      '4. 引用技术资料时，尽可能提供官方来源链接、适用版本及资料更新时间。',
+      '5. 官方文档没有明确说明，不代表相关功能不存在。可以结合官方源码、官方仓库、可靠的技术资料和可复现测试进行交叉验证，并明确证据来源及可信程度。',
+      '',
+      '三、输出要求',
+      '',
+      '1. 结论优先：先给结论，再给关键分析依据。',
+      '2. 信息密度：优先提供高价值信息，避免无意义的铺垫、重复和冗长解释。',
+      '3. 动态分析深度：简单问题直接回答，复杂问题深入分析，不机械套用分析流程。',
+      '4. 明确不确定性：说明结论的适用边界、成立条件、不确定性和待验证事项。',
+      '5. 主动澄清：信息不足且可能影响结论时，优先提出最关键的澄清问题，不要擅自假设。',
+      '6. 可执行性：涉及实际操作时，尽可能提供具体步骤、示例、验证方法及必要的回滚方案。',
+      '7. 表达透明：不展示冗长的内部推理过程，提供可验证的判断依据、关键推理和结论即可。',
+      '',
+      '四、最终目标',
+      '提高答案的准确性、深度、可验证性和实际决策价值，而不是单纯增加分析篇幅。',
+      '始终以事实和证据为基础，保持独立判断，敢于质疑错误前提，主动发现潜在风险，并给出最合理、可执行的建议。'
+    ].join('\n')
+  }
+};
+
 // Menu and seed order (Concise, Learning, Challenge, Brainstorm, Deep thinking), with each
 // built-in mode's locale keys and English fallbacks.
 // `id` becomes the seeded prompt's modeKey, which also matches the
@@ -63,7 +144,7 @@ export const PROMPT_MODES = [
     hintKey: 'promptModeBrainstormHint', hint: 'Append a brainstorm instruction: many varied angles, no early verdict',
     triggers: ['/brainstorm', '/idea'] },
   { id: 'deep', labelKey: 'promptModeDeep', label: 'Deep thinking',
-    hintKey: 'promptModeDeepHint', hint: 'Append a reasoning instruction: break down, verify, show the steps',
+    hintKey: 'promptModeDeepHint', hint: 'Append a critical-analysis instruction: conclusion first, evidence over speculation, independent judgment',
     triggers: ['/think', '/deep'] }
 ];
 
@@ -96,7 +177,7 @@ const PROMPT_MODE_SUFFIX_FALLBACKS = {
   concise: 'Be as concise as possible: give the conclusion and the key points only, and skip preamble, pleasantries and repetition.',
   brainstorm: 'Brainstorm: offer several different angles, as varied and even as bold as you can, briefly note the pros and cons of each, and do not rush to a verdict.',
   compete: COMPETE_PROMPT_TEXTS.current.en,
-  deep: 'Think step by step: break the problem down, identify assumptions, analyze root causes, compare options and verify in reverse; before the final conclusion, list your reasoning steps in detail and state any uncertainty.'
+  deep: DEEP_PROMPT_TEXTS.current.en
 };
 
 /** @param {string} mode */
@@ -453,32 +534,35 @@ export async function ensureDefaultModeTriggers({ getAllPrompts, updatePrompt, s
   return true;
 }
 
-// chrome.storage.local flag for the one-time Challenge prompt migration below.
+// chrome.storage.local flags for the one-time built-in prompt migrations below.
 export const COMPETE_PROMPT_MIGRATED_KEY = 'promptModeCompetePromptMigrated';
+export const DEEP_PROMPT_MIGRATED_KEY = 'promptModeDeepPromptMigrated';
 
 /**
- * Replaces the old "compared side by side" Challenge instruction with the
- * adversarial-review one, once per device. Only fields still exactly as
- * shipped are rewritten, each in the language it already holds, so edits and
- * the title are kept. Prompts with another modeKey are never touched.
+ * Replaces a built-in mode's shipped instruction with its current one, once
+ * per device. Only fields still exactly as shipped are rewritten, each in the
+ * language it already holds, so edits and the title are kept. Prompts with
+ * another modeKey are never touched.
  *
- * @param {{ getAllPrompts: () => Promise<object[]>,
+ * @param {{ modeKey: string, flagKey: string,
+ *   texts: { previous: { en: string, zh: string }, current: { en: string, zh: string } },
+ *   getAllPrompts: () => Promise<object[]>,
  *   updatePrompt: (id: number, updates: object) => Promise<unknown>,
  *   storage?: { get: Function, set: Function } }} options
  * @returns {Promise<number>} How many prompts were updated.
  */
-export async function migrateCompetePrompt({ getAllPrompts, updatePrompt, storage }) {
+async function migrateBuiltInModePrompt({ modeKey, flagKey, texts, getAllPrompts, updatePrompt, storage }) {
   if (!storage?.get || !storage?.set) return 0;
-  const stored = await storage.get(COMPETE_PROMPT_MIGRATED_KEY);
-  if (stored?.[COMPETE_PROMPT_MIGRATED_KEY]) return 0;
+  const stored = await storage.get(flagKey);
+  if (stored?.[flagKey]) return 0;
 
-  const { previous, current } = COMPETE_PROMPT_TEXTS;
+  const { previous, current } = texts;
   const replacement = value => value === previous.zh ? current.zh
     : value === previous.en ? current.en : '';
 
   let updated = 0;
   for (const prompt of await getAllPrompts()) {
-    if (prompt?.modeKey !== 'compete') continue;
+    if (prompt?.modeKey !== modeKey) continue;
     const updates = {};
     for (const field of ['content', 'contentEn']) {
       const next = replacement(promptText(prompt, field));
@@ -488,8 +572,38 @@ export async function migrateCompetePrompt({ getAllPrompts, updatePrompt, storag
     await updatePrompt(prompt.id, updates);
     updated += 1;
   }
-  await storage.set({ [COMPETE_PROMPT_MIGRATED_KEY]: true });
+  await storage.set({ [flagKey]: true });
   return updated;
+}
+
+/**
+ * Replaces the old "compared side by side" Challenge instruction with the
+ * adversarial-review one. See migrateBuiltInModePrompt for the rules.
+ *
+ * @param {{ getAllPrompts: () => Promise<object[]>,
+ *   updatePrompt: (id: number, updates: object) => Promise<unknown>,
+ *   storage?: { get: Function, set: Function } }} options
+ * @returns {Promise<number>} How many prompts were updated.
+ */
+export function migrateCompetePrompt(options) {
+  return migrateBuiltInModePrompt({
+    ...options, modeKey: 'compete', flagKey: COMPETE_PROMPT_MIGRATED_KEY, texts: COMPETE_PROMPT_TEXTS
+  });
+}
+
+/**
+ * Replaces the old step-by-step Deep thinking instruction with the
+ * critical-analysis one. See migrateBuiltInModePrompt for the rules.
+ *
+ * @param {{ getAllPrompts: () => Promise<object[]>,
+ *   updatePrompt: (id: number, updates: object) => Promise<unknown>,
+ *   storage?: { get: Function, set: Function } }} options
+ * @returns {Promise<number>} How many prompts were updated.
+ */
+export function migrateDeepPrompt(options) {
+  return migrateBuiltInModePrompt({
+    ...options, modeKey: 'deep', flagKey: DEEP_PROMPT_MIGRATED_KEY, texts: DEEP_PROMPT_TEXTS
+  });
 }
 
 // chrome.storage.local flag for the one-time sample cleanup below. V2 runs it

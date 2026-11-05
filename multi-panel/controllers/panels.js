@@ -232,6 +232,9 @@ export function createPanelsController({
       selector.classList.toggle('panel-focused', selector.dataset.panelId === focusedPanelId);
     });
     getAnswersController().updateZoomedAnswer();
+    // Focus hides the summary card, so its grid column and handles change too.
+    getLayoutController().panelResize?.refresh();
+    getPresentationController().updatePanelEdgeButtons?.();
   }
 
   async function addPanel(providerId) {
@@ -359,7 +362,11 @@ export function createPanelsController({
       pageNeededWidth: 0,
       fit: createPanelFitState()
     };
-    panelGrid.insertBefore(panelEl, beforePanelId ? document.getElementById(beforePanelId) : null);
+    // The summary answer card is the grid's last child; new panels go before it.
+    const insertionPoint = beforePanelId
+      ? document.getElementById(beforePanelId)
+      : document.getElementById('ai-summary-panel');
+    panelGrid.insertBefore(panelEl, insertionPoint?.parentElement === panelGrid ? insertionPoint : null);
     panels.push(panel);
     getSendingController().startPanelReadiness(panel);
     getLayoutController().panelFitObserver?.observe(iframe.parentElement);
