@@ -12,7 +12,15 @@ It reuses the extension's send flow and readiness gate: ready AIs receive the pr
 
 ## Install
 
-From the repository root:
+Download `panelize-link-<version>-macos-universal.zip` from [Releases](https://github.com/elapse-annals/panelize-plus/releases) and unzip it, then register the app with the installer from a repository checkout:
+
+```bash
+./desktop/macos/Scripts/install.sh --browser chrome --app "$HOME/Downloads/Panelize Link.app"
+```
+
+The release build is ad-hoc signed, not notarized: on first launch, right-click the app and choose **Open**, or allow it under System Settings → Privacy & Security.
+
+To build from source instead, run the installer without `--app` from the repository root:
 
 ```bash
 ./desktop/macos/Scripts/install.sh --browser chrome
@@ -110,4 +118,4 @@ swift test --package-path desktop/macos
 ./desktop/macos/Scripts/build-app.sh
 ```
 
-The build lands in `dist/Panelize Link.app` and is not included in extension release packages. Extension-side protocol tests live in `tests/unit/platform/global-send.test.js` and `tests/unit/background/native-send.test.js`.
+The build lands in `dist/Panelize Link.app` and is not included in extension release packages; the release pipeline attaches it separately as `panelize-link-<version>-macos-universal.zip`. Extension-side protocol tests live in `tests/unit/platform/global-send.test.js` and `tests/unit/background/native-send.test.js`.

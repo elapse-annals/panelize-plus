@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd -P)"
 APP_NAME="Panelize Link"
 BUILT_APP="$REPO_ROOT/dist/$APP_NAME.app"
+APP_SOURCE=""
 DEST_APP="$HOME/Applications/$APP_NAME.app"
 BROWSER="chrome"
 HOST_NAME="com.panelize.global_sender"
@@ -37,10 +38,11 @@ EXTENSION_ID="$(unpacked_extension_id "$REPO_ROOT")"
 
 usage() {
   cat <<'EOF'
-Usage: install.sh [--extension-id <32-char-id>] [--browser chrome|edge]
+Usage: install.sh [--app <path>] [--extension-id <32-char-id>] [--browser chrome|edge]
 
-Builds Panelize Link.app, installs it under ~/Applications, and registers the
-user-level Native Messaging host. No sudo is used.
+Builds Panelize Link.app (or installs the app given with --app), installs it
+under ~/Applications, and registers the user-level Native Messaging host. No
+sudo is used.
 
 By default the ID Chrome assigns to this checkout when it is loaded unpacked
 from the repository root is used. Pass --extension-id when the extension is
@@ -50,6 +52,10 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --app)
+      APP_SOURCE="${2:-}"
+      shift 2
+      ;;
     --extension-id)
       EXTENSION_ID="${2:-}"
       shift 2
@@ -88,7 +94,20 @@ case "$BROWSER" in
     ;;
 esac
 
-"$SCRIPT_DIR/build-app.sh" >/dev/null
+if [[ -n "$APP_SOURCE" ]]; then
+  if [[ ! -d "$APP_SOURCE" ]]; then
+    echo "App not found: $APP_SOURCE" >&2
+    exit 2
+  fi
+  BUILT_APP="$(cd "$(dirname "$APP_SOURCE")" && pwd -P)/$(basename "$APP_SOURCE")"
+  if [[ ! -x "$BUILT_APP/Contents/MacOS/PanelizeSearchBridge" ]]; then
+    echo "Not a Panelize Link app (missing the native bridge): $BUILT_APP" >&2
+    exit 2
+  fi
+  echo "Using downloaded app: $BUILT_APP"
+else
+  "$SCRIPT_DIR/build-app.sh" >/dev/null
+fi
 
 mkdir -p "$HOME/Applications"
 if [[ -e "$DEST_APP" ]]; then

@@ -116,6 +116,8 @@ export function buildReleaseNotes(changelog, version) {
     extractChangelogSection(changelog, version).trimEnd(),
     '',
     `Chrome Web Store package: \`panelize-${version}-cws.zip\``,
+    '',
+    `macOS client (universal, ad-hoc signed): \`panelize-link-${version}-macos-universal.zip\``,
     ''
   ].join('\n');
 }

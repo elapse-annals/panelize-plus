@@ -12,7 +12,15 @@
 
 ## 安装
 
-在仓库根目录执行：
+从 [Releases](https://github.com/elapse-annals/panelize-plus/releases) 下载 `panelize-link-<version>-macos-universal.zip` 并解压，然后在仓库 checkout 中用安装脚本注册：
+
+```bash
+./desktop/macos/Scripts/install.sh --browser chrome --app "$HOME/Downloads/Panelize Link.app"
+```
+
+发布包是 ad-hoc 签名、未公证：首次启动请右键点击应用选择 **打开**，或在“系统设置 → 隐私与安全性”中允许。
+
+也可以直接从源码构建，在仓库根目录执行不带 `--app` 的安装脚本：
 
 ```bash
 ./desktop/macos/Scripts/install.sh --browser chrome
@@ -110,4 +118,4 @@ swift test --package-path desktop/macos
 ./desktop/macos/Scripts/build-app.sh
 ```
 
-构建产物在 `dist/Panelize Link.app`，不会进入扩展发布包。扩展侧的协议测试在 `tests/unit/platform/global-send.test.js` 与 `tests/unit/background/native-send.test.js`。
+构建产物在 `dist/Panelize Link.app`，不会进入扩展发布包；发布流水线会把它单独打包为 `panelize-link-<version>-macos-universal.zip` 附加到 Release。扩展侧的协议测试在 `tests/unit/platform/global-send.test.js` 与 `tests/unit/background/native-send.test.js`。
