@@ -142,6 +142,70 @@ describe('new chat content script result protocol', () => {
     expect(button).toBeTruthy();
   });
 
+  it('clears a conversation the provider restored when a panel is first created', async () => {
+    vi.useFakeTimers();
+    const { clicks } = createChatgptDom({ draft: 'restored draft', hasConversation: true });
+
+    dispatchMultiPanelMessage({
+      type: 'NEW_CHAT',
+      requestId: 'req-ensure-restored',
+      panelId: 'panel-chatgpt',
+      provider: 'chatgpt',
+      ensureFresh: true
+    });
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(clicks).toHaveBeenCalledTimes(1);
+    expect(getNewChatResults()).toEqual([expect.objectContaining({
+      requestId: 'req-ensure-restored',
+      panelId: 'panel-chatgpt',
+      status: 'verified'
+    })]);
+  });
+
+  it('leaves an already blank new conversation untouched on panel creation', async () => {
+    vi.useFakeTimers();
+    const { clicks } = createChatgptDom({ draft: '', hasConversation: false });
+    window.happyDOM.setURL('https://chatgpt.com/');
+
+    dispatchMultiPanelMessage({
+      type: 'NEW_CHAT',
+      requestId: 'req-ensure-blank',
+      panelId: 'panel-chatgpt',
+      provider: 'chatgpt',
+      ensureFresh: true
+    });
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(clicks).not.toHaveBeenCalled();
+    expect(getNewChatResults()).toEqual([expect.objectContaining({
+      requestId: 'req-ensure-blank',
+      panelId: 'panel-chatgpt',
+      status: 'verified'
+    })]);
+  });
+
+  it('does not click a new-chat control for a blank page with a conversation URL', async () => {
+    vi.useFakeTimers();
+    const { clicks } = createChatgptDom({ draft: '', hasConversation: false });
+    window.happyDOM.setURL('https://chatgpt.com/c/empty-conversation');
+
+    dispatchMultiPanelMessage({
+      type: 'NEW_CHAT',
+      requestId: 'req-ensure-empty-url',
+      panelId: 'panel-chatgpt',
+      provider: 'chatgpt',
+      ensureFresh: true
+    });
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(clicks).not.toHaveBeenCalled();
+    expect(getNewChatResults()).toEqual([expect.objectContaining({
+      requestId: 'req-ensure-empty-url',
+      status: 'verified'
+    })]);
+  });
+
   it('does not treat a successful click as proof when the page stays unchanged', async () => {
     vi.useFakeTimers();
     const { clicks } = createChatgptDom({ draft: '', hasConversation: false, resetOnClick: false });

@@ -450,6 +450,19 @@
       };
     }
 
+    // Initial panel creation has no before/after snapshot and the page may still
+    // be hydrating, so wait for the composer before judging whether the provider
+    // restored an older conversation.
+    async function waitForNewChatComposerState(provider, providerMode, timeoutMs) {
+      const deadline = Date.now() + timeoutMs;
+      let state = captureNewChatState(provider, providerMode);
+      while (!state.composerFound && Date.now() <= deadline) {
+        await getDomController().sleep(getConfigController().NEW_CHAT_CONFIRMATION_POLL_MS);
+        state = captureNewChatState(provider, providerMode);
+      }
+      return state;
+    }
+
     function isCanonicalFreshNewChatUrl(provider, providerMode) {
       try {
         const currentUrl = new URL(window.location.href);
@@ -689,7 +702,35 @@
         if (failure) return failure;
         const provider = detectedProvider;
 
-        const baseline = captureNewChatState(provider, providerMode);
+        let baseline;
+        if (data.ensureFresh === true) {
+          // Panel startup asks for a blank conversation without a click when the
+          // provider already shows one. A restored old conversation is cleared
+          // below through the provider's own new-chat control.
+          const interaction = watchNewChatUserInteraction();
+          try {
+            baseline = await waitForNewChatComposerState(
+              provider,
+              providerMode,
+              getConfigController().NEW_CHAT_CONFIRMATION_TIMEOUT_MS
+            );
+          } finally {
+            interaction.stop();
+          }
+          if (interaction.interacted) {
+            return { ...identity, provider, status: 'unconfirmed', reason: 'user-interacted' };
+          }
+          if (!baseline.composerFound) {
+            return { ...identity, provider, status: 'unconfirmed', reason: 'composer-not-found' };
+          }
+          // Nothing to clear: clicking a provider's new-chat control on a blank
+          // page can add an empty entry to its own history.
+          if (isBlankConversation(baseline)) {
+            return { ...identity, provider, status: 'verified' };
+          }
+        } else {
+          baseline = captureNewChatState(provider, providerMode);
+        }
         const storageKey = writePendingNewChatRequest(data, detectedProvider, providerMode);
         let started = false;
         try {

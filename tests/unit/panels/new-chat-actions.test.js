@@ -107,6 +107,26 @@ describe('new chat result protocol', () => {
     });
   });
 
+  it('marks only ensure-fresh batches so a provider can keep a blank conversation', async () => {
+    const target = new EventTarget();
+    const { panel, contentWindow } = createPanel('panel-grok', 'grok');
+    const messages = [];
+    const dispatch = (currentPanel, message) => {
+      messages.push(message);
+      target.dispatchEvent(createResultMessage(
+        currentPanel.iframe.contentWindow,
+        { requestId: message.requestId, panelId: currentPanel.id, provider: currentPanel.providerId }
+      ));
+    };
+
+    await runNewChatBatch({ target, panels: [panel], requestId: 'batch-fresh', ensureFresh: true, dispatch });
+    await runNewChatBatch({ target, panels: [panel], requestId: 'batch-plain', dispatch });
+
+    expect(messages[0]).toMatchObject({ type: 'NEW_CHAT', ensureFresh: true });
+    expect(messages[1]).not.toHaveProperty('ensureFresh');
+    expect(contentWindow.postMessage).not.toHaveBeenCalled();
+  });
+
   it('installs all waiters before dispatch and summarizes verified results', async () => {
     const target = new EventTarget();
     const { panel, contentWindow } = createPanel('panel-grok', 'grok');

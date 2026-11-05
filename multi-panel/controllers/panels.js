@@ -328,6 +328,7 @@ export function createPanelsController({
     // Handle iframe load
     // Grace period after load to catch AI pages that auto-focus after JS init
     const LOAD_GRACE_PERIOD = 5000;
+    let initialStateHandled = false;
     loadingPanelIds.add(panelId);
     iframe.addEventListener('load', () => {
       loadingEl.classList.add('hidden');
@@ -336,6 +337,12 @@ export function createPanelsController({
         getFocusController().startPanelFocusGuard(panel);
         getPresentationController().postPageStyleToPanel(panel);
         getComposerController().composerControls?.panelLoaded(panel);
+        // Only the panel's own first document is checked: later loads are
+        // navigation the user or a provider flow asked for.
+        if (!initialStateHandled) {
+          initialStateHandled = true;
+          void getConversationsController().ensureFreshChat(panel);
+        }
       }
       if (getConversationsController().isTemporaryChatModeEnabled && panel && getConversationsController().requiresTemporaryChatActivationRetry(panel.providerId)) {
         getConversationsController().startTemporaryChatActivationForPanel(panel);

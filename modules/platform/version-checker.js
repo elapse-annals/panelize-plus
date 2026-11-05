@@ -6,6 +6,10 @@ import { compareVersions } from './version-utils.js';
 
 const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/elapse-annals/panelize-plus/releases/latest';
 const GITHUB_RELEASES_URL = 'https://github.com/elapse-annals/panelize-plus/releases/latest';
+// Release prep keeps this file in step with manifest.json. Raw content is not
+// subject to the REST API's per-IP rate limit.
+const GITHUB_RAW_VERSION_INFO_URL = 'https://raw.githubusercontent.com/elapse-annals/panelize-plus/master/data/version-info.json';
+const REQUEST_TIMEOUT_MS = 10000;
 
 /**
  * @typedef {Object} LatestReleaseInfo
@@ -52,7 +56,8 @@ export async function fetchLatestRelease() {
       headers: {
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28'
-      }
+      },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     });
 
     if (!response.ok) {
@@ -84,6 +89,42 @@ export async function fetchLatestRelease() {
 }
 
 /**
+ * Read the version published with the repository's release metadata.
+ *
+ * This is the fallback when the REST API is rate limited or unreachable: the
+ * raw file still answers, and the release page is the download destination.
+ *
+ * @returns {Promise<LatestReleaseInfo|null>} Published version or null on error.
+ */
+export async function fetchPublishedVersionInfo() {
+  try {
+    const response = await fetch(GITHUB_RAW_VERSION_INFO_URL, {
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    });
+
+    if (!response.ok) {
+      throw new Error(`GitHub raw fetch error: ${response.status}`);
+    }
+
+    const info = await response.json();
+    const versionMatch = /^(\d+\.\d+\.\d+)$/.exec(info?.version ?? '');
+
+    if (!versionMatch) {
+      throw new Error('Published version metadata is invalid');
+    }
+
+    return {
+      version: versionMatch[1],
+      releaseUrl: GITHUB_RELEASES_URL,
+      downloadUrl: GITHUB_RELEASES_URL
+    };
+  } catch (error) {
+    console.error('Error fetching published version info:', error);
+    return null;
+  }
+}
+
+/**
  * Check if an update is available
  * @returns {Promise<UpdateCheckResult>} Update status.
  */
@@ -100,7 +141,7 @@ export async function checkForUpdates() {
     };
   }
 
-  const latestRelease = await fetchLatestRelease();
+  const latestRelease = await fetchLatestRelease() ?? await fetchPublishedVersionInfo();
   if (!latestRelease) {
     return {
       updateAvailable: false,

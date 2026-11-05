@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   checkForUpdates,
   fetchLatestRelease,
+  fetchPublishedVersionInfo,
   getReleasesUrl
 } from '../../../modules/platform/version-checker.js';
 
@@ -87,6 +88,41 @@ describe('version checker', () => {
     mockReleaseResponse(createRelease({ tag_name: 'latest' }));
 
     await expect(fetchLatestRelease()).resolves.toBeNull();
+    expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it('falls back to the published version file when the REST API is rate limited', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 403 })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ version: '1.2.6', commitHash: 'abc1234' })
+      });
+
+    await expect(checkForUpdates()).resolves.toEqual({
+      updateAvailable: true,
+      currentVersion: '1.2.5',
+      latestVersion: '1.2.6',
+      releaseUrl: getReleasesUrl(),
+      downloadUrl: getReleasesUrl(),
+      error: null
+    });
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      'https://raw.githubusercontent.com/elapse-annals/panelize-plus/master/data/version-info.json',
+      expect.objectContaining({ signal: expect.anything() })
+    );
+  });
+
+  it('rejects published version metadata without a plain version number', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ version: 'latest' })
+    });
+
+    await expect(fetchPublishedVersionInfo()).resolves.toBeNull();
     expect(errorSpy).toHaveBeenCalled();
   });
 

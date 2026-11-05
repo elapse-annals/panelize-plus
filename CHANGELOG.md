@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.84.1 - 2026-11-05
+- Update checks no longer fail when GitHub's REST API is rate limited or unreachable: when `releases/latest` fails, the check reads the version published in `data/version-info.json` from `raw.githubusercontent.com` and compares against that. Both requests now time out after 10 seconds instead of hanging, and the release page remains the download destination.
+
+## 2.84.0 - 2026-11-05
+- A panel's first load now starts a blank conversation: when a provider restores its last conversation on the entry page, the panel clicks that provider's own new-chat control and confirms the empty conversation. This runs quietly behind the loading state, is skipped when the panel is already fresh or temporary chat is on, and leaves later in-panel navigation alone.
+- New conversation skips providers that already show a blank conversation instead of re-clicking their new-chat control, so a panel on its home screen cannot be sent back to the last conversation.
+
 ## 2.83.0 - 2026-11-05
 - The Deep thinking mode now appends a critical-analysis brief instead of the step-by-step reasoning instruction: conclusion first, verified facts separated from inference, independent judgment, multi-angle trade-offs, and concrete verification or rollback steps, in Chinese and English. Its menu hint now describes the new instruction.
 - Existing libraries get an unedited built-in Deep thinking prompt rewritten in place once per device; user edits and renamed titles are kept, and prompts under another mode are never touched.

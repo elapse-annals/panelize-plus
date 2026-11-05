@@ -132,6 +132,8 @@ export function summarizeNewChatResults(results = []) {
  * @param {string} options.requestId Unique ID shared by this batch.
  * @param {object|Map|Function} [options.providerModes] Provider mode by panel/provider.
  * @param {number} [options.timeoutMs=20000] Per-panel result timeout.
+ * @param {boolean} [options.ensureFresh=false] Treat a provider already showing a
+ *   blank new conversation as done instead of clicking its new-chat control.
  * @param {(panel: object, message: object) => void|Promise<void>} [options.dispatch]
  *   Optional host dispatch hook, useful when a panel needs a reload first.
  * @returns {Promise<{requestId: string, results: Array<object>, summary: object}>}
@@ -142,6 +144,7 @@ export async function runNewChatBatch({
   requestId,
   providerModes = {},
   timeoutMs = NEW_CHAT_RESULT_TIMEOUT_MS,
+  ensureFresh = false,
   dispatch
 }) {
   if (typeof requestId !== 'string' || requestId.length === 0) {
@@ -164,6 +167,7 @@ export async function runNewChatBatch({
       provider: panel.providerId,
       panelId: panel.id
     };
+    if (ensureFresh) message.ensureFresh = true;
     const providerMode = getProviderMode(providerModes, panel);
     if (providerMode !== undefined) message.providerMode = providerMode;
 

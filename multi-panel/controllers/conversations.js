@@ -203,6 +203,31 @@ export function createConversationsController({
     postNewChatToPanel(panel);
   }
 
+  // Initial panel creation loads the provider's own entry page, which some
+  // providers restore to the last conversation. Ask for a blank conversation
+  // quietly: no status row, no focus restore, and no click when it is already
+  // fresh. Temporary chat keeps its dedicated activation flow.
+  async function ensureFreshChat(panel) {
+    if (isTemporaryChatModeEnabled || !panel?.iframe?.contentWindow) return;
+    if (!getPanelsController().findCurrentPanel(panel)) return;
+
+    try {
+      await runNewChatBatch({
+        panels: [panel],
+        requestId: `ensure-fresh-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        providerModes: getProviderControlsController().getPanelProviderMode,
+        timeoutMs: 30000,
+        ensureFresh: true,
+        dispatch(targetPanel, message) {
+          if (!getPanelsController().findCurrentPanel(targetPanel)) throw new Error('Panel changed');
+          targetPanel.iframe.contentWindow?.postMessage(message, '*');
+        }
+      });
+    } catch (error) {
+      console.warn('[New Chat] Could not clear the restored conversation:', error);
+    }
+  }
+
   async function newChatAllProviders({ retryFailed = false } = {}) {
     if (isNewChatBusy || getSendingController().broadcastGate.isActive() || getComposerController().composerControls?.isTierBusy()) return;
     const targetPanels = getPanelsController().panels.filter(panel => !retryFailed || failedNewChatPanelIds.has(panel.id))
@@ -233,6 +258,9 @@ export function createConversationsController({
         panels: targetPanels,
         requestId,
         providerModes: getProviderControlsController().getPanelProviderMode,
+        // A provider already showing a blank conversation stays there instead of
+        // re-clicking a control that may reopen its last conversation.
+        ensureFresh: true,
         dispatch(panel, message) {
           if (!getPanelsController().findCurrentPanel(panel)) throw new Error('Panel changed');
           if (isTemporaryChatModeEnabled && isUrlDrivenTemporaryChatProvider(panel.providerId) && panel.providerId !== 'grok') {
@@ -349,6 +377,7 @@ export function createConversationsController({
 
   return {
     clearTemporaryChatRetriesForPanel,
+    ensureFreshChat,
     get failedNewChatPanelIds() { return failedNewChatPanelIds; },
     getTemporaryChatUrl,
     get isNewChatBusy() { return isNewChatBusy; },
