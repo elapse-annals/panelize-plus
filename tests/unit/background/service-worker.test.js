@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { migrateEnabledProvidersOnUpdate } from '../../../modules/providers/provider-defaults.js';
+import { createVersionController } from '../../../background/controllers/version.js';
 
 /**
  * Tests for background/service-worker.js
@@ -171,7 +172,7 @@ describe('service-worker', () => {
   });
 
   describe('GitHub API Version Check', () => {
-    it('should fetch latest commit information', async () => {
+    it('requests the latest commit from this repository on master', async () => {
       global.fetch = vi.fn(() => Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
@@ -183,23 +184,33 @@ describe('service-worker', () => {
         })
       }));
 
-      const response = await fetch('https://api.github.com/repos/Manho/Panelize/commits/main');
-      const data = await response.json();
+      const result = await createVersionController().handleFetchLatestCommit();
 
-      expect(data.sha).toBe('abc123def456');
-      expect(data.commit.message).toBe('Update feature');
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/elapse-annals/panelize-plus/commits/master',
+        expect.objectContaining({ headers: expect.objectContaining({ Accept: 'application/vnd.github.v3+json' }) })
+      );
+      expect(result).toEqual({
+        success: true,
+        data: {
+          sha: 'abc123def456',
+          shortSha: 'abc123d',
+          date: '2025-10-19T00:00:00Z',
+          message: 'Update feature'
+        }
+      });
     });
 
-    it('should handle GitHub API errors', async () => {
+    it('reports GitHub API errors', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
       global.fetch = vi.fn(() => Promise.resolve({
         ok: false,
         status: 404
       }));
 
-      const response = await fetch('https://api.github.com/repos/Manho/Panelize/commits/main');
+      const result = await createVersionController().handleFetchLatestCommit();
 
-      expect(response.ok).toBe(false);
-      expect(response.status).toBe(404);
+      expect(result).toEqual({ success: false, error: 'GitHub API error: 404' });
     });
   });
 

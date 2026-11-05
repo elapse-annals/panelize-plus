@@ -4,8 +4,8 @@
 import { t } from './i18n.js';
 import { compareVersions } from './version-utils.js';
 
-const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/Manho/Panelize/releases/latest';
-const GITHUB_RELEASES_URL = 'https://github.com/Manho/Panelize/releases/latest';
+const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/elapse-annals/panelize-plus/releases/latest';
+const GITHUB_RELEASES_URL = 'https://github.com/elapse-annals/panelize-plus/releases/latest';
 
 /**
  * @typedef {Object} LatestReleaseInfo

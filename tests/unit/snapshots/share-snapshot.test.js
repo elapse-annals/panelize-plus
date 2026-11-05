@@ -303,8 +303,9 @@ describe('composeSnapshot', () => {
 
   it('draws theme A with brand, tagline, site link, label, headline, subline and content', () => {
     const canvas = createRecordingCanvas();
+    const wideContent = { ...content, width: 1392 };
     const layout = composeSnapshot(canvas, {
-      content,
+      content: wideContent,
       scale: 1,
       icon,
       title: 'Which answer is best?',
@@ -335,7 +336,7 @@ describe('composeSnapshot', () => {
     expect(background).toMatchObject({ fillStyle: FRAME.light.background, args: [0, 0, layout.width, layout.height] });
     const images = canvas.calls.filter((call) => call.op === 'drawImage');
     expect(images[0].args[0]).toBe(icon);
-    expect(images[1].args).toEqual([content, layout.content.x, layout.content.y, 1000, 500]);
+    expect(images[1].args).toEqual([wideContent, layout.content.x, layout.content.y, 1392, 500]);
   });
 
   it('draws theme B with quotes, the provider subline and window dots', () => {
@@ -413,7 +414,64 @@ describe('composeSnapshot', () => {
     expect(texts(canvas)).not.toContain('PROMPT');
   });
 
-  it('keeps the site link on a narrow brand row and drops the tagline, then the caption', () => {
+  it('keeps brand, tagline, caption and site link on one row when the frame is wide', () => {
+    const canvas = createRecordingCanvas();
+    const layout = composeSnapshot(canvas, {
+      content: { width: 1200, height: 300 },
+      scale: 1,
+      icon,
+      theme: 'light',
+      taglineText: 'Compare AI side by side',
+      captionText: 'Free Chrome extension'
+    });
+    expect(texts(canvas)).toEqual([
+      SNAPSHOT_BRAND_NAME, '· Compare AI side by side', 'Free Chrome extension', SNAPSHOT_SITE_LINK_TEXT
+    ]);
+    expect(layout.brand.stacked).toBe(false);
+    expect(layout.brand.height).toBe(FRAME.light.brandHeight);
+    const pill = canvas.calls.filter((call) => call.op === 'fillText').find((call) => call.args[0] === SNAPSHOT_SITE_LINK_TEXT);
+    const name = canvas.calls.filter((call) => call.op === 'fillText').find((call) => call.args[0] === SNAPSHOT_BRAND_NAME);
+    expect(pill.args[2]).toBe(name.args[2]);
+  });
+
+  it('moves the site link under the brand name on a narrow frame and counts its row in the height', () => {
+    const canvas = createRecordingCanvas();
+    const layout = composeSnapshot(canvas, {
+      content: { width: 600, height: 300 },
+      scale: 1,
+      icon,
+      theme: 'light',
+      taglineText: 'Compare AI side by side',
+      captionText: 'Free Chrome extension'
+    });
+
+    // The address keeps its own row, so the caption no longer fits beside it.
+    expect(texts(canvas)).toEqual([
+      SNAPSHOT_BRAND_NAME, '· Compare AI side by side', SNAPSHOT_SITE_LINK_TEXT
+    ]);
+    expect(layout.brand.stacked).toBe(true);
+    expect(layout.brand.height).toBe(FRAME.light.brandHeight + FRAME.light.brandStackGap + FRAME.light.pillHeight);
+    const textsWithPosition = canvas.calls.filter((call) => call.op === 'fillText');
+    const name = textsWithPosition.find((call) => call.args[0] === SNAPSHOT_BRAND_NAME);
+    const tagline = textsWithPosition.find((call) => call.args[0] === '· Compare AI side by side');
+    const pill = textsWithPosition.find((call) => call.args[0] === SNAPSHOT_SITE_LINK_TEXT);
+    // The brand and its tagline stay on the first row; the pill sits below.
+    expect(tagline.args[2]).toBe(name.args[2]);
+    expect(pill.args[2]).toBe(layout.brand.pillCenterY);
+    expect(pill.args[2]).toBeGreaterThan(name.args[2] + FRAME.light.brandHeight / 2);
+
+    const wide = composeSnapshot(createRecordingCanvas(), {
+      content: { width: 600, height: 300 },
+      scale: 1,
+      theme: 'light'
+    });
+    expect(wide.height).toBe(layout.height);
+    // The extra row is part of the height estimate too.
+    expect(getSnapshotFrameChromeHeight({ contentWidth: 600, scale: 1, theme: 'light' }))
+      .toBe(getSnapshotFrameLayout({ contentWidth: 600, contentHeight: 0, scale: 1, theme: 'light' }).height);
+  });
+
+  it('drops the tagline before the site link on a stacked row', () => {
     const draw = (contentWidth) => {
       const canvas = createRecordingCanvas();
       composeSnapshot(canvas, {
@@ -426,8 +484,6 @@ describe('composeSnapshot', () => {
       });
       return texts(canvas);
     };
-    expect(draw(800)).toEqual([SNAPSHOT_BRAND_NAME, '· Compare AI side by side', 'Free Chrome extension', SNAPSHOT_SITE_LINK_TEXT]);
-    expect(draw(600)).toEqual([SNAPSHOT_BRAND_NAME, 'Free Chrome extension', SNAPSHOT_SITE_LINK_TEXT]);
     expect(draw(400)).toEqual([SNAPSHOT_BRAND_NAME, SNAPSHOT_SITE_LINK_TEXT]);
   });
 

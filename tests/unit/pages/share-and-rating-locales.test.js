@@ -244,12 +244,20 @@ describe('share and rating strings', () => {
     expect(zh.promptModeSuffix_compete.message).toBe(COMPETE_PROMPT_TEXTS.current.zh);
   });
 
-  it('keeps the brand and site name in the watermark strings', () => {
+  it('keeps the brand and repository in the watermark strings', () => {
     locales.forEach((locale) => {
       const messages = JSON.parse(readFileSync(resolve(LOCALES_DIR, locale, 'messages.json'), 'utf8'));
-      expect(messages.descShareWatermark.message, locale).toContain('Panelize');
-      expect(messages.descShareWatermark.message, locale).toContain('panelize.dev');
+      expect(messages.descShareWatermark.message, locale).toContain('Panelize Plus');
+      expect(messages.descShareWatermark.message, locale).toContain('github.com/elapse-annals/panelize-plus');
       expect(messages.shareToolbarHint.message, locale).toContain('Panelize');
+    });
+  });
+
+  it('asks for a GitHub star in both locales', () => {
+    locales.forEach((locale) => {
+      const messages = JSON.parse(readFileSync(resolve(LOCALES_DIR, locale, 'messages.json'), 'utf8'));
+      expect(messages.ratingPromptMessage.message, locale).toContain('GitHub');
+      expect(messages.ratingPromptMessage.message, locale).toContain('Panelize Plus');
     });
   });
 

@@ -1,11 +1,11 @@
-// Share snapshot composition: frames a captured comparison in the Panelize
+// Share snapshot composition: frames a captured comparison in the Panelize Plus
 // share layout (light theme "A", dark theme "B") and draws it on a 2D canvas
 // context. Everything is pure or takes its canvas from the caller, so the
 // layout can be unit tested without a browser.
 
-export const SNAPSHOT_SITE_LABEL = 'panelize.dev';
+export const SNAPSHOT_SITE_LABEL = 'github.com/elapse-annals/panelize-plus';
 
-export const SNAPSHOT_BRAND_NAME = 'Panelize';
+export const SNAPSHOT_BRAND_NAME = 'Panelize Plus';
 
 /** Longest title kept before measuring; the headline shows a few lines at most. */
 export const SNAPSHOT_MAX_PROMPT_CHARS = 400;
@@ -68,6 +68,10 @@ export const SNAPSHOT_FRAME_STYLES = Object.freeze({
     pillWeight: 650,
     pillBackground: '#16161A',
     pillColor: '#ffffff',
+    // Below this content width (CSS pixels) the site link moves to its own row
+    // under the brand name, so the long address is never clipped or overlapped.
+    siteLinkStackWidth: 640,
+    brandStackGap: 10,
     labelGap: 40,
     labelFontSize: 13,
     labelWeight: 650,
@@ -126,6 +130,8 @@ export const SNAPSHOT_FRAME_STYLES = Object.freeze({
     pillWeight: 650,
     pillBackground: '#ffffff',
     pillColor: '#16161A',
+    siteLinkStackWidth: 640,
+    brandStackGap: 10,
     titleGap: 36,
     titleGapWithoutBrand: 0,
     titleFontSize: 38,
@@ -363,12 +369,22 @@ export function getSnapshotFrameLayout({
   let y = px(style.paddingTop);
   let brand = null;
   if (showWatermark) {
-    const height = px(style.brandHeight);
+    const rowHeight = px(style.brandHeight);
+    const pillHeight = px(style.pillHeight);
+    // The address pill keeps its full text; on narrow captures it gets a row
+    // of its own under the brand name instead of being squeezed beside it.
+    const stacked = contentWidth < px(style.siteLinkStackWidth);
+    const stackGap = stacked ? px(style.brandStackGap) : 0;
+    const height = rowHeight + stackGap + (stacked ? pillHeight : 0);
+    const centerY = y + Math.round(rowHeight / 2);
     brand = {
       x: paddingX,
       y,
       height,
-      centerY: y + Math.round(height / 2),
+      stacked,
+      rowHeight,
+      centerY,
+      pillCenterY: stacked ? y + rowHeight + stackGap + Math.round(pillHeight / 2) : centerY,
       iconSize: px(style.iconSize),
       iconRadius: px(style.iconRadius),
       iconGap: px(style.iconGap),
@@ -378,7 +394,7 @@ export function getSnapshotFrameLayout({
       right: paddingX + innerWidth,
       ctaGap: px(style.ctaGap),
       captionFont: font(500, px(style.captionFontSize)),
-      pillHeight: px(style.pillHeight),
+      pillHeight,
       pillPaddingX: px(style.pillPaddingX),
       pillFont: font(style.pillWeight, px(style.pillFontSize))
     };
@@ -539,8 +555,10 @@ function drawBackground(ctx, layout) {
 }
 
 // The site link sits at the right end of the brand row: a solid pill, with
-// the caption to its left. When the row is too narrow the tagline goes
-// first, then the caption; the pill always stays.
+// the caption to its left. On a narrow frame the pill takes its own row under
+// the brand name, so the longer address is never squeezed or clipped. When a
+// row is too narrow the tagline goes first, then the caption; the pill always
+// stays.
 function drawBrand(ctx, layout, { icon, taglineText, captionText }) {
   const { brand, style } = layout;
   let x = brand.x;
@@ -564,17 +582,22 @@ function drawBrand(ctx, layout, { icon, taglineText, captionText }) {
   ctx.font = brand.pillFont;
   const pillWidth = Math.round(ctx.measureText(SNAPSHOT_SITE_LINK_TEXT).width) + brand.pillPaddingX * 2;
   const pillX = brand.right - pillWidth;
+  const pillCenterY = brand.pillCenterY;
   ctx.font = brand.captionFont;
   const captionWidth = captionText ? ctx.measureText(captionText).width : 0;
   const captionRight = pillX - brand.ctaGap;
-  const showCaption = captionWidth > 0 && captionRight - captionWidth >= x + brand.ctaGap;
+  // A stacked row starts at the frame padding; a single row must clear the name.
+  const captionLimit = brand.stacked ? brand.x : x + brand.ctaGap;
+  const showCaption = captionWidth > 0 && captionRight - captionWidth >= captionLimit;
   const ctaLeft = showCaption ? captionRight - captionWidth : pillX;
 
   if (brand.taglineFont && taglineText) {
     ctx.font = brand.taglineFont;
     const tagline = `· ${taglineText}`;
     const taglineX = x + brand.iconGap;
-    if (taglineX + ctx.measureText(tagline).width + brand.ctaGap <= ctaLeft) {
+    // A stacked row has the whole width to itself.
+    const taglineLimit = brand.stacked ? brand.right : ctaLeft;
+    if (taglineX + ctx.measureText(tagline).width + brand.ctaGap <= taglineLimit) {
       ctx.fillStyle = style.taglineColor;
       ctx.fillText(tagline, taglineX, brand.centerY);
     }
@@ -584,16 +607,16 @@ function drawBrand(ctx, layout, { icon, taglineText, captionText }) {
     ctx.font = brand.captionFont;
     ctx.fillStyle = style.captionColor;
     ctx.textAlign = 'right';
-    ctx.fillText(captionText, captionRight, brand.centerY);
+    ctx.fillText(captionText, captionRight, pillCenterY);
   }
 
-  roundedRectPath(ctx, pillX, brand.centerY - brand.pillHeight / 2, pillWidth, brand.pillHeight, brand.pillHeight / 2);
+  roundedRectPath(ctx, pillX, pillCenterY - brand.pillHeight / 2, pillWidth, brand.pillHeight, brand.pillHeight / 2);
   ctx.fillStyle = style.pillBackground;
   ctx.fill();
   ctx.font = brand.pillFont;
   ctx.fillStyle = style.pillColor;
   ctx.textAlign = 'center';
-  ctx.fillText(SNAPSHOT_SITE_LINK_TEXT, pillX + pillWidth / 2, brand.centerY);
+  ctx.fillText(SNAPSHOT_SITE_LINK_TEXT, pillX + pillWidth / 2, pillCenterY);
   ctx.textAlign = 'left';
 }
 

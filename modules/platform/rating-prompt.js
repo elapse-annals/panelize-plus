@@ -1,6 +1,6 @@
-// Store rating prompt: counts successful "Send All" actions locally and decides
-// when the comparison page should ask the user to rate Panelize. Nothing leaves
-// the device; the state lives in chrome.storage.local.
+// Star prompt: counts successful "Send All" actions locally and decides when
+// the comparison page should ask the user to star Panelize Plus on GitHub.
+// Nothing leaves the device; the state lives in chrome.storage.local.
 
 export const RATING_PROMPT_STORAGE_KEY = 'ratingPrompt';
 
@@ -10,8 +10,8 @@ export const RATING_PROMPT_FIRST_THRESHOLD = 20;
 /** Further successful sends before the banner returns after "Later". */
 export const RATING_PROMPT_LATER_INTERVAL = 50;
 
-export const RATING_PROMPT_REVIEW_URL =
-  'https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii/reviews';
+export const RATING_PROMPT_STAR_URL =
+  'https://github.com/elapse-annals/panelize-plus';
 
 export const RATING_PROMPT_ACTIONS = Object.freeze({
   RATE: 'rate',
@@ -75,7 +75,7 @@ export function shouldShowRatingPrompt(state) {
 }
 
 /**
- * Applies a banner button. "Rate" and "Don't ask again" stop the prompt for
+ * Applies a banner button. "Star" and "Don't ask again" stop the prompt for
  * good; "Later" pushes it back by RATING_PROMPT_LATER_INTERVAL sends.
  * @param {RatingPromptState} state
  * @param {string} action - One of RATING_PROMPT_ACTIONS.

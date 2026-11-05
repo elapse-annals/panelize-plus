@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.81.0 - 2026-11-05
+- Updates and downloads now point at this repository: update checks read the newest published release of `elapse-annals/panelize-plus`, the background commit lookup follows `master`, and the options page's static download link opens this repository's releases. The `panelize-${version}-release.zip` asset name and version comparison rules are unchanged.
+- The support prompt after successful sends now invites a GitHub star (`Star` / `去 Star`) and opens this repository in a new tab. The first prompt at 20 successful sends, the 50-send `Later` interval and the dismissed state are unchanged.
+- Share snapshots carry the `Panelize Plus` brand and `github.com/elapse-annals/panelize-plus`. On narrow frames the address moves to a second row under the brand name and the caption moves or drops as needed, so the full address is never clipped or overlapped; the extra row is included in the frame height and its estimate.
+- Privacy policy and package metadata now name Panelize Plus, this repository, its issues page and its maintainer; the upstream project, license and attribution links are kept.
+
 ## 2.80.0 - 2026-11-05
 - The macOS client now brings the browser forward as soon as the extension confirms the Multi-Panel page was opened or reused, once per send, and keeps its composer visible while the AIs prepare and while the success result is shown. Losing foreground no longer dismisses it; an outside click, Escape or the shortcut still does.
 - The extension reports send progress through a new `sendProgress` bridge event tied to the request: `opening`, `preparing` with ready/total counts and waiting or timed-out AI names, then `sending`. Reports are sent only when the state changes, and repeats, stage regressions or updates after the final result are ignored.

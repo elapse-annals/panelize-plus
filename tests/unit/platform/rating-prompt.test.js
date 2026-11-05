@@ -3,7 +3,7 @@ import {
   RATING_PROMPT_ACTIONS,
   RATING_PROMPT_FIRST_THRESHOLD,
   RATING_PROMPT_LATER_INTERVAL,
-  RATING_PROMPT_REVIEW_URL,
+  RATING_PROMPT_STAR_URL,
   RATING_PROMPT_STORAGE_KEY,
   applyRatingPromptAction,
   countSuccessfulSend,
@@ -37,11 +37,11 @@ function sendTimes(state, count) {
 }
 
 describe('rating prompt thresholds', () => {
-  it('uses the agreed thresholds and the Chrome Web Store reviews page', () => {
+  it('uses the agreed thresholds and the GitHub repository page', () => {
     expect(RATING_PROMPT_FIRST_THRESHOLD).toBe(20);
     expect(RATING_PROMPT_LATER_INTERVAL).toBe(50);
-    expect(RATING_PROMPT_REVIEW_URL).toBe(
-      'https://chromewebstore.google.com/detail/panelize/iokalaafkmjffolodkkgbbccmofbglii/reviews'
+    expect(RATING_PROMPT_STAR_URL).toBe(
+      'https://github.com/elapse-annals/panelize-plus'
     );
   });
 
@@ -75,7 +75,7 @@ describe('rating prompt thresholds', () => {
 describe('rating prompt dismiss paths', () => {
   const shown = sendTimes(createInitialRatingPromptState(), 20);
 
-  it('"Rate" never shows the banner again', () => {
+  it('"Star" never shows the banner again', () => {
     const rated = applyRatingPromptAction(shown, RATING_PROMPT_ACTIONS.RATE);
     expect(rated.dismissed).toBe(true);
     expect(shouldShowRatingPrompt(sendTimes(rated, 500))).toBe(false);

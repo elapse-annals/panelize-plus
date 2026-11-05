@@ -6,8 +6,8 @@ import {
   getReleasesUrl
 } from '../../../modules/platform/version-checker.js';
 
-const RELEASE_URL = 'https://github.com/Manho/Panelize/releases/tag/v1.2.6';
-const DOWNLOAD_URL = 'https://github.com/Manho/Panelize/releases/download/v1.2.6/panelize-1.2.6-release.zip';
+const RELEASE_URL = 'https://github.com/elapse-annals/panelize-plus/releases/tag/v1.2.6';
+const DOWNLOAD_URL = 'https://github.com/elapse-annals/panelize-plus/releases/download/v1.2.6/panelize-1.2.6-release.zip';
 
 function createRelease(overrides = {}) {
   return {
@@ -48,7 +48,7 @@ describe('version checker', () => {
       error: null
     });
     expect(fetch).toHaveBeenCalledWith(
-      'https://api.github.com/repos/Manho/Panelize/releases/latest',
+      'https://api.github.com/repos/elapse-annals/panelize-plus/releases/latest',
       expect.objectContaining({
         headers: expect.objectContaining({ Accept: 'application/vnd.github+json' })
       })
@@ -66,6 +66,10 @@ describe('version checker', () => {
 
     expect(result.updateAvailable).toBe(updateAvailable);
     expect(result.latestVersion).toBe('1.2.6');
+  });
+
+  it('points release and download links at this repository', () => {
+    expect(getReleasesUrl()).toBe('https://github.com/elapse-annals/panelize-plus/releases/latest');
   });
 
   it('falls back to the release page when the expected asset is missing', async () => {

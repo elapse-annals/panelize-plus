@@ -4,7 +4,7 @@
  */
 import {
   RATING_PROMPT_ACTIONS,
-  RATING_PROMPT_REVIEW_URL,
+  RATING_PROMPT_STAR_URL,
   countSuccessfulSend,
   loadRatingPromptState,
   saveRatingPromptAction,
@@ -40,7 +40,7 @@ export function createRatingController() {
     setRatingBannerVisible(false);
     try {
       if (action === RATING_PROMPT_ACTIONS.RATE) {
-        await chrome.tabs.create({ url: RATING_PROMPT_REVIEW_URL });
+        await chrome.tabs.create({ url: RATING_PROMPT_STAR_URL });
       }
       await saveRatingPromptAction(action);
     } catch (error) {

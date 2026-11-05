@@ -853,10 +853,10 @@
     }
   },
   "ratingPromptMessage": {
-    "message": "喜欢 Panelize 吗？欢迎在 Chrome 应用商店给它评个分"
+    "message": "喜欢 Panelize Plus？欢迎在 GitHub 上点 Star 支持项目"
   },
   "ratingPromptRate": {
-    "message": "去评分"
+    "message": "去 Star"
   },
   "ratingPromptLater": {
     "message": "以后再说"
@@ -976,7 +976,7 @@
     "message": "在分享图片上显示水印"
   },
   "descShareWatermark": {
-    "message": "在“分享”按钮生成的截图上显示 Panelize 名称、panelize.dev 和日期。标题和外框始终保留。"
+    "message": "在“分享”按钮生成的截图上显示 Panelize Plus 名称、github.com/elapse-annals/panelize-plus 和日期。标题和外框始终保留。"
   },
   "msgShareWatermarkEnabled": {
     "message": "已开启分享图片水印"

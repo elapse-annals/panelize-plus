@@ -330,7 +330,7 @@
     "message": "Download Latest Version"
   },
   "descAbout1": {
-    "message": "Panelize lets you compare multiple AI chatbots side-by-side in one window."
+    "message": "Panelize Plus lets you compare multiple AI chatbots side-by-side in one window."
   },
   "descAbout2": {
     "message": "Built with privacy-first architecture. All data stored locally."
@@ -874,10 +874,10 @@
     }
   },
   "ratingPromptMessage": {
-    "message": "Enjoying Panelize? Rate it on the Chrome Web Store"
+    "message": "Enjoying Panelize Plus? Star it on GitHub to support the project"
   },
   "ratingPromptRate": {
-    "message": "Rate"
+    "message": "Star"
   },
   "ratingPromptLater": {
     "message": "Later"
@@ -997,7 +997,7 @@
     "message": "Show watermark on shared images"
   },
   "descShareWatermark": {
-    "message": "Show the Panelize name, panelize.dev and the date on snapshots taken with the Share button. The headline and frame stay either way."
+    "message": "Show the Panelize Plus name, github.com/elapse-annals/panelize-plus and the date on snapshots taken with the Share button. The headline and frame stay either way."
   },
   "msgShareWatermarkEnabled": {
     "message": "Watermark on shared images enabled"

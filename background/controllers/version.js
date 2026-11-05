@@ -8,7 +8,7 @@ export function createVersionController() {
   // Handle version check by fetching latest commit from GitHub API
   async function handleFetchLatestCommit() {
     try {
-      const GITHUB_API_URL = 'https://api.github.com/repos/Manho/Panelize/commits/main';
+      const GITHUB_API_URL = 'https://api.github.com/repos/elapse-annals/panelize-plus/commits/master';
 
       const response = await fetch(GITHUB_API_URL, {
         headers: {

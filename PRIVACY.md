@@ -1,12 +1,12 @@
-# Privacy Policy for Panelize
+# Privacy Policy for Panelize Plus
 
-**Last Updated: October 24, 2026**
+**Last Updated: November 5, 2026**
 
 ## Overview
 
-Panelize is committed to protecting your privacy. This privacy policy explains what data the extension collects, how it's used, and your control over it.
+Panelize Plus is committed to protecting your privacy. This privacy policy explains what data the extension collects, how it's used, and your control over it.
 
-**In short:** Panelize stores extension data in browser-managed storage. Chrome may synchronize supported preferences across your signed-in browsers when browser sync is enabled. We do not collect, transmit, or sell your personal information through Panelize-operated servers.
+**In short:** Panelize Plus stores extension data in browser-managed storage. Chrome may synchronize supported preferences across your signed-in browsers when browser sync is enabled. We do not collect, transmit, or sell your personal information through Panelize Plus-operated servers.
 
 ---
 
@@ -58,7 +58,7 @@ The following data is stored in browser-managed storage. Prompt library data rem
 
 ### 2. Data We Do NOT Collect
 
-Panelize does **NOT** collect, store, or transmit:
+Panelize Plus does **NOT** collect, store, or transmit:
 
 - ❌ Personal identification information
 - ❌ Browsing history
@@ -73,14 +73,14 @@ Panelize does **NOT** collect, store, or transmit:
 
 ## How We Use Your Data
 
-All data collected by Panelize is used solely for providing extension functionality on your local device:
+All data collected by Panelize Plus is used solely for providing extension functionality on your local device:
 
 1. **Prompt Library:** Store and organize your saved prompts for reuse
 2. **Settings:** Remember your preferences between sessions
 3. **Quick Access:** Show recently used prompts and maintain provider state
-4. **Context Menu Send:** When you use the right-click menu without selecting text, Panelize temporarily extracts page content locally to format the prompt you send. This content is not stored and is only sent to the AI provider you choose.
+4. **Context Menu Send:** When you use the right-click menu without selecting text, Panelize Plus temporarily extracts page content locally to format the prompt you send. This content is not stored and is only sent to the AI provider you choose.
 
-**No data is transmitted to Panelize developers or any third-party servers.**
+**No data is transmitted to Panelize Plus developers or any third-party servers.**
 
 ---
 
@@ -88,25 +88,25 @@ All data collected by Panelize is used solely for providing extension functional
 
 ### AI Provider Websites
 
-Panelize loads AI provider websites (ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen, ChatGLM, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), and Google AI Mode) inside embedded panels. Perplexity, Copilot, and ERNIE (Wenxin) are optional providers and require site access to be enabled and approved. These providers operate under their own privacy policies.
+Panelize Plus loads AI provider websites (ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen, ChatGLM, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), and Google AI Mode) inside embedded panels. Perplexity, Copilot, and ERNIE (Wenxin) are optional providers and require site access to be enabled and approved. These providers operate under their own privacy policies.
 
-When you interact with these AI providers through Panelize, you are subject to their respective privacy policies. Panelize does not collect or store the content of your conversations with these services.
+When you interact with these AI providers through Panelize Plus, you are subject to their respective privacy policies. Panelize Plus does not collect or store the content of your conversations with these services.
 
 ### Cookie Access
 
-Provider websites use your existing browser session cookies when they load inside panels. Because Chromium omits `SameSite=Lax` and `SameSite=Strict` cookies on WebSocket handshakes initiated from embedded extension panels, Panelize uses the `cookies` API locally in your browser to forward existing `grok.com` session cookies to Grok's own `wss://grok.com/*` WebSocket requests made from Panelize's Multi-Panel tabs. The forwarding applies only while the Multi-Panel page is the top-level page of a tab; it does not apply when another website embeds a Panelize page. The forwarding rule lasts only for the browser session; cookie values are not saved in Panelize's settings or sent to Panelize-operated servers or unrelated third parties.
+Provider websites use your existing browser session cookies when they load inside panels. Because Chromium omits `SameSite=Lax` and `SameSite=Strict` cookies on WebSocket handshakes initiated from embedded extension panels, Panelize Plus uses the `cookies` API locally in your browser to forward existing `grok.com` session cookies to Grok's own `wss://grok.com/*` WebSocket requests made from the Multi-Panel tabs. The forwarding applies only while the Multi-Panel page is the top-level page of a tab; it does not apply when another website embeds a Panelize Plus page. The forwarding rule lasts only for the browser session; cookie values are not saved in Panelize Plus settings or sent to Panelize Plus-operated servers or unrelated third parties.
 
-Panelize also preserves your existing Grok cookie consent choices by setting the `OptanonAlertBoxClosed` and `OptanonConsent` cookies to `SameSite=None; Secure`, allowing Grok to read and save those choices inside its embedded panel. This happens only when you open Grok in the Multi-Panel page. This preserves the choice you make in Grok's cookie controls and does not automatically accept cookies on your behalf.
+Panelize Plus also preserves your existing Grok cookie consent choices by setting the `OptanonAlertBoxClosed` and `OptanonConsent` cookies to `SameSite=None; Secure`, allowing Grok to read and save those choices inside its embedded panel. This happens only when you open Grok in the Multi-Panel page. This preserves the choice you make in Grok's cookie controls and does not automatically accept cookies on your behalf.
 
-When MiMo is enabled and its site access is granted, Panelize copies MiMo's first-party partitioned session cookies and its `xiaomichatbot_ph` cookie into a browser cookie partition reserved for this extension. This lets the MiMo panel use your existing login and read the session field its own website requires. The original cookies remain unchanged. Copies use `SameSite=None; Secure`, retain their original expiry and HttpOnly restrictions, and are removed when the source session ends or MiMo is disabled. Only cookie identities are recorded in local extension storage for cleanup; cookie values remain in the browser cookie store and are never sent to Panelize-operated servers.
+When MiMo is enabled and its site access is granted, Panelize Plus copies MiMo's first-party partitioned session cookies and its `xiaomichatbot_ph` cookie into a browser cookie partition reserved for this extension. This lets the MiMo panel use your existing login and read the session field its own website requires. The original cookies remain unchanged. Copies use `SameSite=None; Secure`, retain their original expiry and HttpOnly restrictions, and are removed when the source session ends or MiMo is disabled. Only cookie identities are recorded in local extension storage for cleanup; cookie values remain in the browser cookie store and are never sent to Panelize Plus-operated servers.
 
 ### Update Checks
 
-Panelize can check for updates by requesting version information from GitHub (api.github.com and raw.githubusercontent.com). These requests are made only to GitHub and do not include your prompts, settings, or any content you send to AI providers.
+Panelize Plus can check for updates by requesting version information from GitHub (api.github.com and raw.githubusercontent.com). These requests are made only to GitHub and do not include your prompts, settings, or any content you send to AI providers.
 
 ### UI Assets
 
-Panelize bundles a subset of the Material Symbols font with the extension for UI icons. Opening Panelize does not contact Google Fonts to load its icons.
+Panelize Plus bundles a subset of the Material Symbols font with the extension for UI icons. Opening Panelize Plus does not contact Google Fonts to load its icons.
 
 ---
 
@@ -121,7 +121,7 @@ All extension data is stored in your browser using:
 This data:
 - Is managed by your browser; supported preferences may sync through Chrome when browser sync is enabled
 - Is not accessible to websites you visit
-- Is not transmitted to Panelize-operated servers
+- Is not transmitted to Panelize Plus-operated servers
 - Is protected by browser security mechanisms
 
 ### Data Retention
@@ -147,19 +147,19 @@ Go to Settings → Data Management → Export to download all your prompts and s
 - **Complete Reset:** Settings → Data Management → Reset All Data
 
 ### No Account Required
-Panelize does not require creating an account. All functionality works without registration, login, or providing any personal information.
+Panelize Plus does not require creating an account. All functionality works without registration, login, or providing any personal information.
 
 ---
 
 ## Children's Privacy
 
-Panelize does not knowingly collect any information from children under 13. The extension is designed for general use and does not target children. If you are under 13, please do not use this extension without parental supervision.
+Panelize Plus does not knowingly collect any information from children under 13. The extension is designed for general use and does not target children. If you are under 13, please do not use this extension without parental supervision.
 
 ---
 
 ## Changes to This Privacy Policy
 
-We may update this privacy policy from time to time. Changes will be reflected in the "Last Updated" date at the top of this document. Continued use of Panelize after changes constitutes acceptance of the updated policy.
+We may update this privacy policy from time to time. Changes will be reflected in the "Last Updated" date at the top of this document. Continued use of Panelize Plus after changes constitutes acceptance of the updated policy.
 
 Significant changes will be announced via:
 - GitHub repository changelog
@@ -169,13 +169,13 @@ Significant changes will be announced via:
 
 ## Permissions Explained
 
-Panelize requests the following Chrome extension permissions:
+Panelize Plus requests the following Chrome extension permissions:
 
 | Permission | Purpose |
 |------------|---------|
 | `storage` | Store your prompts and settings locally |
-| `cookies` | Attach Grok session cookies to its embedded WebSocket connections, preserve Grok consent choices, and share MiMo sessions with its Panelize cookie partition |
-| `contextMenus` | Add "Send to Panelize" option when right-clicking |
+| `cookies` | Attach Grok session cookies to its embedded WebSocket connections, preserve Grok consent choices, and share MiMo sessions with its Panelize Plus cookie partition |
+| `contextMenus` | Add https://github.com/elapse-annals/panelize-plus option when right-clicking |
 | `declarativeNetRequest` | Allow AI provider websites to load in embedded panels (bypass X-Frame-Options) |
 | `declarativeNetRequestWithHostAccess` | Apply header modifications for specific AI provider domains |
 | `browsingData` | Remove only Perplexity's service worker before a Perplexity panel loads, because it would block the panel; cookies and sign-ins are not touched |
@@ -186,15 +186,15 @@ Panelize requests the following Chrome extension permissions:
 
 **None of these permissions are used to collect, transmit, or share your data with external parties.**
 
-Panelize also exposes a small set of bundled, non-user resources (such as default prompt libraries and UI assets) as web-accessible so content scripts can load them. These resources contain no personal data.
+Panelize Plus also exposes a small set of bundled, non-user resources (such as default prompt libraries and UI assets) as web-accessible so content scripts can load them. These resources contain no personal data.
 
 ---
 
 ## Open Source Transparency
 
-Panelize is fully open source. You can review the complete source code at:
+Panelize Plus is fully open source. You can review the complete source code at:
 
-**GitHub Repository:** https://github.com/Manho/Panelize
+**GitHub Repository:** https://github.com/elapse-annals/panelize-plus
 
 This allows you to:
 - Verify our privacy claims
@@ -206,10 +206,10 @@ This allows you to:
 
 ## Contact Information
 
-If you have questions or concerns about this privacy policy or how Panelize handles data:
+If you have questions or concerns about this privacy policy or how Panelize Plus handles data:
 
-- **GitHub Issues:** https://github.com/Manho/Panelize/issues
-- **Project Maintainer:** [Xiaolai](https://github.com/xiaolai)
+- **GitHub Issues:** https://github.com/elapse-annals/panelize-plus/issues
+- **Project Maintainer:** [Ben](https://github.com/elapse-annals)
 
 ---
 
@@ -241,7 +241,7 @@ If you are a California resident:
 - Check for updates on GitHub
 
 ❌ **What we don't do:**
-- Send your prompts or settings to Panelize servers
+- Send your prompts or settings to Panelize Plus servers
 - Track your usage or behavior
 - Sell or share your data with third parties
 - Access your AI conversations
@@ -251,4 +251,4 @@ If you are a California resident:
 
 ---
 
-*This privacy policy is effective as of February 3, 2026 and applies to Panelize version 1.0.0 and later.*
+*This privacy policy is effective as of February 3, 2026 and applies to Panelize Plus version 1.0.0 and later.*
