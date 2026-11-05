@@ -268,6 +268,8 @@ The bottom bar can switch between manual and popularity-first ordering; populari
 
 ## Development and Testing
 
+See [Architecture and source layout (Chinese)](ARCHITECTURE.md) for entry points, module boundaries, content-script loading and the macOS bridge.
+
 ```bash
 npm install
 npx playwright install chromium   # browser used by the e2e and live suites

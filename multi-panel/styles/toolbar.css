@@ -1,0 +1,387 @@
+/* ===== Toolbar Styles ===== */
+#toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 8px;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+  height: 36px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #c0c0c0 transparent;
+}
+
+/* Custom scrollbar for webkit browsers */
+#toolbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+#toolbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#toolbar::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border-radius: 2px;
+}
+
+#toolbar::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Tight icon spacing leaves more room for the AI chips in the center. */
+.toolbar-right {
+  gap: 2px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+[data-theme="dark"] .toolbar-divider {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.toolbar-center {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}
+
+.app-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-left: 8px;
+}
+
+/* "Plus" in the title: a soft purple gradient that drifts slowly across the text. */
+.app-title-plus {
+  background: linear-gradient(90deg, #6d5ce8, #8b5cf6, #a78bfa, #8b5cf6, #6d5ce8);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: app-title-plus-flow 12s linear infinite;
+}
+
+@keyframes app-title-plus-flow {
+  from { background-position: 0% 50%; }
+  to { background-position: 200% 50%; }
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  color: #666;
+  transition: background 0.2s, color 0.2s;
+}
+
+.toolbar-icon-svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+/* The chip row absorbs the squeeze; the flanking 26px buttons stay full size. */
+.toolbar-center > .toolbar-btn {
+  flex-shrink: 0;
+}
+
+.toolbar-btn:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.toolbar-btn.active {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+/* Toggle Open Mode / Share Snapshot Buttons: icon-only, label kept for screen readers */
+#toggle-open-mode-btn,
+#share-snapshot-btn {
+  position: relative;
+}
+
+#toggle-open-mode-btn .btn-text,
+#share-snapshot-btn .btn-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#share-snapshot-btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+/* Toolbar Collapsed State */
+#toolbar.collapsed {
+  display: none;
+}
+
+/* Expand Bar (shown when toolbar is collapsed) */
+#toolbar-expand-bar {
+  height: 24px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#toolbar-expand-bar.hidden {
+  display: none;
+}
+
+#toolbar-expand-bar:hover {
+  background: #e8e8e8;
+}
+
+#toolbar-expand-bar button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  padding: 2px 8px;
+}
+
+#toolbar-expand-bar button:hover {
+  color: #333;
+}
+
+/* Panel Selectors */
+#panel-selectors {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+  justify-content: safe center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+#panel-selectors::-webkit-scrollbar {
+  display: none;
+}
+
+.panel-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1 1 0;
+  min-width: 58px;
+  max-width: 150px;
+  padding: 2px 5px 2px 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 22px;
+  white-space: nowrap;
+  color: #333;
+  transition: all 0.2s;
+  container-type: inline-size;
+  container-name: panel-chip;
+}
+
+.panel-selector:hover {
+  border-color: #1976d2;
+  background: #e3f2fd;
+}
+
+.panel-selector.panel-focused {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.panel-selector .provider-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+/* The name is the only chip part that gives way when the row is full. */
+.panel-selector .provider-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tab chip activity: loading, answering, finished, or a problem. */
+.panel-selector .provider-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.panel-selector[data-activity="preparing"] .provider-icon {
+  animation: panel-activity-breathe 1.6s ease-in-out infinite;
+}
+
+.panel-selector .panel-activity {
+  position: absolute;
+  pointer-events: none;
+}
+
+.panel-selector[data-activity="running"] .panel-activity {
+  inset: -3px;
+  border: 2px solid transparent;
+  border-top-color: #1976d2;
+  border-right-color: #1976d2;
+  border-radius: 50%;
+  animation: panel-activity-spin 0.9s linear infinite;
+}
+
+.panel-selector[data-activity="done"] .panel-activity,
+.panel-selector[data-activity="stalled"] .panel-activity,
+.panel-selector[data-activity="not-ready"] .panel-activity {
+  right: -2px;
+  bottom: -2px;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.panel-selector[data-activity="done"] .panel-activity {
+  background: #2e7d32;
+}
+
+.panel-selector[data-activity="stalled"] .panel-activity,
+.panel-selector[data-activity="not-ready"] .panel-activity {
+  background: #f9a825;
+}
+
+/* Gold, silver and bronze crowns on the three fastest answers of the latest
+   round, tilted on the icon's top-left corner so the chip row never clips them. */
+.panel-selector .panel-speed-crown {
+  position: absolute;
+  top: -5px;
+  left: -6px;
+  display: none;
+  line-height: 0;
+  pointer-events: none;
+  transform: rotate(-28deg);
+  filter: drop-shadow(0 0 0.6px rgba(0, 0, 0, 0.55)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+}
+
+.panel-selector[data-speed-rank] .panel-speed-crown {
+  display: block;
+  animation: panel-speed-crown-pop 0.45s cubic-bezier(.2, .8, .2, 1.4);
+}
+
+.panel-selector[data-speed-rank="1"] .panel-speed-crown { color: #ffc61a; }
+.panel-selector[data-speed-rank="2"] .panel-speed-crown { color: #b0bec5; }
+.panel-selector[data-speed-rank="3"] .panel-speed-crown { color: #a8703f; }
+
+@keyframes panel-speed-crown-pop {
+  from { opacity: 0; transform: translateY(-4px) rotate(-28deg) scale(0.4); }
+  to { opacity: 1; transform: rotate(-28deg) scale(1); }
+}
+
+@keyframes panel-activity-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes panel-activity-breathe {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.8; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-selector[data-activity="preparing"] .provider-icon {
+    animation: none;
+    opacity: 0.45;
+  }
+
+  .panel-selector[data-activity="running"] .panel-activity {
+    animation: none;
+    border-color: #1976d2;
+  }
+  .panel-selector[data-speed-rank] .panel-speed-crown {
+    animation: none;
+  }
+}
+
+.panel-selector .remove-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  color: #999;
+  font-size: 13px;
+}
+
+.panel-selector .remove-panel:hover {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.panel-selector .remove-panel .material-symbols-outlined {
+  font-size: 13px;
+}
+
+/* Container queries measure the content box: 68px content is ~83px border-box,
+   where the name has room for about two characters. Below that, icon only. */
+@container panel-chip (max-width: 68px) {
+  .panel-selector .provider-name {
+    display: none;
+  }
+}
+

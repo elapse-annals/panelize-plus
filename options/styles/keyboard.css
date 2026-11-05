@@ -1,0 +1,36 @@
+/* Keyboard Shortcuts */
+.shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shortcut-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
+.shortcut-label {
+  font-size: 14px;
+  color: #333;
+}
+
+.shortcut-keys {
+  display: flex;
+  gap: 4px;
+}
+
+.key {
+  padding: 4px 8px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: monospace;
+  color: #666;
+}
+

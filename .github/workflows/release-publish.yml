@@ -58,16 +58,16 @@ jobs:
         id: release_gate
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/validate-release-publish.js
+        run: node scripts/release/validate-release-publish.js
 
       - name: Run unit tests
-        run: npx vitest run --exclude='tests/e2e/**'
+        run: npm run test:unit
 
       - name: Build release packages
         run: npm run release:package
 
       - name: Create release notes
-        run: node scripts/write-release-notes.js
+        run: node scripts/release/write-release-notes.js
 
       - name: Upload verified release assets
         uses: actions/upload-artifact@v4

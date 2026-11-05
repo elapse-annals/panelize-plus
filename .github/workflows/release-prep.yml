@@ -53,7 +53,7 @@ jobs:
         run: npm run release:prepare
 
       - name: Run unit tests
-        run: npx vitest run --exclude='tests/e2e/**'
+        run: npm run test:unit
 
       - name: Build release packages
         run: npm run release:package

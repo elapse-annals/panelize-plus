@@ -1,253 +1,90 @@
-import { notifyMessage } from '../modules/messaging.js';
-import { t, initializeLanguage } from '../modules/i18n.js';
-import { migrateEnabledProvidersOnUpdate } from '../modules/provider-defaults.js';
-import { SHARE_SNAPSHOT_ACTION, isMultiPanelTab } from '../modules/share-trigger.js';
-import { removeDeprecatedClaudeModelMode } from '../modules/settings.js';
-import {
-  reconcileOptionalProviderAccess
-} from '../modules/optional-provider-access.js';
-import {
-  MIMO_SESSION_COOKIE_SYNC_ACTION,
-  isMimoSourceCookieChange,
-  reconcileMimoSessionCookies
-} from '../modules/mimo-session-cookies.js';
-import {
-  isDeepSeekConsentCookieChange,
-  upgradeDeepSeekConsentCookies
-} from '../modules/consent-cookies.js';
-import { openMultiPanelPage } from '../modules/open-multi-panel.js';
-import {
-  GLOBAL_SEND_ACTION,
-  GLOBAL_SEND_RESULT_ACTION,
-  NATIVE_SEND_KEEPALIVE_ALARM,
-  NATIVE_SEND_KEEPALIVE_MINUTES,
-  isTrustedGlobalSendResultSender
-} from '../modules/global-send.js';
-import { createNativeSendBridge } from './native-send.js';
+/** Composition root. Feature state and behavior live in controllers. */
+import { notifyMessage } from '../modules/platform/messaging.js';
+import { removeDeprecatedClaudeModelMode } from '../modules/platform/settings.js';
+import { MIMO_SESSION_COOKIE_SYNC_ACTION, isMimoSourceCookieChange } from '../modules/providers/mimo-session-cookies.js';
+import { isDeepSeekConsentCookieChange } from '../modules/providers/consent-cookies.js';
+import { GLOBAL_SEND_PROGRESS_ACTION, GLOBAL_SEND_RESULT_ACTION, NATIVE_SEND_KEEPALIVE_ALARM, isTrustedGlobalSendResultSender } from '../modules/platform/global-send.js';
 import {
   GROK_WEBSOCKET_COOKIE_SYNC_ACTION,
-  createGrokWebSocketCookieReconcileScheduler,
   handleGrokTabNavigationComplete,
   handleGrokTabNavigationStart,
   handleGrokTabRemoved,
   handleMultiPanelSyncRequest,
   isGrokWebSocketCookieChange,
-  isMultiPanelTopFrameSender,
-  reconcileGrokWebSocketCookies
-} from '../modules/grok-websocket-cookies.js';
+  isMultiPanelTopFrameSender
+} from '../modules/providers/grok-websocket-cookies.js';
+import { createSettingsController } from './controllers/settings.js';
+import { createPageActionsController } from './controllers/page-actions.js';
+import { createProviderSessionsController } from './controllers/provider-sessions.js';
+import { createNativeBridgeController } from './controllers/native-bridge.js';
+import { createVersionController } from './controllers/version.js';
 
-// Install event - setup context menus
-const DEFAULT_SHORTCUT_SETTING = { keyboardShortcutEnabled: true };
-const DEFAULT_OPEN_MODE = { openMode: 'tab' };
-const DEFAULT_GLOBAL_SEND_SETTING = { globalSendBridgeEnabled: false };
-let keyboardShortcutEnabled = true;
-let openMode = 'tab';
-let globalSendBridgeEnabled = false;
-const PENDING_MULTI_PANEL_ACTION_KEY = 'pendingMultiPanelAction';
-const PAGE_EXTRACTOR_SCRIPTS = [
-  'libs/Readability.js',
-  'content-scripts/page-content-extractor.js'
-];
+const settings = createSettingsController();
 
-async function loadShortcutSetting() {
-  try {
-    const result = await chrome.storage.sync.get(DEFAULT_SHORTCUT_SETTING);
-    keyboardShortcutEnabled = result.keyboardShortcutEnabled;
-  } catch (error) {
-    // Fallback to default if storage unavailable
-    keyboardShortcutEnabled = true;
-  }
-}
+const pageActions = createPageActionsController({
+  getSettingsController: () => settings
+});
 
-async function loadOpenModeSetting() {
-  try {
-    const result = await chrome.storage.sync.get(DEFAULT_OPEN_MODE);
-    openMode = result.openMode || 'tab';
-  } catch (error) {
-    // Fallback to default if storage unavailable
-    openMode = 'tab';
-  }
-}
+const providerSessions = createProviderSessionsController();
 
-async function loadGlobalSendSetting() {
-  try {
-    const result = await chrome.storage.sync.get(DEFAULT_GLOBAL_SEND_SETTING);
-    globalSendBridgeEnabled = result.globalSendBridgeEnabled === true;
-  } catch (error) {
-    // Fallback to off if storage unavailable
-    globalSendBridgeEnabled = false;
-  }
-}
+const nativeBridge = createNativeBridgeController({
+  getPageActionsController: () => pageActions,
+  getSettingsController: () => settings
+});
 
-async function setPendingMultiPanelAction(action, payload = {}) {
-  const pendingAction = {
-    action,
-    payload,
-    createdAt: Date.now()
-  };
-
-  try {
-    await chrome.storage.session.set({ [PENDING_MULTI_PANEL_ACTION_KEY]: pendingAction });
-    return;
-  } catch (error) {
-    // Fallback to local storage if session storage is unavailable
-  }
-
-  try {
-    await chrome.storage.local.set({ [PENDING_MULTI_PANEL_ACTION_KEY]: pendingAction });
-  } catch (error) {
-    // Ignore storage errors
-  }
-}
-
-async function openMultiPanel() {
-  await openMultiPanelPage(chrome, openMode);
-}
-
-async function migrateProviderSettingsForUpdate(details) {
-  if (details?.reason !== 'update') {
-    return;
-  }
-
-  try {
-    const currentSettings = await chrome.storage.sync.get({
-      enabledProviders: null,
-      providerOrder: null
-    });
-    const migratedSettings = migrateEnabledProvidersOnUpdate(
-      currentSettings.enabledProviders,
-      currentSettings.providerOrder
-    );
-
-    if (migratedSettings) {
-      await chrome.storage.sync.set(migratedSettings);
-    }
-  } catch (error) {
-    // Ignore storage errors during best-effort settings migration
-  }
-}
-
-let optionalProviderReconcileQueue = Promise.resolve();
-
-// The Grok scheduler is provider-agnostic: it serializes runs and coalesces
-// bursts of cookie events into one queued reconcile.
-const scheduleMimoSessionReconcile = createGrokWebSocketCookieReconcileScheduler(
-  async () => {
-    const result = await reconcileMimoSessionCookies();
-    if (!result?.success) throw new Error('MiMo session synchronization failed');
-  },
-  () => {
-    console.warn('[Background] Failed to synchronize MiMo panel session');
-  }
-);
-
-function scheduleOptionalProviderReconcile() {
-  optionalProviderReconcileQueue = optionalProviderReconcileQueue
-    .then(() => reconcileOptionalProviderAccess())
-    .catch((error) => {
-      console.error('[Background] Optional provider reconciliation queue failed:', error);
-    });
-
-  return optionalProviderReconcileQueue;
-}
-
-const scheduleGrokWebSocketCookieReconcile = createGrokWebSocketCookieReconcileScheduler(
-  reconcileGrokWebSocketCookies,
-  (error) => {
-    console.error('[Background] Failed to synchronize Grok WebSocket cookies:', error);
-  }
-);
-
-// Failures only mean the DeepSeek panel shows its cookie banner again.
-async function upgradeDeepSeekConsentCookiesSafely() {
-  try {
-    await upgradeDeepSeekConsentCookies();
-  } catch (error) {
-    console.warn('[Background] Failed to update DeepSeek consent cookie:', error);
-  }
-}
+const version = createVersionController();
 
 chrome.runtime.onInstalled.addListener(async (details) => {
-  await migrateProviderSettingsForUpdate(details);
+  await settings.migrateProviderSettingsForUpdate(details);
   if (details?.reason === 'update') {
     await removeDeprecatedClaudeModelMode();
   }
-  await scheduleOptionalProviderReconcile();
-  await scheduleMimoSessionReconcile();
-  await scheduleGrokWebSocketCookieReconcile();
-  await upgradeDeepSeekConsentCookiesSafely();
-  await createContextMenus();
-  await loadShortcutSetting();
-  await loadOpenModeSetting();
-  await openOptionsAfterInstall(details);
+  await providerSessions.scheduleOptionalProviderReconcile();
+  await providerSessions.scheduleMimoSessionReconcile();
+  await providerSessions.scheduleGrokWebSocketCookieReconcile();
+  await providerSessions.upgradeDeepSeekConsentCookiesSafely();
+  await pageActions.createContextMenus();
+  await settings.loadShortcutSetting();
+  await settings.loadOpenModeSetting();
+  await pageActions.openOptionsAfterInstall(details);
 });
-
-// Optional providers in the default setup need site access, which the
-// browser only grants from a user gesture, so show the grant prompt in options.
-async function openOptionsAfterInstall(details) {
-  if (details?.reason !== 'install') {
-    return;
-  }
-
-  try {
-    await chrome.runtime.openOptionsPage?.();
-  } catch (error) {
-    console.warn('[Background] Failed to open options after install:', error);
-  }
-}
 
 chrome.runtime.onStartup.addListener(async () => {
-  await scheduleOptionalProviderReconcile();
-  await scheduleMimoSessionReconcile();
-  await scheduleGrokWebSocketCookieReconcile();
-  await loadShortcutSetting();
-  await loadOpenModeSetting();
+  await providerSessions.scheduleOptionalProviderReconcile();
+  await providerSessions.scheduleMimoSessionReconcile();
+  await providerSessions.scheduleGrokWebSocketCookieReconcile();
+  await settings.loadShortcutSetting();
+  await settings.loadOpenModeSetting();
 });
-
-// Create/update context menus
-async function createContextMenus() {
-  // Remove all existing menus
-  await chrome.contextMenus.removeAll();
-
-  // Initialize language before creating menus
-  await initializeLanguage();
-
-  // Create main context menu item
-  chrome.contextMenus.create({
-    id: 'open-smarter-panel',
-    title: t('contextMenuSendTo'),
-    contexts: ['page', 'selection', 'link']
-  });
-}
 
 // Listen for settings changes and update context menus
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (changes.language) {
-    createContextMenus();
+    pageActions.createContextMenus();
   }
 
   // 新增：监听 openMode 变化
   if (namespace === 'sync' && changes.openMode) {
-    openMode = changes.openMode.newValue || 'tab';
+    settings.openMode = changes.openMode.newValue || 'tab';
   }
 
   if (namespace === 'sync' && changes.enabledProviders) {
-    scheduleOptionalProviderReconcile();
-    scheduleMimoSessionReconcile();
-    scheduleGrokWebSocketCookieReconcile();
+    providerSessions.scheduleOptionalProviderReconcile();
+    providerSessions.scheduleMimoSessionReconcile();
+    providerSessions.scheduleGrokWebSocketCookieReconcile();
   }
 });
 
 if (chrome.cookies?.onChanged) {
   chrome.cookies.onChanged.addListener((changeInfo) => {
     if (isMimoSourceCookieChange(changeInfo)) {
-      scheduleMimoSessionReconcile();
+      providerSessions.scheduleMimoSessionReconcile();
     }
     if (isGrokWebSocketCookieChange(changeInfo)) {
-      scheduleGrokWebSocketCookieReconcile();
+      providerSessions.scheduleGrokWebSocketCookieReconcile();
     }
     if (isDeepSeekConsentCookieChange(changeInfo)) {
-      upgradeDeepSeekConsentCookiesSafely();
+      providerSessions.upgradeDeepSeekConsentCookiesSafely();
     }
   });
 }
@@ -257,10 +94,10 @@ if (chrome.tabs?.onUpdated) {
     if (changeInfo?.status === 'loading') {
       handleGrokTabNavigationStart(tabId).catch((error) => {
         console.error('[Background] Failed to drop navigating tab from Grok cookie rule:', error);
-        scheduleGrokWebSocketCookieReconcile();
+        providerSessions.scheduleGrokWebSocketCookieReconcile();
       });
     } else if (changeInfo?.status === 'complete' && handleGrokTabNavigationComplete(tabId)) {
-      scheduleGrokWebSocketCookieReconcile();
+      providerSessions.scheduleGrokWebSocketCookieReconcile();
     }
   });
 }
@@ -270,7 +107,7 @@ if (chrome.tabs?.onRemoved) {
     handleGrokTabRemoved(tabId)
       .then((inRule) => {
         if (inRule) {
-          scheduleGrokWebSocketCookieReconcile();
+          providerSessions.scheduleGrokWebSocketCookieReconcile();
         }
       })
       .catch((error) => {
@@ -281,150 +118,16 @@ if (chrome.tabs?.onRemoved) {
 
 if (chrome.permissions?.onAdded) {
   chrome.permissions.onAdded.addListener(() => {
-    scheduleOptionalProviderReconcile();
-    scheduleMimoSessionReconcile();
+    providerSessions.scheduleOptionalProviderReconcile();
+    providerSessions.scheduleMimoSessionReconcile();
   });
 }
 
 if (chrome.permissions?.onRemoved) {
   chrome.permissions.onRemoved.addListener(() => {
-    scheduleOptionalProviderReconcile();
-    scheduleMimoSessionReconcile();
+    providerSessions.scheduleOptionalProviderReconcile();
+    providerSessions.scheduleMimoSessionReconcile();
   });
-}
-
-async function formatSelectedTextWithSource(info) {
-  const settings = await chrome.storage.sync.get({ sourceUrlPlacement: 'none' });
-  const placement = settings.sourceUrlPlacement;
-
-  if (placement === 'none') {
-    return info.selectionText;
-  }
-  if (placement === 'beginning') {
-    return `Source: ${info.pageUrl}\n\n${info.selectionText}`;
-  }
-  return `${info.selectionText}\n\nSource: ${info.pageUrl}`;
-}
-
-async function getContentFromContext(info, tab) {
-  if (info.selectionText) {
-    return formatSelectedTextWithSource(info);
-  }
-
-  try {
-    await ensurePageExtractorInjected(tab);
-
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      action: 'extractPageContent'
-    });
-
-    if (response && response.success) {
-      return response.content;
-    }
-  } catch (error) {
-    // Content script not ready or extraction failed
-  }
-
-  return '';
-}
-
-function canInjectIntoTab(tab) {
-  if (!tab || tab.id === undefined || tab.id === null || !tab.url) {
-    return false;
-  }
-  return tab.url.startsWith('http://') || tab.url.startsWith('https://');
-}
-
-async function ensurePageExtractorInjected(tab) {
-  if (!canInjectIntoTab(tab)) {
-    return;
-  }
-
-  await chrome.scripting.executeScript({
-    target: { tabId: tab.id, allFrames: false },
-    files: PAGE_EXTRACTOR_SCRIPTS
-  });
-}
-
-function dispatchToMultiPanel(action, payload) {
-  setTimeout(() => {
-    setPendingMultiPanelAction(action, payload);
-    notifyMessage({
-      action,
-      payload
-    }).catch(() => {
-      // Multi-Panel may not be ready yet, silently ignore
-    });
-  }, 500);
-}
-
-/**
- * Delivers a prompt typed in the macOS global client through the same Send All
- * path as the main composer. Opening Panelize first makes the pending action
- * survive while the page and its AI panels initialize.
- */
-async function handOffGlobalPrompt({ text, requestId, promptMode }) {
-  const payload = { text, requestId };
-  if (promptMode !== undefined) {
-    payload.promptMode = promptMode;
-  }
-  await setPendingMultiPanelAction(GLOBAL_SEND_ACTION, payload);
-  await openMultiPanel();
-  setTimeout(() => {
-    notifyMessage({
-      action: GLOBAL_SEND_ACTION,
-      payload
-    }).catch(() => {
-      // A newly opened Multi-Panel consumes the pending action instead.
-    });
-  }, 500);
-}
-
-const nativeSendBridge = createNativeSendBridge({
-  connectNative: name => chrome.runtime.connectNative(name),
-  runtime: chrome.runtime,
-  onSendPrompt: handOffGlobalPrompt
-});
-
-function ensureNativeSendBridge() {
-  if (!globalSendBridgeEnabled) {
-    return;
-  }
-  try {
-    chrome.alarms.create(NATIVE_SEND_KEEPALIVE_ALARM, {
-      periodInMinutes: NATIVE_SEND_KEEPALIVE_MINUTES
-    });
-  } catch (error) {
-    // Native messaging still works after the next service worker event.
-  }
-  nativeSendBridge.connect();
-}
-
-function disableNativeSendBridge() {
-  try {
-    Promise.resolve(chrome.alarms.clear(NATIVE_SEND_KEEPALIVE_ALARM)).catch(() => {});
-  } catch (error) {
-    // The alarm API may be unavailable before the worker is fully started.
-  }
-  nativeSendBridge.disconnect();
-}
-
-/**
- * On the Multi-Panel page itself, invoking the extension shares a snapshot
- * of it: this gesture is what grants activeTab for a silent capture.
- * @returns {Promise<boolean>} Whether the page was asked to share.
- */
-async function requestShareSnapshotOnMultiPanel(tab) {
-  if (!(await isMultiPanelTab(tab))) {
-    return false;
-  }
-  notifyMessage({
-    action: SHARE_SNAPSHOT_ACTION,
-    payload: { tabId: tab.id }
-  }).catch(() => {
-    // The page may still be loading; the user can invoke it again
-  });
-  return true;
 }
 
 // Context menu click handler - opens Multi-Panel and sends message
@@ -434,16 +137,16 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       return;
     }
 
-    if (await requestShareSnapshotOnMultiPanel(tab)) {
+    if (await pageActions.requestShareSnapshotOnMultiPanel(tab)) {
       return;
     }
 
     // 先打开 Multi-Panel 窗口
-    await openMultiPanel();
+    await pageActions.openMultiPanel();
 
     if (info.menuItemId === 'open-smarter-panel') {
-      const contentToSend = await getContentFromContext(info, tab);
-      dispatchToMultiPanel('sendToPanel', { selectedText: contentToSend });
+      const contentToSend = await pageActions.getContentFromContext(info, tab);
+      pageActions.dispatchToMultiPanel('sendToPanel', { selectedText: contentToSend });
     }
   } catch (error) {
     // Silently handle context menu errors
@@ -452,39 +155,48 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
 // Handle action clicks (toolbar button) - opens Multi-Panel
 chrome.action.onClicked.addListener(async (tab) => {
-  if (!keyboardShortcutEnabled) {
+  if (!settings.keyboardShortcutEnabled) {
     return;
   }
 
-  if (await requestShareSnapshotOnMultiPanel(tab)) {
+  if (await pageActions.requestShareSnapshotOnMultiPanel(tab)) {
     return;
   }
 
-  await openMultiPanel();
+  await pageActions.openMultiPanel();
 });
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace !== 'sync') return;
 
   if (changes.keyboardShortcutEnabled) {
-    keyboardShortcutEnabled = changes.keyboardShortcutEnabled.newValue !== false;
+    settings.keyboardShortcutEnabled = changes.keyboardShortcutEnabled.newValue !== false;
   }
   if (changes.globalSendBridgeEnabled) {
-    globalSendBridgeEnabled = changes.globalSendBridgeEnabled.newValue === true;
-    if (globalSendBridgeEnabled) {
-      ensureNativeSendBridge();
+    settings.globalSendBridgeEnabled = changes.globalSendBridgeEnabled.newValue === true;
+    if (settings.globalSendBridgeEnabled) {
+      nativeBridge.ensureNativeSendBridge();
     } else {
-      disableNativeSendBridge();
+      nativeBridge.disableNativeSendBridge();
     }
   }
 });
 
 // Listen for version check requests
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === GLOBAL_SEND_PROGRESS_ACTION) {
+    const trusted = isTrustedGlobalSendResultSender(sender, chrome.runtime);
+    if (trusted) {
+      nativeBridge.nativeSendBridge.deliverProgress(message.payload || {});
+    }
+    sendResponse({ ok: trusted });
+    return false;
+  }
+
   if (message.action === GLOBAL_SEND_RESULT_ACTION) {
     const trusted = isTrustedGlobalSendResultSender(sender, chrome.runtime);
     if (trusted) {
-      nativeSendBridge.deliverResult(message.payload || {});
+      nativeBridge.nativeSendBridge.deliverResult(message.payload || {});
     }
     sendResponse({ ok: trusted });
     return false;
@@ -495,13 +207,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: false, error: 'MiMo session sync is only available to the Multi-Panel page' });
       return false;
     }
-    scheduleMimoSessionReconcile().then(sendResponse);
+    providerSessions.scheduleMimoSessionReconcile().then(sendResponse);
     return true;
   }
 
   if (message.action === 'fetchLatestCommit') {
     // Handle version check request from options page
-    handleFetchLatestCommit().then(sendResponse);
+    version.handleFetchLatestCommit().then(sendResponse);
     return true; // Keep channel open for async response
   }
 
@@ -512,67 +224,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     handleMultiPanelSyncRequest(sender.tab.id);
-    scheduleGrokWebSocketCookieReconcile({ upgradeConsentCookies: true }).then(sendResponse);
+    providerSessions.scheduleGrokWebSocketCookieReconcile({ upgradeConsentCookies: true }).then(sendResponse);
     return true;
   }
 
   return false;
 });
 
-// Handle version check by fetching latest commit from GitHub API
-async function handleFetchLatestCommit() {
-  try {
-    const GITHUB_API_URL = 'https://api.github.com/repos/Manho/Panelize/commits/main';
-
-    const response = await fetch(GITHUB_API_URL, {
-      headers: {
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`GitHub API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    return {
-      success: true,
-      data: {
-        sha: data.sha,
-        shortSha: data.sha.substring(0, 7),
-        date: data.commit.committer.date,
-        message: data.commit.message
-      }
-    };
-  } catch (error) {
-    console.error('[Background] Error fetching latest commit:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
 // Chrome starts the native host when the extension connects. If the host
 // crashes, the alarm wakes this worker so it can reconnect without waiting for
 // another browser or Panelize action.
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === NATIVE_SEND_KEEPALIVE_ALARM) {
-    ensureNativeSendBridge();
+    nativeBridge.ensureNativeSendBridge();
   }
 });
 
 // Listen for keyboard shortcuts - simplified for Multi-Panel mode
 chrome.commands.onCommand.addListener(async (command, tab) => {
-  if (!keyboardShortcutEnabled) {
+  if (!settings.keyboardShortcutEnabled) {
     return;
   }
 
   if (command === 'open-prompt-library') {
     // Open Multi-Panel
-    await setPendingMultiPanelAction('openPromptLibrary', {});
-    await openMultiPanel();
+    await pageActions.setPendingMultiPanelAction('openPromptLibrary', {});
+    await pageActions.openMultiPanel();
 
     // If it's prompt library command, also send message to open it
     setTimeout(() => {
@@ -585,17 +262,8 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
     }, 500);
   } else if (command === 'toggle-focus') {
     // In Multi-Panel mode, toggle-focus just opens/focuses the Multi-Panel
-    await openMultiPanel();
+    await pageActions.openMultiPanel();
   }
 });
 
-async function initializeNativeSendBridge() {
-  await loadGlobalSendSetting();
-  if (globalSendBridgeEnabled) {
-    ensureNativeSendBridge();
-  } else {
-    disableNativeSendBridge();
-  }
-}
-
-initializeNativeSendBridge();
+nativeBridge.initializeNativeSendBridge();

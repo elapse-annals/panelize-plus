@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { OPTIONAL_PROVIDER_CONFIGS } from '../../modules/optional-provider-access.js';
+import { OPTIONAL_PROVIDER_CONFIGS } from '../../modules/providers/optional-provider-access.js';
 import {
   createPatchedExtensionCopy,
   launchExtension,
   openMultiPanel
-} from './extension-harness.js';
+} from './support/extension-harness.js';
 
 const PROVIDERS = [
   {

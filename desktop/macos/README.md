@@ -42,7 +42,8 @@ In Panelize's settings, open **Global Input (macOS)** and turn on **Enable globa
 
 - `Option + Space` (default) or the menu-bar item “打开快捷输入” opens the floating composer.
 - The composer opens near the bottom of the current display with a soft shadow. Click anywhere outside it, or click the menu-bar icon, to close it; `Esc` also works.
-- Type a prompt and press `Enter` to send it to all AIs.
+- Type a prompt and press `Enter` to send it to all AIs. As soon as the extension confirms the Panelize page is open or reused, the browser running the bridge comes to the front, and the floating panel stays up to show progress: “AI 准备中：3/5” while the AIs get ready, then “正在发送…”. While sending, the line under the input names the AIs still being waited for (or those that are not ready); long lists are shortened and keep the full list on hover and for assistive technologies. Blind mode shows counts only. Sending starts once `ceil(total × 0.7)` of the AIs are ready.
+- The panel is not dismissed when the app loses focus during the send or while the success result is shown. An outside click, `Esc` or the shortcut still closes it, and progress updates never reopen it; opening it again shows the latest progress. Once the send result arrives, progress ends and the mode preview returns.
 - The three most recently sent questions appear above the input when what you type is the beginning of one. The list floats in its own panel, titled “Recent questions” and narrower than the input card, sitting flush above it and tucked behind it, so it is not mistaken for the input itself. Use `Up` / `Down` to highlight, `Enter` to fill it in without sending, or click a row; pressing `Down` on the last row clears the highlight and returns to the input. `Esc` closes the list first, then the panel.
 - Choose a prompt mode from the capsule picker at the left of the footer; it defaults to Auto. The choice is saved on this Mac and applies only to that send, without changing the mode saved in the extension. Auto appends a mode only when the question contains a trigger word such as `/study`; Default appends nothing. Upgrading to 2.64.0 resets a previously saved mode to Auto once; choices made afterwards are kept. Press `Tab` / `Shift + Tab` while the input is empty to cycle modes; when a trigger completion is showing, `Tab` accepts the completion instead. With text present, `Tab` does not change the mode.
 - In Auto mode, typing a trigger prefix at the end of a line (`/st`) shows the rest of the trigger (`udy`) and a shaded `Tab · 学习` hint at the caret. Press `Tab` to accept it and add a space. Completion follows the extension's line-end and whole-word rules and only covers the built-in triggers; triggers customized in the extension are not mirrored in the client.
@@ -52,7 +53,7 @@ In Panelize's settings, open **Global Input (macOS)** and turn on **Enable globa
 - The composer follows macOS Reduce Motion, Reduce Transparency and Increase Contrast. With Reduce Transparency it uses an opaque background; with Increase Contrast it strengthens borders and text, and status always uses a distinct icon shape as well as color.
 - `Shift + Enter` inserts a newline; `Esc` closes an open suggestion list first, otherwise the panel.
 - Choose `Command + Shift + Space` from the menu-bar icon instead.
-- On success the panel shows “已发送至 N 个 AI”, brings the browser running the bridge to the front so the answers are in view, and closes after about a second. On failure it keeps the prompt and shows the reason.
+- On success the panel shows “已发送至 N 个 AI” and closes after about a second; the browser was already brought forward when the extension opened or reused the Panelize page (with an older extension that sends no progress, the browser comes forward on the result instead). On failure it keeps the prompt and shows the reason.
 
 If the Panelize page is not open, the extension opens it first and waits for the AI panels before sending. If the browser is not running, the extension was not reloaded, or the native host is not installed, the panel says “浏览器未连接” instead of reporting a false success.
 
@@ -109,4 +110,4 @@ swift test --package-path desktop/macos
 ./desktop/macos/Scripts/build-app.sh
 ```
 
-The build lands in `dist/Panelize Link.app` and is not included in extension release packages. Extension-side protocol tests live in `tests/global-send.test.js` and `tests/native-send.test.js`.
+The build lands in `dist/Panelize Link.app` and is not included in extension release packages. Extension-side protocol tests live in `tests/unit/platform/global-send.test.js` and `tests/unit/background/native-send.test.js`.

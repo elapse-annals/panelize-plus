@@ -1,0 +1,52 @@
+/* ===== Blind mode ===== */
+/* Anonymous labels replace every provider name and icon the page shows, and
+   controls that reveal the provider (open in tab, switch, Google mode) hide. */
+.blind-label { display: none; }
+body.blind-mode .blind-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.04);
+  color: #8b8794;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+body.blind-mode .panel-header-left .provider-icon,
+body.blind-mode .panel-header-left .provider-name,
+body.blind-mode .panel-header-left .provider-note,
+body.blind-mode .panel-header-left .provider-note-input,
+body.blind-mode .panel-selector .provider-icon,
+body.blind-mode .panel-selector .provider-name,
+body.blind-mode .panel-loading,
+body.blind-mode .panel-header-right .open-provider-top-level-btn,
+body.blind-mode .panel-header-right .switch-provider-btn,
+body.blind-mode .panel-header-right .panel-google-mode-select,
+body.blind-mode #answer-stats-btn,
+body.blind-mode #answer-log-btn {
+  display: none !important;
+}
+@container (max-width: 300px) {
+  body.blind-mode .panel-header-left .blind-label { display: inline-flex; }
+}
+[data-theme="dark"] body.blind-mode .blind-label { background: rgba(255, 255, 255, 0.06); color: #9d98a8; }
+
+/* Top-bar blind chips: the anonymous label shrinks and ellipsizes like a name. */
+body.blind-mode .panel-selector .blind-label {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@container panel-chip (max-width: 68px) {
+  body.blind-mode .panel-selector .blind-label {
+    padding: 1px 2px;
+    font-size: 11px;
+  }
+}
+/* Panels are being dealt into a new order; clicks wait for the animation. */
+body.panel-shuffling #panel-grid, body.panel-shuffling #panel-selectors { pointer-events: none; }
+

@@ -4,16 +4,19 @@ import {
   createNativeError,
   createNativeHello,
   createNativeSendAccepted,
+  createNativeSendProgress,
   createNativeSendResult,
   normalizeGlobalPrompt,
   normalizeGlobalPromptMode,
   normalizeRequestId,
+  readGlobalSendProgressPayload,
   readGlobalSendResultPayload
-} from '../modules/global-send.js';
+} from '../modules/platform/global-send.js';
 
 const COMPLETED_REQUEST_TTL_MS = 60 * 1000;
 const REQUEST_TIMEOUT_MS = 45 * 1000;
 const MAX_REMEMBERED_REQUESTS = 32;
+const PROGRESS_STAGE_RANK = Object.freeze({ opening: 0, preparing: 1, sending: 2 });
 
 /**
  * Owns the native port that a Panelize Link desktop app talks to. Chrome
@@ -37,6 +40,9 @@ export function createNativeSendBridge({
   const activeRequests = new Set();
   const completedRequests = new Map();
   const requestTimers = new Map();
+  // Last progress forwarded per request: stage rank plus its payload, so a
+  // repeated tick or a late opening event cannot move the client backwards.
+  const requestProgress = new Map();
 
   function lastErrorMessage() {
     try {
@@ -67,6 +73,7 @@ export function createNativeSendBridge({
 
   function clearRequest(requestId) {
     activeRequests.delete(requestId);
+    requestProgress.delete(requestId);
     const timer = requestTimers.get(requestId);
     if (timer) {
       clearTimeout(timer);
@@ -201,6 +208,42 @@ export function createNativeSendBridge({
     return true;
   }
 
+  /**
+   * Forwards a preparation or sending report for a request this host is still
+   * handling. Duplicate reports, stage regressions and updates after the final
+   * result are dropped.
+   */
+  function deliverProgress(payload) {
+    const progress = readGlobalSendProgressPayload(payload);
+    if (!progress || !activeRequests.has(progress.requestId)) {
+      return false;
+    }
+
+    const rank = PROGRESS_STAGE_RANK[progress.stage];
+    const signature = JSON.stringify(progress);
+    const previous = requestProgress.get(progress.requestId);
+    if (previous && (rank < previous.rank || (rank === previous.rank && signature === previous.signature))) {
+      return false;
+    }
+
+    requestProgress.set(progress.requestId, { rank, signature });
+    post(createNativeSendProgress(progress));
+    return true;
+  }
+
+  /**
+   * Reports that the extension finished opening or reusing the Multi-Panel
+   * page. The page may already have reported preparing when it loaded first,
+   * in which case the client has its earlier progress to act on.
+   */
+  function deliverOpened(requestId) {
+    const normalized = normalizeRequestId(requestId);
+    if (!normalized || !activeRequests.has(normalized) || requestProgress.has(normalized)) {
+      return false;
+    }
+    return deliverProgress({ requestId: normalized, stage: 'opening' });
+  }
+
   function disconnect() {
     const current = port;
     port = null;
@@ -212,6 +255,7 @@ export function createNativeSendBridge({
       }
     }
     activeRequests.clear();
+    requestProgress.clear();
     requestTimers.forEach(timer => clearTimeout(timer));
     requestTimers.clear();
     onStatus({ connected: false, error: '' });
@@ -224,6 +268,8 @@ export function createNativeSendBridge({
 
   return {
     connect,
+    deliverOpened,
+    deliverProgress,
     deliverResult,
     disconnect,
     dispose,

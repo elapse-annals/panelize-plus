@@ -83,6 +83,90 @@ final class BridgeProtocolTests: XCTestCase {
         XCTAssertNil(BridgeMessages.parse(["type": "unknown"]))
     }
 
+    func testSendProgressOnlyExposesExpectedFields() {
+        guard case .sendProgress(let progress)? = BridgeMessages.parse([
+            "type": "sendProgress",
+            "requestId": "r1",
+            "stage": "preparing",
+            "ready": 3,
+            "total": 5,
+            "pendingCount": 1,
+            "timedOutCount": 1,
+            "pendingNames": ["Claude", "Gemini"],
+            "timedOutNames": ["DeepSeek"],
+            "answers": ["secret": true]
+        ]) else {
+            return XCTFail("Expected send progress")
+        }
+        XCTAssertEqual(progress, SendProgress(
+            requestId: "r1",
+            stage: .preparing,
+            ready: 3,
+            total: 5,
+            pendingCount: 1,
+            timedOutCount: 1,
+            pendingNames: ["Claude", "Gemini"],
+            timedOutNames: ["DeepSeek"]
+        ))
+        XCTAssertNil(BridgeMessages.parse([
+            "type": "sendProgress",
+            "requestId": "r1",
+            "stage": "finished"
+        ]))
+    }
+
+    func testSendProgressBoundsCountsAndNamesAndHidesBlindNames() {
+        guard case .sendProgress(let bounded)? = BridgeMessages.parse([
+            "type": "sendProgress",
+            "requestId": "r1",
+            "stage": "preparing",
+            "ready": 9,
+            "total": 5,
+            "pendingCount": 4,
+            "timedOutCount": 4,
+            "pendingNames": (0..<30).map { "  AI \($0)  " },
+            "timedOutNames": ["Timeout"]
+        ]) else {
+            return XCTFail("Expected send progress")
+        }
+        XCTAssertEqual(bounded.ready, 5)
+        XCTAssertEqual(bounded.pendingCount, 0)
+        XCTAssertEqual(bounded.timedOutCount, 0)
+        XCTAssertEqual(bounded.pendingNames.count, BridgeProtocol.maxProgressNames)
+        XCTAssertEqual(bounded.pendingNames.first, "AI 0")
+
+        guard case .sendProgress(let blind)? = BridgeMessages.parse([
+            "type": "sendProgress",
+            "requestId": "r1",
+            "stage": "preparing",
+            "ready": 3,
+            "total": 5,
+            "pendingCount": 2,
+            "pendingNames": ["Claude", "Gemini"],
+            "blind": true
+        ]) else {
+            return XCTFail("Expected send progress")
+        }
+        XCTAssertTrue(blind.blind)
+        XCTAssertEqual(blind.pendingCount, 2)
+        XCTAssertTrue(blind.pendingNames.isEmpty)
+    }
+
+    func testSupportDirectoryHonorsTheIsolationOverride() throws {
+        let key = BridgeProtocol.supportDirectoryOverrideKey
+        let previous = getenv(key).map { String(cString: $0) }
+        defer {
+            if let previous {
+                setenv(key, previous, 1)
+            } else {
+                unsetenv(key)
+            }
+        }
+
+        setenv(key, "/tmp/panelize-bridge-override", 1)
+        XCTAssertEqual(try BridgeProtocol.supportDirectory().path, "/tmp/panelize-bridge-override")
+    }
+
     func testPromptModeDefaultsAndPersistence() throws {
         XCTAssertEqual(PromptModeChoice.fallback, .auto)
         let suiteName = "PanelizeSearchTests-\(UUID().uuidString)"

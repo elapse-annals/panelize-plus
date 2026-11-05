@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension, openMultiPanel } from './extension-harness.js';
+import { launchExtension, openMultiPanel } from './support/extension-harness.js';
 import { renderChatgptFixture } from './fixtures/chatgpt-fixture.js';
 
 // Smallest valid PNG (1x1, transparent).

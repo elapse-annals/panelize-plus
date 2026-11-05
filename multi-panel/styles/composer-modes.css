@@ -1,0 +1,376 @@
+/* Composer overrides also apply after the existing dark-theme textarea rules.
+   One accent (--composer-accent) drives the primary action, focus and the
+   selected reasoning level so the bar reads as a single control. */
+#input-bar {
+  --composer-accent: #6b5bb0;
+  --composer-accent-hover: #5a4b9c;
+  --composer-accent-soft: #f0eff8;
+  --composer-accent-ink: #48447a;
+  --composer-muted: #647087;
+  --composer-line: #e4e6ee;
+  padding: 2px 12px;
+}
+[data-theme="dark"] #input-bar {
+  --composer-accent: #7a6bc4;
+  --composer-accent-hover: #8a7bd4;
+  --composer-accent-soft: #393344;
+  --composer-accent-ink: #d2c5f4;
+  --composer-muted: #b4b2c2;
+  --composer-line: #42414d;
+}
+#input-bar .input-container { padding: 0 8px; }
+#input-bar .composer-controls { padding: 0 8px 8px; gap: 6px; }
+#input-bar .input-wrapper.drag-over { background: var(--composer-accent-soft); border-radius: 10px; }
+#input-bar #unified-input {
+  border: 0;
+  border-radius: 10px;
+  padding: 1px 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  max-height: min(40vh, 360px);
+  background: transparent;
+  box-shadow: none;
+}
+#input-bar #unified-input:focus { outline: none; border: 0; }
+
+/* Preview of what the AIs get: the textarea's own text sits on top, so the
+   ghost only shows the appended instruction and struck-through trigger words.
+   It mirrors the textarea box, never changes its height, and ignores pointers. */
+#input-bar .prompt-input-stack { position: relative; }
+#input-bar .prompt-input-stack #unified-input { display: block; position: relative; z-index: 1; }
+#input-bar .prompt-ghost {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  overflow: hidden;
+  padding: 1px 12px;
+  font-size: 15px;
+  font-family: inherit;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: transparent;
+  pointer-events: none;
+}
+#input-bar .prompt-ghost-suffix {
+  position: absolute;
+  right: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: rgba(0, 0, 0, 0.38);
+  font-style: italic;
+}
+/* Chrome paints no text decoration on transparent text, so the strike is a line drawn behind it. */
+#input-bar .prompt-ghost-removed {
+  --strike: rgba(0, 0, 0, 0.55);
+  background: linear-gradient(transparent calc(50% - 1px), var(--strike) calc(50% - 1px), var(--strike) calc(50% + 1px), transparent calc(50% + 1px));
+}
+/* Auto mode's trigger completion: "/st" shows "udy" at the caret, then the key and mode. */
+#input-bar .prompt-ghost-completion { color: rgba(0, 0, 0, 0.38); }
+#input-bar .prompt-ghost-completion-hint {
+  margin-left: 8px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.3);
+}
+[data-theme="dark"] #input-bar .prompt-ghost-completion { color: rgba(255, 255, 255, 0.42); }
+[data-theme="dark"] #input-bar .prompt-ghost-completion-hint { color: rgba(255, 255, 255, 0.32); }
+[data-theme="dark"] #input-bar .prompt-ghost-suffix { color: rgba(255, 255, 255, 0.42); }
+[data-theme="dark"] #input-bar .prompt-ghost-removed { --strike: rgba(255, 255, 255, 0.6); }
+/* Recent questions offered above the composer while the draft is their prefix. */
+#input-bar .question-history {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 30;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--composer-edge, #e1e3ec);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(30, 42, 70, .16);
+}
+#input-bar .question-history[hidden] { display: none; }
+#input-bar .question-history-item {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #3f4658;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#input-bar .question-history-item:hover,
+#input-bar .question-history-item.is-active {
+  background: var(--composer-accent-soft, #f3f2f9);
+  color: var(--composer-accent-ink, #574681);
+}
+[data-theme="dark"] #input-bar .question-history {
+  border-color: #41414e;
+  background: #26262b;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .4);
+}
+[data-theme="dark"] #input-bar .question-history-item { color: #d5d3de; }
+[data-theme="dark"] #input-bar .question-history-item:hover,
+[data-theme="dark"] #input-bar .question-history-item.is-active {
+  background: #393344;
+  color: #d9d0ff;
+}
+#input-bar .input-btn,
+#input-bar .clear-btn {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--composer-muted);
+}
+#input-bar .input-btn:hover { color: var(--composer-accent-ink); background: var(--composer-accent-soft); }
+#input-bar .clear-btn:hover { color: #d32f2f; background: #fdecec; }
+[data-theme="dark"] #input-bar .clear-btn:hover { color: #ff8a80; background: #4a2a2e; }
+#input-bar .input-actions { gap: 6px; }
+#input-bar .composer-divider { height: 16px; background: var(--composer-line); }
+#input-bar .fill-btn {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--composer-accent-ink);
+  gap: 6px;
+}
+#input-bar .fill-btn:hover:not(:disabled) { background: var(--composer-accent-soft); }
+#input-bar .fill-btn:disabled { background: transparent; color: var(--composer-muted); opacity: .55; }
+#input-bar .send-btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--composer-accent);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(80, 64, 150, .25);
+}
+#input-bar .send-btn:hover:not(:disabled) { background: var(--composer-accent-hover); }
+#input-bar .send-btn:disabled { background: var(--composer-line); color: var(--composer-muted); box-shadow: none; }
+#input-bar[data-new-chat-busy] .send-btn,
+#input-bar[data-new-chat-busy] .fill-btn,
+#input-bar[data-ai-preparing] .send-btn,
+#input-bar[data-ai-preparing] .fill-btn { opacity: .55; cursor: not-allowed; }
+#input-bar .input-btn:focus-visible, #input-bar .clear-btn:focus-visible,
+#input-bar .fill-btn:focus-visible, #input-bar .send-btn:focus-visible {
+  outline: 2px solid var(--composer-accent);
+  outline-offset: 2px;
+}
+/* Control row: equal heights so the divider, levels and status line up. */
+#input-bar .composer-controls-left { gap: 6px; }
+#input-bar .composer-controls-right { gap: 6px; }
+#input-bar .composer-control { min-height: 28px; border-radius: 8px; }
+#input-bar .composer-control .material-symbols-outlined { font-size: 16px; }
+#input-bar .input-btn .material-symbols-outlined,
+#input-bar .clear-btn .material-symbols-outlined { font-size: 16px; }
+#input-bar .tier-menu-btn { position: relative; transition: background-color .15s ease, color .15s ease, box-shadow .15s ease; }
+/* AI mode mapping: a small, light "i" keeps the control row quiet. */
+#input-bar .tier-details-btn {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  color: var(--composer-muted);
+  font-size: 16px;
+  background: transparent;
+}
+#input-bar .tier-details-btn .material-symbols-outlined { font-size: 16px; }
+#input-bar .tier-details-btn:hover { color: var(--composer-accent-ink); background: var(--composer-accent-soft); }
+/* Prompt mode: a quiet select that takes the pressed-button accent while an
+   instruction is appended to every question. */
+#input-bar .prompt-mode-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  color: var(--composer-muted);
+}
+#input-bar .prompt-mode-control .material-symbols-outlined { font-size: 16px; }
+#input-bar .prompt-mode-control[data-active="true"] { color: var(--composer-accent-ink); }
+#input-bar .composer-prompt-group { display: inline-flex; align-items: center; gap: 2px; }
+#input-bar .prompt-mode-btn {
+  min-height: 28px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+}
+#input-bar .prompt-mode-btn .material-symbols-outlined:first-child { font-size: 16px; }
+#input-bar .prompt-mode-btn:hover { color: var(--composer-accent-ink); }
+#input-bar .prompt-mode-control[data-active="true"] .prompt-mode-btn {
+  color: var(--composer-accent-ink);
+  background: transparent;
+}
+#input-bar .prompt-mode-control[data-active="true"] .prompt-mode-btn:hover {
+  background: var(--composer-accent-soft);
+}
+.prompt-mode-list { width: 300px; max-width: calc(100vw - 24px); }
+@media (hover: none) { .prompt-mode-action { opacity: 1; } }
+.prompt-mode-row { display: flex; align-items: center; gap: 2px; border-radius: 7px; }
+.prompt-mode-row:hover, .prompt-mode-row:focus-within { background: #f3f2f9; }
+.prompt-mode-option {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  grid-template-areas: "check name" "check hint";
+  column-gap: 8px;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #3f4658;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.prompt-mode-option::before { content: ''; grid-area: check; }
+.prompt-mode-option[aria-checked="true"]::before { content: '✓'; color: var(--composer-accent-ink, #574681); font-weight: 600; }
+.prompt-mode-option-name { grid-area: name; font-weight: 500; }
+.prompt-mode-option-hint {
+  grid-area: hint;
+  overflow: hidden;
+  color: #8a90a0;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.prompt-mode-action, .prompt-mode-new {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #8a90a0;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.prompt-mode-action { width: 24px; height: 24px; flex: none; opacity: 0; }
+.prompt-mode-action .material-symbols-outlined { font-size: 15px; }
+.prompt-mode-row:hover .prompt-mode-action, .prompt-mode-row:focus-within .prompt-mode-action { opacity: 1; }
+.prompt-mode-action:hover, .prompt-mode-action:focus-visible { color: #574681; background: #e8e5f3; }
+.prompt-mode-delete:hover, .prompt-mode-delete:focus-visible { color: #c0392b; }
+.prompt-mode-new { gap: 4px; justify-content: flex-start; margin-top: 3px; padding: 6px 8px; border-top: 1px solid #eceef4; border-radius: 0 0 7px 7px; }
+.prompt-mode-new .material-symbols-outlined { font-size: 15px; }
+.prompt-mode-new:hover, .prompt-mode-new:focus-visible { color: #574681; background: #f3f2f9; }
+.prompt-mode-option:focus-visible, .prompt-mode-action:focus-visible, .prompt-mode-new:focus-visible { outline: 2px solid #8a79b5; outline-offset: -2px; }
+/* The trigger carries the chosen level. Requested but not yet confirmed on
+   every AI (or switching): outlined, matching the "x/y switched · mixed"
+   status; confirmed: solid. Each level keeps a distinct resting appearance
+   after the short switch effect: teal streak, blue halo, violet starlight. */
+#input-bar .composer-shell[data-tier]:not([data-tier="default"]) .tier-menu-btn {
+  position: relative;
+  color: var(--tier-ink);
+  background: color-mix(in srgb, var(--tier-color) 9%, #fff);
+  box-shadow: inset 0 0 0 1px var(--tier-color), 0 0 9px var(--tier-glow);
+}
+#input-bar .composer-shell[data-tier-state="confirmed"]:not([data-tier="default"]) .tier-menu-btn {
+  color: #fff;
+  background: var(--tier-color);
+  box-shadow: 0 1px 5px var(--tier-glow);
+}
+#input-bar .composer-shell[data-tier="deep"][data-tier-state="confirmed"] .tier-menu-btn {
+  background: radial-gradient(circle at 18% 28%, #fff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 78% 72%, #f4d3ff 0 1px, transparent 1.5px),
+    linear-gradient(110deg, #6945ce, #a756e3);
+}
+.composer-shell[data-tier-state="switching"] .tier-menu-btn::after {
+  content: '';
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--tier-color);
+}
+[data-theme="dark"] .composer-shell[data-tier="fast"] { --tier-ink: #89e4e0; }
+[data-theme="dark"] .composer-shell[data-tier="balanced"] { --tier-ink: #accbff; }
+[data-theme="dark"] .composer-shell[data-tier="deep"] { --tier-ink: #dfbaff; }
+[data-theme="dark"] #input-bar .composer-shell[data-tier-state]:not([data-tier-state="confirmed"]):not([data-tier="default"]) .tier-menu-btn {
+  color: var(--tier-ink);
+  background: color-mix(in srgb, var(--tier-color) 18%, #26262b);
+}
+#input-bar .composer-status {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A draft taller than one line overhangs the panels instead of shrinking them;
+   --composer-overflow is the extra textarea height (see resizeTextarea). */
+#input-bar .composer-shell { margin-top: calc(-1 * var(--composer-overflow, 0px)); }
+#input-bar.composer-expanded .composer-shell { box-shadow: 0 -8px 24px rgba(30, 42, 70, .12); }
+[data-theme="dark"] #input-bar.composer-expanded .composer-shell { box-shadow: 0 -8px 24px #0006; }
+[data-theme="dark"] .composer-shell { --composer-edge: #41414e; background: #26262b; box-shadow: 0 3px 16px #0001; }
+[data-theme="dark"] .composer-shell:focus-within { --composer-edge: #6e6588; }
+[data-theme="dark"] .composer-control, [data-theme="dark"] .tier-option { color: #b4b2c2; }
+[data-theme="dark"] .tier-menu-list { background: #26262b; border-color: #41414e; box-shadow: 0 8px 28px #0008; }
+[data-theme="dark"] .tier-option:hover, [data-theme="dark"] .tier-option:focus-visible { background: #393344; color: #d2c5f4; }
+[data-theme="dark"] .tier-option[data-requested="true"]::before { color: #d2c5f4; }
+[data-theme="dark"] .tier-option-hint { color: #8d8a9c; }
+[data-theme="dark"] .tier-option-key { color: #b4b2c2; background: #1e1e24; border-color: #43414e; }
+[data-theme="dark"] .composer-control:hover, [data-theme="dark"] .composer-control[aria-pressed="true"] { color: #d2c5f4; background: #393344; }
+[data-theme="dark"] #input-bar .tier-details-btn { color: var(--composer-muted); }
+[data-theme="dark"] #input-bar .tier-details-btn:hover { color: var(--composer-accent-ink); background: var(--composer-accent-soft); }
+[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] { color: var(--composer-accent-ink); }
+[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] .prompt-mode-btn { color: var(--composer-accent-ink); background: transparent; }
+[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] .prompt-mode-btn:hover { background: var(--composer-accent-soft); }
+[data-theme="dark"] .prompt-mode-option { color: #b4b2c2; }
+[data-theme="dark"] .prompt-mode-row:hover, [data-theme="dark"] .prompt-mode-row:focus-within, [data-theme="dark"] .prompt-mode-new:hover { background: #393344; }
+[data-theme="dark"] .prompt-mode-option[aria-checked="true"]::before, [data-theme="dark"] .prompt-mode-option:hover { color: #d2c5f4; }
+[data-theme="dark"] .prompt-mode-option-hint, [data-theme="dark"] .prompt-mode-action, [data-theme="dark"] .prompt-mode-new { color: #8d8a9c; }
+[data-theme="dark"] .prompt-mode-action:hover { color: #d2c5f4; background: #45405a; }
+[data-theme="dark"] .prompt-mode-new { border-top-color: #41414e; }
+[data-theme="dark"] .composer-divider { background: #42414d; }
+[data-theme="dark"] .composer-help, [data-theme="dark"] .composer-status, [data-theme="dark"] .composer-result-row { color: #aaa6b8; }
+[data-theme="dark"] .composer-result-row { background: #26262b; box-shadow: 0 3px 12px #0005; }
+[data-theme="dark"] .composer-result-close:hover { background: #ffffff14; }
+[data-theme="dark"] .composer-table td, [data-theme="dark"] .composer-table th, [data-theme="dark"] .composer-shortcut-field input { border-color: #43414e; }
+@media (max-width: 760px) {
+  #input-bar { padding: 6px; }
+  #input-bar .composer-controls { gap: 4px; }
+  #input-bar .composer-controls-left { flex: 1 1 100%; }
+  #input-bar .composer-controls-right { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+  .composer-shortcut-field input { width: 155px; }
+}
+/* Phone width: actions and secondary controls become icon-only; their
+   titles and aria-labels (see updateTooltips) still name them. */
+@media (max-width: 520px) {
+  #input-bar .fill-btn .btn-text, #input-bar .send-btn .btn-text { display: none; }
+  #input-bar .fill-btn, #input-bar .send-btn { padding: 0 10px; }
+  #composer-new-chat-btn > span:not(.material-symbols-outlined),
+  #provider-sort-label,
+  #input-bar .composer-status { display: none; }
+  #tier-menu-label { display: none; }
+  #input-bar .composer-controls-left { gap: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-title-plus { animation: none; }
+  .composer-shell, .composer-control, .tier-option, #input-bar .tier-menu-btn, .shortcut-bubble { transition: none; }
+  .composer-shell.composer-pulse::before { animation: none; }
+  .composer-shell.composer-pulse:not([data-tier="default"])::after { animation: none; }
+}
+

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
-import { launchExtension } from './extension-harness.js';
+import { launchExtension } from './support/extension-harness.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ICONS = JSON.parse(await readFile(path.join(ROOT, 'fonts/material-symbols-outlined-icons.json'), 'utf8')).icons;

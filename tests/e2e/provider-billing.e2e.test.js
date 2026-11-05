@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension } from './extension-harness.js';
+import { launchExtension } from './support/extension-harness.js';
 
 test('billing markers keep account preferences across reloads and sync without enabling providers', async ({}, testInfo) => {
   test.setTimeout(60000);
@@ -62,7 +62,7 @@ test('billing markers keep account preferences across reloads and sync without e
     // Export/import must retain the marker preference, including an explicit
     // unmarked override of Claude's default.
     const imported = await page.evaluate(async () => {
-      const { exportSettings, importSettings } = await import('/modules/settings.js');
+      const { exportSettings, importSettings } = await import('/modules/platform/settings.js');
       const exported = await exportSettings();
       const result = await importSettings({
         providerBillingTypes: { ...exported.providerBillingTypes, claude: 'unmarked' }

@@ -4,10 +4,10 @@ import http from 'node:http';
 import {
   launchExtension,
   openMultiPanel,
-} from './extension-harness.js';
-import { PROVIDERS } from '../../modules/providers.js';
-import { MAX_PANELS } from '../../modules/layout-auto-adjust.js';
-import { createPanelCapacityExtensionCopy, syntheticProviderIds } from './panel-capacity-fixture.js';
+} from './support/extension-harness.js';
+import { PROVIDERS } from '../../modules/providers/providers.js';
+import { MAX_PANELS } from '../../modules/panels/layout-auto-adjust.js';
+import { createPanelCapacityExtensionCopy, syntheticProviderIds } from './support/panel-capacity-fixture.js';
 
 const WEBSOCKET_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const GROK_WEBSOCKET_COOKIE_RULE_ID = 2001;

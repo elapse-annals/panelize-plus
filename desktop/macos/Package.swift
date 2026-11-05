@@ -21,6 +21,10 @@ let package = Package(
         .testTarget(
             name: "PanelizeSearchCoreTests",
             dependencies: ["PanelizeSearchCore"]
+        ),
+        .testTarget(
+            name: "PanelizeSearchAppTests",
+            dependencies: ["PanelizeSearchApp", "PanelizeSearchCore"]
         )
     ]
 )

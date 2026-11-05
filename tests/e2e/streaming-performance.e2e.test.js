@@ -3,10 +3,10 @@ import {
   createPatchedExtensionCopy,
   launchExtension,
   openMultiPanel
-} from './extension-harness.js';
+} from './support/extension-harness.js';
 import { renderChatgptFixture } from './fixtures/chatgpt-fixture.js';
-import { OPTIONAL_PROVIDER_CONFIGS } from '../../modules/optional-provider-access.js';
-import { PROVIDERS } from '../../modules/providers.js';
+import { OPTIONAL_PROVIDER_CONFIGS } from '../../modules/providers/optional-provider-access.js';
+import { PROVIDERS } from '../../modules/providers/providers.js';
 
 const STREAM_PROVIDER_IDS = PROVIDERS.slice(0, 12).map(provider => provider.id);
 const TIMED_PROVIDER_IDS = ['chatgpt', 'gemini', 'deepseek'];

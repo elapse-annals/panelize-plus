@@ -1,0 +1,517 @@
+/* ===== Input Bar ===== */
+/* The composer owns its border so images, tools and reasoning levels read as
+   one control. Motion is a single short sweep on deliberate interaction. */
+.composer-shell {
+  --composer-edge: #d9deeb;
+  --tier-color: #8b91a2;
+  --tier-highlight: #cbd2df;
+  --tier-ink: #555f73;
+  --tier-glow: #8b91a226;
+  --tier-duration: .65s;
+  position: relative;
+  max-width: 960px;
+  margin: 0 auto;
+  border: 1px solid var(--composer-edge);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 3px 16px rgba(30, 42, 70, .04);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.composer-shell:focus-within {
+  --composer-edge: #a9a4da;
+  box-shadow: 0 0 0 3px rgba(120, 104, 185, .055);
+}
+.composer-shell::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(110deg, var(--tier-color), var(--tier-highlight), var(--tier-color));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+}
+.composer-shell.composer-pulse::before { animation: composer-edge-sweep var(--tier-duration) ease-out 1; }
+@keyframes composer-edge-sweep {
+  0%, 100% { opacity: 0; }
+  20% { opacity: 1; }
+  75% { opacity: .6; }
+}
+.composer-shell[data-tier="fast"] {
+  --tier-color: #087f8c;
+  --tier-highlight: #7ee6e4;
+  --tier-ink: #066975;
+  --tier-glow: #16b9c02b;
+  --tier-duration: .4s;
+}
+.composer-shell[data-tier="balanced"] {
+  --tier-color: #346acb;
+  --tier-highlight: #a3c9ff;
+  --tier-ink: #2856a3;
+  --tier-glow: #4d8aee2b;
+  --tier-duration: .65s;
+}
+.composer-shell[data-tier="deep"] {
+  --tier-color: #854ee0;
+  --tier-highlight: #e3b6ff;
+  --tier-ink: #7541bb;
+  --tier-glow: #ac73ef38;
+  --tier-duration: .85s;
+}
+.composer-shell[data-tier]:not([data-tier="default"]) {
+  border-color: color-mix(in srgb, var(--tier-color) 40%, var(--composer-edge));
+  box-shadow: 0 2px 14px var(--tier-glow);
+}
+/* A brief light trail stays inside the composer; it never repaints the AI
+   panels or runs continuously while the horizontal grid is scrolling. */
+.composer-shell::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 5%;
+  width: 30%;
+  height: 2px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, var(--tier-highlight), var(--tier-color), transparent);
+  box-shadow: 0 0 9px var(--tier-glow);
+  pointer-events: none;
+  opacity: 0;
+}
+.composer-shell.composer-pulse:not([data-tier="default"])::after {
+  animation: composer-light-trail var(--tier-duration) ease-out 1;
+}
+@keyframes composer-light-trail {
+  0% { opacity: 0; transform: translateX(0) scaleX(.5); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(200%) scaleX(1); }
+}
+.composer-controls, .composer-controls-left, .composer-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.composer-controls { justify-content: space-between; padding: 0 8px 3px; flex-wrap: wrap; gap: 6px; }
+.composer-controls-left { flex-wrap: wrap; }
+.composer-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  color: #647087;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.composer-control .material-symbols-outlined { font-size: 15px; }
+.composer-control:hover { color: #48447a; background: #f0eff8; }
+.composer-control[aria-pressed="true"] { color: #635799; background: #f1eef9; }
+.composer-control:disabled, .tier-option:disabled { opacity: .55; cursor: progress; }
+.composer-control:focus-visible, .tier-option:focus-visible, .composer-link:focus-visible {
+  outline: 2px solid #8a79b5;
+  outline-offset: 2px;
+}
+.composer-divider { width: 1px; height: 14px; background: #e4e6ee; }
+/* New Chat lives in the toolbar; the composer copy stays for its shortcut wiring. */
+#composer-new-chat-btn { display: none; }
+.tier-menu { position: relative; display: inline-flex; }
+/* Levels open above the trigger: the composer sits at the bottom of the page. */
+.tier-menu-list {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  z-index: 30;
+  min-width: 250px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid #e1e3ec;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(30, 42, 70, .16);
+}
+.tier-menu-list[hidden] { display: none; }
+.tier-option {
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  grid-template-areas: "check name key" "check hint hint";
+  column-gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #3f4658;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.tier-option::before { content: ''; grid-area: check; }
+.tier-option[data-requested="true"]::before { content: '✓'; color: var(--composer-accent-ink, #574681); font-weight: 600; }
+.tier-option[data-requested="true"][aria-checked="false"]::before { opacity: .5; }
+.tier-option:hover, .tier-option:focus-visible { background: #f3f2f9; color: #574681; }
+.tier-option-name { grid-area: name; font-weight: 500; }
+.tier-option-hint { grid-area: hint; color: #8a90a0; font-size: 11px; line-height: 1.35; }
+.tier-option-key, .shortcut-bubble kbd {
+  font-family: inherit;
+  font-size: 11px;
+  color: #6d7485;
+  padding: 0 5px;
+  border: 1px solid #dfe2ea;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: #fafbfd;
+}
+.tier-option-key { grid-area: key; }
+.tier-option-key:empty { display: none; }
+.tier-menu-btn .tier-menu-caret { font-size: 14px; margin-left: -2px; }
+/* Mouse clicks on a button show its keyboard shortcut once, briefly. */
+.shortcut-bubble {
+  position: fixed;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #2d2a3e;
+  color: #f1eefc;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(20, 18, 40, .25);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .15s ease, transform .15s ease;
+}
+.shortcut-bubble[data-visible="true"] { opacity: 1; transform: none; }
+.shortcut-bubble kbd { color: #fff; background: #47425e; border-color: #5d5778; }
+.shortcut-hinted { outline: 2px solid #9d8fd6 !important; outline-offset: 2px; border-radius: 6px; }
+.composer-status, .composer-result-row { font-size: 12px; color: #6d7485; }
+/* Floats above the composer so a status never takes height from the input. */
+.composer-result-row {
+  position: absolute;
+  left: 14px;
+  bottom: calc(100% + 6px);
+  z-index: 6;
+  max-width: calc(100% - 28px);
+  padding: 3px 4px 3px 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--composer-edge);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(30, 42, 70, .1);
+}
+.composer-result-row[hidden] { display: none; }
+.composer-result-row > #new-chat-status,
+.composer-result-row > #ai-ready-status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Both rows can show at once, e.g. when a new temporary chat reloads panels. */
+#new-chat-status-row:not([hidden]) + #ai-ready-status-row { bottom: calc(100% + 40px); }
+.composer-result-close { display: inline-flex; flex: none; padding: 2px; border: none; border-radius: 50%; color: inherit; background: transparent; cursor: pointer; }
+.composer-result-close .material-symbols-outlined { font-size: 16px; }
+.composer-result-close:hover { background: #0000000d; }
+.composer-link { border: none; color: #71609a; font: inherit; background: transparent; cursor: pointer; text-decoration: underline; }
+.composer-dialog { width: min(620px, calc(100vw - 32px)); }
+.composer-help { color: #767d8d; font-size: 12px; line-height: 1.65; margin-bottom: 14px; }
+.composer-table-scroll { overflow-x: auto; }
+.composer-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.composer-table th, .composer-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e9eaf0; }
+.composer-table th { font-size: 12px; color: #7b7e8e; font-weight: 500; }
+.composer-shortcut-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px; }
+.composer-shortcut-fields { display: grid; gap: 8px; }
+.composer-shortcut-field { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 13px; }
+.composer-shortcut-field input { min-width: 0; width: 180px; padding: 8px 10px; background: transparent; color: inherit; border: 1px solid #dddde7; border-radius: 7px; font: inherit; }
+.composer-shortcut-group { display: grid; gap: 6px; font-size: 13px; }
+.composer-shortcut-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 12px; }
+.composer-shortcut-field-compact { gap: 6px; }
+.composer-shortcut-field-compact input { width: 100%; padding: 6px 8px; }
+.composer-error { font-size: 12px; color: #c74242; min-height: 18px; margin-top: 12px; }
+#input-bar {
+  position: relative;
+  background: #fff;
+  border-top: 1px solid #e0e0e0;
+  padding: 6px 12px;
+  flex-shrink: 0;
+  /* Above the panels so a multi-line draft can grow upward over them. */
+  z-index: 5;
+}
+
+.input-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 6px 8px 4px;
+}
+
+.input-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.input-btn:hover {
+  border-color: #1976d2;
+  color: #1976d2;
+  background: #e3f2fd;
+}
+
+.input-wrapper {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-wrapper.drag-over {
+  background: #e3f2fd;
+  border-radius: 8px;
+}
+
+/* Image Preview Container */
+.image-preview-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.image-preview-container:empty {
+  display: none;
+}
+
+.image-preview-item {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  background: #f5f5f5;
+  flex-shrink: 0;
+}
+
+.image-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-preview-item .remove-image {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 0;
+  font-size: 16px;
+}
+
+.image-preview-item.file-preview {
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+  box-sizing: border-box;
+  color: #555;
+}
+
+.image-preview-item .file-preview-icon {
+  font-size: 24px;
+}
+
+.image-preview-item .file-preview-name {
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-preview-item:hover .remove-image {
+  opacity: 1;
+}
+
+.image-preview-item .remove-image:hover {
+  background: rgba(244, 67, 54, 0.9);
+}
+
+#unified-input {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: none;
+  min-height: 32px;
+  max-height: 150px;
+  overflow-y: auto;
+  transition: border-color 0.2s;
+}
+
+#unified-input:focus {
+  outline: none;
+  border-color: #1976d2;
+}
+
+.input-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.send-status {
+  font-size: 12px;
+  color: #666;
+}
+
+.send-status.success {
+  color: #4caf50;
+}
+
+.send-status.partial {
+  color: #ff9800;
+}
+
+.send-status.error {
+  color: #f44336;
+}
+
+.send-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  background: #1976d2;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.send-btn:hover {
+  background: #1565c0;
+}
+
+.send-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.send-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+/* Fill Button - fills input boxes without sending */
+.fill-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #f5f5f5;
+  color: #333;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.fill-btn:hover {
+  background: #e0e0e0;
+  border-color: #ccc;
+}
+
+.fill-btn:disabled {
+  background: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.fill-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+/* Clear Button - clears all input boxes */
+.clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #f5f5f5;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-btn:hover {
+  background: #ffebee;
+  border-color: #ef9a9a;
+  color: #d32f2f;
+}
+
+.clear-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.input-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+

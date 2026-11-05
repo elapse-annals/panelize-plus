@@ -1,0 +1,100 @@
+/* T071: Library Import Cards */
+.library-import-card {
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: all 0.2s;
+  background: #f9f9f9;
+}
+
+.library-import-card:hover {
+  border-color: #1a73e8;
+  box-shadow: 0 4px 8px rgba(26, 115, 232, 0.1);
+  background: white;
+}
+
+.library-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.library-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: #333;
+}
+
+.library-count {
+  font-size: 12px;
+  color: #666;
+  background: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+}
+
+.library-description {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.library-helper {
+  font-size: 12px;
+  color: #888;
+  margin: 12px 0;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.library-import-card button {
+  width: 100%;
+}
+
+.library-import-card .btn-primary {
+  background: #1a73e8;
+  font-weight: 600;
+}
+
+.library-import-card .btn-secondary:disabled {
+  background: #4caf50;
+  color: white;
+  cursor: default;
+}
+
+@media (prefers-color-scheme: dark),
+[data-theme="dark"] {
+  .library-import-card {
+    background: #3a3a3a;
+    border-color: #444;
+  }
+
+  .library-import-card:hover {
+    border-color: #1a73e8;
+    background: #2d2d2d;
+  }
+
+  .library-header h3 {
+    color: #e0e0e0;
+  }
+
+  .library-count {
+    background: #2d2d2d;
+    border-color: #555;
+    color: #aaa;
+  }
+
+  .library-description {
+    color: #aaa;
+  }
+
+  .library-helper {
+    color: #999;
+  }
+}
+

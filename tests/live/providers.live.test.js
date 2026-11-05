@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
-import { launchExtension } from '../e2e/extension-harness.js';
+import { launchExtension } from '../e2e/support/extension-harness.js';
 import {
   LIVE_HEADLESS,
   LIVE_IGNORED_DEFAULT_ARGS,
@@ -11,7 +11,7 @@ import {
   prepareLiveExtension,
   readChatgptEditorSelectors,
   readContentScriptSelectorTable,
-} from './live-harness.js';
+} from './support/live-harness.js';
 
 const SEND_BUTTON_SELECTORS = readContentScriptSelectorTable('SEND_BUTTON_SELECTORS');
 const NEW_CHAT_BUTTON_SELECTORS = readContentScriptSelectorTable('NEW_CHAT_BUTTON_SELECTORS');

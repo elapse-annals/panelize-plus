@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension, openMultiPanel } from './extension-harness.js';
+import { launchExtension, openMultiPanel } from './support/extension-harness.js';
 import { renderProviderTierFixture } from './fixtures/provider-tier-fixture.js';
-import { PANEL_COLUMN_WEIGHTS_KEY } from '../../modules/panel-resize.js';
-import { getProviderById } from '../../modules/providers.js';
+import { PANEL_COLUMN_WEIGHTS_KEY } from '../../modules/panels/panel-resize.js';
+import { getProviderById } from '../../modules/providers/providers.js';
 
 function renderBlindFixture(provider) {
   return renderProviderTierFixture(provider)

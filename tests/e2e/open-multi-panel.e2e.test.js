@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { launchExtension } from './extension-harness.js';
+import { launchExtension } from './support/extension-harness.js';
 
 test('the service worker reuses and activates the existing Multi-Panel tab', async () => {
   const extension = await launchExtension();
@@ -25,7 +25,7 @@ test('the service worker reuses and activates the existing Multi-Panel tab', asy
 
     const openFromExtensionPage = () => launcherPage.evaluate(async () => {
       const { openMultiPanelPage } = await import(
-        chrome.runtime.getURL('modules/open-multi-panel.js')
+        chrome.runtime.getURL('modules/platform/open-multi-panel.js')
       );
       await openMultiPanelPage(chrome, 'tab');
     });

@@ -1,0 +1,113 @@
+/* About Section */
+.about-info {
+  text-align: center;
+  padding: 24px;
+}
+
+.about-info img {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 16px;
+}
+
+.version-display {
+  margin-bottom: 16px;
+}
+
+.version {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.commit-hash {
+  font-size: 11px;
+  color: #999;
+  font-family: monospace;
+}
+
+.version-actions {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.version-download {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.version-download a {
+  color: #1a73e8;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.version-download a:hover {
+  text-decoration: underline;
+}
+
+.about-credits {
+  font-size: 12px;
+  color: #999;
+  margin-top: 8px;
+}
+
+.about-credits-sep {
+  margin: 0 4px;
+}
+
+.about-credits a {
+  color: #1a73e8;
+  text-decoration: none;
+}
+
+.about-credits a:hover {
+  text-decoration: underline;
+}
+
+.update-status {
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.update-status.update-available {
+  background: #e3f2fd;
+  border: 1px solid #90caf9;
+  color: #1565c0;
+}
+
+.update-status.update-current {
+  background: #e8f5e9;
+  border: 1px solid #81c784;
+  color: #2e7d32;
+}
+
+.update-status.update-error {
+  background: #ffebee;
+  border: 1px solid #ef9a9a;
+  color: #c62828;
+}
+
+.about-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.about-links a {
+  color: #1a73e8;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.about-links a:hover {
+  text-decoration: underline;
+}
+

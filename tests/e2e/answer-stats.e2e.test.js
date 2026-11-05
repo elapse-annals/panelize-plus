@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { launchExtension, openMultiPanel } from './extension-harness.js';
+import { launchExtension, openMultiPanel } from './support/extension-harness.js';
 import { renderChatgptFixture } from './fixtures/chatgpt-fixture.js';
 
 const DEEPSEEK_FIXTURE = `<!doctype html>
@@ -180,7 +180,7 @@ test('task category filters, best models and exports include legacy and newly se
     await extension.serviceWorker.evaluate(() => chrome.storage.sync.set({ language: 'en', selectedPromptMode: 'auto' }));
     const page = await openMultiPanel(extension, { providers: ['chatgpt', 'deepseek'], layout: '1x2' });
     await page.evaluate(async () => {
-      const { createRound, applyTimingEvent, toggleRoundAdoption, saveAnswerRound } = await import('../modules/answer-stats.js');
+      const { createRound, applyTimingEvent, toggleRoundAdoption, saveAnswerRound } = await import('../modules/answers/answer-stats.js');
       const now = Date.now();
       for (let i = 0; i < 5; i++) {
         const coding = i < 3;
@@ -242,7 +242,7 @@ test('task category filters, best models and exports include legacy and newly se
     expect(exported.rounds.every(round => ['coding', 'translation'].includes(round.category))).toBe(true);
     expect(exported.rounds.find(round => round.id === 'seed-0').category).toBe('coding');
     const legacyUnchanged = await page.evaluate(async () => {
-      const { getAllAnswerRounds } = await import('../modules/answer-stats.js');
+      const { getAllAnswerRounds } = await import('../modules/answers/answer-stats.js');
       return !(await getAllAnswerRounds()).find(round => round.id === 'seed-0').category;
     });
     expect(legacyUnchanged).toBe(true);

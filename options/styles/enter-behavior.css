@@ -1,0 +1,57 @@
+/* Enter Key Behavior Settings */
+#enter-behavior-settings {
+  margin-top: 12px;
+  padding-left: 0;
+}
+
+.key-mapping-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #f9f9f9;
+}
+
+.key-mapping-card h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 12px 0;
+}
+
+.key-mapping-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.key-mapping-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+}
+
+.key-mapping-controls input[type="checkbox"] {
+  cursor: pointer;
+}
+
+@media (prefers-color-scheme: dark),
+[data-theme="dark"] {
+  .key-mapping-card {
+    background: #2d2d2d;
+    border-color: #444;
+  }
+
+  .key-mapping-card h3 {
+    color: #e0e0e0;
+  }
+
+  .key-mapping-controls label {
+    color: #aaa;
+  }
+}
+

@@ -10,14 +10,14 @@ import {
   MIMO_FIRST_PARTY_PARTITION_KEY,
   MIMO_STUDIO_COOKIE_DOMAIN,
   MIMO_STUDIO_COOKIE_URL,
-} from '../../modules/mimo-session-cookies.js';
-import { OPTIONAL_PROVIDER_CONFIGS } from '../../modules/optional-provider-access.js';
+} from '../../modules/providers/mimo-session-cookies.js';
+import { OPTIONAL_PROVIDER_CONFIGS } from '../../modules/providers/optional-provider-access.js';
 import {
   createPatchedExtensionCopy,
   launchExtension,
   openMultiPanel,
   startFixtureServer,
-} from './extension-harness.js';
+} from './support/extension-harness.js';
 
 const STUDIO_HOST = 'aistudio.xiaomimimo.com';
 const ACCOUNT_HOST = 'account.xiaomi.com';
@@ -532,15 +532,16 @@ test('logs MiMo in from the Multi-Panel page when the service worker runs outdat
     // Chrome keeps running an unpacked extension's cached service worker until
     // the extension is reloaded. Stand in for one that never mirrors the MiMo
     // session or registers optional provider access.
-    const workerPath = path.join(extensionCopy.extensionPath, 'background/service-worker.js');
-    const worker = await readFile(workerPath, 'utf8');
-    const outdatedWorker = worker
+    // Session reconciliation now lives in the worker's provider-session module.
+    const sessionsPath = path.join(extensionCopy.extensionPath, 'background/controllers/provider-sessions.js');
+    const sessions = await readFile(sessionsPath, 'utf8');
+    const outdatedSessions = sessions
       .replace('const result = await reconcileMimoSessionCookies();', 'const result = { success: true };')
       .replace('.then(() => reconcileOptionalProviderAccess())', '.then(() => {})');
-    expect(outdatedWorker).not.toBe(worker);
-    expect(outdatedWorker).not.toContain('await reconcileMimoSessionCookies()');
-    expect(outdatedWorker).not.toContain('reconcileOptionalProviderAccess())');
-    await writeFile(workerPath, outdatedWorker);
+    expect(outdatedSessions).not.toBe(sessions);
+    expect(outdatedSessions).not.toContain('await reconcileMimoSessionCookies()');
+    expect(outdatedSessions).not.toContain('reconcileOptionalProviderAccess())');
+    await writeFile(sessionsPath, outdatedSessions);
 
     extension = await launchExtension({
       extensionPath: extensionCopy.extensionPath,

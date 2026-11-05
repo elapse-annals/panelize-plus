@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension } from './extension-harness.js';
+import { launchExtension } from './support/extension-harness.js';
 
 test.describe('Layout options E2E', () => {
   test.setTimeout(60000);

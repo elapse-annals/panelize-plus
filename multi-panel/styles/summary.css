@@ -1,0 +1,689 @@
+/* AI summary drawer: inside #main-content, so it sits between the toolbar
+   and the composer and never covers either. */
+.ai-summary-drawer {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  bottom: 8px;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  border-radius: 16px 0 0 16px;
+  overflow: hidden;
+  /* Translucent so the panels stay readable behind it; solid while hovered or
+     focused. A click widens it (see .ai-summary-expanded). */
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  backdrop-filter: blur(10px) saturate(1.2);
+  box-shadow: -12px 0 40px rgba(15, 23, 42, 0.18), -1px 0 0 rgba(15, 23, 42, 0.06);
+  transition: width 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s;
+}
+
+.ai-summary-drawer:hover,
+.ai-summary-drawer:focus-within {
+  background: #fff;
+}
+
+/* Expanded so long summaries are easy to read. */
+.ai-summary-drawer.ai-summary-expanded {
+  width: min(1080px, 96%);
+}
+
+/* Clicking the header or body toggles the width; the cursor hints which way. */
+.ai-summary-drawer .modal-header,
+.ai-summary-body {
+  cursor: zoom-in;
+}
+
+.ai-summary-drawer.ai-summary-expanded .modal-header,
+.ai-summary-drawer.ai-summary-expanded .ai-summary-body {
+  cursor: zoom-out;
+}
+
+.ai-summary-drawer button {
+  cursor: pointer;
+}
+
+.ai-summary-drawer button:disabled {
+  cursor: default;
+}
+
+/* Closing: keep the width it had while it shrinks into the button. */
+.ai-summary-drawer.ai-summary-closing {
+  pointer-events: none;
+  transition: none;
+}
+
+.ai-summary-drawer[hidden] {
+  display: none;
+}
+
+.ai-summary-drawer .modal-header {
+  gap: 8px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(25, 118, 210, 0.08), rgba(124, 77, 255, 0.06));
+}
+
+.ai-summary-drawer .modal-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 15px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ai-summary-drawer .modal-header h3 .material-symbols-outlined {
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+#ai-summary-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-summary-drawer .modal-header-actions {
+  flex-shrink: 0;
+}
+
+/* Picks the profile used by the next summary; the current result stays. */
+.ai-summary-profile-select {
+  min-width: 0;
+  max-width: 220px;
+  height: 30px;
+  padding: 4px 8px;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  background-color: #fff;
+  color: #2b2f36;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ai-summary-profile-select:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+[data-theme="dark"] .ai-summary-profile-select {
+  border-color: #555;
+  background-color: #2d2d2d;
+  color: #e0e0e0;
+}
+
+.ai-summary-body {
+  font-size: 15px;
+  line-height: 1.75;
+  color: #2b2f36;
+}
+
+.ai-summary-status:empty {
+  display: none;
+}
+
+.ai-summary-status {
+  margin: 0 0 12px;
+  color: #666;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-summary-status.error {
+  color: #d32f2f;
+}
+
+.ai-summary-reveal,
+.ai-summary-article-paragraph,
+.ai-summary-unique-group,
+.ai-summary-disagreement {
+  animation: ai-summary-reveal 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--ai-summary-index, 0) * 50ms + 120ms);
+}
+
+@keyframes ai-summary-reveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.ai-summary-verdict[hidden],
+.ai-summary-overview[hidden],
+.ai-summary-section[hidden] {
+  display: none;
+}
+
+.ai-summary-verdict {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  border-left: 4px solid #1976d2;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e3f2fd, #ede7f6);
+}
+
+.ai-summary-verdict-icon {
+  color: #1976d2;
+  font-size: 22px;
+}
+
+.ai-summary-verdict-content {
+  min-width: 0;
+}
+
+.ai-summary-verdict-label {
+  display: block;
+  color: #1565c0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ai-summary-verdict-text {
+  margin: 2px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: #0d2a4a;
+}
+
+.ai-summary-overview {
+  margin: 0 0 20px;
+  overflow-wrap: anywhere;
+}
+
+.ai-summary-overview > :first-child {
+  margin-top: 0;
+}
+
+.ai-summary-overview > :last-child {
+  margin-bottom: 0;
+}
+
+.ai-summary-overview-paragraph {
+  margin: 4px 0 8px;
+  line-height: 1.6;
+}
+
+.ai-summary-overview-heading {
+  margin: 14px 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ai-summary-overview-list {
+  margin: 4px 0 10px;
+  padding-left: 22px;
+}
+
+.ai-summary-overview-list > li {
+  margin: 3px 0;
+}
+
+.ai-summary-overview-code {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+  overflow-wrap: normal;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.ai-summary-overview code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+}
+
+.ai-summary-overview pre code {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: inherit;
+}
+
+.ai-summary-section {
+  margin: 0 0 28px;
+}
+
+.ai-summary-subtitle {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0 0 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ai-summary-subtitle .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.ai-summary-subtitle-consensus {
+  color: #2e7d32;
+}
+
+.ai-summary-subtitle-unique {
+  color: #6a1b9a;
+}
+
+.ai-summary-subtitle-disagreements {
+  color: #e65100;
+}
+
+.ai-summary-item-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ai-summary-article-heading {
+  margin: 14px 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ai-summary-article-heading:first-child {
+  margin-top: 6px;
+}
+
+.ai-summary-article-paragraph {
+  margin: 4px 0 8px;
+  line-height: 1.6;
+}
+
+.ai-summary-unique-group {
+  margin-top: 16px;
+}
+
+.ai-summary-unique-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0 0 6px;
+}
+
+.ai-summary-unique-list {
+  margin: 0;
+  padding-left: 20px;
+  list-style: disc;
+}
+
+.ai-summary-unique-list > li {
+  margin: 6px 0;
+}
+
+.ai-summary-item-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-top: 6px;
+}
+
+.ai-summary-item-sources:empty {
+  display: none;
+}
+
+.ai-summary-article-paragraph .ai-summary-item-sources:not(:empty) {
+  display: inline;
+  margin: 0 0 0 6px;
+}
+
+.ai-summary-article-paragraph .ai-summary-source {
+  margin: 2px 4px 0 0;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 16px;
+  vertical-align: baseline;
+}
+
+.ai-summary-disagreement {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-left: 3px solid #ffb74d;
+  border-radius: 0 10px 10px 0;
+  background: rgba(255, 243, 224, 0.45);
+}
+
+.ai-summary-disagreement-topic {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.ai-summary-disagreement-topic:last-child {
+  margin-bottom: 0;
+}
+
+/* Positions of one disagreement side by side, one column per camp (green,
+   red, then blue), each followed by its AIs. */
+.ai-summary-positions {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-summary-position {
+  --ai-summary-camp: #2e7d32;
+  --ai-summary-camp-bg: rgba(46, 125, 50, 0.07);
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--ai-summary-camp) 28%, transparent);
+  border-top: 3px solid var(--ai-summary-camp);
+  border-radius: 8px;
+  background: var(--ai-summary-camp-bg);
+}
+
+.ai-summary-position:nth-child(2) {
+  --ai-summary-camp: #c62828;
+  --ai-summary-camp-bg: rgba(198, 40, 40, 0.06);
+}
+
+.ai-summary-position:nth-child(3) {
+  --ai-summary-camp: #1565c0;
+  --ai-summary-camp-bg: rgba(21, 101, 192, 0.06);
+}
+
+@media (max-width: 520px) {
+  .ai-summary-positions {
+    grid-auto-flow: row;
+  }
+}
+
+.ai-summary-position.ai-summary-strong .ai-summary-item-text {
+  font-weight: 600;
+}
+
+.ai-summary-source {
+  display: inline-block;
+  padding: 0 8px;
+  border: 1px solid rgba(21, 101, 192, 0.22);
+  border-radius: 999px;
+  background: transparent;
+  color: #4a6a8a;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.ai-summary-source:hover {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+/* Backed by at least 80% of the summarized answers. */
+.ai-summary-article-paragraph.ai-summary-strong .ai-summary-source {
+  border-color: rgba(46, 125, 50, 0.3);
+  color: #2e7d32;
+}
+
+.ai-summary-article-paragraph.ai-summary-strong .ai-summary-source:hover {
+  background: rgba(46, 125, 50, 0.08);
+}
+
+/* Every summarized AI backs the point: one badge instead of a chip each. */
+.ai-summary-source-all {
+  border-color: rgba(46, 125, 50, 0.3);
+  color: #2e7d32;
+  cursor: default;
+}
+
+.ai-summary-source-all:hover {
+  border-color: rgba(46, 125, 50, 0.3);
+  background: transparent;
+  color: #2e7d32;
+}
+
+.ai-summary-verdict-text .ai-summary-item-sources {
+  font-weight: 400;
+}
+
+.ai-summary-missing {
+  margin: 16px 0 0;
+  color: #999;
+  font-size: 12px;
+}
+
+#ai-summary-btn[aria-expanded="true"] {
+  color: #1976d2;
+}
+
+/* A finished round: the button rings and pulses until the drawer is opened. */
+#ai-summary-btn.ai-summary-ready {
+  color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.35);
+  animation: ai-summary-remind 1.2s ease-in-out 3;
+}
+
+@keyframes ai-summary-remind {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.55); }
+  50% { box-shadow: 0 0 0 6px rgba(25, 118, 210, 0); }
+}
+
+/* While summarizing, a ring spins around the button. */
+#ai-summary-btn {
+  position: relative;
+}
+
+#ai-summary-btn.ai-summary-busy {
+  color: #1976d2;
+}
+
+#ai-summary-btn.ai-summary-busy::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid rgba(25, 118, 210, 0.15);
+  border-top-color: #1976d2;
+  border-right-color: #1976d2;
+  pointer-events: none;
+  animation: ai-summary-spin 0.9s linear infinite;
+}
+
+@keyframes ai-summary-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* A finished summary: a green ring until the next question. */
+#ai-summary-btn.ai-summary-done {
+  color: #2e7d32;
+}
+
+#ai-summary-btn.ai-summary-done::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid #2e7d32;
+  pointer-events: none;
+}
+
+/* The button bounces as the closing drawer shrinks into it. */
+#ai-summary-btn.ai-summary-absorb {
+  animation: ai-summary-absorb 0.36s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes ai-summary-absorb {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.5); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ai-summary-btn.ai-summary-ready,
+  #ai-summary-btn.ai-summary-absorb,
+  .ai-summary-reveal,
+  .ai-summary-article-paragraph,
+  .ai-summary-unique-group,
+  .ai-summary-disagreement { animation: none; }
+  .ai-summary-drawer { transition: none; }
+  #ai-summary-btn.ai-summary-busy::after { animation-duration: 2.4s; }
+}
+
+
+[data-theme="dark"] .ai-summary-drawer {
+  background: rgba(40, 40, 44, 0.82);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.55), -1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .ai-summary-drawer:hover,
+[data-theme="dark"] .ai-summary-drawer:focus-within {
+  background: #2b2b2f;
+}
+
+[data-theme="dark"] .ai-summary-drawer .modal-header {
+  background: linear-gradient(135deg, rgba(144, 202, 249, 0.1), rgba(179, 157, 219, 0.08));
+}
+
+[data-theme="dark"] #ai-summary-btn.ai-summary-busy {
+  color: #90caf9;
+}
+
+[data-theme="dark"] #ai-summary-btn.ai-summary-busy::after {
+  border-color: rgba(144, 202, 249, 0.18);
+  border-top-color: #90caf9;
+  border-right-color: #90caf9;
+}
+
+[data-theme="dark"] #ai-summary-btn.ai-summary-done {
+  color: #81c784;
+}
+
+[data-theme="dark"] #ai-summary-btn.ai-summary-done::after {
+  border-color: #81c784;
+}
+
+[data-theme="dark"] #ai-summary-btn.ai-summary-ready {
+  color: #90caf9;
+  box-shadow: 0 0 0 3px rgba(144, 202, 249, 0.35);
+}
+
+[data-theme="dark"] .ai-summary-body {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .ai-summary-overview-code {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .ai-summary-overview code {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .ai-summary-overview pre code {
+  background: transparent;
+}
+
+[data-theme="dark"] .ai-summary-status {
+  color: #aaa;
+}
+
+[data-theme="dark"] .ai-summary-status.error {
+  color: #ff8a80;
+}
+
+[data-theme="dark"] .ai-summary-verdict {
+  border-left-color: #64b5f6;
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.18), rgba(126, 87, 194, 0.16));
+}
+
+[data-theme="dark"] .ai-summary-verdict-icon,
+[data-theme="dark"] .ai-summary-verdict-label {
+  color: #90caf9;
+}
+
+[data-theme="dark"] .ai-summary-verdict-text {
+  color: #e3f2fd;
+}
+
+[data-theme="dark"] .ai-summary-subtitle-consensus {
+  color: #81c784;
+}
+
+[data-theme="dark"] .ai-summary-subtitle-disagreements {
+  color: #ffb74d;
+}
+
+[data-theme="dark"] .ai-summary-subtitle {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .ai-summary-subtitle-unique {
+  color: #ce93d8;
+}
+
+[data-theme="dark"] .ai-summary-disagreement {
+  border-left-color: rgba(255, 183, 77, 0.6);
+  background: rgba(255, 183, 77, 0.06);
+}
+
+[data-theme="dark"] .ai-summary-position {
+  --ai-summary-camp: #81c784;
+  --ai-summary-camp-bg: rgba(129, 199, 132, 0.08);
+}
+
+[data-theme="dark"] .ai-summary-position:nth-child(2) {
+  --ai-summary-camp: #e57373;
+  --ai-summary-camp-bg: rgba(229, 115, 115, 0.08);
+}
+
+[data-theme="dark"] .ai-summary-position:nth-child(3) {
+  --ai-summary-camp: #64b5f6;
+  --ai-summary-camp-bg: rgba(100, 181, 246, 0.08);
+}
+
+[data-theme="dark"] .ai-summary-source {
+  border-color: rgba(144, 202, 249, 0.28);
+  color: #9fb8d0;
+}
+
+[data-theme="dark"] .ai-summary-source:hover {
+  border-color: #64b5f6;
+  background: #24486a;
+  color: #e3f2fd;
+}
+
+[data-theme="dark"] .ai-summary-article-paragraph.ai-summary-strong .ai-summary-source {
+  border-color: rgba(129, 199, 132, 0.35);
+  color: #81c784;
+}
+
+[data-theme="dark"] .ai-summary-article-paragraph.ai-summary-strong .ai-summary-source:hover {
+  background: rgba(129, 199, 132, 0.12);
+}
+
+[data-theme="dark"] .ai-summary-source-all,
+[data-theme="dark"] .ai-summary-source-all:hover {
+  border-color: rgba(129, 199, 132, 0.35);
+  background: transparent;
+  color: #81c784;
+}
+
+[data-theme="dark"] #ai-summary-btn[aria-expanded="true"] {
+  color: #90caf9;
+}

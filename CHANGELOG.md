@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.80.0 - 2026-11-05
+- The macOS client now brings the browser forward as soon as the extension confirms the Multi-Panel page was opened or reused, once per send, and keeps its composer visible while the AIs prepare and while the success result is shown. Losing foreground no longer dismisses it; an outside click, Escape or the shortcut still does.
+- The extension reports send progress through a new `sendProgress` bridge event tied to the request: `opening`, `preparing` with ready/total counts and waiting or timed-out AI names, then `sending`. Reports are sent only when the state changes, and repeats, stage regressions or updates after the final result are ignored.
+- The composer's status row shows “AI 准备中：3/5”; while sending, the preview row names the AIs still being waited for (or the timed-out ones), shortening long lists while hover and assistive text keep the full list. Blind mode shows counts only.
+- Sending from the extension and from the macOS client now uses the same readiness threshold, `ceil(total × 0.7)`; the 20-second timeout, text catch-up sends, and the attachment retry behavior are unchanged.
+
+## 2.79.1 - 2026-11-04
+- Organize extension modules, content scripts, tests and release tools by responsibility; split page controllers and ordered styles while preserving direct unpacked loading and existing interfaces.
+- Separate macOS composer views, suggestions, layout and bridge transports; add isolated AppKit interaction tests and macOS CI validation.
+- Limit Vitest discovery to unit tests and document architecture, script loading and packaged-extension verification.
+
 ## 2.79.0 - 2026-11-04
 - The macOS client's recent-question suggestions now sit flush above the input card as their own narrower panel, tucked behind the card, with a “Recent questions” header and its own surface and shadow, so the list no longer reads as part of the input box. Pressing Down on the last suggestion returns the highlight to the input.
 

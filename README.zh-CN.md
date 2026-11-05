@@ -242,6 +242,8 @@ Manho 的原始 [Panelize](https://github.com/Manho/Panelize) 已发布在 [Chro
 
 ## 贡献
 
+开发前可先阅读[项目结构与开发导航](ARCHITECTURE.md)，了解入口、模块职责、脚本加载顺序及测试方式。
+
 欢迎反馈与贡献：
 
 - 🐛 提交 Bug（Panelize Plus 的改动请提到本仓库）

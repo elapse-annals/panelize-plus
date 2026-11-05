@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension, openMultiPanel } from './extension-harness.js';
-import { MAX_PANELS } from '../../modules/layout-auto-adjust.js';
-import { createPanelCapacityExtensionCopy, syntheticProviderIds } from './panel-capacity-fixture.js';
+import { launchExtension, openMultiPanel } from './support/extension-harness.js';
+import { MAX_PANELS } from '../../modules/panels/layout-auto-adjust.js';
+import { createPanelCapacityExtensionCopy, syntheticProviderIds } from './support/panel-capacity-fixture.js';
 
 // More test-only providers than the product currently ships let the real UI
 // exercise both the 30-panel ceiling and the rejected 31st panel.
@@ -9,7 +9,7 @@ const ALL_PROVIDERS = syntheticProviderIds(MAX_PANELS + 1);
 
 /**
  * Layout auto-adjust through the real multi-panel UI. The rules themselves
- * are unit tested in tests/layout-auto-adjust.test.js; this covers wiring:
+ * are unit tested in tests/unit/panels/layout-auto-adjust.test.js; this covers wiring:
  * the add/remove controls, the grid class and the persisted layout.
  */
 test.describe('Layout auto-adjust E2E', () => {

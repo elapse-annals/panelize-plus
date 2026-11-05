@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension, openMultiPanel } from './extension-harness.js';
-import { PANEL_COLUMN_WEIGHTS_KEY } from '../../modules/panel-resize.js';
+import { launchExtension, openMultiPanel } from './support/extension-harness.js';
+import { PANEL_COLUMN_WEIGHTS_KEY } from '../../modules/panels/panel-resize.js';
 
 const EDGE_COLOR = [255, 0, 255];
 

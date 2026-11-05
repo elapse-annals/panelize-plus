@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createPatchedExtensionCopy, launchExtension } from './extension-harness.js';
+import { createPatchedExtensionCopy, launchExtension } from './support/extension-harness.js';
 
 test.describe('Qwen optional permission sync E2E', () => {
   test.setTimeout(60000);

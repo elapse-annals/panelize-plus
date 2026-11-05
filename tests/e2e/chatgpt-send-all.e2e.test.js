@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension, openMultiPanel } from './extension-harness.js';
+import { launchExtension, openMultiPanel } from './support/extension-harness.js';
 import { renderChatgptFixture } from './fixtures/chatgpt-fixture.js';
 
 test('Send All supports the current ChatGPT composer without a legacy id', async ({}, testInfo) => {

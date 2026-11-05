@@ -5,7 +5,7 @@
 To regenerate the font after changing the icon list, edit the JSON manifest and run:
 
 ```sh
-node scripts/download-material-symbols-font.js
+node scripts/assets/download-material-symbols-font.js
 ```
 
-The script requests the named icon subset from the Google Fonts CSS2 API and saves its WOFF2 response here. The API may update the underlying font version over time. Keep the manifest synchronized with every icon name used in `multi-panel/multi-panel.html`, `multi-panel/multi-panel.js`, `options/options.html`, and `options/options.js`; `tests/material-symbols-font.test.js` checks those sources against the manifest.
+The script requests the named icon subset from the Google Fonts CSS2 API and saves its WOFF2 response here. The API may update the underlying font version over time. Keep the manifest synchronized with every icon name used in `multi-panel/multi-panel.html`, `multi-panel/multi-panel.js`, `options/options.html`, and `options/options.js`; `tests/unit/pages/material-symbols-font.test.js` checks those sources against the manifest.

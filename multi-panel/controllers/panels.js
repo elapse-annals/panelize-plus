@@ -1,0 +1,586 @@
+/**
+ * Owns panels behavior and its page-local state.
+ * Deferred controller getters keep composition in the entry point.
+ */
+import { getProviderById, getEnabledProviders, getProviderShortName } from '../../modules/providers/providers.js';
+import { DEFAULT_PROVIDER_IDS, DEFAULT_PROVIDER_ORDER, DEFAULT_STARTUP_PROVIDER_IDS } from '../../modules/providers/provider-defaults.js';
+import { GROK_WEBSOCKET_COOKIE_SYNC_ACTION } from '../../modules/providers/grok-websocket-cookies.js';
+import { MIMO_SESSION_COOKIE_SYNC_ACTION, reconcileMimoSessionCookies } from '../../modules/providers/mimo-session-cookies.js';
+import { reconcileOptionalProviderAccess } from '../../modules/providers/optional-provider-access.js';
+import { clearPerplexityServiceWorker } from '../../modules/providers/perplexity-service-worker.js';
+import { MAX_PANELS, LAYOUT_PANEL_COUNTS, getAutoAdjustedLayout, getAutoShrunkLayout } from '../../modules/panels/layout-auto-adjust.js';
+import { createPanelFitState } from '../../modules/panels/panel-fit.js';
+import { getStartupLayout, resolveStartupProviderIds } from '../../modules/panels/startup-providers.js';
+import { clearStartupSnapshot, readStartupSnapshot, writeStartupSnapshot } from '../../modules/panels/startup-snapshot.js';
+import { getRoundSpeedRanks } from '../../modules/answers/answer-stats.js';
+import { PANEL_READY_STATE, PANEL_ACTIVITY, getPanelActivity } from '../../modules/panels/panel-readiness.js';
+import { getLocalizedText, getThemeAwareProviderIcon, isGoogleProvider, showToast } from './ui.js';
+
+export function createPanelsController({
+  getAnswersController,
+  getComposerController,
+  getConversationsController,
+  getFocusController,
+  getLayoutController,
+  getPresentationController,
+  getProviderControlsController,
+  getSendingController
+}) {
+  let panels = [];
+
+  // Array of { id, providerId, iframe, state }
+  let focusedPanelId = null;
+
+  let loadingPanelIds = new Set();
+
+  // 当前窗口是否为弹出窗口
+
+  // Default panel configuration
+  const DEFAULT_PROVIDERS = DEFAULT_PROVIDER_IDS;
+
+  let hasAuthoritativePanels = false;
+
+  let restoredStartupProviderIds = null;
+
+  // The service worker owns the forwarding rule and serializes updates to it;
+  // a failed sync must not block the panel from loading.
+  async function requestGrokWebSocketCookieSync() {
+    try {
+      const response = await chrome.runtime.sendMessage({ action: GROK_WEBSOCKET_COOKIE_SYNC_ACTION });
+      if (!response?.success) {
+        console.warn('[Multi-Panel] Grok WebSocket cookie sync failed:', response?.error);
+      }
+    } catch (error) {
+      console.warn('[Multi-Panel] Grok WebSocket cookie sync failed:', error);
+    }
+  }
+
+  async function requestMimoSessionCookieSync() {
+    try {
+      const response = await chrome.runtime.sendMessage({ action: MIMO_SESSION_COOKIE_SYNC_ACTION });
+      if (!response?.success) {
+        console.warn('[Multi-Panel] MiMo session synchronization failed');
+      }
+    } catch {
+      console.warn('[Multi-Panel] MiMo session synchronization failed');
+    }
+    // Repeat with this page's current code (see initializePanels); when the
+    // service worker is up to date this finds nothing left to change.
+    const result = await reconcileMimoSessionCookies();
+    if (!result?.success) {
+      console.warn('[Multi-Panel] MiMo session synchronization failed');
+    }
+  }
+
+  const PROVIDER_SESSION_SYNC = {
+    grok: requestGrokWebSocketCookieSync,
+    mimo: requestMimoSessionCookieSync,
+    perplexity: clearPerplexityServiceWorker
+  };
+
+  function createPanelsFromStartupSnapshot() {
+    const snapshot = readStartupSnapshot();
+    if (!snapshot) return;
+
+    getLayoutController().currentLayout = snapshot.layout;
+    document.getElementById('panel-grid').className = `layout-${getLayoutController().currentLayout}`;
+    for (const providerId of snapshot.startupProviderIds) {
+      // Session work and optional host grants must be checked before navigation.
+      // A cached grant cannot prove permission is still present on this device.
+      if (Object.hasOwn(PROVIDER_SESSION_SYNC, providerId) || getProviderById(providerId).optionalOrigins) continue;
+      createPanel(providerId, { frameUrl: snapshot.frameUrls[providerId] });
+    }
+  }
+
+  function saveStartupSnapshot() {
+    if (!hasAuthoritativePanels) return;
+    writeStartupSnapshot({
+      layout: getLayoutController().currentLayout,
+      startupProviderIds: panels.map(panel => panel.providerId),
+      frameUrls: Object.fromEntries(panels.map(panel => [panel.providerId, getProviderControlsController().getProviderFrameUrl(panel.providerId)]))
+    });
+  }
+
+  async function syncProviderSession(providerId) {
+    await PROVIDER_SESSION_SYNC[providerId]?.();
+  }
+
+  async function initializePanels() {
+    try {
+      // The provider service applies permission checks and the selected manual or
+      // local-statistics order consistently with the add/switch menus.
+      const [settings, enabledProviders] = await Promise.all([
+        chrome.storage.sync.get({
+          providerOrder: DEFAULT_PROVIDER_ORDER,
+          enabledProviders: DEFAULT_PROVIDERS,
+          multiPanelProviders: DEFAULT_PROVIDERS,
+          startupProviders: DEFAULT_STARTUP_PROVIDER_IDS
+        }),
+        getEnabledProviders(),
+        // This page always runs the extension's current code, while the service
+        // worker can keep running an older copy after an update and then never
+        // registers scripts for providers it does not know yet.
+        reconcileOptionalProviderAccess()
+      ]);
+      const providerIds = enabledProviders.map(({ id }) => id);
+
+      const panelCount = LAYOUT_PANEL_COUNTS[getLayoutController().currentLayout] || 4;
+      const restoredProviderIds = restoredStartupProviderIds?.filter(id => providerIds.includes(id)).slice(0, MAX_PANELS);
+      const startupProviderIds = restoredProviderIds?.length ? restoredProviderIds : resolveStartupProviderIds(
+        providerIds,
+        settings.startupProviders,
+        panelCount,
+        MAX_PANELS
+      );
+
+      let startupLayout = getStartupLayout(getLayoutController().currentLayout, startupProviderIds.length);
+      // Apply the same growth steps even when all frames came from the snapshot.
+      for (let count = 1; count <= startupProviderIds.length; count += 1) {
+        startupLayout = getAutoAdjustedLayout(startupLayout, count) || startupLayout;
+      }
+      if (startupLayout !== getLayoutController().currentLayout) {
+        getLayoutController().currentLayout = startupLayout;
+        document.getElementById('panel-grid').className = `layout-${getLayoutController().currentLayout}`;
+      }
+
+      // Keep matching early frames in their existing relative order. Moving an
+      // iframe's DOM ancestor would reload it, so reordered entries are recreated
+      // instead, and new panels are inserted around the retained nodes.
+      let previousIndex = -1;
+      const reusablePanels = startupProviderIds.map(providerId => {
+        const expectedUrl = new URL(getProviderControlsController().getProviderFrameUrl(providerId)).href;
+        const index = panels.findIndex((panel, position) => position > previousIndex &&
+          panel.providerId === providerId && panel.iframe.src === expectedUrl);
+        if (index !== -1) {
+          previousIndex = index;
+          return panels[index];
+        }
+        return null;
+      });
+      const retainedPanels = new Set(reusablePanels.filter(Boolean));
+      for (const panel of [...panels]) {
+        if (!retainedPanels.has(panel)) {
+          removePanel(panel.id, { persist: false });
+        }
+      }
+
+      // Session synchronization stays ahead of any new Grok/MiMo navigation.
+      await Promise.all([...new Set(startupProviderIds)].map(syncProviderSession));
+      const orderedPanels = startupProviderIds.map((providerId, index) => {
+        const nextPanel = reusablePanels.slice(index + 1).find(Boolean);
+        return reusablePanels[index] || createPanel(providerId, { beforePanelId: nextPanel?.id });
+      }).filter(Boolean);
+      panels = orderedPanels;
+      hasAuthoritativePanels = true;
+      panels.forEach(panel => {
+        getProviderControlsController().bindPanelHeaderActions(panel.id);
+        // Early frames may have finished loading before their style settings.
+        getPresentationController().postPageStyleToPanel(panel);
+      });
+      getProviderControlsController().syncGoogleModeControls();
+
+      // Not awaited: storage calls are slow while the frames load, and nothing
+      // during startup reads it back.
+      getPresentationController().saveProviderConfiguration();
+
+      // Update panel selectors in toolbar
+      updatePanelSelectors();
+    } catch (error) {
+      clearStartupSnapshot();
+      for (const panel of [...panels]) removePanel(panel.id, { persist: false });
+      console.error('Error initializing panels:', error);
+    }
+  }
+
+  // ===== Panel Management =====
+
+  function setFocusedPanel(panelId) {
+    const wasFocusActive = focusedPanelId !== null;
+    focusedPanelId = panels.some(panel => panel.id === panelId) ? panelId : null;
+    document.getElementById('main-content').classList.toggle('panel-focus-active', focusedPanelId !== null);
+
+    // An absolutely positioned panel no longer occupies a grid cell. Keep the
+    // other panels in their original columns so their hidden frames keep their
+    // viewport sizes, including when columns have custom widths. Cells are only
+    // assigned on entering focus, so removing a panel does not shift the rest.
+    const grid = document.getElementById('panel-grid');
+    const columnCount = focusedPanelId && !wasFocusActive
+      ? window.getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length
+      : 0;
+    getPresentationController().getDisplayedPanels().forEach((panel, index) => {
+      const panelEl = document.getElementById(panel.id);
+      const isFocused = panel.id === focusedPanelId;
+      panelEl.classList.toggle('panel-focused', isFocused);
+      if (!focusedPanelId) {
+        panelEl.style.gridColumnStart = '';
+        panelEl.style.gridRowStart = '';
+      } else if (columnCount) {
+        panelEl.style.gridColumnStart = String(index % columnCount + 1);
+        panelEl.style.gridRowStart = String(Math.floor(index / columnCount) + 1);
+      }
+      const button = panelEl.querySelector('.focus-panel-btn');
+      if (button) {
+        button.title = isFocused
+          ? getLocalizedText('exitFocusPanelTitle', 'Exit focus mode')
+          : getLocalizedText('focusPanelTitle', 'Focus this panel');
+        button.setAttribute('aria-label', button.title);
+        button.setAttribute('aria-pressed', String(isFocused));
+        button.querySelector('.material-symbols-outlined').textContent = isFocused ? 'close_fullscreen' : 'open_in_full';
+      }
+    });
+    document.querySelectorAll('.panel-selector').forEach(selector => {
+      selector.classList.toggle('panel-focused', selector.dataset.panelId === focusedPanelId);
+    });
+    getAnswersController().updateZoomedAnswer();
+  }
+
+  async function addPanel(providerId) {
+    // Sync before the capacity check so no await separates the check from the
+    // panel being added.
+    await syncProviderSession(providerId);
+
+    if (!createPanel(providerId)) {
+      return;
+    }
+
+    // Save provider configuration
+    await getPresentationController().saveProviderConfiguration();
+
+    // Update panel selectors to show logo and name
+    updatePanelSelectors();
+  }
+
+  // Synchronous so concurrent callers cannot both pass the capacity check.
+  // Callers sync the provider session first.
+  function createPanel(providerId, { frameUrl = getProviderControlsController().getProviderFrameUrl(providerId), beforePanelId } = {}) {
+    if (panels.length >= MAX_PANELS) {
+      showToast(`Maximum number of panels reached (${MAX_PANELS})`);
+      return null;
+    }
+
+    const provider = getProviderById(providerId);
+    if (!provider) {
+      console.error('Provider not found:', providerId);
+      return null;
+    }
+
+    // Everything from the capacity check to panels.push() below runs without
+    // awaiting, so concurrent calls cannot both pass the check.
+    // Auto layout adjustment: upgrade from 1xN to 1x(N+1) when adding panel exceeds capacity
+    const newPanelCount = panels.length + 1;
+    const adjustedLayout = getAutoAdjustedLayout(getLayoutController().currentLayout, newPanelCount);
+
+    if (adjustedLayout) {
+      setFocusedPanel(null);
+      // Apply layout directly without calling setLayout (to avoid recursion from adjustPanelCount)
+      getLayoutController().currentLayout = adjustedLayout;
+      const panelGrid = document.getElementById('panel-grid');
+      panelGrid.className = `layout-${adjustedLayout}`;
+
+      // Update layout button states (if layout modal is open)
+      document.querySelectorAll('.layout-option').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.layout === adjustedLayout);
+      });
+      // The adjusted layout is saved together with the new panel below.
+    }
+
+    const panelId = `panel-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    const panelGrid = document.getElementById('panel-grid');
+
+    // Create panel element
+    const panelEl = document.createElement('div');
+    panelEl.className = 'panel-item';
+    panelEl.id = panelId;
+    panelEl.innerHTML = `
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="provider-icon" data-provider-id="${provider.id}">
+        <span class="provider-name">${provider.name}</span>
+        <span class="provider-note" role="button" tabindex="0"></span>
+        <span class="blind-label" aria-hidden="true"></span>
+      </div>
+      <div class="panel-header-right">${getProviderControlsController().getPanelHeaderRightHtml(providerId)}</div>
+    </div>
+    <div class="panel-iframe-container">
+      <div class="panel-loading">
+        <img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="loading-icon" data-provider-id="${provider.id}">
+        <span class="loading-text">Loading ${provider.name}...</span>
+      </div>
+      <iframe
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+        allow="clipboard-read; clipboard-write"
+      ></iframe>
+    </div>
+  `;
+
+    getPresentationController().bindPanelNote(panelEl, panelId);
+    getPresentationController().renderPanelNote(panelEl, providerId);
+
+    // Get iframe reference
+    const iframe = panelEl.querySelector('iframe');
+    iframe.src = frameUrl;
+    const loadingEl = panelEl.querySelector('.panel-loading');
+
+    // Handle iframe load
+    // Grace period after load to catch AI pages that auto-focus after JS init
+    const LOAD_GRACE_PERIOD = 5000;
+    loadingPanelIds.add(panelId);
+    iframe.addEventListener('load', () => {
+      loadingEl.classList.add('hidden');
+      const panel = panels.find(p => p.id === panelId);
+      if (panel) {
+        getFocusController().startPanelFocusGuard(panel);
+        getPresentationController().postPageStyleToPanel(panel);
+        getComposerController().composerControls?.panelLoaded(panel);
+      }
+      if (getConversationsController().isTemporaryChatModeEnabled && panel && getConversationsController().requiresTemporaryChatActivationRetry(panel.providerId)) {
+        getConversationsController().startTemporaryChatActivationForPanel(panel);
+      }
+      setTimeout(() => {
+        loadingPanelIds.delete(panelId);
+      }, LOAD_GRACE_PERIOD);
+    });
+
+    iframe.addEventListener('error', () => {
+      loadingEl.innerHTML = `<img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="loading-icon" data-provider-id="${provider.id}"><span class="loading-text">Failed to load ${provider.name}</span>`;
+      loadingPanelIds.delete(panelId);
+      const panel = panels.find(p => p.id === panelId);
+      if (panel) getSendingController().setPanelReadyState(panel, PANEL_READY_STATE.TIMEOUT);
+    });
+
+    // Add to panels array
+    const panel = {
+      id: panelId,
+      providerId,
+      iframe,
+      currentUrl: null,
+      state: 'loading',
+      pageNeededWidth: 0,
+      fit: createPanelFitState()
+    };
+    panelGrid.insertBefore(panelEl, beforePanelId ? document.getElementById(beforePanelId) : null);
+    panels.push(panel);
+    getSendingController().startPanelReadiness(panel);
+    getLayoutController().panelFitObserver?.observe(iframe.parentElement);
+    getSendingController().resetFillRetryState();
+
+    if (hasAuthoritativePanels) getProviderControlsController().bindPanelHeaderActions(panelId);
+
+    return panel;
+  }
+
+  function removePanel(panelId, { persist = true } = {}) {
+    const panelIndex = panels.findIndex(p => p.id === panelId);
+    if (panelIndex === -1) return;
+    getConversationsController().failedNewChatPanelIds.delete(panelId);
+    getConversationsController().newChatResults.delete(panelId);
+
+    if (focusedPanelId === panelId || getAutoShrunkLayout(getLayoutController().currentLayout, panels.length - 1)) {
+      setFocusedPanel(null);
+    }
+
+    const fitContainer = panels[panelIndex].iframe?.parentElement;
+    if (fitContainer) {
+      getLayoutController().panelFitObserver?.unobserve(fitContainer);
+    }
+
+    // Remove from DOM
+    const panelEl = document.getElementById(panelId);
+    if (panelEl) {
+      panelEl.remove();
+    }
+
+    // Remove from arrays and sets
+    clearTimeout(panels[panelIndex].readyTimerId);
+    panels.splice(panelIndex, 1);
+    getComposerController().composerControls?.panelsChanged();
+    loadingPanelIds.delete(panelId);
+    getSendingController().renderReadinessStatus();
+    getSendingController().resetFillRetryState();
+
+    // Auto-shrink layout if applicable
+    const shrunkLayout = persist && getAutoShrunkLayout(getLayoutController().currentLayout, panels.length);
+    if (shrunkLayout) {
+      getLayoutController().currentLayout = shrunkLayout;
+      const panelGrid = document.getElementById('panel-grid');
+      panelGrid.className = `layout-${shrunkLayout}`;
+
+      // Update layout button states
+      document.querySelectorAll('.layout-option').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.layout === shrunkLayout);
+      });
+
+      // Save configuration with the new layout
+      getPresentationController().saveProviderConfiguration();
+    }
+
+    // Update selectors
+    updatePanelSelectors();
+
+    // Save configuration
+    if (persist) getPresentationController().saveProviderConfiguration();
+  }
+
+  async function switchPanelProvider(panelId, newProviderId) {
+    const panel = panels.find(p => p.id === panelId);
+    if (!panel) return;
+
+    const provider = getProviderById(newProviderId);
+    if (!provider) return;
+
+    const panelEl = document.getElementById(panelId);
+    if (!panelEl) return;
+
+    getSendingController().resetFillRetryState();
+
+    if (isGoogleProvider(newProviderId)) {
+      getProviderControlsController().syncGoogleModeControls();
+    }
+
+    await syncProviderSession(newProviderId);
+
+    // Update panel header
+    const headerIcon = panelEl.querySelector('.panel-header-left img');
+    const headerName = panelEl.querySelector('.panel-header-left .provider-name');
+    const headerRight = panelEl.querySelector('.panel-header-right');
+    headerIcon.src = getThemeAwareProviderIcon(provider);
+    headerIcon.dataset.providerId = provider.id;
+    headerIcon.alt = provider.name;
+    headerName.textContent = provider.name;
+    getPresentationController().renderPanelNote(panelEl, newProviderId);
+    headerRight.innerHTML = getProviderControlsController().getPanelHeaderRightHtml(newProviderId);
+
+    // Update iframe
+    const iframe = panelEl.querySelector('iframe');
+
+    // Update panel data
+    getConversationsController().failedNewChatPanelIds.delete(panelId);
+    getConversationsController().newChatResults.delete(panelId);
+    // Reloading a provider leaves this round's answer, even if it is selected again.
+    panel.clearedAnswerRoundId = getAnswersController().latestAnswerRoundId;
+    panel.providerId = newProviderId;
+    getComposerController().composerControls?.panelsChanged();
+    panel.iframe = iframe;
+    panel.currentUrl = null;
+    panel.pageNeededWidth = 0;
+    getLayoutController().updatePanelFit(panel);
+    getProviderControlsController().bindPanelHeaderActions(panelId);
+    getProviderControlsController().reloadPanelIframe(panel);
+
+    // Update selectors and save
+    updatePanelSelectors();
+    await getPresentationController().saveProviderConfiguration();
+  }
+
+  function updatePanelSelectors() {
+    const selectorsContainer = document.getElementById('panel-selectors');
+    selectorsContainer.innerHTML = '';
+
+    panels.forEach(panel => {
+      const provider = getProviderById(panel.providerId);
+      if (!provider) return;
+
+      const selector = document.createElement('div');
+      selector.className = 'panel-selector';
+      selector.dataset.panelId = panel.id;
+      selector.innerHTML = `
+      <span class="provider-icon-wrap">
+        <img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="provider-icon" data-provider-id="${provider.id}">
+        <span class="panel-activity" aria-hidden="true"></span>
+        <span class="panel-speed-crown" aria-hidden="true">
+          <svg viewBox="0 0 24 16" width="13" height="9" fill="currentColor"><path d="M2 14 0.5 3.5l6 4.5L12 0l5.5 8 6-4.5L22 14z"/><rect x="2" y="14" width="20" height="2" rx="1"/></svg>
+        </span>
+      </span>
+      <span class="provider-name">${getProviderShortName(provider)}</span>
+      <span class="blind-label" aria-hidden="true"></span>
+      <button class="remove-panel" title="Remove panel">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    `;
+
+      selector.addEventListener('click', () => {
+        if (focusedPanelId) {
+          setFocusedPanel(panel.id);
+        } else {
+          getPresentationController().jumpToPanelElement(panel.id);
+        }
+      });
+
+      // Remove button handler
+      const removeBtn = selector.querySelector('.remove-panel');
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (panels.length > 1) {
+          removePanel(panel.id);
+        } else {
+          showToast('At least one panel is required');
+        }
+      });
+
+      selectorsContainer.appendChild(selector);
+    });
+    setFocusedPanel(focusedPanelId);
+    getPresentationController().renderBlindLabels();
+  }
+
+  const PANEL_ACTIVITY_LABELS = {
+    [PANEL_ACTIVITY.PREPARING]: ['panelActivityPreparing', 'Preparing'],
+    [PANEL_ACTIVITY.NOT_READY]: ['panelActivityNotReady', 'Not ready; check sign-in or reload'],
+    [PANEL_ACTIVITY.RUNNING]: ['panelActivityRunning', 'Answering'],
+    [PANEL_ACTIVITY.DONE]: ['panelActivityDone', 'Answer complete'],
+    [PANEL_ACTIVITY.STALLED]: ['panelActivityStalled', "Couldn't confirm the answer finished"]
+  };
+
+  // Marks each tab chip with its panel's loading or answering state and, for the
+  // three fastest answers of the latest round, a gold, silver or bronze crown; the
+  // chip's tooltip names the panel (anonymously in blind mode) and adds both.
+  function renderPanelActivity() {
+    const round = getAnswersController().getLatestAnswerRound();
+    const speedRanks = getRoundSpeedRanks(round);
+    document.querySelectorAll('#panel-selectors .panel-selector').forEach(selector => {
+      const panel = panels.find(candidate => candidate.id === selector.dataset.panelId);
+      if (!panel) return;
+      const answer = getAnswersController().isPanelInAnswerRound(round, panel) ? round.answers[panel.id] : null;
+      const activity = getPanelActivity(panel, answer);
+      selector.dataset.activity = activity;
+      const speedRank = answer ? speedRanks[panel.id] : undefined;
+      if (speedRank) {
+        selector.dataset.speedRank = String(speedRank);
+      } else {
+        delete selector.dataset.speedRank;
+      }
+      const label = PANEL_ACTIVITY_LABELS[activity];
+      const parts = [getPresentationController().getPanelDisplayName(panel)];
+      if (label) parts.push(getLocalizedText(...label));
+      if (speedRank) parts.push(getLocalizedText('panelSpeedRank', 'Fastest answer #$1', [String(speedRank)]));
+      selector.title = parts.join(' · ');
+    });
+  }
+
+  // Create new chat for all panels
+  // Matches a snapshot taken before an await against the live panel list, so a
+  // panel removed or switched to another provider meanwhile is ignored.
+  function findCurrentPanel(target) {
+    return panels.find(panel => panel.id === target.id && panel.providerId === target.providerId);
+  }
+
+  return {
+    get DEFAULT_PROVIDERS() { return DEFAULT_PROVIDERS; },
+    addPanel,
+    createPanelsFromStartupSnapshot,
+    findCurrentPanel,
+    get focusedPanelId() { return focusedPanelId; },
+    initializePanels,
+    get loadingPanelIds() { return loadingPanelIds; },
+    get panels() { return panels; },
+    removePanel,
+    renderPanelActivity,
+    requestMimoSessionCookieSync,
+    get restoredStartupProviderIds() { return restoredStartupProviderIds; },
+    set restoredStartupProviderIds(value) { restoredStartupProviderIds = value; },
+    saveStartupSnapshot,
+    setFocusedPanel,
+    switchPanelProvider,
+  };
+}

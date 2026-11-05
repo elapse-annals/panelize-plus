@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension } from './extension-harness.js';
+import { launchExtension } from './support/extension-harness.js';
 
 const ENABLED = ['chatgpt', 'claude', 'gemini', 'grok', 'deepseek'];
 

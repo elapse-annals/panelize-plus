@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension, openMultiPanel } from './extension-harness.js';
+import { launchExtension, openMultiPanel } from './support/extension-harness.js';
 import { renderChatgptFixture } from './fixtures/chatgpt-fixture.js';
 import {
   RATING_PROMPT_REVIEW_URL,
   RATING_PROMPT_STORAGE_KEY
-} from '../../modules/rating-prompt.js';
+} from '../../modules/platform/rating-prompt.js';
 
 const readRatingState = (extension) => extension.serviceWorker.evaluate(
   async (key) => (await chrome.storage.local.get(key))[key],

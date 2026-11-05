@@ -1,0 +1,734 @@
+/* ===== Main Content Area ===== */
+#main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Focus overlays one panel while preserving the grid and iframe sizes below. */
+#main-content.panel-focus-active #panel-grid {
+  overflow: hidden;
+  position: static;
+}
+
+#main-content.panel-focus-active .panel-item.panel-focused {
+  position: absolute;
+  inset: 4px;
+  z-index: 3;
+}
+
+#main-content.panel-focus-active .panel-item:not(.panel-focused),
+#main-content.panel-focus-active .panel-resize-handles {
+  visibility: hidden;
+}
+
+/* ===== Panel Grid ===== */
+#panel-grid {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  padding: 2px;
+  background: #e0e0e0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Keep native horizontal scrolling free to stop anywhere in the grid. */
+  scroll-snap-type: none;
+  scroll-behavior: auto;
+  scrollbar-width: thin;
+  position: relative;
+}
+
+/* Light edge buttons jump to the first or last panel when the grid overflows. */
+.panel-edge-btn {
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 56px;
+  padding: 0;
+  border: 1px solid #0000000f;
+  background: #ffffffb3;
+  color: #8a8f9c;
+  cursor: pointer;
+  opacity: .55;
+  transform: translateY(-50%);
+  transition: opacity .15s, background .15s, color .15s;
+  backdrop-filter: blur(4px);
+}
+
+.panel-edge-btn[hidden] { display: none; }
+.panel-edge-btn:hover, .panel-edge-btn:focus-visible { opacity: 1; background: #fffffff2; color: #4a4f5c; }
+.panel-edge-btn svg { width: 16px; height: 16px; fill: currentColor; }
+.panel-edge-start { left: 0; border-left: none; border-radius: 0 10px 10px 0; }
+.panel-edge-end { right: 0; border-right: none; border-radius: 10px 0 0 10px; }
+#main-content.panel-focus-active .panel-edge-btn { display: none; }
+
+/* Red edge flash when a swipe keeps pushing past the first or last panel. */
+.panel-edge-flash {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 4px;
+  background: #e53935;
+  opacity: 0;
+  pointer-events: none;
+}
+.panel-edge-flash-start { left: 0; }
+.panel-edge-flash-end { right: 0; }
+.panel-edge-flash.flashing { animation: panel-edge-flash 0.45s ease-out; }
+@keyframes panel-edge-flash {
+  0% { opacity: 0; }
+  25% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel-edge-flash.flashing { animation-duration: 0.2s; }
+}
+
+/* Layout variations */
+/* 1x1 单面板 */
+.layout-1x1 {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+/* 1x2 最小宽度 */
+.layout-1x2 {
+  grid-template-columns: repeat(2, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 400px;
+  grid-template-rows: 1fr;
+}
+
+/* 1x3 最小宽度 */
+.layout-1x3 {
+  grid-template-columns: repeat(3, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 400px;
+  grid-template-rows: 1fr;
+}
+
+/* 确保 1x4 在窄屏幕也有最小宽度 */
+.layout-1x4 {
+  grid-template-columns: repeat(4, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 400px;
+  grid-template-rows: 1fr;
+}
+
+/* 1x5 五列 - 最小宽度 400px */
+.layout-1x5 {
+  grid-template-columns: repeat(5, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 400px;
+  grid-template-rows: 1fr;
+}
+
+/* 1x6 六列 - 最小宽度 400px */
+.layout-1x6 {
+  grid-template-columns: repeat(6, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 400px;
+  grid-template-rows: 1fr;
+}
+
+/* 1x7 七列 - 最小宽度 350px */
+.layout-1x7 {
+  grid-template-columns: repeat(7, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 350px;
+  grid-template-rows: 1fr;
+}
+
+/* 1x8 八列 - 最小宽度 320px */
+.layout-1x8 {
+  grid-template-columns: repeat(8, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+/* Keep high-density row layouts horizontally scrollable and usable. */
+.layout-1x9 {
+  grid-template-columns: repeat(9, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x10 {
+  grid-template-columns: repeat(10, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x11 {
+  grid-template-columns: repeat(11, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x12 {
+  grid-template-columns: repeat(12, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x13 {
+  grid-template-columns: repeat(13, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x14 {
+  grid-template-columns: repeat(14, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x15 {
+  grid-template-columns: repeat(15, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x16 {
+  grid-template-columns: repeat(16, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x17 {
+  grid-template-columns: repeat(17, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x18 {
+  grid-template-columns: repeat(18, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x19 {
+  grid-template-columns: repeat(19, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x20 {
+  grid-template-columns: repeat(20, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x21 {
+  grid-template-columns: repeat(21, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x22 {
+  grid-template-columns: repeat(22, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x23 {
+  grid-template-columns: repeat(23, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x24 {
+  grid-template-columns: repeat(24, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x25 {
+  grid-template-columns: repeat(25, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x26 {
+  grid-template-columns: repeat(26, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x27 {
+  grid-template-columns: repeat(27, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x28 {
+  grid-template-columns: repeat(28, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x29 {
+  grid-template-columns: repeat(29, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-1x30 {
+  grid-template-columns: repeat(30, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr;
+}
+
+.layout-2x1 {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-2x2 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-3x1 {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+}
+
+.layout-2x3 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+}
+
+.layout-2x4 {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-2x5 {
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-2x6 {
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-2x7 {
+  grid-template-columns: repeat(7, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-2x8 {
+  grid-template-columns: repeat(8, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-2x9 {
+  grid-template-columns: repeat(9, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-2x10 {
+  grid-template-columns: repeat(10, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-2x11 {
+  grid-template-columns: repeat(11, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-2x12 {
+  grid-template-columns: repeat(12, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-2x13 {
+  grid-template-columns: repeat(13, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-2x14 {
+  grid-template-columns: repeat(14, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-2x15 {
+  grid-template-columns: repeat(15, minmax(var(--panel-min-width), 1fr));
+  --panel-min-width: 320px;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-3x2 {
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.layout-3x3 {
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+}
+
+.layout-4x2 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr 1fr;
+}
+
+/* Column resize handles (modules/panels/panel-resize.js), centered on the gaps. */
+.panel-resize-handles {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  z-index: 2;
+}
+
+.panel-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.panel-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 4px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background-color 0.15s;
+}
+
+.panel-resize-handle:hover::after,
+.panel-resize-handle:focus-visible::after,
+.panel-resize-handle.active::after {
+  background: #1976d2;
+}
+
+.panel-resize-handle:focus-visible {
+  outline: none;
+}
+
+/* Frames would swallow the pointer while a column is dragged. */
+.panel-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.panel-resizing iframe {
+  pointer-events: none;
+}
+
+/* Panel Item */
+.panel-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 8px;
+  background: #f9f9f9;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.panel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.panel-header-left img {
+  width: 18px;
+  height: 18px;
+}
+
+.panel-header-left span {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-header-left .provider-note {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 260px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #888;
+  cursor: text;
+}
+
+.panel-header-left .provider-note:hover,
+.panel-header-left .provider-note:focus-visible {
+  background: #ececec;
+  color: #555;
+  outline: none;
+}
+
+/* The placeholder only appears on hover so empty notes add no clutter. */
+.panel-header-left .provider-note.is-empty {
+  opacity: 0;
+}
+
+.panel-header:hover .provider-note.is-empty,
+.panel-header-left .provider-note.is-empty:focus-visible {
+  opacity: 1;
+}
+
+.provider-note-input {
+  flex: 1 1 auto;
+  min-width: 60px;
+  max-width: 260px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid #c8c8c8;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  font: inherit;
+  font-size: 12px;
+}
+
+.panel-header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.panel-google-mode-select {
+  height: 24px;
+  padding: 0 24px 0 6px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='M3.5 5.25L7 8.75l3.5-3.5' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 6px center;
+  background-repeat: no-repeat;
+  background-size: 14px 14px;
+  color: #333;
+  font-size: 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  box-sizing: border-box;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@container (max-width: 380px) {
+  .panel-header {
+    padding-inline: 8px;
+  }
+
+  .panel-header-left {
+    gap: 5px;
+  }
+}
+
+@container (max-width: 300px) {
+  .panel-header-left span {
+    display: none;
+  }
+}
+
+@container (max-width: 180px) {
+  .panel-header {
+    padding-inline: 4px;
+  }
+
+  .panel-header-left,
+  .panel-header-right .refresh-panel-btn,
+  .panel-header-right .switch-provider-btn {
+    display: none;
+  }
+
+  .panel-header-right {
+    width: 100%;
+    gap: 2px;
+  }
+}
+
+.panel-header-right button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  color: #666;
+}
+
+.panel-header-right button:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.panel-header-right .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.panel-iframe-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-iframe-container iframe {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: auto;
+  border: none;
+}
+
+/* A page wider than its panel is laid out at the width it needs and scaled
+   down to fit (modules/panels/panel-fit.js). */
+.panel-iframe-container iframe.panel-fitted {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% / var(--panel-fit-scale));
+  height: calc(100% / var(--panel-fit-scale));
+  transform: scale(var(--panel-fit-scale));
+  transform-origin: 0 0;
+}
+
+.panel-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #f5f5f5;
+  color: #666;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+.panel-loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.panel-loading .loading-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  opacity: 0.6;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@property --panel-jump-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* Drives the class lifetime: jumpToPanelElement removes it on animationend. */
+@keyframes panel-jump-highlight {
+  from, to { outline-color: transparent; }
+}
+
+@keyframes panel-jump-sweep {
+  0% { opacity: 0; --panel-jump-angle: 0deg; }
+  18% { opacity: .85; }
+  70% { opacity: .7; }
+  100% { opacity: 0; --panel-jump-angle: 360deg; }
+}
+
+.panel-item.panel-jump-highlight {
+  outline: 0 solid transparent;
+  animation: panel-jump-highlight 1200ms linear;
+}
+
+/* A soft violet-magenta light runs once around the border, above the iframe. */
+.panel-item.panel-jump-highlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  padding: 2px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(from var(--panel-jump-angle),
+    #b04ad855 0%, #b04ad855 45%, #b04ad8 70%, #e0459b 85%, #b04ad855 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: panel-jump-sweep 1200ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-item.panel-jump-highlight::after {
+    background: linear-gradient(135deg, #b04ad8, #e0459b);
+    animation-timing-function: linear;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+.panel-loading .loading-text {
+  font-size: 13px;
+  color: #999;
+}
+
+.panel-loading.hidden {
+  display: none;
+}
+

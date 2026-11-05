@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   createPatchedExtensionCopy,
   launchExtension,
-} from './extension-harness.js';
+} from './support/extension-harness.js';
 
 const STARTUP_SNAPSHOT_KEY = 'panelize.startupSnapshot';
 const PROVIDER_URLS = {

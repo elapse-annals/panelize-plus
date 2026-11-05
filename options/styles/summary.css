@@ -1,0 +1,100 @@
+/* AI summary profiles: each row is one OpenAI-compatible API setup. */
+.ai-summary-profiles {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ai-summary-profile {
+  padding: 12px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.ai-summary-profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ai-summary-profile-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+}
+
+.ai-summary-profile-active input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.ai-summary-profile-remove {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: #d32f2f;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ai-summary-profile-remove:hover {
+  background: rgba(211, 47, 47, 0.08);
+}
+
+.ai-summary-profile-remove:disabled {
+  color: #9e9e9e;
+  background: none;
+  cursor: default;
+}
+
+.ai-summary-profile-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.ai-summary-profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.ai-summary-profile-field .ai-summary-input {
+  width: 100%;
+}
+
+[data-theme="dark"] .ai-summary-profile {
+  border-color: #444;
+  background: #252525;
+}
+
+[data-theme="dark"] .ai-summary-profile-active {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .ai-summary-profile-field {
+  color: #aaa;
+}
+
+[data-theme="dark"] .ai-summary-profile-remove:hover {
+  background: rgba(211, 47, 47, 0.2);
+}
+
+@media (max-width: 640px) {
+  .ai-summary-profile-fields {
+    grid-template-columns: 1fr;
+  }
+}
+

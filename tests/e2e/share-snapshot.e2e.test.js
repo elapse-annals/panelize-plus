@@ -1,13 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { test, expect } from '@playwright/test';
-import { launchExtension, openMultiPanel } from './extension-harness.js';
+import { launchExtension, openMultiPanel } from './support/extension-harness.js';
 import { renderChatgptFixture } from './fixtures/chatgpt-fixture.js';
 import { CONVERSATION_COLORS, renderConversationFixture } from './fixtures/conversation-fixture.js';
 import {
   SNAPSHOT_FRAME_STYLES,
   SNAPSHOT_MAX_OUTPUT_HEIGHT,
   getSnapshotFrameLayout,
-} from '../../modules/share-snapshot.js';
+} from '../../modules/snapshots/share-snapshot.js';
 
 // Chrome normally asks the user to confirm sharing the tab; this switch
 // answers that dialog so the real getDisplayMedia path runs unattended.

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension, openMultiPanel } from './extension-harness.js';
+import { launchExtension, openMultiPanel } from './support/extension-harness.js';
 import { renderProviderTierFixture } from './fixtures/provider-tier-fixture.js';
 
 test('swiping past the first or last panel flashes that edge once per push', async () => {

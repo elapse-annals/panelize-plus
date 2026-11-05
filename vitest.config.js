@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: true,
+    include: ['tests/unit/**/*.test.js'],
     // Playwright suites have their own runners and configs.
     exclude: [...configDefaults.exclude, 'tests/e2e/**', 'tests/live/**'],
     coverage: {
@@ -17,6 +18,6 @@ export default defineConfig({
         '**/.{idea,git,cache,output,temp}/',
       ],
     },
-    setupFiles: ['./tests/setup.js'],
+    setupFiles: ['./tests/helpers/setup.js'],
   },
 });

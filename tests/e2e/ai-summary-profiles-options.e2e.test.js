@@ -3,8 +3,8 @@ import {
   AI_SUMMARY_ACTIVE_PROFILE_STORAGE_KEY,
   AI_SUMMARY_API_KEYS_STORAGE_KEY,
   AI_SUMMARY_PROFILES_STORAGE_KEY
-} from '../../modules/ai-summary-profiles.js';
-import { createPatchedExtensionCopy, launchExtension } from './extension-harness.js';
+} from '../../modules/answers/ai-summary-profiles.js';
+import { createPatchedExtensionCopy, launchExtension } from './support/extension-harness.js';
 
 const API_BASE_URL = 'https://api.panelize-e2e.test/v1';
 const SECOND_API_BASE_URL = 'https://api.panelize-e2e-2.test/v1';

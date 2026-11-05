@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension, openMultiPanel } from './extension-harness.js';
+import { launchExtension, openMultiPanel } from './support/extension-harness.js';
 import { renderProviderTierFixture } from './fixtures/provider-tier-fixture.js';
 
 test('wide mode shortcuts work in the composer and AI frames, persist custom bindings, and can be cleared or reset', async () => {

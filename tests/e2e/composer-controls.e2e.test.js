@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension, openMultiPanel } from './extension-harness.js';
+import { launchExtension, openMultiPanel } from './support/extension-harness.js';
 import { renderProviderTierFixture, renderUnsupportedProviderFixture } from './fixtures/provider-tier-fixture.js';
 
 const MANUAL_ORDER = ['chatgpt', 'claude', 'gemini', 'grok', 'deepseek'];

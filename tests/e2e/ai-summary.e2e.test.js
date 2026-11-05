@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { AI_SUMMARY_API_KEY_STORAGE_KEY } from '../../modules/ai-summary.js';
+import { AI_SUMMARY_API_KEY_STORAGE_KEY } from '../../modules/answers/ai-summary.js';
 import {
   AI_SUMMARY_ACTIVE_PROFILE_STORAGE_KEY,
   AI_SUMMARY_API_KEYS_STORAGE_KEY,
   AI_SUMMARY_PROFILES_STORAGE_KEY
-} from '../../modules/ai-summary-profiles.js';
-import { createPatchedExtensionCopy, launchExtension, openMultiPanel } from './extension-harness.js';
+} from '../../modules/answers/ai-summary-profiles.js';
+import { createPatchedExtensionCopy, launchExtension, openMultiPanel } from './support/extension-harness.js';
 import { renderChatgptFixture } from './fixtures/chatgpt-fixture.js';
 
 const API_BASE_URL = 'https://api.panelize-e2e.test/v1';

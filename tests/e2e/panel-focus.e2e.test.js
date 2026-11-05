@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension, openMultiPanel } from './extension-harness.js';
-import { SHARE_SNAPSHOT_ACTION } from '../../modules/share-trigger.js';
+import { launchExtension, openMultiPanel } from './support/extension-harness.js';
+import { SHARE_SNAPSHOT_ACTION } from '../../modules/snapshots/share-trigger.js';
 
 const PROVIDER_HOSTS = {
   chatgpt: 'chatgpt.com',

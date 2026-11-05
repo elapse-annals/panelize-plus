@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { launchExtension } from './extension-harness.js';
+import { launchExtension } from './support/extension-harness.js';
 
 test('Chinese is the default and English stays selected after reload; retired languages use Chinese', async () => {
   const extension = await launchExtension({ args: ['--lang=en-US'] });

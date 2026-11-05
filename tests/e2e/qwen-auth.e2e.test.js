@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { OPTIONAL_PROVIDER_CONFIGS } from '../../modules/optional-provider-access.js';
-import { createPatchedExtensionCopy, launchExtension, openMultiPanel, startFixtureServer } from './extension-harness.js';
+import { OPTIONAL_PROVIDER_CONFIGS } from '../../modules/providers/optional-provider-access.js';
+import { createPatchedExtensionCopy, launchExtension, openMultiPanel, startFixtureServer } from './support/extension-harness.js';
 
 test('preserves Qwen login in an embedded panel', async ({}, testInfo) => {
   test.setTimeout(60000);

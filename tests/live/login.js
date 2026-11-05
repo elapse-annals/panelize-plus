@@ -8,9 +8,9 @@
  * batches; quit the browser to move to the next one.
  */
 import { spawn } from 'node:child_process';
-import { MAX_PANELS } from '../../modules/layout-auto-adjust.js';
-import { launchExtension } from '../e2e/extension-harness.js';
-import { getChromiumExecutablePath } from '../e2e/browser-launch-options.js';
+import { MAX_PANELS } from '../../modules/panels/layout-auto-adjust.js';
+import { launchExtension } from '../e2e/support/extension-harness.js';
+import { getChromiumExecutablePath } from '../e2e/support/browser-launch-options.js';
 import {
   LIVE_IGNORED_DEFAULT_ARGS,
   LIVE_PROFILE_ROOT,
@@ -18,7 +18,7 @@ import {
   configureLiveProviders,
   getSelectedProviders,
   prepareLiveExtension,
-} from './live-harness.js';
+} from './support/live-harness.js';
 
 const providers = getSelectedProviders();
 const extensionPath = await prepareLiveExtension();

@@ -3,7 +3,7 @@ import {
   createPatchedExtensionCopy,
   launchExtension,
   startFixtureServer,
-} from './extension-harness.js';
+} from './support/extension-harness.js';
 
 const SAMPLE_IMAGE = {
   id: 'e2e-image',
@@ -94,11 +94,11 @@ test.describe('Yuanbao production content scripts', () => {
       manifest.content_scripts.push({
         matches: ['http://yuanbao.tencent.com/*'],
         js: [
-          'content-scripts/button-finder-utils.js',
-          'content-scripts/enter-behavior-utils.js',
-          'content-scripts/enter-behavior-yuanbao.js',
+          'content-scripts/runtime/button-finder-utils.js',
+          'content-scripts/runtime/enter-behavior-utils.js',
+          'content-scripts/providers/yuanbao/enter-behavior.js',
           'content-scripts/text-injection-all-providers.js',
-          'content-scripts/focus-toggle.js',
+          'content-scripts/features/focus-toggle.js',
         ],
         run_at: 'document_start',
         all_frames: true,

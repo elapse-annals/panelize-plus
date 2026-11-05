@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { launchExtension } from '../e2e/extension-harness.js';
+import { launchExtension } from '../e2e/support/extension-harness.js';
 import {
   LIVE_HEADLESS,
   LIVE_IGNORED_DEFAULT_ARGS,
@@ -9,7 +9,7 @@ import {
   LIVE_USER_DATA_DIR,
   configureLiveProviders,
   prepareLiveExtension,
-} from './live-harness.js';
+} from './support/live-harness.js';
 
 /**
  * PANELIZE_SHARE_PROVIDERS=chatgpt,gemini,deepseek leaves a provider out,
@@ -260,8 +260,8 @@ async function waitForAnswersToSettle(page, providers = SHARE_PROVIDERS) {
 /** Applies a theme the way the options page does: save it, then apply it. */
 function setTheme(page, theme) {
   return page.evaluate(async (value) => {
-    const { saveSetting } = await import(chrome.runtime.getURL('modules/settings.js'));
-    const { applyTheme } = await import(chrome.runtime.getURL('modules/theme-manager.js'));
+    const { saveSetting } = await import(chrome.runtime.getURL('modules/platform/settings.js'));
+    const { applyTheme } = await import(chrome.runtime.getURL('modules/platform/theme-manager.js'));
     await saveSetting('theme', value);
     return applyTheme();
   }, theme);
@@ -273,7 +273,7 @@ function setTheme(page, theme) {
  */
 function probePanels(page, prompt) {
   return page.evaluate(async (text) => {
-    const { createSnapshotBridge, SNAPSHOT_MESSAGES } = await import(chrome.runtime.getURL('modules/snapshot-capture.js'));
+    const { createSnapshotBridge, SNAPSHOT_MESSAGES } = await import(chrome.runtime.getURL('modules/snapshots/snapshot-capture.js'));
     const bridge = createSnapshotBridge();
     try {
       const frames = Array.from(document.querySelectorAll('#panel-grid iframe'));
