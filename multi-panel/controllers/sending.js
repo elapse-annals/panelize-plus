@@ -143,12 +143,6 @@ export function createSendingController({
     const resolvedMode = getComposerController().composerControls?.resolvePromptMode?.(typedText, { promptMode: promptModeOverride })
       ?? { text: typedText, instruction: getComposerController().composerControls?.getPromptMode() ?? null };
     const text = resolvedMode.text;
-    // A library prompt whose English text differs from the one shown was
-    // inserted verbatim; sending it unchanged sends the English text instead.
-    // Anything the user typed over it is sent exactly as it stands.
-    const sentText = getPromptsController().appliedPromptText && text.trim() === getPromptsController().appliedPromptText.display.trim()
-      ? getPromptsController().appliedPromptText.ai
-      : text;
 
     try {
       if (typedText.trim() && !text.trim() && !hasImages) {
@@ -173,9 +167,9 @@ export function createSendingController({
       if (hasImages) {
         pendingFillPromptMode = promptMode;
       }
-      const panelText = sentText.trim()
-        ? applyPromptMode(sentText, promptMode)
-        : promptMode || sentText;
+      const panelText = text.trim()
+        ? applyPromptMode(text, promptMode)
+        : promptMode || text;
 
       // Filling focuses each provider's composer too. Keep the unified input
       // focused, or the next Enter lands in one panel and sends only there.
@@ -351,7 +345,6 @@ export function createSendingController({
 
         if (shouldClearFillPayload(summary)) {
           document.getElementById('unified-input').value = '';
-          getPromptsController().appliedPromptText = null;
           getComposerController().resizeTextarea();
           getAttachmentsController().clearAllImages();
         }
@@ -414,7 +407,6 @@ export function createSendingController({
       // Clear input and save history
       if (totalSuccessful > 0) {
         document.getElementById('unified-input').value = '';
-        getPromptsController().appliedPromptText = null;
         getComposerController().resizeTextarea();
 
         // Clear images after successful fill/send
@@ -531,7 +523,6 @@ export function createSendingController({
   async function clearAllInputs() {
     // Clear unified input
     document.getElementById('unified-input').value = '';
-    getPromptsController().appliedPromptText = null;
     getComposerController().resizeTextarea();
 
     // Clear uploaded images

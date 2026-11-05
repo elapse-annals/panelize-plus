@@ -239,14 +239,14 @@ export function getPromptDisplayContent(prompt) {
 }
 
 /**
- * The text sent to the AIs for a prompt: the English `contentEn` first, the
- * Chinese `content` when there is none.
+ * The text sent to the AIs for a prompt: the same text the app shows, so the
+ * user always sees exactly what the AIs receive.
  *
  * @param {{ content?: string, contentEn?: string } | null | undefined} prompt
  * @returns {string}
  */
 export function getPromptAiContent(prompt) {
-  return promptText(prompt, 'contentEn') || promptText(prompt, 'content');
+  return getPromptDisplayContent(prompt);
 }
 
 /**
@@ -359,8 +359,8 @@ export function findPromptTriggerCompletion(text, caret, modePrompts) {
 
 /**
  * The text and instruction one send uses. Auto mode looks for trigger words
- * and appends the matched modes' instructions in the text the AIs receive
- * (English first); any other mode passes `text` through with `instruction`.
+ * and appends the matched modes' instructions exactly as the app shows them;
+ * any other mode passes `text` through with `instruction`.
  *
  * @param {string} text
  * @param {{ auto?: boolean, instruction?: string | null, modePrompts?: Array<object> }} options
@@ -421,7 +421,8 @@ function builtInModeRank(prompt) {
  * Library prompts marked as modes, in menu order: the built-in modes in
  * PROMPT_MODES order, then the user's own modes oldest first. A modeKey listed
  * twice (say after an import) shows once, as its oldest prompt. A mode needs
- * only one of its two texts, since the AIs receive the English one when set.
+ * only one of its two texts, since `contentEn` covers a prompt whose `content`
+ * is empty.
  *
  * @param {Array<object>} prompts
  * @returns {Array<object>}

@@ -1139,7 +1139,7 @@ export async function setupComposerControls({
     refreshStates,
     refreshTooltips: updateTooltips,
     isTierBusy: () => tierBusy || pendingDesiredTier !== undefined,
-    // The selected mode's instruction for the AIs (English first), or null for
+    // The selected mode's instruction for the AIs (the displayed text), or null for
     // Default and Auto.
     getPromptMode: () => getPromptAiContent(currentModePrompt()) || null,
     // The text and instruction for one send: Auto removes the trigger words

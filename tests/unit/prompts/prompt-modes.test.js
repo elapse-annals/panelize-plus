@@ -131,8 +131,8 @@ describe('prompt text helpers', () => {
     expect(getPromptDisplayContent(null)).toBe('');
   });
 
-  it('sends the English text and falls back to the Chinese one', () => {
-    expect(getPromptAiContent({ content: '中文', contentEn: 'English' })).toBe('English');
+  it('sends the same text it shows', () => {
+    expect(getPromptAiContent({ content: '中文', contentEn: 'English' })).toBe('中文');
     expect(getPromptAiContent({ content: ' 中文 ', contentEn: '  ' })).toBe('中文');
     expect(getPromptAiContent({ content: '中文' })).toBe('中文');
     expect(getPromptAiContent({ contentEn: 'English' })).toBe('English');
@@ -316,7 +316,7 @@ describe('prompt send preview', () => {
     expect(describePromptSend('Plain question', { instruction: null })).toBeNull();
   });
 
-  it('previews the Chinese instruction while the send uses the English one', () => {
+  it('previews the same instruction the send uses for a bilingual prompt', () => {
     const bilingual = {
       modeKey: 'learning', content: '像老师一样回答。', contentEn: 'Answer as a teacher.', triggers: ['/study']
     };
@@ -432,14 +432,14 @@ describe('prompt mode trigger words', () => {
       .toEqual({ text: '/study q', instruction: 'Fixed.', prompts: [] });
   });
 
-  it('combines the English text of the matched modes for the send', () => {
+  it('combines the shown text of the matched modes for the send', () => {
     const bilingual = [
       { modeKey: 'learning', content: '像老师一样回答。', contentEn: 'Answer as a teacher.', triggers: ['/study'] },
       { modeKey: 'concise', content: '尽量简洁。', contentEn: 'Be concise.', triggers: ['/brief'] }
     ];
 
     expect(resolvePromptModeForText('/study /brief q', { auto: true, modePrompts: bilingual }).instruction)
-      .toBe('Answer as a teacher.\n\nBe concise.');
+      .toBe('像老师一样回答。\n\n尽量简洁。');
   });
 
   it('seeds built-in modes with their default triggers', () => {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.87.0 - 2026-11-05
+- Prompts now send exactly the text the app shows. `content` is what the library, mode menu, placeholder and send preview display and what the AIs receive; `contentEn` is only a fallback for a prompt whose `content` is empty. Selecting a bilingual prompt into the composer no longer sends its hidden English variant when left unedited.
+- The prompt editor's English field and the import/export guide describe the fallback role, and the docs no longer claim Chinese display with English sending.
+
+## 2.86.0 - 2026-11-05
+- Removed the Japanese README and its links, so the documentation matches the interface and is available in English and Simplified Chinese only.
+
 ## 2.85.1 - 2026-11-05
 - New conversation no longer reports a provider as confirmed when it cannot recognise the page's old conversation. Providers without known message nodes now only skip the click on their canonical new-chat URL, so ChatGPT, DeepSeek, ChatGLM, Z.ai, MiMo, Yuanbao and the other affected sites are reset again; Gemini and Qwen keep their existing blank-page behaviour.
 - Providers without a new-chat button selector (Perplexity, Wenxin, Copilot, StepFun, Agnes, Hy AI Studio) now fall back to their new-chat URL instead of failing immediately with "control not found".

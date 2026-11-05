@@ -2,8 +2,7 @@
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> |
-  <a href="README.zh-CN.md"><strong>简体中文</strong></a> |
-  <a href="README.ja.md"><strong>日本語</strong></a>
+  <a href="README.zh-CN.md"><strong>简体中文</strong></a>
 </p>
 
 > **Panelize Plus（百家）** 是 [Manho](https://github.com/Manho) 的 [Panelize](https://github.com/Manho/Panelize) 的个人衍生版本（MIT 许可证），由 Ben 在 [elapse-annals/panelize-plus](https://github.com/elapse-annals/panelize-plus) 维护。它保留原项目的核心思路 —— 一次提问发给所有 AI，每个面板加载官方网站，直接使用你已登录的账号 —— 并在此基础上增加了 AI 总结、回答统计、提示词模式、macOS 菜单栏客户端等能力。上游 Panelize 仍是原始项目，见 [上游 Panelize](#上游-panelize)。

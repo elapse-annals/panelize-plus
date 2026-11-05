@@ -158,8 +158,8 @@ export function createDataController({
     if (!prompt.title || typeof prompt.title !== 'string') {
       errors.push('Missing or invalid "title" (string)');
     }
-    // Either text alone is a complete prompt: `content` is shown in the app,
-    // `contentEn` is sent to the AIs instead of it.
+    // Either text alone is a complete prompt: `content` is shown and sent,
+    // `contentEn` covers a prompt whose `content` is empty.
     if ((!prompt.content || typeof prompt.content !== 'string') &&
         (!prompt.contentEn || typeof prompt.contentEn !== 'string')) {
       errors.push('Missing or invalid "content" (string)');
@@ -212,7 +212,7 @@ export function createDataController({
   {
     "title": "Short descriptive title",
     "content": "Full prompt text. Use {variables} for placeholders.",
-    "contentEn": "Optional English text sent to the AIs instead of content.",
+    "contentEn": "Optional English text shown and sent when content is empty.",
     "category": "Category name",
     "tags": ["tag1", "tag2"],
     "variables": ["variable1", "variable2"],
@@ -230,7 +230,7 @@ Required fields:
 - variables (array of strings)
 
 Optional fields:
-- contentEn (string, default: ""; sent to the AIs instead of content when set)
+- contentEn (string, default: ""; shown and sent when content is empty)
 - isFavorite (boolean, default: false)
 - isMode (boolean, default: false; true lists it in the composer's prompt-mode menu)
 - triggers (array of strings, default: []; words like "/study" that apply the mode to one send in Auto mode)

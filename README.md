@@ -2,8 +2,7 @@
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> |
-  <a href="README.zh-CN.md"><strong>简体中文</strong></a> |
-  <a href="README.ja.md"><strong>日本語</strong></a>
+  <a href="README.zh-CN.md"><strong>简体中文</strong></a>
 </p>
 
 > **Panelize Plus（百家）** is a personal, MIT-licensed fork of [Panelize](https://github.com/Manho/Panelize) by [Manho](https://github.com/Manho), maintained by Ben at [elapse-annals/panelize-plus](https://github.com/elapse-annals/panelize-plus). It keeps the original idea — one prompt to every AI, each provider's real website, the account you already use — and builds on it with AI summary, answer stats, prompt modes, a macOS menu-bar client and more. Upstream Panelize remains the original project; see [Upstream Panelize](#upstream-panelize).
@@ -336,7 +335,7 @@ MIT License — see [LICENSE](LICENSE) for details. Panelize Plus is derived fro
 
 <p align="center">
   <strong>Open source & privacy-focused</strong><br>
-  Interface available in English and Simplified Chinese · READMEs in English, Chinese and Japanese
+  Interface available in English and Simplified Chinese · READMEs in English and Chinese
 </p>
 
 <p align="center">

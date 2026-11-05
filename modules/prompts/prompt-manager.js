@@ -52,8 +52,8 @@ function sanitizeString(str, maxLength) {
 function validatePromptData(promptData) {
   const errors = [];
 
-  // One text is enough: `content` is what the app shows, `contentEn` is what
-  // the AIs receive instead of it when set.
+  // One text is enough: `content` is what the app shows and sends, `contentEn`
+  // covers a prompt whose `content` is empty.
   const content = typeof promptData.content === 'string' ? promptData.content.trim() : '';
   const contentEn = typeof promptData.contentEn === 'string' ? promptData.contentEn.trim() : '';
 

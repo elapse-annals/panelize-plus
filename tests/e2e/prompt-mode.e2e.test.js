@@ -321,14 +321,14 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
     }
   });
 
-  test('shows the Chinese text of a prompt and sends its English text', async () => {
+  test('shows and sends the same text of a bilingual prompt', async () => {
     const extension = await launchExtension({ viewport: { width: 1280, height: 800 } });
     try {
       const page = await openChatgptPanel(extension);
       const editor = page.locator('#prompt-editor-modal');
 
-      // A mode with both texts: the library card, the placeholder and the
-      // send preview show the Chinese text, the AIs get the English one.
+      // A mode with both texts: the library card, the placeholder, the send
+      // preview and the AIs all use the Chinese text.
       await page.locator('#prompt-library-btn').click();
       await page.locator('#new-prompt-btn').click();
       await page.locator('#prompt-title-input').fill('Bilingual');
@@ -351,11 +351,11 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
       await page.locator('#send-all-btn').click();
       await expect.poll(async () => (await readFixture(page))?.sentTexts.length).toBe(1);
       const modeSent = (await readFixture(page)).sentTexts[0];
-      expect(modeSent).toContain('Answer in one English sentence.');
-      expect(modeSent).not.toContain('用一句中文回答。');
+      expect(modeSent).toContain('用一句中文回答。');
+      expect(modeSent).not.toContain('Answer in one English sentence.');
 
-      // A plain prompt fills the input with the Chinese text and sends the
-      // English one; editing the text sends what was typed instead.
+      // A plain prompt fills the input with the Chinese text, which is also
+      // what the AIs receive; editing the text sends what was typed instead.
       await chooseMode(page, 'Default');
       await page.locator('#prompt-library-btn').click();
       await page.locator('#new-prompt-btn').click();
@@ -376,7 +376,7 @@ test.describe('Prompt mode and Prompt Library keyboard', () => {
 
       await page.locator('#send-all-btn').click();
       await expect.poll(async () => (await readFixture(page))?.sentTexts.length).toBe(2);
-      expect((await readFixture(page)).sentTexts[1]).toBe('Answer in English.');
+      expect((await readFixture(page)).sentTexts[1]).toBe('用中文回答。');
 
       await page.locator('#prompt-library-btn').click();
       await plainCard.click();

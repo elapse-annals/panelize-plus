@@ -14,7 +14,6 @@ import {
   getPrompt
 } from '../../modules/prompts/prompt-manager.js';
 import {
-  getPromptAiContent,
   getPromptDisplayContent,
   normalizePromptTriggers,
   restoreDefaultModePrompts
@@ -32,12 +31,6 @@ export function createPromptsController({
   let currentCategoryFilter = '';
 
   let selectedPromptForVariables = null;
-
-  // Text of the prompt last inserted into the input when its display text
-  // (Chinese first) and its AI text (English first) differ, as { display, ai }.
-  // A send that still holds `display` sends `ai`; an edited input sends itself.
-  // Cleared once the input is cleared or other text is put in it.
-  let appliedPromptText = null;
 
   async function loadPromptLibrary() {
     await loadCategoryFilter();
@@ -162,7 +155,7 @@ export function createPromptsController({
       selectedPromptForVariables = prompt;
       showVariableModal(prompt);
     } else {
-      applyPromptTexts(getPromptDisplayContent(prompt), getPromptAiContent(prompt));
+      applyPromptToInput(getPromptDisplayContent(prompt));
       closePromptModal();
     }
   }
@@ -192,8 +185,6 @@ export function createPromptsController({
 
     const prompt = selectedPromptForVariables;
     const inputs = document.querySelectorAll('#variable-inputs input');
-    // Both texts get the same values, so an English send matches what the
-    // Chinese prompt in the input asks for.
     const withValues = text => {
       let content = text;
       inputs.forEach(input => {
@@ -206,24 +197,15 @@ export function createPromptsController({
       return content;
     };
 
-    applyPromptTexts(withValues(getPromptDisplayContent(prompt)), withValues(getPromptAiContent(prompt)));
+    applyPromptToInput(withValues(getPromptDisplayContent(prompt)));
     closeVariableModal();
     closePromptModal();
     selectedPromptForVariables = null;
   }
 
-  // Shows a prompt in the input and remembers the text the AIs get when it
-  // differs from the one shown, so an unedited send can send the English text.
-  function applyPromptTexts(display, ai) {
-    applyPromptToInput(display);
-    appliedPromptText = ai !== display ? { display, ai } : null;
-  }
-
   function applyPromptToInput(content) {
     const input = document.getElementById('unified-input');
     input.value = content;
-    // Text from elsewhere (say a page selection) has no English version.
-    appliedPromptText = null;
     getSendingController().resetFillRetryState();
     getComposerController().resizeTextarea();
     input.focus();
@@ -343,7 +325,8 @@ export function createPromptsController({
     const isMode = document.getElementById('prompt-is-mode-input').checked;
     const triggers = normalizePromptTriggers(document.getElementById('prompt-triggers-input').value);
 
-    // Either text is enough: the English one alone is sent to the AIs.
+    // Either text is enough: the English one is shown and sent when Content
+    // is empty.
     if (!title || (!content && !contentEn)) {
       alert('A title and content in at least one language are required');
       return;
@@ -416,8 +399,6 @@ export function createPromptsController({
   }
 
   return {
-    get appliedPromptText() { return appliedPromptText; },
-    set appliedPromptText(value) { appliedPromptText = value; },
     applyPromptToInput,
     applyVariables,
     closePromptEditor,
