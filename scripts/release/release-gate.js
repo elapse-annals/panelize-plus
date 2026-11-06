@@ -118,6 +118,7 @@ export function buildReleaseNotes(changelog, version) {
     `Chrome Web Store package: \`panelize-${version}-cws.zip\``,
     '',
     `macOS client (arm64, ad-hoc signed): \`panelize-link-${version}-macos-arm64.zip\``,
+    'Unzip the macOS download and run `Install.command` to install the app and register the browser bridge. Have your Panelize extension ID ready; dragging the app alone does not register Native Messaging.',
     ''
   ].join('\n');
 }

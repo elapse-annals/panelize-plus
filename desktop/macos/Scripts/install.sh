@@ -2,9 +2,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd -P)"
+REPO_ROOT=""
 APP_NAME="Panelize Link"
-BUILT_APP="$REPO_ROOT/dist/$APP_NAME.app"
+BUILT_APP=""
 APP_SOURCE=""
 DEST_APP="$HOME/Applications/$APP_NAME.app"
 BROWSER="chrome"
@@ -34,7 +34,7 @@ unpacked_extension_id() {
   printf '%s\n' "$id"
 }
 
-EXTENSION_ID="$(unpacked_extension_id "$REPO_ROOT")"
+EXTENSION_ID=""
 
 usage() {
   cat <<'EOF'
@@ -44,24 +44,37 @@ Builds Panelize Link.app (or installs the app given with --app), installs it
 under ~/Applications, and registers the user-level Native Messaging host. No
 sudo is used.
 
-By default the ID Chrome assigns to this checkout when it is loaded unpacked
-from the repository root is used. Pass --extension-id when the extension is
-loaded from another path or installed from the Chrome Web Store.
+In a release download, the app next to this script is installed and
+--extension-id is required. Copy the actual ID from chrome://extensions or
+edge://extensions. No repository checkout or developer tools are needed.
+
+In a source checkout without --app, builds the app and defaults to the ID for
+the repository root. Pass --extension-id if the extension is loaded elsewhere.
 EOF
+}
+
+require_value() {
+  if [[ -z "${2:-}" || "$2" == --* ]]; then
+    echo "Missing value for $1" >&2
+    exit 2
+  fi
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --app)
-      APP_SOURCE="${2:-}"
+      require_value "$@"
+      APP_SOURCE="$2"
       shift 2
       ;;
     --extension-id)
-      EXTENSION_ID="${2:-}"
+      require_value "$@"
+      EXTENSION_ID="$2"
       shift 2
       ;;
     --browser)
-      BROWSER="${2:-}"
+      require_value "$@"
+      BROWSER="$2"
       shift 2
       ;;
     -h|--help)
@@ -75,6 +88,26 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ -z "$APP_SOURCE" && -d "$SCRIPT_DIR/$APP_NAME.app" ]]; then
+  APP_SOURCE="$SCRIPT_DIR/$APP_NAME.app"
+fi
+
+if [[ -z "$APP_SOURCE" ]]; then
+  if [[ ! -x "$SCRIPT_DIR/build-app.sh" || ! -f "$SCRIPT_DIR/../../../manifest.json" ]]; then
+    echo "App not found. Keep install.sh next to $APP_NAME.app or pass --app <path>." >&2
+    exit 2
+  fi
+  REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd -P)"
+  BUILT_APP="$REPO_ROOT/dist/$APP_NAME.app"
+  if [[ -z "$EXTENSION_ID" ]]; then
+    EXTENSION_ID="$(unpacked_extension_id "$REPO_ROOT")"
+  fi
+elif [[ -z "$EXTENSION_ID" ]]; then
+  echo "--extension-id is required when installing a downloaded app." >&2
+  echo "Copy the actual Panelize ID from chrome://extensions or edge://extensions." >&2
+  exit 2
+fi
 
 if [[ ! "$EXTENSION_ID" =~ ^[a-p]{32}$ ]]; then
   echo "Invalid extension ID: $EXTENSION_ID" >&2
@@ -100,44 +133,50 @@ if [[ -n "$APP_SOURCE" ]]; then
     exit 2
   fi
   BUILT_APP="$(cd "$(dirname "$APP_SOURCE")" && pwd -P)/$(basename "$APP_SOURCE")"
-  if [[ ! -x "$BUILT_APP/Contents/MacOS/PanelizeSearchBridge" ]]; then
-    echo "Not a Panelize Link app (missing the native bridge): $BUILT_APP" >&2
-    exit 2
-  fi
   echo "Using downloaded app: $BUILT_APP"
 else
   "$SCRIPT_DIR/build-app.sh" >/dev/null
 fi
 
+for binary in PanelizeSearchApp PanelizeSearchBridge; do
+  if [[ ! -x "$BUILT_APP/Contents/MacOS/$binary" ]]; then
+    echo "Not a Panelize Link app (missing $binary): $BUILT_APP" >&2
+    exit 2
+  fi
+done
+
+BACKUP_SUFFIX="$(date +%Y%m%d%H%M%S)-$$"
 mkdir -p "$HOME/Applications"
-if [[ -e "$DEST_APP" ]]; then
-  BACKUP="$DEST_APP.backup-$(date +%Y%m%d%H%M%S)"
-  mv "$DEST_APP" "$BACKUP"
-  echo "Previous app kept at $BACKUP"
+if [[ "$BUILT_APP" -ef "$DEST_APP" ]]; then
+  echo "Using installed app: $DEST_APP"
+else
+  if [[ -e "$DEST_APP" ]]; then
+    BACKUP="$DEST_APP.backup-$BACKUP_SUFFIX"
+    mv "$DEST_APP" "$BACKUP"
+    echo "Previous app kept at $BACKUP"
+  fi
+  ditto "$BUILT_APP" "$DEST_APP"
+  codesign --force --deep --sign - "$DEST_APP" >/dev/null 2>&1 || true
 fi
-ditto "$BUILT_APP" "$DEST_APP"
-codesign --force --deep --sign - "$DEST_APP" >/dev/null 2>&1 || true
 
 mkdir -p "$NATIVE_DIR"
 MANIFEST="$NATIVE_DIR/$HOST_NAME.json"
 if [[ -e "$MANIFEST" ]]; then
-  cp "$MANIFEST" "$MANIFEST.backup-$(date +%Y%m%d%H%M%S)"
+  cp "$MANIFEST" "$MANIFEST.backup-$BACKUP_SUFFIX"
 fi
 
 HOST_PATH="$DEST_APP/Contents/MacOS/PanelizeSearchBridge"
-cat > "$MANIFEST" <<JSON
-{
-  "name": "$HOST_NAME",
-  "description": "Panelize Link global prompt sender",
-  "path": "$HOST_PATH",
-  "type": "stdio",
-  "allowed_origins": [
-    "chrome-extension://$EXTENSION_ID/"
-  ]
-}
-JSON
-
-/usr/bin/plutil -convert xml1 -o /dev/null "$MANIFEST"
+MANIFEST_TEMP="$(mktemp "$NATIVE_DIR/$HOST_NAME.XXXXXX")"
+trap 'rm -f "$MANIFEST_TEMP"' EXIT
+# plutil escapes paths correctly, including spaces, quotes and backslashes.
+/usr/bin/plutil -create xml1 "$MANIFEST_TEMP"
+/usr/bin/plutil -insert name -string "$HOST_NAME" "$MANIFEST_TEMP"
+/usr/bin/plutil -insert description -string "Panelize Link global prompt sender" "$MANIFEST_TEMP"
+/usr/bin/plutil -insert path -string "$HOST_PATH" "$MANIFEST_TEMP"
+/usr/bin/plutil -insert type -string "stdio" "$MANIFEST_TEMP"
+/usr/bin/plutil -insert allowed_origins -json "[\"chrome-extension://$EXTENSION_ID/\"]" "$MANIFEST_TEMP"
+/usr/bin/plutil -convert json -r "$MANIFEST_TEMP"
+mv "$MANIFEST_TEMP" "$MANIFEST"
 
 echo "Installed: $DEST_APP"
 echo "Native host: $MANIFEST"
@@ -146,6 +185,10 @@ echo
 echo "Next: check that the Panelize extension at $BROWSER://extensions uses this"
 echo "ID (or rerun with --extension-id), reload it, then open the app once:"
 echo "  open \"$DEST_APP\""
+echo
+echo "In Panelize settings, enable Global Input (macOS) > Enable global input bridge."
+echo "If it is already enabled, turn it off and on again to reconnect."
+echo "  chrome-extension://$EXTENSION_ID/options/options.html#global-send-bridge-toggle"
 echo
 echo "The browser starts the app in the background after it reconnects."
 echo "Optional: add the app to System Settings > General > Login Items."

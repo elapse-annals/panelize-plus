@@ -8,17 +8,21 @@
 
 - macOS 13 或更高版本（Apple silicon / arm64）
 - Chrome 或 Edge 正在运行，并已安装 Panelize 2.59.0 或更高版本（提示词模式选择器需要 Panelize 2.62.0 或更高版本，以及重新构建的原生宿主）
-- Xcode Command Line Tools（用于从源码构建）
+- Xcode Command Line Tools（仅从源码构建时需要）
 
 ## 安装
 
-从 [Releases](https://github.com/elapse-annals/panelize-plus/releases) 下载 `panelize-link-<version>-macos-arm64.zip` 并解压，然后在仓库 checkout 中用安装脚本注册：
+从 [Releases](https://github.com/elapse-annals/panelize-plus/releases) 下载并解压 `panelize-link-<version>-macos-arm64.zip`。压缩包包含应用、交互式安装器和这份说明；安装发布版不需要仓库源码、Node.js 或 Swift。
+
+在解压目录中双击 `Install.command`，选择 Chrome 或 Edge，再粘贴该浏览器扩展管理页显示的扩展 ID。安装器也接受完整的 `chrome-extension://...` 设置页地址。它会把同目录的应用安装到 `~/Applications`，并为所选浏览器注册 Native Messaging host。若 macOS 阻止运行命令文件，可在终端进入解压目录后执行：
 
 ```bash
-./desktop/macos/Scripts/install.sh --browser chrome --app "$HOME/Downloads/Panelize Link.app"
+bash ./install.sh --browser chrome --extension-id 你的扩展ID
 ```
 
-发布包是 ad-hoc 签名、未公证：首次启动请右键点击应用选择 **打开**，或在“系统设置 → 隐私与安全性”中允许。
+将扩展 ID 替换为 `chrome://extensions` 或 `edge://extensions` 中显示的值。`--browser` 可选择 `chrome` 或 `edge`。替换已有应用或 Native Messaging 清单前，安装器会保留带时间戳的备份。安装只修改当前用户配置，不需要 `sudo`。
+
+发布版应用采用 ad-hoc 签名，未经公证：首次启动时请右键点击应用选择 **打开**，或在“系统设置 → 隐私与安全性”中允许。
 
 也可以直接从源码构建，在仓库根目录执行不带 `--app` 的安装脚本：
 
@@ -26,15 +30,15 @@
 ./desktop/macos/Scripts/install.sh --browser chrome
 ```
 
-安装脚本默认使用本仓库路径在解压加载时对应的扩展 ID，因此本地桥清单始终与仓库里的扩展一致。如果扩展从其他位置加载，或来自 Chrome Web Store，请传入 `chrome://extensions` 显示的 ID：
+从仓库 checkout 安装开发版时，脚本默认使用 Chrome 从该仓库路径解压加载时分配的扩展 ID。如果扩展从其他位置加载或来自 Chrome Web Store，请传入 `chrome://extensions` 显示的 ID。使用 `--app` 安装下载的应用时，也必须显式传入 `--extension-id`：
 
 ```bash
 ./desktop/macos/Scripts/install.sh --browser chrome --extension-id 你的扩展ID
 ```
 
-Edge 使用 `--browser edge`。脚本会：
+脚本会：
 
-1. 构建 `Panelize Link.app` 并安装到 `~/Applications`；
+1. 从源码构建应用，或将下载的同目录应用安装到 `~/Applications`；
 2. 写入当前用户的 Native Messaging host 配置，只允许指定扩展 ID；
 3. 打印后续步骤。安装不需要 `sudo`，也不会自动加入登录项。
 
@@ -43,6 +47,8 @@ Edge 使用 `--browser edge`。脚本会：
 ```bash
 open "$HOME/Applications/Panelize Link.app"
 ```
+
+只把 `Panelize Link.app` 拖到“应用程序”文件夹不会注册浏览器桥接。请运行发布包中的安装器，让它用实际的扩展 ID 和应用安装路径创建 Native Messaging 清单。
 
 在 Panelize 的设置中打开 **“全局快捷输入（macOS）”**，开启 **“启用全局输入桥接”**。该桥接默认关闭，开启前扩展不会启动应用，也不会维持原生心跳。开启后，浏览器重新连接时会按需在后台启动应用。可选：在“系统设置 > 通用 > 登录项”中把它加入登录启动。若从菜单栏主动退出应用，浏览器不会自动重新拉起它；下次需要手动打开一次。
 
@@ -81,13 +87,13 @@ open "$HOME/Applications/Panelize Link.app"
 **一直显示“浏览器未连接”**
 
 1. 确认 Panelize 版本不低于 2.60.0，在扩展管理页重新加载，并在设置中开启“全局快捷输入（macOS）”。
-2. 确认安装时使用的扩展 ID 与 `chrome://extensions` 一致；解压安装每次路径变化可能导致 ID 变化。
-3. 检查 `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.panelize.global_sender.json` 是否存在，且 `path` 指向 `~/Applications/Panelize Link.app/Contents/MacOS/PanelizeSearchBridge`。
-4. 完全退出并重新打开 Chrome，再打开一次应用。
+2. 从解压目录重新运行 `Install.command` 或 `bash ./install.sh`，选择当前使用的浏览器并输入实际扩展 ID。解压加载的扩展在路径变化后可能会获得新 ID。
+3. 检查所选浏览器的 `NativeMessagingHosts/com.panelize.global_sender.json` 是否存在，且其中的 `path` 指向 `~/Applications/Panelize Link.app/Contents/MacOS/PanelizeSearchBridge`。
+4. 完全退出并重新打开浏览器，再打开一次应用。
 
 **点击状态后显示“此页面已被 Chrome 屏蔽”（`ERR_BLOCKED_BY_CLIENT`）**
 
-本地桥清单里的扩展 ID 并不是 Chrome 当前加载（或已启用）的扩展。重新运行安装脚本让 ID 按当前仓库路径推导，或通过 `--extension-id` 传入 `chrome://extensions` 显示的 ID。
+本地桥清单里的扩展 ID 并不是 Chrome 当前加载（或已启用）的扩展。请重新运行安装器，并传入 `chrome://extensions` 或 `edge://extensions` 中显示的扩展 ID。
 
 **快捷键没有反应或提示被占用**
 

@@ -34,13 +34,27 @@ for binary in PanelizeSearchApp PanelizeSearchBridge; do
 done
 
 mkdir -p "$OUT_DIR"
+STAGING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/panelize-link.XXXXXX")"
+trap 'rm -rf "$STAGING_DIR"' EXIT
+ditto "$APP_PATH" "$STAGING_DIR/$APP_NAME.app"
+cp "$REPO_ROOT/desktop/macos/Scripts/install.sh" "$STAGING_DIR/install.sh"
+cp "$REPO_ROOT/desktop/macos/Scripts/Install.command" "$STAGING_DIR/Install.command"
+cp "$REPO_ROOT/desktop/macos/README.md" "$STAGING_DIR/README.md"
+cp "$REPO_ROOT/desktop/macos/README.zh-CN.md" "$STAGING_DIR/README.zh-CN.md"
+chmod +x "$STAGING_DIR/install.sh" "$STAGING_DIR/Install.command"
+
 rm -f "$ZIP_PATH"
-ditto -c -k --keepParent --norsrc --noextattr "$APP_PATH" "$ZIP_PATH"
+ditto -c -k --norsrc --noextattr "$STAGING_DIR" "$ZIP_PATH"
 
 ZIP_ENTRIES="$(unzip -Z1 "$ZIP_PATH")"
-if ! grep -q "^$APP_NAME.app/Contents/MacOS/PanelizeSearchApp$" <<< "$ZIP_ENTRIES"; then
-  echo "[package-macos-app] $ZIP_PATH does not contain $APP_NAME.app" >&2
-  exit 1
-fi
+for entry in \
+  "$APP_NAME.app/Contents/MacOS/PanelizeSearchApp" \
+  "$APP_NAME.app/Contents/MacOS/PanelizeSearchBridge" \
+  Install.command install.sh README.md README.zh-CN.md; do
+  if ! grep -Fxq "$entry" <<< "$ZIP_ENTRIES"; then
+    echo "[package-macos-app] $ZIP_PATH does not contain $entry" >&2
+    exit 1
+  fi
+done
 
 echo "[package-macos-app] Created $ZIP_PATH"

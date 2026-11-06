@@ -8,17 +8,21 @@ It reuses the extension's send flow and readiness gate: ready AIs receive the pr
 
 - macOS 13 or later on Apple silicon (arm64)
 - Chrome or Edge running with Panelize 2.59.0 or later (the prompt-mode picker needs Panelize 2.62.0 or later and the matching rebuilt native host)
-- Xcode Command Line Tools (to build from source)
+- Xcode Command Line Tools (only to build from source)
 
 ## Install
 
-Download `panelize-link-<version>-macos-arm64.zip` from [Releases](https://github.com/elapse-annals/panelize-plus/releases) and unzip it, then register the app with the installer from a repository checkout:
+Download `panelize-link-<version>-macos-arm64.zip` from [Releases](https://github.com/elapse-annals/panelize-plus/releases) and unzip it. The archive includes the app, an interactive installer and these instructions; you do not need a repository checkout, Node.js or Swift to install the release.
+
+In the extracted folder, double-click `Install.command`, choose Chrome or Edge, then paste the extension ID shown on that browser's extensions page. The installer also accepts a full `chrome-extension://...` settings URL. It installs the neighboring app under `~/Applications` and registers the Native Messaging host for the chosen browser. If macOS blocks the command file, open Terminal in the extracted folder and run:
 
 ```bash
-./desktop/macos/Scripts/install.sh --browser chrome --app "$HOME/Downloads/Panelize Link.app"
+bash ./install.sh --browser chrome --extension-id YOUR_EXTENSION_ID
 ```
 
-The release build is ad-hoc signed, not notarized: on first launch, right-click the app and choose **Open**, or allow it under System Settings → Privacy & Security.
+Replace the extension ID with the value from `chrome://extensions` or `edge://extensions`. The `--browser` option accepts `chrome` or `edge`. The installer keeps timestamped backups of an existing app and native-host manifest before replacing them. Registration is per user and does not use `sudo`.
+
+The release app is ad-hoc signed, not notarized: on first launch, right-click the app and choose **Open**, or allow it under System Settings → Privacy & Security.
 
 To build from source instead, run the installer without `--app` from the repository root:
 
@@ -26,15 +30,15 @@ To build from source instead, run the installer without `--app` from the reposit
 ./desktop/macos/Scripts/install.sh --browser chrome
 ```
 
-By default the installer uses the ID Chrome assigns to this checkout when it is loaded unpacked from the repository root, so the native-host manifest matches the extension it ships with. If the extension is loaded from another path, or from the Chrome Web Store, pass the ID shown at `chrome://extensions`:
+For development installs from a repository checkout, the installer uses the ID Chrome assigns to that checkout when it is loaded unpacked from the repository root. If the extension is loaded from another path, or from the Chrome Web Store, pass the ID shown at `chrome://extensions`. When `--app` points to a downloaded app, pass `--extension-id` explicitly:
 
 ```bash
 ./desktop/macos/Scripts/install.sh --browser chrome --extension-id YOUR_EXTENSION_ID
 ```
 
-Use `--browser edge` for Edge. The script:
+The script:
 
-1. builds `Panelize Link.app` and installs it under `~/Applications`;
+1. builds the app from source, or installs the adjacent downloaded app under `~/Applications`;
 2. writes the per-user Native Messaging host manifest, restricted to the given extension ID;
 3. prints the remaining steps. It does not use `sudo` and does not add a login item.
 
@@ -43,6 +47,8 @@ After installing, reload the Panelize extension (or restart the browser), then o
 ```bash
 open "$HOME/Applications/Panelize Link.app"
 ```
+
+Dragging only `Panelize Link.app` into Applications does not register the browser bridge. Run the installer in the release archive so it can create the native-host manifest with the actual extension ID and installed app path.
 
 In Panelize's settings, open **Global Input (macOS)** and turn on **Enable global input bridge**. The bridge is off by default, so the extension neither launches the app nor keeps a native heartbeat until it is enabled. Once enabled, the browser starts the app in the background when needed after it reconnects. Optionally add the app to System Settings > General > Login Items. If you quit the app from the menu bar, the browser will not relaunch it; open it manually next time.
 
@@ -81,13 +87,13 @@ If the Panelize page is not open, the extension opens it first and waits for the
 **It always says “浏览器未连接”**
 
 1. Confirm Panelize is at least 2.60.0, reload it on the extensions page, and enable **Global Input (macOS)** in Settings.
-2. Confirm the extension ID used at install time matches `chrome://extensions`. An unpacked build can get a new ID when its path changes.
-3. Check that `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.panelize.global_sender.json` exists and its `path` points to `~/Applications/Panelize Link.app/Contents/MacOS/PanelizeSearchBridge`.
-4. Quit Chrome completely, reopen it, and open the app once more.
+2. Rerun `Install.command` or `bash ./install.sh` from the extracted release folder, selecting the browser in use and entering the current extension ID. An unpacked build can get a new ID when its path changes.
+3. Check that the selected browser's `NativeMessagingHosts/com.panelize.global_sender.json` exists and its `path` points to `~/Applications/Panelize Link.app/Contents/MacOS/PanelizeSearchBridge`.
+4. Quit the browser completely, reopen it, and open the app once more.
 
 **Clicking the status opens “This page has been blocked by Chrome” (`ERR_BLOCKED_BY_CLIENT`)**
 
-The native-host manifest names an extension ID that Chrome has not loaded, or that is disabled. Rerun the installer so it derives the ID from this checkout, or pass the ID shown at `chrome://extensions` with `--extension-id`.
+The native-host manifest names an extension ID that Chrome has not loaded, or that is disabled. Rerun the installer with the ID shown at `chrome://extensions` or `edge://extensions`.
 
 **The shortcut does nothing or reports a conflict**
 
