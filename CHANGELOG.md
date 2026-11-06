@@ -5,6 +5,8 @@
 
 ## 2.88.1 - 2026-11-06
 - Fixed fresh installations treating an unsaved provider list as empty during permission reconciliation, which removed Qianwen's frame-header rule after the user granted site access and could show “www.qianwen.com refused to connect”. The reconciliation now uses the same default provider list as Settings and Multi-Panel, without changing explicitly saved choices.
+- The macOS download now includes a standalone installer and English/Chinese setup instructions. Double-click `Install.command`, choose Chrome or Edge and enter the actual extension ID (or its settings URL) to install the app and register Native Messaging without a repository checkout or developer tools; dragging the app alone does not register the bridge.
+- Downloaded-app installs require an explicit extension ID instead of deriving one from the download location. Existing apps and host manifests are backed up, host paths are JSON-escaped, and the installer explains how to enable or reconnect the extension bridge. Source-checkout installs keep their derived-ID default.
 
 ## 2.88.0 - 2026-11-05
 - macOS packaging now runs locally: `scripts/release/package-macos-app.sh` builds Panelize Link for Apple silicon (arm64), and `gh release upload vX.Y.Z dist/release-X.Y.Z/panelize-link-X.Y.Z-macos-arm64.zip` attaches it to the published release. Release Publish keeps building and uploading only the extension zips, while its release notes still name the macOS asset.
