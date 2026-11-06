@@ -608,6 +608,7 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         selectedPromptMode = choice
         choice.save()
         content.modePicker.select(choice)
+        content.updateModeHint(for: choice)
         refreshPromptPreview()
         suggestions.refreshCompletionOverlay()
     }

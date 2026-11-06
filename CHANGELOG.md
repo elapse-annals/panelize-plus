@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.90.0 - 2026-11-06
+- The macOS client now shows each prompt mode's explanation by default: a subtitle under the mode in the picker menu, plus a persistent line below the picker for the selected mode. Mode names, explanations, Auto's trigger legend and preview instructions are generated at build time from both extension locale files and follow the macOS system language (Chinese variants use Chinese, every other language uses English), replacing the hand-written Chinese-only strings. On macOS 13–14.3 the menu uses an indented disabled hint row because the native menu subtitle API starts at macOS 14.4.
+
 ## 2.89.0 - 2026-11-06
 - Added the **1xN Auto** layout: one row whose column count always equals the open panel count. Adding or removing a panel grows or shrinks the row immediately, and choosing the layout itself never adds or removes panels. It is available in the layout picker and as a default layout in Settings, and persists as `multiPanelLayout: '1x-auto'`.
 

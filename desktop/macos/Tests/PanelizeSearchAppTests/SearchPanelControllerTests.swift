@@ -145,6 +145,11 @@ final class SearchPanelControllerTests: XCTestCase {
         controller.show()
         XCTAssertEqual(controller.content.statusLabel.stringValue, "正在发送…")
         XCTAssertEqual(controller.content.previewLabel.stringValue, "等待：Claude、Gemini")
+        XCTAssertEqual(
+            controller.content.modeHintLabel.stringValue,
+            PromptModeChoice.auto.hint(in: .current),
+            "the mode hint stays visible while progress replaces the preview"
+        )
         XCTAssertEqual(activations.count, 1)
 
         bridge.emit(.succeeded(SendOutcome(requestId: "request-1", ok: true, sent: 3, total: 5)))
@@ -198,6 +203,29 @@ final class SearchPanelControllerTests: XCTestCase {
         bridge.emit(.succeeded(SendOutcome(requestId: "request-1", ok: true, sent: 2, total: 2)))
         XCTAssertEqual(activations, ["com.example.Browser"])
         XCTAssertTrue(controller.isShowingSendResult)
+    }
+
+    func testChoosingAModeUpdatesTheHintLine() {
+        let defaults = UserDefaults.standard
+        let previousRaw = defaults.string(forKey: PromptModeChoice.defaultsKey)
+        defer {
+            if let previousRaw {
+                defaults.set(previousRaw, forKey: PromptModeChoice.defaultsKey)
+            } else {
+                defaults.removeObject(forKey: PromptModeChoice.defaultsKey)
+            }
+        }
+
+        controller.content.modePicker.onSelect?(.concise)
+        XCTAssertEqual(controller.content.modePicker.selectedChoice, .concise)
+        XCTAssertEqual(
+            controller.content.modeHintLabel.stringValue,
+            PromptModeChoice.concise.hint(in: .current)
+        )
+        XCTAssertEqual(
+            controller.content.previewLabel.stringValue,
+            PromptModePreview.text(for: .concise, language: .current)
+        )
     }
 
     func testUnknownTotalShowsNoRatioAndBlindModeShowsCountsOnly() {

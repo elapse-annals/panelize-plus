@@ -208,11 +208,24 @@ final class ModePickerButton: NSButton {
         needsDisplay = true
     }
 
-    @objc private func activate() {
-        guard isEnabled else { return }
+    /// Builds the picker menu. macOS 14.4+ renders each explanation natively
+    /// as the item's subtitle; older systems get a disabled, indented hint row
+    /// under the mode. The parameter is exposed so tests can exercise both
+    /// presentations on one machine.
+    func makeMenu(useNativeSubtitle: Bool? = nil) -> NSMenu {
+        let useSubtitle: Bool
+        if let useNativeSubtitle {
+            useSubtitle = useNativeSubtitle
+        } else if #available(macOS 14.4, *) {
+            useSubtitle = true
+        } else {
+            useSubtitle = false
+        }
+
         let menu = NSMenu()
         menu.autoenablesItems = false
         for choice in PromptModeChoice.allCases {
+            let hint = menuHint(for: choice)
             let item = NSMenuItem(
                 title: choice.title,
                 action: #selector(menuItemSelected(_:)),
@@ -220,7 +233,8 @@ final class ModePickerButton: NSButton {
             )
             item.target = self
             item.representedObject = choice.rawValue
-            item.toolTip = choice.detail
+            item.toolTip = hint
+            item.setAccessibilityHelp(hint)
             item.state = choice == selectedChoice ? .on : .off
             if let image = modeSymbolImage(
                 for: choice,
@@ -232,12 +246,48 @@ final class ModePickerButton: NSButton {
             if #available(macOS 27.0, *) {
                 item.preferredImageVisibility = .visible
             }
+            if useSubtitle, #available(macOS 14.4, *) {
+                item.subtitle = hint
+            }
             menu.addItem(item)
+            if !useSubtitle {
+                menu.addItem(legacyHintItem(for: hint))
+            }
             if choice == .auto {
                 menu.addItem(.separator())
             }
         }
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: bounds.minY - 6), in: self)
+        return menu
+    }
+
+    /// The explanation shown inside the menu, truncated like the extension's
+    /// own mode tooltip so long English hints do not stretch the menu.
+    private func menuHint(for choice: PromptModeChoice) -> String {
+        let hint = choice.hint(in: .current)
+        guard hint.count > 120 else { return hint }
+        return String(hint.prefix(119)) + "…"
+    }
+
+    /// macOS 13–14.3 fallback: a non-selectable row below the mode, so the
+    /// explanation is still visible by default without a custom menu view.
+    private func legacyHintItem(for hint: String) -> NSMenuItem {
+        let item = NSMenuItem(title: hint, action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        item.indentationLevel = 1
+        item.attributedTitle = NSAttributedString(
+            string: hint,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 11, weight: .regular),
+                .foregroundColor: NSColor.secondaryLabelColor
+            ]
+        )
+        item.setAccessibilityElement(false)
+        return item
+    }
+
+    @objc private func activate() {
+        guard isEnabled else { return }
+        makeMenu().popUp(positioning: nil, at: NSPoint(x: 0, y: bounds.minY - 6), in: self)
     }
 
     @objc private func menuItemSelected(_ sender: NSMenuItem) {
@@ -251,7 +301,7 @@ final class ModePickerButton: NSButton {
     private func updateAccessibility() {
         let switchHint = "按 Tab / Shift+Tab 切换模式"
         setAccessibilityValue(selectedChoice.title)
-        setAccessibilityHelp("\(selectedChoice.detail)；\(switchHint)")
-        toolTip = "提示词模式：\(selectedChoice.title)（\(selectedChoice.detail)），\(switchHint)"
+        setAccessibilityHelp("\(selectedChoice.hint)；\(switchHint)")
+        toolTip = "提示词模式：\(selectedChoice.title)（\(selectedChoice.hint)），\(switchHint)"
     }
 }

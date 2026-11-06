@@ -52,6 +52,75 @@ final class ComposerInteractionTests: XCTestCase {
         )
     }
 
+    func testModeHintLineIsVisibleByDefaultAndFollowsThePicker() {
+        XCTAssertFalse(content.modeHintLabel.isHidden)
+        XCTAssertEqual(
+            content.modeHintLabel.stringValue,
+            PromptModeChoice.auto.hint(in: .current)
+        )
+        XCTAssertEqual(
+            content.modeHintLabel.toolTip,
+            PromptModeChoice.auto.hint(in: .current)
+        )
+
+        content.updateModeHint(for: .concise)
+        XCTAssertEqual(
+            content.modeHintLabel.stringValue,
+            PromptModeChoice.concise.hint(in: .current)
+        )
+        XCTAssertEqual(
+            content.modeHintLabel.toolTip,
+            PromptModeChoice.concise.hint(in: .current)
+        )
+    }
+
+    func testNativeModeMenuShowsTheExplanationAsSubtitle() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.isOperatingSystemAtLeast(
+            OperatingSystemVersion(majorVersion: 14, minorVersion: 4, patchVersion: 0)
+        ), "NSMenuItem.subtitle requires macOS 14.4")
+
+        let menu = content.modePicker.makeMenu(useNativeSubtitle: true)
+        XCTAssertEqual(menu.items.count, 8, "seven modes plus the separator after Auto")
+        let modeItems = menu.items.filter { !$0.isSeparatorItem }
+        XCTAssertEqual(modeItems.map { $0.representedObject as? String },
+                       PromptModeChoice.allCases.map(\.rawValue))
+        XCTAssertFalse(menu.items.contains { !$0.isSeparatorItem && !$0.isEnabled })
+
+        for item in modeItems {
+            guard let raw = item.representedObject as? String,
+                  let choice = PromptModeChoice(rawValue: raw) else {
+                return XCTFail("Missing mode on a menu item")
+            }
+            if #available(macOS 14.4, *) {
+                XCTAssertEqual(item.subtitle, menuHint(for: choice))
+            } else {
+                XCTFail("NSMenuItem.subtitle requires macOS 14.4")
+            }
+            XCTAssertEqual(item.toolTip, menuHint(for: choice))
+            XCTAssertEqual(item.state, choice == .auto ? .on : .off)
+        }
+    }
+
+    func testLegacyModeMenuShowsADisabledHintRowUnderEachMode() {
+        let menu = content.modePicker.makeMenu(useNativeSubtitle: false)
+        XCTAssertEqual(menu.items.count, 15, "seven modes, seven hint rows and one separator")
+
+        let modes = menu.items.filter { !$0.isSeparatorItem && $0.isEnabled }
+        XCTAssertEqual(modes.map { $0.representedObject as? String },
+                       PromptModeChoice.allCases.map(\.rawValue))
+
+        let hints = menu.items.filter { !$0.isSeparatorItem && !$0.isEnabled }
+        XCTAssertEqual(hints.count, PromptModeChoice.allCases.count)
+        XCTAssertEqual(hints.first?.title, PromptModeChoice.defaultMode.hint(in: .current))
+        XCTAssertEqual(hints.first?.indentationLevel, 1)
+    }
+
+    private func menuHint(for choice: PromptModeChoice) -> String {
+        let hint = choice.hint(in: .current)
+        guard hint.count > 120 else { return hint }
+        return String(hint.prefix(119)) + "…"
+    }
+
     func testSendButtonForwardsExactlyOneActionWithoutOpeningThePanel() {
         content.sendButton.performClick(nil)
         XCTAssertEqual(submitted, 1)

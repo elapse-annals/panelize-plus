@@ -17,9 +17,9 @@ final class ComposerLayoutTests: XCTestCase {
     }
 
     func testContentHeightGrowsWithInputHeight() {
-        XCTAssertEqual(composerContentHeight(inputHeight: 74), 164)
-        XCTAssertEqual(composerContentHeight(inputHeight: 104), 194)
-        XCTAssertEqual(composerContentHeight(inputHeight: 128), 218)
+        XCTAssertEqual(composerContentHeight(inputHeight: 74), 180)
+        XCTAssertEqual(composerContentHeight(inputHeight: 104), 210)
+        XCTAssertEqual(composerContentHeight(inputHeight: 128), 234)
     }
 
     func testContentHeightAddsSuggestionRows() {
@@ -27,13 +27,13 @@ final class ComposerLayoutTests: XCTestCase {
         XCTAssertEqual(composerSuggestionHeight(rowCount: 1), 38)
         XCTAssertEqual(composerSuggestionHeight(rowCount: 3), 98)
         XCTAssertEqual(composerSuggestionHeight(rowCount: 9), 98)
-        XCTAssertEqual(composerContentHeight(inputHeight: 74, suggestionHeight: 0), 164)
+        XCTAssertEqual(composerContentHeight(inputHeight: 74, suggestionHeight: 0), 180)
     }
 
     func testCardHeightIgnoresTheHistoryPanel() {
-        XCTAssertEqual(composerCardHeight(inputHeight: 74), 164)
-        XCTAssertEqual(composerCardHeight(inputHeight: 104), 194)
-        XCTAssertEqual(composerCardHeight(inputHeight: 128), 218)
+        XCTAssertEqual(composerCardHeight(inputHeight: 74), 180)
+        XCTAssertEqual(composerCardHeight(inputHeight: 104), 210)
+        XCTAssertEqual(composerCardHeight(inputHeight: 128), 234)
     }
 
     func testHistoryPanelHeightIncludesHeaderAndRows() {
@@ -58,7 +58,7 @@ final class ComposerLayoutTests: XCTestCase {
             composerContentHeight(inputHeight: 74, suggestionHeight: 132),
             composerCardHeight(inputHeight: 74) + 132 - composerHistoryPanelOverlap
         )
-        XCTAssertEqual(composerContentHeight(inputHeight: 74, suggestionHeight: 132), 290)
+        XCTAssertEqual(composerContentHeight(inputHeight: 74, suggestionHeight: 132), 306)
         XCTAssertEqual(
             composerContentHeight(inputHeight: 74, suggestionHeight: 2),
             composerCardHeight(inputHeight: 74)

@@ -14,7 +14,8 @@ final class PromptTriggerCompletionTests: XCTestCase {
         XCTAssertEqual(completion?.mode, .learning)
         XCTAssertEqual(completion?.range, NSRange(location: 0, length: 3))
         XCTAssertEqual(completion?.typed, "/st")
-        XCTAssertEqual(completion?.mode.title, "学习")
+        XCTAssertEqual(completion?.mode.title(in: .zh), "学习")
+        XCTAssertEqual(completion?.mode.title(in: .en), "Learning")
     }
 
     func testCompletionIgnoresCase() {

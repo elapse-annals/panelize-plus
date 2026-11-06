@@ -21,22 +21,41 @@ public struct PromptTriggerCompletion: Equatable {
 public enum PromptModePreview {
     /// Auto's fallback hint when the question contains no trigger word. The
     /// trigger names follow the extension's menu order.
-    public static let autoTriggerLegend = PromptModeDefinitions.autoTriggerLegend
+    public static func triggerLegend(in language: PromptTextLanguage = .current) -> String {
+        PromptModeDefinitions.autoTriggerLegend.text(in: language)
+    }
+
+    /// Auto's fallback hint in the current system language.
+    public static var autoTriggerLegend: String {
+        triggerLegend()
+    }
 
     /// The preview for one mode and the current question. `nil` hides the
     /// preview (Default); Auto shows the matched modes' instructions, or the
     /// trigger legend when nothing matches.
-    public static func text(for choice: PromptModeChoice, input: String = "") -> String? {
+    public static func text(
+        for choice: PromptModeChoice,
+        input: String = "",
+        language: PromptTextLanguage = .current
+    ) -> String? {
         switch choice {
         case .defaultMode:
             return nil
         case .auto:
             let matched = matchedModes(in: input)
-            guard !matched.isEmpty else { return autoTriggerLegend }
-            return matched.compactMap { instructions[$0] }.joined(separator: " ")
+            guard !matched.isEmpty else { return triggerLegend(in: language) }
+            return matched.compactMap { instruction(for: $0, in: language) }.joined(separator: " ")
         default:
-            return instructions[choice]
+            return instruction(for: choice, in: language)
         }
+    }
+
+    /// The instruction one built-in mode appends, in the requested language.
+    public static func instruction(
+        for choice: PromptModeChoice,
+        in language: PromptTextLanguage = .current
+    ) -> String? {
+        PromptModeDefinitions.instructions[choice]?.text(in: language)
     }
 
     /// The trigger word being typed at `caret`, for Tab completion. Mirrors the
@@ -95,7 +114,7 @@ public enum PromptModePreview {
 
     public static let triggers: [PromptModeChoice: [String]] = PromptModeDefinitions.triggers
 
-    public static let instructions: [PromptModeChoice: String] = PromptModeDefinitions.instructions
+    public static let instructions: [PromptModeChoice: PromptModeText] = PromptModeDefinitions.instructions
 
     // Whole-word matching mirrors modules/prompt-modes.js: a trigger may not
     // follow [A-Za-z0-9_/.:@%~#&=+-] or precede [A-Za-z0-9_/.-].

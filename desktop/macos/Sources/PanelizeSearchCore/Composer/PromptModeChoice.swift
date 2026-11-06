@@ -28,23 +28,14 @@ public enum PromptModeChoice: String, CaseIterable {
         }
     }
 
+    /// The localized mode name from the extension's locale files.
+    public func title(in language: PromptTextLanguage = .current) -> String {
+        PromptModeDefinitions.titles[self]?.text(in: language) ?? rawValue
+    }
+
+    /// The localized mode name in the current system language.
     public var title: String {
-        switch self {
-        case .defaultMode:
-            return "默认"
-        case .auto:
-            return "自动"
-        case .concise:
-            return "精简"
-        case .learning:
-            return "学习"
-        case .compete:
-            return "挑战"
-        case .brainstorm:
-            return "头脑风暴"
-        case .deep:
-            return "深度思考"
-        }
+        title()
     }
 
     /// The SF Symbol that stands for this mode's meaning. Auto keeps the
@@ -68,23 +59,20 @@ public enum PromptModeChoice: String, CaseIterable {
         }
     }
 
+    /// The localized explanation shown in the menu, below the picker and in
+    /// the picker's tooltip.
+    public func hint(in language: PromptTextLanguage = .current) -> String {
+        PromptModeDefinitions.hints[self]?.text(in: language) ?? ""
+    }
+
+    /// The explanation in the current system language.
+    public var hint: String {
+        hint()
+    }
+
+    /// The explanation in the current system language.
     public var detail: String {
-        switch self {
-        case .defaultMode:
-            return "不追加任何内容"
-        case .auto:
-            return "仅当问题包含 /study、/brief 等触发词时追加对应模式"
-        case .concise:
-            return "只给结论和要点"
-        case .learning:
-            return "先给结论，再解释原理"
-        case .compete:
-            return "对抗审查：判断、薄弱假设与澄清问题"
-        case .brainstorm:
-            return "多角度发散，不急于下结论"
-        case .deep:
-            return "拆解问题、验证假设并展示推导步骤"
-        }
+        hint()
     }
 
     public static func load(from defaults: UserDefaults = .standard) -> PromptModeChoice {

@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { checkDesktopPromptsInSync } from '../../../scripts/sync-desktop-prompts.js';
+import { readFileSync } from 'node:fs';
+import {
+  LOCALES_ZH_CN_PATH,
+  buildPromptModeData,
+  checkDesktopPromptsInSync,
+  generatePromptModeDefinitionsSwift
+} from '../../../scripts/sync-desktop-prompts.js';
 import {
   COMPETE_PROMPT_TEXTS,
   COMPETE_PROMPT_MIGRATED_KEY,
@@ -660,5 +666,45 @@ describe('cleaning up imported sample prompts', () => {
 describe('desktop client prompt sync', () => {
   it('keeps macOS PromptModeDefinitions.swift in sync with extension prompt modes', () => {
     expect(checkDesktopPromptsInSync()).toBe(true);
+  });
+
+  it('builds titles, hints and instructions in both languages', () => {
+    const data = buildPromptModeData();
+    const choices = ['defaultMode', 'auto', ...PROMPT_MODES.map(mode => mode.id)];
+
+    for (const choice of choices) {
+      expect(data.titles[choice]?.zh).toBeTruthy();
+      expect(data.titles[choice]?.en).toBeTruthy();
+      expect(data.hints[choice]?.zh).toBeTruthy();
+      expect(data.hints[choice]?.en).toBeTruthy();
+    }
+    for (const mode of PROMPT_MODES) {
+      expect(data.instructions[mode.id]?.zh).toBeTruthy();
+      expect(data.instructions[mode.id]?.en).toBeTruthy();
+    }
+
+    expect(data.titles.concise).toEqual({ zh: '精简', en: 'Concise' });
+    expect(data.hints.concise.zh).toBe('追加精简指令：只给结论和要点');
+    expect(data.hints.concise.en).toBe('Append a concise instruction: conclusion and key points only');
+    expect(data.autoTriggerLegend.en).toBe(
+      '/brief Concise · /study Learning · /challenge Challenge · /brainstorm Brainstorm · /think Deep thinking'
+    );
+  });
+
+  it('rejects a missing localized key instead of falling back', () => {
+    const localesZh = JSON.parse(readFileSync(LOCALES_ZH_CN_PATH, 'utf8'));
+    delete localesZh.promptModeConciseHint;
+
+    expect(() => buildPromptModeData({ localesZh })).toThrow(/promptModeConciseHint/);
+  });
+
+  it('emits both languages into the generated Swift file', () => {
+    const swift = generatePromptModeDefinitionsSwift();
+
+    expect(swift).toContain('public static let titles: [PromptModeChoice: PromptModeText]');
+    expect(swift).toContain('public static let hints: [PromptModeChoice: PromptModeText]');
+    expect(swift).toContain('zh: "追加精简指令：只给结论和要点"');
+    expect(swift).toContain('en: "Append a concise instruction: conclusion and key points only"');
+    expect(swift).toContain('en: "Concise"');
   });
 });

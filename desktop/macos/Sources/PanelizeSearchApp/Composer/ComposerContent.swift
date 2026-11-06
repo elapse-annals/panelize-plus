@@ -29,6 +29,7 @@ final class ComposerContent: NSObject {
     let sendButton = SendButton()
     let shortcutHintView = ShortcutHintView(frame: .zero)
     let previewLabel = NSTextField(labelWithString: "")
+    let modeHintLabel = NSTextField(labelWithString: "")
     let completionOverlay = PromptCompletionOverlayView(frame: .zero)
     let historyView = PromptHistorySuggestionView(frame: .zero)
     let modePicker = ModePickerButton(frame: .zero)
@@ -169,10 +170,27 @@ final class ComposerContent: NSObject {
         previewLabel.translatesAutoresizingMaskIntoConstraints = false
         previewLabel.isHidden = true
 
+        modeHintLabel.font = ComposerFonts.modeHint
+        modeHintLabel.textColor = ComposerTheme.previewColor(increaseContrast: false)
+        modeHintLabel.lineBreakMode = .byTruncatingTail
+        modeHintLabel.maximumNumberOfLines = 1
+        modeHintLabel.usesSingleLineMode = true
+        modeHintLabel.isEditable = false
+        modeHintLabel.isSelectable = false
+        modeHintLabel.isBordered = false
+        modeHintLabel.drawsBackground = false
+        modeHintLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        modeHintLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        modeHintLabel.setAccessibilityElement(true)
+        modeHintLabel.setAccessibilityRole(.staticText)
+        modeHintLabel.setAccessibilityLabel("提示词模式说明")
+        modeHintLabel.translatesAutoresizingMaskIntoConstraints = false
+
         modePicker.onSelect = { [weak self] choice in
             self?.actions?.applyPromptMode(choice)
         }
         modePicker.select(mode)
+        updateModeHint(for: mode)
         modePicker.translatesAutoresizingMaskIntoConstraints = false
 
         let sendImage = NSImage(
@@ -226,6 +244,7 @@ final class ComposerContent: NSObject {
         footer.translatesAutoresizingMaskIntoConstraints = false
         footer.addSubview(footerLeft)
         footer.addSubview(footerRight)
+        footer.addSubview(modeHintLabel)
 
         content.addSubview(scrollView)
         content.addSubview(placeholder)
@@ -326,14 +345,25 @@ final class ComposerContent: NSObject {
             statusIcon.widthAnchor.constraint(equalToConstant: ComposerMetrics.statusIconSize),
             statusIcon.heightAnchor.constraint(equalToConstant: ComposerMetrics.statusIconSize),
             footerLeft.leadingAnchor.constraint(equalTo: footer.leadingAnchor),
-            footerLeft.centerYAnchor.constraint(equalTo: footer.centerYAnchor),
+            footerLeft.topAnchor.constraint(equalTo: footer.topAnchor, constant: 4),
             footerLeft.trailingAnchor.constraint(
                 lessThanOrEqualTo: footerRight.leadingAnchor,
                 constant: -10
             ),
 
             footerRight.trailingAnchor.constraint(equalTo: footer.trailingAnchor),
-            footerRight.centerYAnchor.constraint(equalTo: footer.centerYAnchor),
+            footerRight.centerYAnchor.constraint(equalTo: modePicker.centerYAnchor),
+
+            modeHintLabel.leadingAnchor.constraint(equalTo: modePicker.leadingAnchor),
+            modeHintLabel.topAnchor.constraint(
+                equalTo: modePicker.bottomAnchor,
+                constant: ComposerMetrics.modeHintSpacing
+            ),
+            modeHintLabel.heightAnchor.constraint(equalToConstant: ComposerMetrics.modeHintHeight),
+            modeHintLabel.trailingAnchor.constraint(
+                lessThanOrEqualTo: footerRight.leadingAnchor,
+                constant: -10
+            ),
 
             modePicker.heightAnchor.constraint(equalToConstant: ComposerMetrics.modePickerHeight),
 
@@ -345,6 +375,15 @@ final class ComposerContent: NSObject {
         modePicker.refreshAppearance()
         shortcutHintView.refreshAppearance()
         textView.frame = scrollView.contentView.bounds
+    }
+
+    /// Shows the selected mode's explanation below the picker by default.
+    func updateModeHint(for choice: PromptModeChoice) {
+        let hint = choice.hint(in: .current)
+        modeHintLabel.stringValue = hint
+        modeHintLabel.toolTip = hint.isEmpty ? nil : hint
+        modeHintLabel.setAccessibilityValue(hint)
+        modeHintLabel.isHidden = hint.isEmpty
     }
 
     /// Hover/focus emphasis on the card: a slightly stronger edge and a
@@ -385,6 +424,9 @@ final class ComposerContent: NSObject {
         historyPanelShadow.refreshAppearance()
         layout.updateHistoryPanelVisibility()
         previewLabel.textColor = ComposerTheme.previewColor(
+            increaseContrast: options.increaseContrast
+        )
+        modeHintLabel.textColor = ComposerTheme.previewColor(
             increaseContrast: options.increaseContrast
         )
         shortcutHintView.refreshAppearance()

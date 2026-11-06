@@ -2,7 +2,7 @@ import AppKit
 
 enum ComposerMetrics {
     static let contentWidth: CGFloat = 680
-    static let baseContentHeight: CGFloat = 164
+    static let baseContentHeight: CGFloat = 180
     static let baseInputHeight: CGFloat = 74
     static let maxInputHeight: CGFloat = 128
 
@@ -11,7 +11,7 @@ enum ComposerMetrics {
     static let contentInsetTop: CGFloat = 17
     static let contentInsetBottom: CGFloat = 13
 
-    static let footerHeight: CGFloat = 30
+    static let footerHeight: CGFloat = 46
     static let cornerRadius: CGFloat = 22
     static let shadowInset: CGFloat = 28
     static let shadowRadius: CGFloat = 20
@@ -28,6 +28,8 @@ enum ComposerMetrics {
 
     static let modePickerHeight: CGFloat = 22
     static let modePickerCornerRadius: CGFloat = 11
+    static let modeHintHeight: CGFloat = 14
+    static let modeHintSpacing: CGFloat = 2
 
     static let hintKeycapHeight: CGFloat = 16
     static let hintItemSpacing: CGFloat = 4
@@ -53,6 +55,7 @@ enum ComposerFonts {
     static let keycap = NSFont.systemFont(ofSize: 9.5, weight: .semibold)
     static let hintKey = NSFont.systemFont(ofSize: 10, weight: .medium)
     static let mode = NSFont.systemFont(ofSize: 11.5, weight: .medium)
+    static let modeHint = NSFont.systemFont(ofSize: 10.5, weight: .regular)
     static let suggestion = NSFont.systemFont(ofSize: 13.5, weight: .regular)
     static let historyHeader = NSFont.systemFont(ofSize: 11, weight: .medium)
     static let modeChevronPointSize: CGFloat = 8

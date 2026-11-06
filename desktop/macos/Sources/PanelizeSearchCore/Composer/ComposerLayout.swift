@@ -4,7 +4,7 @@ import CoreGraphics
 /// about three lines, then grows up to five lines before scrolling.
 public let composerBaseInputHeight: CGFloat = 74
 public let composerMaxInputHeight: CGFloat = 128
-public let composerBaseContentHeight: CGFloat = 164
+public let composerBaseContentHeight: CGFloat = 180
 
 // Recent-question rows above the input. At most three are shown.
 public let composerSuggestionRowHeight: CGFloat = 28
