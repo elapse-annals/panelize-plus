@@ -1,5 +1,40 @@
 import { test, expect } from '@playwright/test';
+import { OPTIONAL_PROVIDER_CONFIGS } from '../../modules/providers/optional-provider-access.js';
 import { createPatchedExtensionCopy, launchExtension } from './support/extension-harness.js';
+
+test('fresh install registers Qianwen frame access without a saved provider list', async () => {
+  test.setTimeout(60000);
+  const extensionCopy = await createPatchedExtensionCopy(manifest => {
+    // The grant belongs to the device, not to synced provider preferences.
+    // Keep storage empty while modeling a device that already granted access.
+    manifest.host_permissions.push(...OPTIONAL_PROVIDER_CONFIGS['qwen-cn'].origins);
+  });
+  let extension;
+
+  try {
+    extension = await launchExtension({ extensionPath: extensionCopy.extensionPath });
+    await extension.serviceWorker.evaluate(async () => {
+      await chrome.storage.sync.set({ startupProviders: ['qwen-cn'] });
+    });
+    expect(await extension.serviceWorker.evaluate(async () => (
+      chrome.permissions.contains({ origins: ['https://www.qianwen.com/*'] })
+    ))).toBe(true);
+    const options = await extension.context.newPage();
+    await options.goto(extension.extensionUrl('options/options.html'));
+    await expect.poll(() => options.evaluate(async () => (
+      (await chrome.declarativeNetRequest.getDynamicRules()).map(({ id }) => id)
+    ))).toContain(OPTIONAL_PROVIDER_CONFIGS['qwen-cn'].frameRule.id);
+
+    const page = await extension.context.newPage();
+    await page.goto(extension.extensionUrl('multi-panel/multi-panel.html'));
+    const qwenFrame = page.frameLocator('#panel-grid iframe[src^="https://www.qianwen.com/"]');
+    await expect(qwenFrame.locator('body')).toContainText('千问', { timeout: 15000 });
+    await expect(qwenFrame.locator('body')).not.toContainText('拒绝了我们的连接请求');
+  } finally {
+    await extension?.close();
+    await extensionCopy.cleanup();
+  }
+});
 
 test.describe('Qwen optional permission sync E2E', () => {
   test.setTimeout(60000);

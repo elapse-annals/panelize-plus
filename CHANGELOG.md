@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.88.1 - 2026-11-06
+- Fixed fresh installations treating an unsaved provider list as empty during permission reconciliation, which removed Qianwen's frame-header rule after the user granted site access and could show “www.qianwen.com refused to connect”. The reconciliation now uses the same default provider list as Settings and Multi-Panel, without changing explicitly saved choices.
+
 ## 2.88.0 - 2026-11-05
 - macOS packaging now runs locally: `scripts/release/package-macos-app.sh` builds Panelize Link for Apple silicon (arm64), and `gh release upload vX.Y.Z dist/release-X.Y.Z/panelize-link-X.Y.Z-macos-arm64.zip` attaches it to the published release. Release Publish keeps building and uploading only the extension zips, while its release notes still name the macOS asset.
 - `install.sh --app` installs and registers an already-downloaded `Panelize Link.app`, so the release build works without a local Swift toolchain; the macOS docs cover the ad-hoc signed first launch and the download install path.

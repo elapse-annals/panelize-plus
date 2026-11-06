@@ -1,4 +1,5 @@
 import { expandContentScriptFiles } from './content-script-files.js';
+import { DEFAULT_PROVIDER_IDS } from './provider-defaults.js';
 
 function createContentScript(id, matches, enterBehaviorScript) {
   return {
@@ -343,7 +344,9 @@ export async function syncOptionalProviderAccess(enabledProviderIds) {
  */
 export async function reconcileOptionalProviderAccess() {
   try {
-    const settings = await chrome.storage.sync.get({ enabledProviders: [] });
+    // Fresh installs have no saved list. Match the options and Multi-Panel
+    // defaults instead of removing every default provider's access rule.
+    const settings = await chrome.storage.sync.get({ enabledProviders: DEFAULT_PROVIDER_IDS });
     const enabledProviderIds = Array.isArray(settings.enabledProviders)
       ? settings.enabledProviders
       : [];

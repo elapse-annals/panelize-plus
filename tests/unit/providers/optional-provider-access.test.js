@@ -1,4 +1,5 @@
 import { TEXT_INJECTION_FILES, PROVIDER_TIER_FILES } from '../../../modules/providers/content-script-files.js';
+import { DEFAULT_PROVIDER_IDS } from '../../../modules/providers/provider-defaults.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -422,6 +423,52 @@ describe('optional provider access', () => {
       'zai-global',
       'yuanbao',
     ])).resolves.toEqual(['chatgpt', 'qwen-global']);
+  });
+
+  it('uses default providers when a fresh installation has no saved provider list', async () => {
+    chrome.permissions.contains.mockResolvedValue(true);
+    chrome.storage.sync.get.mockImplementation(defaults => Promise.resolve(defaults));
+
+    await reconcileOptionalProviderAccess();
+
+    expect(chrome.storage.sync.get).toHaveBeenCalledWith({
+      enabledProviders: DEFAULT_PROVIDER_IDS,
+    });
+    expect(chrome.scripting.registerContentScripts).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ id: 'qwen-cn-scripts' })]),
+    );
+    expect(chrome.declarativeNetRequest.updateDynamicRules).toHaveBeenCalledWith({
+      removeRuleIds: [],
+      addRules: expect.arrayContaining([
+        expect.objectContaining({ id: 1001 }),
+        expect.objectContaining({ id: 1002 }),
+      ]),
+    });
+    expect(chrome.storage.sync.set).not.toHaveBeenCalled();
+  });
+
+  it('uses default providers when reading fresh installation defaults', async () => {
+    chrome.permissions.contains.mockResolvedValue(true);
+
+    await reconcileOptionalProviderAccess();
+
+    expect(chrome.scripting.registerContentScripts).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ id: 'qwen-cn-scripts' })]),
+    );
+    expect(chrome.declarativeNetRequest.updateDynamicRules).toHaveBeenCalledWith({
+      removeRuleIds: [],
+      addRules: expect.arrayContaining([expect.objectContaining({ id: 1001 })]),
+    });
+  });
+
+  it('keeps an explicitly empty provider list disabled', async () => {
+    chrome.permissions.contains.mockResolvedValue(true);
+    chrome.storage.sync.get.mockResolvedValue({ enabledProviders: [] });
+
+    await reconcileOptionalProviderAccess();
+
+    expect(chrome.scripting.registerContentScripts).not.toHaveBeenCalled();
+    expect(chrome.declarativeNetRequest.updateDynamicRules).not.toHaveBeenCalled();
   });
 
   it('never overwrites synced provider preferences when this device lacks permission', async () => {
