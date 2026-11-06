@@ -91,6 +91,12 @@
 }
 
 /* Layout variations */
+/* 1xN Auto 单行，列数由 JS 写入 --panel-count */
+.layout-1x-auto {
+  grid-template-columns: repeat(var(--panel-count, 1), minmax(var(--panel-min-width, 320px), 1fr));
+  grid-template-rows: 1fr;
+}
+
 /* 1x1 单面板 */
 .layout-1x1 {
   grid-template-columns: 1fr;

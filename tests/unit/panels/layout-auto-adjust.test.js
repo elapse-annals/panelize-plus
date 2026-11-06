@@ -2,10 +2,17 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import {
+  AUTO_LAYOUT_ID,
+  KNOWN_LAYOUT_IDS,
   MAX_PANELS,
   LAYOUT_PANEL_COUNTS,
   getAutoAdjustedLayout,
-  getAutoShrunkLayout
+  getAutoLayoutColumnCount,
+  getAutoLayoutMinWidth,
+  getAutoShrunkLayout,
+  getLayoutCapacity,
+  isAutoLayout,
+  isKnownLayout
 } from '../../../modules/panels/layout-auto-adjust.js';
 
 describe('LAYOUT_PANEL_COUNTS', () => {
@@ -14,7 +21,11 @@ describe('LAYOUT_PANEL_COUNTS', () => {
     const pickerLayouts = [...new Set([...html.matchAll(/data-layout="([^"]+)"/g)].map(([, layout]) => layout))];
 
     expect(pickerLayouts.length).toBeGreaterThan(0);
-    expect(Object.keys(LAYOUT_PANEL_COUNTS).sort()).toEqual(pickerLayouts.sort());
+    expect([...KNOWN_LAYOUT_IDS].sort()).toEqual(pickerLayouts.sort());
+  });
+
+  it('keeps the fixed layout table free of the auto layout', () => {
+    expect(LAYOUT_PANEL_COUNTS).not.toHaveProperty(AUTO_LAYOUT_ID);
   });
 
   it('matches rows x columns for every layout', () => {
@@ -29,6 +40,44 @@ describe('LAYOUT_PANEL_COUNTS', () => {
     expect(Math.max(...Object.values(LAYOUT_PANEL_COUNTS))).toBe(MAX_PANELS);
     expect(LAYOUT_PANEL_COUNTS['1x30']).toBe(30);
     expect(LAYOUT_PANEL_COUNTS['2x15']).toBe(30);
+  });
+});
+
+describe('auto layout helpers', () => {
+  it('recognises the auto layout and rejects unknown ids', () => {
+    expect(isAutoLayout(AUTO_LAYOUT_ID)).toBe(true);
+    expect(isAutoLayout('1x3')).toBe(false);
+    expect(isKnownLayout(AUTO_LAYOUT_ID)).toBe(true);
+    expect(isKnownLayout('1x3')).toBe(true);
+    expect(isKnownLayout('1x31')).toBe(false);
+    expect(isKnownLayout('toString')).toBe(false);
+    expect(isKnownLayout('__proto__')).toBe(false);
+  });
+
+  it('gives the auto layout full panel capacity', () => {
+    expect(getLayoutCapacity(AUTO_LAYOUT_ID)).toBe(MAX_PANELS);
+    expect(getLayoutCapacity('1x3')).toBe(3);
+    expect(getLayoutCapacity('unknown')).toBe(0);
+  });
+
+  it('clamps auto columns to a valid repeat count', () => {
+    expect(getAutoLayoutColumnCount(0)).toBe(1);
+    expect(getAutoLayoutColumnCount(3)).toBe(3);
+    expect(getAutoLayoutColumnCount(31)).toBe(MAX_PANELS);
+  });
+
+  it('matches the fixed 1xN minimum widths', () => {
+    expect(getAutoLayoutMinWidth(1)).toBe(0);
+    expect(getAutoLayoutMinWidth(2)).toBe(400);
+    expect(getAutoLayoutMinWidth(6)).toBe(400);
+    expect(getAutoLayoutMinWidth(7)).toBe(350);
+    expect(getAutoLayoutMinWidth(8)).toBe(320);
+    expect(getAutoLayoutMinWidth(30)).toBe(320);
+  });
+
+  it('does not take part in fixed-layout auto expand or shrink', () => {
+    expect(getAutoAdjustedLayout(AUTO_LAYOUT_ID, 5)).toBeNull();
+    expect(getAutoShrunkLayout(AUTO_LAYOUT_ID, 2)).toBeNull();
   });
 });
 

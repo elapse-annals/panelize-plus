@@ -160,10 +160,9 @@ export function createWindowModeController({
         if (state.currentLayout) {
           getLayoutController().currentLayout = getLayoutController().normalizeLayout(state.currentLayout);
           restoredSettings.multiPanelLayout = getLayoutController().currentLayout;
-          const panelGrid = document.getElementById('panel-grid');
-          if (panelGrid) {
-            panelGrid.className = `layout-${getLayoutController().currentLayout}`;
-          }
+          getLayoutController().applyLayoutToGrid({
+            panelCount: Array.isArray(state.panels) ? state.panels.length : undefined
+          });
         }
 
         // 恢复面板配置（保存到 multiPanelProviders）

@@ -32,9 +32,14 @@ test.describe('Layout options E2E', () => {
   test('shows and applies 1x30 and 2x15 layouts, then saves a high-capacity default', async () => {
     await page.click('#layout-btn');
     await expect(page.locator('#layout-modal')).toBeVisible();
+    await expect(page.locator('[data-layout="1x-auto"]')).toBeVisible();
     await expect(page.locator('[data-layout="1x30"]')).toBeVisible();
     await expect(page.locator('[data-layout="2x15"]')).toBeVisible();
 
+    await page.locator('[data-layout="1x-auto"]').click();
+    await expect(page.locator('#panel-grid')).toHaveClass(/layout-1x-auto/);
+
+    await page.click('#layout-btn');
     await page.locator('[data-layout="2x15"]').scrollIntoViewIfNeeded();
     await page.click('[data-layout="2x15"]');
     await expect(page.locator('#panel-grid')).toHaveClass(/layout-2x15/);
@@ -50,6 +55,7 @@ test.describe('Layout options E2E', () => {
     await expect(defaultLayout).toBeVisible();
     await expect(defaultLayout).toHaveValue('1x30');
     await expect(defaultLayout.locator('option[value="1x30"]')).toHaveCount(1);
+    await expect(defaultLayout.locator('option[value="1x-auto"]')).toHaveCount(1);
     await expect(defaultLayout.locator('option[value="2x15"]')).toHaveCount(1);
     await defaultLayout.selectOption('2x15');
     await expect.poll(async () => (

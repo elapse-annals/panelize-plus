@@ -1,4 +1,4 @@
-import { MAX_PANELS, LAYOUT_PANEL_COUNTS } from './layout-auto-adjust.js';
+import { MAX_PANELS, isKnownLayout } from './layout-auto-adjust.js';
 import { getProviderById } from '../providers/providers.js';
 import { isProviderAllowedUrl } from '../providers/provider-open-url.js';
 
@@ -9,7 +9,7 @@ const SNAPSHOT_VERSION = 1;
 // settings or a cache of provider documents/conversation URLs.
 function normalizeSnapshot(value) {
   if (!value || value.version !== SNAPSHOT_VERSION ||
-      !Object.hasOwn(LAYOUT_PANEL_COUNTS, value.layout) ||
+      !isKnownLayout(value.layout) ||
       !Array.isArray(value.startupProviderIds) ||
       value.startupProviderIds.length > MAX_PANELS ||
       new Set(value.startupProviderIds).size !== value.startupProviderIds.length ||

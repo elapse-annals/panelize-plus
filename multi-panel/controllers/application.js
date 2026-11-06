@@ -67,6 +67,8 @@ export function createApplicationController({
       }).then(controller => { getLayoutController().panelResize = controller; }),
       getPanelsController().initializePanels()
     ]);
+    // Panel creation can finish after the resize controller's first layout read.
+    getLayoutController().syncAutoLayoutColumns();
 
     // Setup event listeners
     getComposerController().setupEventListeners();
@@ -205,8 +207,7 @@ export function createApplicationController({
       getProviderControlsController().currentGoogleProviderMode = normalizeGoogleProviderMode(settings.googleProviderMode);
 
       // Apply layout
-      const panelGrid = document.getElementById('panel-grid');
-      panelGrid.className = `layout-${getLayoutController().currentLayout}`;
+      getLayoutController().applyLayoutToGrid();
     } catch (error) {
       console.error('Error loading settings:', error);
     }

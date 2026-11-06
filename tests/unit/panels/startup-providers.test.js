@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { MAX_PANELS } from '../../../modules/panels/layout-auto-adjust.js';
+import { AUTO_LAYOUT_ID, MAX_PANELS } from '../../../modules/panels/layout-auto-adjust.js';
 import {
   getStartupLayout,
   normalizeStartupProviders,
@@ -62,6 +62,12 @@ describe('getStartupLayout', () => {
   it('keeps 1xN layouts that grow as panels are added', () => {
     expect(getStartupLayout('1x3', 5)).toBe('1x3');
     expect(getStartupLayout('4x2', 9)).toBe('4x2');
+  });
+
+  it('keeps the auto layout for any panel count', () => {
+    expect(getStartupLayout(AUTO_LAYOUT_ID, 1)).toBe(AUTO_LAYOUT_ID);
+    expect(getStartupLayout(AUTO_LAYOUT_ID, 8)).toBe(AUTO_LAYOUT_ID);
+    expect(getStartupLayout(AUTO_LAYOUT_ID, 30)).toBe(AUTO_LAYOUT_ID);
   });
 
   it('switches other layouts that are too small to a single row', () => {

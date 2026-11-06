@@ -191,6 +191,26 @@ test.describe('startup localStorage snapshot', () => {
     await page.close();
   });
 
+  test('restores an auto-layout snapshot before storage responds', async () => {
+    const providerIds = ['chatgpt', 'claude'];
+    await setSettings({
+      enabledProviders: providerIds,
+      providerOrder: providerIds,
+      startupProviders: providerIds,
+      multiPanelLayout: '1x-auto',
+    });
+    const page = await openPage(makeSnapshot(providerIds, {}, '1x-auto'));
+    await expect(page.locator('#panel-grid iframe')).toHaveCount(2);
+    await expect(page.locator('#panel-grid')).toHaveClass(/layout-1x-auto/);
+    const columns = await page.locator('#panel-grid').evaluate((grid) =>
+      getComputedStyle(grid).gridTemplateColumns.split(/\s+/).filter(Boolean).length);
+    expect(columns).toBe(2);
+
+    await releaseStorageAndWait(page);
+    await expect(page.locator('#panel-grid')).toHaveClass(/layout-1x-auto/);
+    await page.close();
+  });
+
   test('keeps early location and width reports, then reapplies loaded page style settings', async () => {
     await setSettings({
       enabledProviders: ['chatgpt'],

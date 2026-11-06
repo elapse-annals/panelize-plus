@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { launchExtension, openMultiPanel } from './support/extension-harness.js';
-import { MAX_PANELS } from '../../modules/panels/layout-auto-adjust.js';
+import { AUTO_LAYOUT_ID, MAX_PANELS } from '../../modules/panels/layout-auto-adjust.js';
 import { createPanelCapacityExtensionCopy, syntheticProviderIds } from './support/panel-capacity-fixture.js';
 
 // More test-only providers than the product currently ships let the real UI
@@ -48,11 +48,12 @@ test.describe('Layout auto-adjust E2E', () => {
   });
 
   // multi-panel opens min(enabled providers, layout capacity) panels.
-  async function openLayout(layout, capacity) {
+  async function openLayout(layout, capacity, settings = {}) {
     page = await openMultiPanel(extension, {
       providers: ALL_PROVIDERS.slice(0, capacity),
       layout,
       enabledProviders: ALL_PROVIDERS,
+      settings,
     });
   }
 
@@ -191,5 +192,34 @@ test.describe('Layout auto-adjust E2E', () => {
     await removeLastPanel();
     await expect(panelGrid()).toHaveClass('layout-1x6');
     await expect.poll(storedLayout).toBe('1x6');
+  });
+
+  test('keeps the auto layout columns in step with the panel count', async () => {
+    await openLayout('1x2', 2);
+
+    await chooseLayout(AUTO_LAYOUT_ID);
+    await expect(page.locator('#panel-grid iframe')).toHaveCount(2);
+    await expectGridGeometry({ columns: 2, rows: 1 });
+    await expect.poll(storedLayout).toBe(AUTO_LAYOUT_ID);
+
+    await addPanel();
+    await expectGridGeometry({ columns: 3, rows: 1 });
+    await expect(panelGrid()).toHaveClass(`layout-${AUTO_LAYOUT_ID}`);
+
+    await removeLastPanel();
+    await expectGridGeometry({ columns: 2, rows: 1 });
+  });
+
+  test('starts the auto layout with a default three columns', async () => {
+    await openLayout(AUTO_LAYOUT_ID, 3, { startupProviders: null });
+
+    await expect(panelGrid()).toHaveClass(`layout-${AUTO_LAYOUT_ID}`);
+    await expectGridGeometry({ columns: 3, rows: 1 });
+  });
+
+  test('honours an explicit startup selection in the auto layout', async () => {
+    await openLayout(AUTO_LAYOUT_ID, 4, { startupProviders: ALL_PROVIDERS.slice(0, 4) });
+
+    await expectGridGeometry({ columns: 4, rows: 1 });
   });
 });

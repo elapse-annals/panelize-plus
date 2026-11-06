@@ -5,6 +5,11 @@
 
 export const MAX_PANELS = 30;
 
+/** Single-row layout whose column count follows the open panel count. */
+export const AUTO_LAYOUT_ID = '1x-auto';
+/** Panels opened by the auto layout when no saved selection is usable. */
+export const AUTO_LAYOUT_STARTUP_PANEL_COUNT = 3;
+
 export const LAYOUT_PANEL_COUNTS = {
   '1x1': 1,
   '1x2': 2,
@@ -57,6 +62,39 @@ export const LAYOUT_PANEL_COUNTS = {
   '4x2': 8
 };
 
+/** Every layout the picker offers, including the auto layout. */
+export const KNOWN_LAYOUT_IDS = Object.freeze([...Object.keys(LAYOUT_PANEL_COUNTS), AUTO_LAYOUT_ID]);
+
+export function isAutoLayout(layout) {
+  return layout === AUTO_LAYOUT_ID;
+}
+
+/** Auto layout or a fixed layout in LAYOUT_PANEL_COUNTS. */
+export function isKnownLayout(layout) {
+  return isAutoLayout(layout) || Object.hasOwn(LAYOUT_PANEL_COUNTS, layout);
+}
+
+/** Panel capacity for a known layout; 0 for an unknown one. */
+export function getLayoutCapacity(layout) {
+  if (isAutoLayout(layout)) return MAX_PANELS;
+  return Object.hasOwn(LAYOUT_PANEL_COUNTS, layout) ? LAYOUT_PANEL_COUNTS[layout] : 0;
+}
+
+/** Auto layout columns: one per panel, clamped to the grid's valid range. */
+export function getAutoLayoutColumnCount(panelCount) {
+  const count = Math.trunc(Number(panelCount)) || 1;
+  return Math.min(Math.max(count, 1), MAX_PANELS);
+}
+
+/** Minimum column width for the auto layout, matching the fixed 1xN rules. */
+export function getAutoLayoutMinWidth(columnCount) {
+  const count = getAutoLayoutColumnCount(columnCount);
+  if (count === 1) return 0;
+  if (count <= 6) return 400;
+  if (count === 7) return 350;
+  return 320;
+}
+
 /**
  * Calculates whether layout adjustment is needed based on current layout and panel count
  * Only auto-expands columns in 1xN layout sequence
@@ -65,6 +103,8 @@ export const LAYOUT_PANEL_COUNTS = {
  * @returns {string|null} - New layout name, or null if no adjustment needed
  */
 export function getAutoAdjustedLayout(currentLayout, newPanelCount) {
+  if (isAutoLayout(currentLayout)) return null;
+
   if (currentLayout === '4x2' && newPanelCount === 9) {
     return '1x9';
   }
@@ -103,6 +143,8 @@ export function getAutoAdjustedLayout(currentLayout, newPanelCount) {
  * @returns {string|null} - New layout name, or null if no adjustment needed
  */
 export function getAutoShrunkLayout(currentLayout, newPanelCount) {
+  if (isAutoLayout(currentLayout)) return null;
+
   if (currentLayout === '1x9' && newPanelCount === 8) {
     return '4x2';
   }

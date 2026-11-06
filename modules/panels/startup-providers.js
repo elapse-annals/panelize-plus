@@ -3,7 +3,12 @@
  * Kept separate from multi-panel.js so tests exercise the production logic.
  */
 
-import { LAYOUT_PANEL_COUNTS, getAutoAdjustedLayout } from './layout-auto-adjust.js';
+import {
+  LAYOUT_PANEL_COUNTS,
+  getAutoAdjustedLayout,
+  getLayoutCapacity,
+  isAutoLayout
+} from './layout-auto-adjust.js';
 
 /**
  * Normalize the stored startupProviders setting.
@@ -50,7 +55,10 @@ export function resolveStartupProviderIds(orderedProviderIds, startupProviders, 
  * @returns {string}
  */
 export function getStartupLayout(layout, panelCount) {
-  const capacity = LAYOUT_PANEL_COUNTS[layout] || 0;
+  // The auto layout grows with any panel count and must not become a 1xN id.
+  if (isAutoLayout(layout)) return layout;
+
+  const capacity = getLayoutCapacity(layout);
   if (panelCount <= capacity || getAutoAdjustedLayout(layout, panelCount)) {
     return layout;
   }

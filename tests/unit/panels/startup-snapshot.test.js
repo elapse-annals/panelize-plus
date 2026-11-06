@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PROVIDERS } from '../../../modules/providers/providers.js';
+import { AUTO_LAYOUT_ID } from '../../../modules/panels/layout-auto-adjust.js';
 import {
   STARTUP_SNAPSHOT_KEY,
   clearStartupSnapshot,
@@ -85,6 +86,12 @@ describe('startup snapshot', () => {
     expect(expanded.startupProviderIds.length).toBeGreaterThan(12);
     expect(writeStartupSnapshot(expanded)).toBe(true);
     expect(readStartupSnapshot()).toEqual({ ...expanded, version: 1 });
+  });
+
+  it('accepts the auto layout', () => {
+    const auto = { ...configuration, layout: AUTO_LAYOUT_ID };
+    expect(writeStartupSnapshot(auto)).toBe(true);
+    expect(readStartupSnapshot()).toMatchObject({ layout: AUTO_LAYOUT_ID });
   });
 
   it('tolerates disabled storage and clears stale data when a write fails', () => {

@@ -8,7 +8,14 @@ import { GROK_WEBSOCKET_COOKIE_SYNC_ACTION } from '../../modules/providers/grok-
 import { MIMO_SESSION_COOKIE_SYNC_ACTION, reconcileMimoSessionCookies } from '../../modules/providers/mimo-session-cookies.js';
 import { reconcileOptionalProviderAccess } from '../../modules/providers/optional-provider-access.js';
 import { clearPerplexityServiceWorker } from '../../modules/providers/perplexity-service-worker.js';
-import { MAX_PANELS, LAYOUT_PANEL_COUNTS, getAutoAdjustedLayout, getAutoShrunkLayout } from '../../modules/panels/layout-auto-adjust.js';
+import {
+  AUTO_LAYOUT_STARTUP_PANEL_COUNT,
+  MAX_PANELS,
+  LAYOUT_PANEL_COUNTS,
+  getAutoAdjustedLayout,
+  getAutoShrunkLayout,
+  isAutoLayout
+} from '../../modules/panels/layout-auto-adjust.js';
 import { createPanelFitState } from '../../modules/panels/panel-fit.js';
 import { getStartupLayout, resolveStartupProviderIds } from '../../modules/panels/startup-providers.js';
 import { clearStartupSnapshot, readStartupSnapshot, writeStartupSnapshot } from '../../modules/panels/startup-snapshot.js';
@@ -83,7 +90,7 @@ export function createPanelsController({
     if (!snapshot) return;
 
     getLayoutController().currentLayout = snapshot.layout;
-    document.getElementById('panel-grid').className = `layout-${getLayoutController().currentLayout}`;
+    getLayoutController().applyLayoutToGrid();
     for (const providerId of snapshot.startupProviderIds) {
       // Session work and optional host grants must be checked before navigation.
       // A cached grant cannot prove permission is still present on this device.
@@ -124,7 +131,10 @@ export function createPanelsController({
       ]);
       const providerIds = enabledProviders.map(({ id }) => id);
 
-      const panelCount = LAYOUT_PANEL_COUNTS[getLayoutController().currentLayout] || 4;
+      const currentLayout = getLayoutController().currentLayout;
+      const panelCount = isAutoLayout(currentLayout)
+        ? AUTO_LAYOUT_STARTUP_PANEL_COUNT
+        : (LAYOUT_PANEL_COUNTS[currentLayout] || 4);
       const restoredProviderIds = restoredStartupProviderIds?.filter(id => providerIds.includes(id)).slice(0, MAX_PANELS);
       const startupProviderIds = restoredProviderIds?.length ? restoredProviderIds : resolveStartupProviderIds(
         providerIds,
@@ -140,7 +150,7 @@ export function createPanelsController({
       }
       if (startupLayout !== getLayoutController().currentLayout) {
         getLayoutController().currentLayout = startupLayout;
-        document.getElementById('panel-grid').className = `layout-${getLayoutController().currentLayout}`;
+        getLayoutController().applyLayoutToGrid({ panelCount: startupProviderIds.length });
       }
 
       // Keep matching early frames in their existing relative order. Moving an
@@ -178,6 +188,9 @@ export function createPanelsController({
         getPresentationController().postPageStyleToPanel(panel);
       });
       getProviderControlsController().syncGoogleModeControls();
+
+      // The auto layout's columns track the reconciled panel count.
+      getLayoutController().syncAutoLayoutColumns();
 
       // Not awaited: storage calls are slow while the frames load, and nothing
       // during startup reads it back.
@@ -375,6 +388,7 @@ export function createPanelsController({
       : document.getElementById('ai-summary-panel');
     panelGrid.insertBefore(panelEl, insertionPoint?.parentElement === panelGrid ? insertionPoint : null);
     panels.push(panel);
+    getLayoutController().syncAutoLayoutColumns();
     getSendingController().startPanelReadiness(panel);
     getLayoutController().panelFitObserver?.observe(iframe.parentElement);
     getSendingController().resetFillRetryState();
@@ -431,6 +445,9 @@ export function createPanelsController({
 
     // Update selectors
     updatePanelSelectors();
+
+    // Auto layout columns follow the remaining panel count.
+    getLayoutController().syncAutoLayoutColumns();
 
     // Save configuration
     if (persist) getPresentationController().saveProviderConfiguration();

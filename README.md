@@ -78,7 +78,7 @@ Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, De
 
 ### 📐 Flexible Layouts
 
-Choose from 49 different layouts to fit your workflow, with capacity for up to 30 panels. Use 1×2 for a quick comparison, or 1×30 and 2×15 for larger sets. The number of panels you can open depends on the enabled providers. Focus a single panel to fill the window, switch to a popup window that reopens at its remembered size and position, or turn on wide mode to give each panel 1.5× the width with horizontal scrolling.
+Choose from 50 layouts — 49 fixed arrangements plus **1×N Auto**, whose columns follow the open panel count — with capacity for up to 30 panels. Use 1×2 for a quick comparison, or 1×30 and 2×15 for larger sets. The number of panels you can open depends on the enabled providers. Focus a single panel to fill the window, switch to a popup window that reopens at its remembered size and position, or turn on wide mode to give each panel 1.5× the width with horizontal scrolling.
 
 <p align="center">
   <img src="assets/screenshots/select-layout.png" alt="Layout Selection" width="600">

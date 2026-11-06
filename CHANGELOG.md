@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.89.0 - 2026-11-06
+- Added the **1xN Auto** layout: one row whose column count always equals the open panel count. Adding or removing a panel grows or shrinks the row immediately, and choosing the layout itself never adds or removes panels. It is available in the layout picker and as a default layout in Settings, and persists as `multiPanelLayout: '1x-auto'`.
+
 ## 2.88.1 - 2026-11-06
 - Fixed fresh installations treating an unsaved provider list as empty during permission reconciliation, which removed Qianwen's frame-header rule after the user granted site access and could show “www.qianwen.com refused to connect”. The reconciliation now uses the same default provider list as Settings and Multi-Panel, without changing explicitly saved choices.
 
