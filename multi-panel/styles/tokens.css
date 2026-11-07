@@ -1,0 +1,356 @@
+/* Semantic design tokens for the Multi-Panel page.
+   This file is imported first and intentionally contains only custom-property
+   declarations: later files keep the original cascade and override order. */
+:root {
+  /* Surfaces */
+  --bg: #f5f5f5;
+  --surface: #ffffff;
+  --surface-header: #f9f9f9;
+  --surface-input: #ffffff;
+  --surface-subtle: #f5f5f5;
+  --surface-hover: #f0f0f0;
+  --surface-hover-strong: #e0e0e0;
+  --surface-selected: #ffffff;
+  --surface-track: #eceff1;
+  --surface-composer: #ffffff;
+  --surface-menu: #ffffff;
+  --gutter: #e0e0e0;
+  --scrim: rgba(0, 0, 0, .5);
+
+  /* Text */
+  --text: #333333;
+  --text-secondary: #666666;
+  --text-muted: #5f6875;
+  --text-faint: #999999;
+  --text-strong: #0d2a4a;
+
+  /* Borders */
+  --border: #e0e0e0;
+  --border-strong: #c8c8c8;
+  --border-subtle: #f0f0f0;
+  --hairline: rgba(0, 0, 0, .06);
+  --divider: rgba(0, 0, 0, .16);
+
+  /* Accent */
+  --accent: #1976d2;
+  --accent-hover: #1565c0;
+  --accent-ink: #1565c0;
+  --accent-soft: #e3f2fd;
+  --accent-soft-hover: rgba(25, 118, 210, .08);
+  --accent-tint: rgba(25, 118, 210, .12);
+  --accent-line: #bbdefb;
+  --on-accent: #ffffff;
+
+  /* Semantic states */
+  --success: #2e7d32;
+  --success-soft: rgba(46, 125, 50, .08);
+  --warning: #b45309;
+  --warning-soft: #fff8e1;
+  --warning-border: #ffe0b2;
+  --warning-ink: #5d4037;
+  --danger: #c62828;
+  --danger-soft: #ffebee;
+  --danger-border: #ef9a9a;
+  --favorite: #fbc02d;
+
+  /* Activity and speed rank */
+  --activity-running: var(--accent);
+  --activity-done: #2e7d32;
+  --activity-waiting: #f9a825;
+  --activity-ring: #ffffff;
+  --rank-1: #ffc61a;
+  --rank-2: #b0bec5;
+  --rank-3: #a8703f;
+
+  /* Reasoning tiers */
+  --tier-neutral: #8b91a2;
+  --tier-neutral-highlight: #cbd2df;
+  --tier-neutral-ink: #555f73;
+  --tier-neutral-glow: #8b91a226;
+  --tier-fast: #087f8c;
+  --tier-fast-highlight: #7ee6e4;
+  --tier-fast-ink: #066975;
+  --tier-fast-glow: #16b9c02b;
+  --tier-balanced: #346acb;
+  --tier-balanced-highlight: #a3c9ff;
+  --tier-balanced-ink: #2856a3;
+  --tier-balanced-glow: #4d8aee2b;
+  --tier-deep: #854ee0;
+  --tier-deep-highlight: #e3b6ff;
+  --tier-deep-ink: #7541bb;
+  --tier-deep-glow: #ac73ef38;
+  --tier-deep-confirm-start: #6945ce;
+  --tier-deep-confirm-end: #a756e3;
+  --tier-spark-1: #ffffff;
+  --tier-spark-2: #f4d3ff;
+  --tier-request-mix: 9%;
+  --tier-duration-fast: .4s;
+  --tier-duration-balanced: .65s;
+  --tier-duration-deep: .85s;
+
+  /* Composer */
+  --composer-accent: #6b5bb0;
+  --composer-accent-hover: #5a4b9c;
+  --composer-accent-soft: #f0eff8;
+  --composer-accent-ink: #48447a;
+  --on-composer-accent: #ffffff;
+  --composer-muted: var(--text-muted);
+  --composer-line: #e4e6ee;
+  --composer-edge: #d9deeb;
+  --composer-focus-edge: #a9a4da;
+  --composer-focus-ring: #8a79b5;
+  --composer-option-text: #3f4658;
+  --composer-action-hover: #e8e5f3;
+  --composer-ghost: rgba(0, 0, 0, .38);
+  --composer-ghost-hint: rgba(0, 0, 0, .3);
+  --composer-strike: rgba(0, 0, 0, .55);
+  --kbd-bg: #fafbfd;
+  --kbd-border: #dfe2ea;
+  --kbd-text: #6d7485;
+  --tooltip-bg: #2d2a3e;
+  --tooltip-text: #f1eefc;
+  --tooltip-kbd-bg: #47425e;
+  --tooltip-kbd-border: #5d5778;
+  --tooltip-kbd-text: #ffffff;
+  --shadow-tooltip: 0 6px 18px rgba(20, 18, 40, .25);
+
+  /* AI summary */
+  --summary-unique: #6a1b9a;
+  --summary-disagreements: #e65100;
+  --summary-disagreement-border: #ffb74d;
+  --summary-disagreement-bg: rgba(255, 243, 224, .45);
+  --summary-badge-bg: linear-gradient(135deg, #1976d2, #7c4dff);
+  --summary-badge-ink: #ffffff;
+  --summary-skeleton-gradient: linear-gradient(90deg, rgba(25, 118, 210, .08), rgba(124, 77, 255, .16), rgba(25, 118, 210, .08));
+  --summary-progress-track: rgba(25, 118, 210, .1);
+  --summary-progress-gradient: linear-gradient(90deg, transparent, #1976d2, #7c4dff, transparent);
+  --summary-verdict-bg: linear-gradient(135deg, rgba(227, 242, 253, .9), rgba(237, 231, 246, .9));
+  --summary-verdict-shadow: inset 0 0 0 1px rgba(124, 77, 255, .12), 0 6px 18px rgba(25, 118, 210, .08);
+  --summary-verdict-bar: linear-gradient(180deg, #1976d2, #7c4dff);
+  --summary-verdict-icon: #1976d2;
+  --summary-strong-border: rgba(46, 125, 50, .3);
+  --summary-strong-hover-bg: rgba(46, 125, 50, .08);
+  --summary-source-hover-ink: #1565c0;
+  --summary-busy-ring: #1976d2;
+  --summary-expanded-ink: #1976d2;
+  --summary-camp-1: #2e7d32;
+  --summary-camp-1-bg: rgba(46, 125, 50, .07);
+  --summary-camp-2: #c62828;
+  --summary-camp-2-bg: rgba(198, 40, 40, .06);
+  --summary-camp-3: #1565c0;
+  --summary-camp-3-bg: rgba(21, 101, 192, .06);
+  --summary-source-border: rgba(21, 101, 192, .22);
+  --summary-source-ink: #4a6a8a;
+  --summary-source-hover-bg: #e3f2fd;
+  --summary-code-bg: rgba(0, 0, 0, .05);
+  --summary-code-strong: rgba(0, 0, 0, .06);
+  --summary-busy-track: rgba(25, 118, 210, .15);
+  --summary-overlay-shadow: 0 30px 80px rgba(15, 23, 42, .35);
+
+  /* Edge buttons, overlays, misc */
+  --edge-btn-bg: rgba(255, 255, 255, .7);
+  --edge-btn-bg-hover: rgba(255, 255, 255, .95);
+  --edge-btn-border: rgba(0, 0, 0, .06);
+  --edge-btn-text: #8a8f9c;
+  --edge-btn-text-hover: #4a4f5c;
+  --overlay-btn-bg: rgba(0, 0, 0, .6);
+  --overlay-btn-text: #ffffff;
+  --overlay-btn-hover: rgba(244, 67, 54, .9);
+  --shimmer: rgba(255, 255, 255, .4);
+  --scrollbar-thumb: #c0c0c0;
+  --scrollbar-thumb-hover: #a0a0a0;
+  --scrollbar-track: transparent;
+  --blind-bg: rgba(0, 0, 0, .04);
+  --jump-a: #b04ad8;
+  --jump-a-soft: #b04ad855;
+  --jump-b: #e0459b;
+  --brand-gradient: linear-gradient(90deg, #6d5ce8, #8b5cf6, #a78bfa, #8b5cf6, #6d5ce8);
+  --crown-shadow: drop-shadow(0 0 0.6px rgba(0, 0, 0, .55)) drop-shadow(0 1px 1px rgba(0, 0, 0, .25));
+
+  /* Shape */
+  --radius-2xs: 2px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 18px;
+  --radius-pill: 999px;
+
+  /* Elevation */
+  --shadow-card: 0 3px 16px rgba(30, 42, 70, .04);
+  --shadow-composer-hover: 0 10px 26px rgba(30, 42, 70, .11);
+  --shadow-composer-expanded: 0 -8px 24px rgba(30, 42, 70, .12);
+  --shadow-menu: 0 8px 28px rgba(30, 42, 70, .16);
+  --shadow-popover: 0 3px 12px rgba(30, 42, 70, .1);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, .2);
+  --shadow-selected: 0 1px 3px rgba(0, 0, 0, .15);
+  --shadow-focus: 0 0 0 3px rgba(120, 104, 185, .055);
+  --shadow-button: 0 1px 3px rgba(80, 64, 150, .25);
+  --shadow-send-hover: 0 4px 12px rgba(80, 64, 150, .28);
+  --shadow-send-active: 0 1px 2px rgba(80, 64, 150, .22);
+
+  /* Motion */
+  --motion-fast: .15s;
+  --motion-base: .2s;
+  --motion-slow: .24s;
+  --ease-standard: cubic-bezier(.2, .8, .2, 1);
+
+  /* Type */
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 15px;
+  --fs-xl: 16px;
+  --fs-2xl: 18px;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+
+  /* Focus */
+  --focus-ring: #1976d2;
+  --focus-width: 2px;
+  --focus-offset: 2px;
+}
+
+[data-theme="dark"] {
+  /* Surfaces */
+  --bg: #1e1e1e;
+  --surface: #2d2d2d;
+  --surface-header: #3a3a3a;
+  --surface-input: #1e1e1e;
+  --surface-subtle: #2d2d2d;
+  --surface-hover: #3a3a3a;
+  --surface-hover-strong: #555555;
+  --surface-selected: #424242;
+  --surface-track: #2d2d2d;
+  --surface-composer: #26262b;
+  --surface-menu: #26262b;
+  --gutter: #444444;
+  --scrim: rgba(0, 0, 0, .6);
+
+  /* Text */
+  --text: #e0e0e0;
+  --text-secondary: #aaaaaa;
+  --text-muted: #b4b2c2;
+  --text-faint: #777777;
+  --text-strong: #e3f2fd;
+
+  /* Borders */
+  --border: #444444;
+  --border-strong: #555555;
+  --border-subtle: #3a3a3a;
+  --hairline: rgba(255, 255, 255, .08);
+  --divider: rgba(255, 255, 255, .2);
+
+  /* Accent */
+  --accent: #64b5f6;
+  --accent-hover: #90caf9;
+  --accent-ink: #90caf9;
+  --accent-soft: #1a3a5a;
+  --accent-soft-hover: rgba(100, 181, 246, .12);
+  --accent-tint: rgba(100, 181, 246, .18);
+  --accent-line: #315b7b;
+  --on-accent: #1e1e1e;
+
+  /* Semantic states */
+  --success: #81c784;
+  --success-soft: rgba(129, 199, 132, .08);
+  --warning: #ffb74d;
+  --warning-soft: rgba(255, 183, 77, .06);
+  --warning-border: #5d4037;
+  --warning-ink: #ffe0b2;
+  --danger: #ff8a80;
+  --danger-soft: #4a2424;
+  --danger-border: #ff6b6b;
+  --favorite: #fbc02d;
+
+  /* Activity and speed rank */
+  --activity-done: #66bb6a;
+  --activity-waiting: #ffb74d;
+  --activity-ring: #2d2d2d;
+  --rank-1: #ffd84a;
+  --rank-2: #cfd8dc;
+  --rank-3: #c07f4e;
+
+  /* Reasoning tiers */
+  --tier-neutral-highlight: #6e6588;
+  --tier-neutral-ink: #b4b2c2;
+  --tier-fast-ink: #89e4e0;
+  --tier-balanced-ink: #accbff;
+  --tier-deep-ink: #dfbaff;
+  --tier-request-mix: 18%;
+
+  /* Composer */
+  --composer-accent: #7867c2;
+  --composer-accent-hover: #6b5bb0;
+  --composer-accent-soft: #393344;
+  --composer-accent-ink: #d2c5f4;
+  --composer-line: #42414d;
+  --composer-edge: #41414e;
+  --composer-focus-edge: #6e6588;
+  --composer-option-text: #d5d3de;
+  --composer-action-hover: #45405a;
+  --composer-ghost: rgba(255, 255, 255, .42);
+  --composer-ghost-hint: rgba(255, 255, 255, .32);
+  --composer-strike: rgba(255, 255, 255, .6);
+  --kbd-bg: #1e1e24;
+  --kbd-border: #43414e;
+  --kbd-text: #b4b2c2;
+
+  /* AI summary */
+  --summary-unique: #ce93d8;
+  --summary-disagreements: #ffb74d;
+  --summary-disagreement-border: rgba(255, 183, 77, .6);
+  --summary-disagreement-bg: rgba(255, 183, 77, .06);
+  --summary-skeleton-gradient: linear-gradient(90deg, rgba(144, 202, 249, .08), rgba(179, 157, 219, .2), rgba(144, 202, 249, .08));
+  --summary-verdict-bg: linear-gradient(135deg, rgba(33, 150, 243, .18), rgba(126, 87, 194, .16));
+  --summary-verdict-icon: #90caf9;
+  --summary-strong-border: rgba(129, 199, 132, .35);
+  --summary-strong-hover-bg: rgba(129, 199, 132, .12);
+  --summary-source-hover-ink: #e3f2fd;
+  --summary-busy-ring: #90caf9;
+  --summary-expanded-ink: #90caf9;
+  --summary-camp-1: #81c784;
+  --summary-camp-1-bg: rgba(129, 199, 132, .08);
+  --summary-camp-2: #e57373;
+  --summary-camp-2-bg: rgba(229, 115, 115, .08);
+  --summary-camp-3: #64b5f6;
+  --summary-camp-3-bg: rgba(100, 181, 246, .08);
+  --summary-source-border: rgba(144, 202, 249, .28);
+  --summary-source-ink: #9fb8d0;
+  --summary-source-hover-bg: #24486a;
+  --summary-code-bg: rgba(255, 255, 255, .06);
+  --summary-code-strong: rgba(255, 255, 255, .1);
+  --summary-busy-track: rgba(144, 202, 249, .18);
+  --summary-overlay-shadow: 0 30px 80px rgba(0, 0, 0, .6);
+
+  /* Edge buttons, overlays, misc */
+  --edge-btn-bg: rgba(45, 45, 50, .7);
+  --edge-btn-bg-hover: rgba(58, 58, 64, .95);
+  --edge-btn-border: rgba(255, 255, 255, .08);
+  --edge-btn-text: #9a98a6;
+  --edge-btn-text-hover: #e0dfe6;
+  --overlay-btn-bg: rgba(255, 255, 255, .1);
+  --shimmer: rgba(255, 255, 255, .08);
+  --scrollbar-thumb: #555555;
+  --scrollbar-thumb-hover: #666666;
+  --scrollbar-track: #2d2d2d;
+  --blind-bg: rgba(255, 255, 255, .06);
+
+  /* Elevation */
+  --shadow-card: 0 3px 16px rgba(0, 0, 0, .07);
+  --shadow-composer-hover: 0 10px 26px rgba(0, 0, 0, .3);
+  --shadow-composer-expanded: 0 -8px 24px rgba(0, 0, 0, .4);
+  --shadow-menu: 0 8px 28px rgba(0, 0, 0, .5);
+  --shadow-popover: 0 3px 12px rgba(0, 0, 0, .35);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, .55);
+  --shadow-selected: 0 1px 3px rgba(0, 0, 0, .4);
+  --shadow-focus: 0 0 0 3px rgba(120, 104, 185, .18);
+
+  /* Focus */
+  --focus-ring: #64b5f6;
+}

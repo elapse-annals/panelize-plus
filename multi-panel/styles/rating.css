@@ -4,10 +4,10 @@
   align-items: center;
   gap: 10px;
   padding: 6px 16px;
-  background: #e3f2fd;
-  border-top: 1px solid #bbdefb;
-  color: #333;
-  font-size: 13px;
+  background: var(--accent-soft);
+  border-top: 1px solid var(--accent-line);
+  color: var(--text);
+  font-size: var(--fs-sm);
   flex-shrink: 0;
 }
 
@@ -16,7 +16,7 @@
 }
 
 .rating-banner-icon {
-  color: #1976d2;
+  color: var(--accent);
   font-size: 18px;
 }
 
@@ -34,45 +34,25 @@
 .rating-banner-btn {
   padding: 4px 12px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: #1976d2;
-  font-size: 13px;
+  color: var(--accent);
+  font-size: var(--fs-sm);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background-color var(--motion-base) var(--ease-standard);
 }
 
 .rating-banner-btn:hover {
-  background: rgba(25, 118, 210, 0.08);
+  background: var(--accent-soft-hover);
 }
 
 .rating-banner-btn.primary {
-  background: #1976d2;
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .rating-banner-btn.primary:hover {
-  background: #1565c0;
-}
-
-[data-theme="dark"] .rating-banner {
-  background: #1a3a5a;
-  border-top-color: #444;
-  color: #e0e0e0;
-}
-
-[data-theme="dark"] .rating-banner-icon,
-[data-theme="dark"] .rating-banner-btn {
-  color: #64b5f6;
-}
-
-[data-theme="dark"] .rating-banner-btn:hover {
-  background: rgba(100, 181, 246, 0.12);
-}
-
-[data-theme="dark"] .rating-banner-btn.primary {
-  background: #64b5f6;
-  color: #1e1e1e;
+  background: var(--accent-hover);
 }
 
 @media (max-width: 640px) {

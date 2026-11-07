@@ -2,36 +2,26 @@
    One accent (--composer-accent) drives the primary action, focus and the
    selected reasoning level so the bar reads as a single control. */
 #input-bar {
-  --composer-accent: #6b5bb0;
-  --composer-accent-hover: #5a4b9c;
-  --composer-accent-soft: #f0eff8;
-  --composer-accent-ink: #48447a;
-  --composer-muted: #647087;
-  --composer-line: #e4e6ee;
   padding: 2px 12px;
-}
-[data-theme="dark"] #input-bar {
-  --composer-accent: #7a6bc4;
-  --composer-accent-hover: #8a7bd4;
-  --composer-accent-soft: #393344;
-  --composer-accent-ink: #d2c5f4;
-  --composer-muted: #b4b2c2;
-  --composer-line: #42414d;
 }
 #input-bar .input-container { padding: 0 8px; }
 #input-bar .composer-controls { padding: 0 8px 8px; gap: 6px; }
-#input-bar .input-wrapper.drag-over { background: var(--composer-accent-soft); border-radius: 10px; }
+#input-bar .input-wrapper.drag-over { background: var(--composer-accent-soft); border-radius: var(--radius-lg); }
 #input-bar #unified-input {
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   padding: 1px 12px;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   line-height: 1.5;
   max-height: min(40vh, 360px);
   background: transparent;
   box-shadow: none;
 }
 #input-bar #unified-input:focus { outline: none; border: 0; }
+#input-bar .composer-shell:has(#unified-input:focus-visible) {
+  outline: var(--focus-width) solid var(--composer-focus-ring);
+  outline-offset: var(--focus-offset);
+}
 
 /* Preview of what the AIs get: the textarea's own text sits on top, so the
    ghost only shows the appended instruction and struck-through trigger words.
@@ -47,7 +37,7 @@
   z-index: 0;
   overflow: hidden;
   padding: 1px 12px;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-family: inherit;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -61,25 +51,21 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: rgba(0, 0, 0, 0.38);
+  color: var(--composer-ghost);
   font-style: italic;
 }
 /* Chrome paints no text decoration on transparent text, so the strike is a line drawn behind it. */
 #input-bar .prompt-ghost-removed {
-  --strike: rgba(0, 0, 0, 0.55);
+  --strike: var(--composer-strike);
   background: linear-gradient(transparent calc(50% - 1px), var(--strike) calc(50% - 1px), var(--strike) calc(50% + 1px), transparent calc(50% + 1px));
 }
 /* Auto mode's trigger completion: "/st" shows "udy" at the caret, then the key and mode. */
-#input-bar .prompt-ghost-completion { color: rgba(0, 0, 0, 0.38); }
+#input-bar .prompt-ghost-completion { color: var(--composer-ghost); }
 #input-bar .prompt-ghost-completion-hint {
   margin-left: 8px;
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.3);
+  font-size: var(--fs-xs);
+  color: var(--composer-ghost-hint);
 }
-[data-theme="dark"] #input-bar .prompt-ghost-completion { color: rgba(255, 255, 255, 0.42); }
-[data-theme="dark"] #input-bar .prompt-ghost-completion-hint { color: rgba(255, 255, 255, 0.32); }
-[data-theme="dark"] #input-bar .prompt-ghost-suffix { color: rgba(255, 255, 255, 0.42); }
-[data-theme="dark"] #input-bar .prompt-ghost-removed { --strike: rgba(255, 255, 255, 0.6); }
 /* Recent questions offered above the composer while the draft is their prefix. */
 #input-bar .question-history {
   position: absolute;
@@ -91,10 +77,10 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-  border: 1px solid var(--composer-edge, #e1e3ec);
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 8px 28px rgba(30, 42, 70, .16);
+  border: 1px solid var(--composer-edge);
+  border-radius: var(--radius-lg);
+  background: var(--surface-menu);
+  box-shadow: var(--shadow-menu);
 }
 #input-bar .question-history[hidden] { display: none; }
 #input-bar .question-history-item {
@@ -102,11 +88,11 @@
   width: 100%;
   padding: 6px 8px;
   border: none;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   background: transparent;
-  color: #3f4658;
+  color: var(--composer-option-text);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.35;
   text-align: left;
   overflow: hidden;
@@ -116,39 +102,27 @@
 }
 #input-bar .question-history-item:hover,
 #input-bar .question-history-item.is-active {
-  background: var(--composer-accent-soft, #f3f2f9);
-  color: var(--composer-accent-ink, #574681);
-}
-[data-theme="dark"] #input-bar .question-history {
-  border-color: #41414e;
-  background: #26262b;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, .4);
-}
-[data-theme="dark"] #input-bar .question-history-item { color: #d5d3de; }
-[data-theme="dark"] #input-bar .question-history-item:hover,
-[data-theme="dark"] #input-bar .question-history-item.is-active {
-  background: #393344;
-  color: #d9d0ff;
+  background: var(--composer-accent-soft);
+  color: var(--composer-accent-ink);
 }
 #input-bar .input-btn,
 #input-bar .clear-btn {
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--composer-muted);
 }
 #input-bar .input-btn:hover { color: var(--composer-accent-ink); background: var(--composer-accent-soft); }
-#input-bar .clear-btn:hover { color: #d32f2f; background: #fdecec; }
-[data-theme="dark"] #input-bar .clear-btn:hover { color: #ff8a80; background: #4a2a2e; }
+#input-bar .clear-btn:hover { color: var(--danger); background: var(--danger-soft); }
 #input-bar .input-actions { gap: 6px; }
 #input-bar .composer-divider { height: 16px; background: var(--composer-line); }
 #input-bar .fill-btn {
   height: 28px;
   padding: 0 12px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--composer-accent-ink);
   gap: 6px;
@@ -158,10 +132,10 @@
 #input-bar .send-btn {
   height: 28px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--composer-accent);
-  color: #fff;
-  box-shadow: 0 1px 3px rgba(80, 64, 150, .25);
+  color: var(--on-composer-accent);
+  box-shadow: var(--shadow-button);
 }
 #input-bar .send-btn:hover:not(:disabled) { background: var(--composer-accent-hover); }
 #input-bar .send-btn:disabled { background: var(--composer-line); color: var(--composer-muted); box-shadow: none; }
@@ -171,23 +145,23 @@
 #input-bar[data-ai-preparing] .fill-btn { opacity: .55; cursor: not-allowed; }
 #input-bar .input-btn:focus-visible, #input-bar .clear-btn:focus-visible,
 #input-bar .fill-btn:focus-visible, #input-bar .send-btn:focus-visible {
-  outline: 2px solid var(--composer-accent);
-  outline-offset: 2px;
+  outline: var(--focus-width) solid var(--composer-accent);
+  outline-offset: var(--focus-offset);
 }
 /* Control row: equal heights so the divider, levels and status line up. */
 #input-bar .composer-controls-left { gap: 6px; }
 #input-bar .composer-controls-right { gap: 6px; }
-#input-bar .composer-control { min-height: 28px; border-radius: 8px; }
+#input-bar .composer-control { min-height: 28px; border-radius: var(--radius-md); }
 #input-bar .composer-control .material-symbols-outlined { font-size: 16px; }
 #input-bar .input-btn .material-symbols-outlined,
 #input-bar .clear-btn .material-symbols-outlined { font-size: 16px; }
-#input-bar .tier-menu-btn { position: relative; transition: background-color .15s ease, color .15s ease, box-shadow .15s ease; }
+#input-bar .tier-menu-btn { position: relative; transition: background-color var(--motion-fast) ease, color var(--motion-fast) ease, box-shadow var(--motion-fast) ease; }
 /* AI mode mapping: a small, light "i" keeps the control row quiet. */
 #input-bar .tier-details-btn {
   min-width: 28px;
   min-height: 28px;
   padding: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--composer-muted);
   font-size: 16px;
   background: transparent;
@@ -208,10 +182,10 @@
 #input-bar .prompt-mode-btn {
   min-height: 28px;
   padding: 0 6px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 #input-bar .prompt-mode-btn .material-symbols-outlined:first-child { font-size: 16px; }
 #input-bar .prompt-mode-btn:hover { color: var(--composer-accent-ink); }
@@ -224,8 +198,8 @@
 }
 .prompt-mode-list { width: 300px; max-width: calc(100vw - 24px); }
 @media (hover: none) { .prompt-mode-action { opacity: 1; } }
-.prompt-mode-row { display: flex; align-items: center; gap: 2px; border-radius: 7px; }
-.prompt-mode-row:hover, .prompt-mode-row:focus-within { background: #f3f2f9; }
+.prompt-mode-row { display: flex; align-items: center; gap: 2px; border-radius: var(--radius-md); }
+.prompt-mode-row:hover, .prompt-mode-row:focus-within { background: var(--composer-accent-soft); }
 .prompt-mode-option {
   flex: 1;
   min-width: 0;
@@ -235,22 +209,22 @@
   column-gap: 8px;
   padding: 5px 8px;
   border: none;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   background: transparent;
-  color: #3f4658;
+  color: var(--composer-option-text);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   text-align: left;
   cursor: pointer;
 }
 .prompt-mode-option::before { content: ''; grid-area: check; }
-.prompt-mode-option[aria-checked="true"]::before { content: '✓'; color: var(--composer-accent-ink, #574681); font-weight: 600; }
-.prompt-mode-option-name { grid-area: name; font-weight: 500; }
+.prompt-mode-option[aria-checked="true"]::before { content: '✓'; color: var(--composer-accent-ink); font-weight: var(--fw-semibold); }
+.prompt-mode-option-name { grid-area: name; font-weight: var(--fw-medium); }
 .prompt-mode-option-hint {
   grid-area: hint;
   overflow: hidden;
-  color: #8a90a0;
-  font-size: 11px;
+  color: var(--composer-muted);
+  font-size: var(--fs-2xs);
   line-height: 1.35;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -260,22 +234,22 @@
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: #8a90a0;
+  color: var(--composer-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   cursor: pointer;
 }
 .prompt-mode-action { width: 24px; height: 24px; flex: none; opacity: 0; }
 .prompt-mode-action .material-symbols-outlined { font-size: 15px; }
 .prompt-mode-row:hover .prompt-mode-action, .prompt-mode-row:focus-within .prompt-mode-action { opacity: 1; }
-.prompt-mode-action:hover, .prompt-mode-action:focus-visible { color: #574681; background: #e8e5f3; }
-.prompt-mode-delete:hover, .prompt-mode-delete:focus-visible { color: #c0392b; }
-.prompt-mode-new { gap: 4px; justify-content: flex-start; margin-top: 3px; padding: 6px 8px; border-top: 1px solid #eceef4; border-radius: 0 0 7px 7px; }
+.prompt-mode-action:hover, .prompt-mode-action:focus-visible { color: var(--composer-accent-ink); background: var(--composer-action-hover); }
+.prompt-mode-delete:hover, .prompt-mode-delete:focus-visible { color: var(--danger); }
+.prompt-mode-new { gap: 4px; justify-content: flex-start; margin-top: 3px; padding: 6px 8px; border-top: 1px solid var(--composer-line); border-radius: 0 0 var(--radius-md) var(--radius-md); }
 .prompt-mode-new .material-symbols-outlined { font-size: 15px; }
-.prompt-mode-new:hover, .prompt-mode-new:focus-visible { color: #574681; background: #f3f2f9; }
-.prompt-mode-option:focus-visible, .prompt-mode-action:focus-visible, .prompt-mode-new:focus-visible { outline: 2px solid #8a79b5; outline-offset: -2px; }
+.prompt-mode-new:hover, .prompt-mode-new:focus-visible { color: var(--composer-accent-ink); background: var(--composer-accent-soft); }
+.prompt-mode-option:focus-visible, .prompt-mode-action:focus-visible, .prompt-mode-new:focus-visible { outline: var(--focus-width) solid var(--composer-focus-ring); outline-offset: -2px; }
 /* The trigger carries the chosen level. Requested but not yet confirmed on
    every AI (or switching): outlined, matching the "x/y switched · mixed"
    status; confirmed: solid. Each level keeps a distinct resting appearance
@@ -283,18 +257,18 @@
 #input-bar .composer-shell[data-tier]:not([data-tier="default"]) .tier-menu-btn {
   position: relative;
   color: var(--tier-ink);
-  background: color-mix(in srgb, var(--tier-color) 9%, #fff);
+  background: color-mix(in srgb, var(--tier-color) var(--tier-request-mix), var(--surface-composer));
   box-shadow: inset 0 0 0 1px var(--tier-color), 0 0 9px var(--tier-glow);
 }
 #input-bar .composer-shell[data-tier-state="confirmed"]:not([data-tier="default"]) .tier-menu-btn {
-  color: #fff;
+  color: var(--on-composer-accent);
   background: var(--tier-color);
   box-shadow: 0 1px 5px var(--tier-glow);
 }
 #input-bar .composer-shell[data-tier="deep"][data-tier-state="confirmed"] .tier-menu-btn {
-  background: radial-gradient(circle at 18% 28%, #fff 0 1px, transparent 1.5px),
-    radial-gradient(circle at 78% 72%, #f4d3ff 0 1px, transparent 1.5px),
-    linear-gradient(110deg, #6945ce, #a756e3);
+  background: radial-gradient(circle at 18% 28%, var(--tier-spark-1) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 78% 72%, var(--tier-spark-2) 0 1px, transparent 1.5px),
+    linear-gradient(110deg, var(--tier-deep-confirm-start), var(--tier-deep-confirm-end));
 }
 .composer-shell[data-tier-state="switching"] .tier-menu-btn::after {
   content: '';
@@ -306,13 +280,6 @@
   border-radius: 2px;
   background: var(--tier-color);
 }
-[data-theme="dark"] .composer-shell[data-tier="fast"] { --tier-ink: #89e4e0; }
-[data-theme="dark"] .composer-shell[data-tier="balanced"] { --tier-ink: #accbff; }
-[data-theme="dark"] .composer-shell[data-tier="deep"] { --tier-ink: #dfbaff; }
-[data-theme="dark"] #input-bar .composer-shell[data-tier-state]:not([data-tier-state="confirmed"]):not([data-tier="default"]) .tier-menu-btn {
-  color: var(--tier-ink);
-  background: color-mix(in srgb, var(--tier-color) 18%, #26262b);
-}
 #input-bar .composer-status {
   max-width: 240px;
   overflow: hidden;
@@ -322,33 +289,7 @@
 /* A draft taller than one line overhangs the panels instead of shrinking them;
    --composer-overflow is the extra textarea height (see resizeTextarea). */
 #input-bar .composer-shell { margin-top: calc(-1 * var(--composer-overflow, 0px)); }
-#input-bar.composer-expanded .composer-shell { box-shadow: var(--composer-lift), 0 -8px 24px rgba(30, 42, 70, .12); }
-[data-theme="dark"] #input-bar.composer-expanded .composer-shell { box-shadow: var(--composer-lift), 0 -8px 24px #0006; }
-[data-theme="dark"] .composer-shell { --composer-edge: #41414e; background: #26262b; box-shadow: var(--composer-lift), 0 3px 16px #0001; }
-[data-theme="dark"] .composer-shell:focus-within { --composer-edge: #6e6588; }
-[data-theme="dark"] .composer-control, [data-theme="dark"] .tier-option { color: #b4b2c2; }
-[data-theme="dark"] .tier-menu-list { background: #26262b; border-color: #41414e; box-shadow: 0 8px 28px #0008; }
-[data-theme="dark"] .tier-option:hover, [data-theme="dark"] .tier-option:focus-visible { background: #393344; color: #d2c5f4; }
-[data-theme="dark"] .tier-option[data-requested="true"]::before { color: #d2c5f4; }
-[data-theme="dark"] .tier-option-hint { color: #8d8a9c; }
-[data-theme="dark"] .tier-option-key { color: #b4b2c2; background: #1e1e24; border-color: #43414e; }
-[data-theme="dark"] .composer-control:hover, [data-theme="dark"] .composer-control[aria-pressed="true"] { color: #d2c5f4; background: #393344; }
-[data-theme="dark"] #input-bar .tier-details-btn { color: var(--composer-muted); }
-[data-theme="dark"] #input-bar .tier-details-btn:hover { color: var(--composer-accent-ink); background: var(--composer-accent-soft); }
-[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] { color: var(--composer-accent-ink); }
-[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] .prompt-mode-btn { color: var(--composer-accent-ink); background: transparent; }
-[data-theme="dark"] #input-bar .prompt-mode-control[data-active="true"] .prompt-mode-btn:hover { background: var(--composer-accent-soft); }
-[data-theme="dark"] .prompt-mode-option { color: #b4b2c2; }
-[data-theme="dark"] .prompt-mode-row:hover, [data-theme="dark"] .prompt-mode-row:focus-within, [data-theme="dark"] .prompt-mode-new:hover { background: #393344; }
-[data-theme="dark"] .prompt-mode-option[aria-checked="true"]::before, [data-theme="dark"] .prompt-mode-option:hover { color: #d2c5f4; }
-[data-theme="dark"] .prompt-mode-option-hint, [data-theme="dark"] .prompt-mode-action, [data-theme="dark"] .prompt-mode-new { color: #8d8a9c; }
-[data-theme="dark"] .prompt-mode-action:hover { color: #d2c5f4; background: #45405a; }
-[data-theme="dark"] .prompt-mode-new { border-top-color: #41414e; }
-[data-theme="dark"] .composer-divider { background: #42414d; }
-[data-theme="dark"] .composer-help, [data-theme="dark"] .composer-status, [data-theme="dark"] .composer-result-row { color: #aaa6b8; }
-[data-theme="dark"] .composer-result-row { background: #26262b; box-shadow: 0 3px 12px #0005; }
-[data-theme="dark"] .composer-result-close:hover { background: #ffffff14; }
-[data-theme="dark"] .composer-table td, [data-theme="dark"] .composer-table th, [data-theme="dark"] .composer-shortcut-field input { border-color: #43414e; }
+#input-bar.composer-expanded .composer-shell { box-shadow: var(--composer-lift), var(--shadow-composer-expanded); }
 @media (max-width: 760px) {
   #input-bar { padding: 6px; }
   #input-bar .composer-controls { gap: 4px; }
@@ -372,25 +313,22 @@
    the primary action answers the pointer. */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .composer-shell:hover {
-    --composer-lift: 0 10px 26px rgba(30, 42, 70, .11);
+    --composer-lift: var(--shadow-composer-hover);
     border-color: color-mix(in srgb, var(--composer-edge) 80%, var(--tier-color));
-  }
-  [data-theme="dark"] .composer-shell:hover {
-    --composer-lift: 0 10px 26px rgba(0, 0, 0, .3);
   }
   #input-bar:not([data-new-chat-busy]):not([data-ai-preparing]) .send-btn:hover:not(:disabled) {
     transform: scale(1.045);
-    box-shadow: 0 4px 12px rgba(80, 64, 150, .28);
+    box-shadow: var(--shadow-send-hover);
   }
 }
 #input-bar .send-btn {
   transform-origin: center;
   transition:
-    background-color .2s cubic-bezier(.2, .8, .2, 1),
-    color .2s cubic-bezier(.2, .8, .2, 1),
-    box-shadow .2s cubic-bezier(.2, .8, .2, 1),
-    transform .18s cubic-bezier(.2, .8, .2, 1),
-    opacity .18s ease;
+    background-color var(--motion-base) var(--ease-standard),
+    color var(--motion-base) var(--ease-standard),
+    box-shadow var(--motion-base) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard),
+    opacity var(--motion-fast) ease;
 }
 #input-bar .fill-btn,
 #input-bar .input-btn,
@@ -398,16 +336,16 @@
 #input-bar .tier-details-btn {
   transform-origin: center;
   transition:
-    background-color .18s ease,
-    color .18s ease,
-    border-color .18s ease,
-    opacity .18s ease,
-    transform .16s cubic-bezier(.2, .8, .2, 1);
+    background-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    opacity var(--motion-fast) ease,
+    transform var(--motion-fast) var(--ease-standard);
 }
 @media (prefers-reduced-motion: no-preference) {
   #input-bar:not([data-new-chat-busy]):not([data-ai-preparing]) .send-btn:active:not(:disabled) {
     transform: scale(.94);
-    box-shadow: 0 1px 2px rgba(80, 64, 150, .22);
+    box-shadow: var(--shadow-send-active);
     transition-duration: .08s;
   }
   #input-bar .fill-btn:active:not(:disabled) { transform: scale(.97); }
@@ -420,7 +358,6 @@
   #input-bar .tier-details-btn:active:not(:disabled) { transition-duration: .08s; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .app-title-plus { animation: none; }
   .composer-shell, .composer-control, .tier-option, #input-bar .tier-menu-btn, .shortcut-bubble,
   #input-bar .input-btn, #input-bar .clear-btn, #input-bar .fill-btn, #input-bar .send-btn,
   #input-bar .tier-details-btn { transition: none; }

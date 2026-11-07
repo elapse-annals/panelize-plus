@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.91.0 - 2026-11-07
+- Refined the Multi-Panel page in light and dark themes with a shared token layer for surfaces, text, borders, accents, semantic states, radii, shadows, type, motion, and focus. The toolbar, panel frames, composer, dialogs, prompts, sharing, answers, AI summary, rating banner, and blind mode now use the same values; dark-only overrides were consolidated into tokens, muted text meets WCAG AA contrast, keyboard focus is visible, the brand title is static instead of a looping gradient, and loading shimmer/pulse stop under reduced motion. No layout, behavior, URL, storage, or exported share-snapshot changes.
+
 ## 2.90.0 - 2026-11-06
 - The macOS client now shows each prompt mode's explanation by default: a subtitle under the mode in the picker menu, plus a persistent line below the picker for the selected mode. Mode names, explanations, Auto's trigger legend and preview instructions are generated at build time from both extension locale files and follow the macOS system language (Chinese variants use Chinese, every other language uses English), replacing the hand-written Chinese-only strings. On macOS 13–14.3 the menu uses an indented disabled hint row because the native menu subtitle API starts at macOS 14.4.
 

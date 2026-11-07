@@ -1,4 +1,5 @@
 /* Keep this order: later sections intentionally override earlier rules. */
+@import url('./styles/tokens.css');
 @import url('./styles/base.css');
 @import url('./styles/toolbar.css');
 @import url('./styles/panels.css');

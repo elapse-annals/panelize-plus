@@ -4,14 +4,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 0 8px;
-  background: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   height: 36px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
-  scrollbar-color: #c0c0c0 transparent;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 /* Custom scrollbar for webkit browsers */
@@ -20,16 +20,16 @@
 }
 
 #toolbar::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--scrollbar-track);
 }
 
 #toolbar::-webkit-scrollbar-thumb {
-  background: #c0c0c0;
+  background: var(--scrollbar-thumb);
   border-radius: 2px;
 }
 
 #toolbar::-webkit-scrollbar-thumb:hover {
-  background: #a0a0a0;
+  background: var(--scrollbar-thumb-hover);
 }
 
 .toolbar-left,
@@ -50,11 +50,7 @@
   height: 16px;
   margin: 0 4px;
   flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.16);
-}
-
-[data-theme="dark"] .toolbar-divider {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--divider);
 }
 
 .toolbar-center {
@@ -67,26 +63,19 @@
 }
 
 .app-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
   margin-left: 8px;
 }
 
-/* "Plus" in the title: a soft purple gradient that drifts slowly across the text. */
+/* "Plus" in the title: a static brand gradient. */
 .app-title-plus {
-  background: linear-gradient(90deg, #6d5ce8, #8b5cf6, #a78bfa, #8b5cf6, #6d5ce8);
-  background-size: 200% 100%;
+  background: var(--brand-gradient);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-  animation: app-title-plus-flow 12s linear infinite;
-}
-
-@keyframes app-title-plus-flow {
-  from { background-position: 0% 50%; }
-  to { background-position: 200% 50%; }
 }
 
 .toolbar-btn {
@@ -96,11 +85,11 @@
   width: 26px;
   height: 26px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
-  color: #666;
-  transition: background 0.2s, color 0.2s;
+  color: var(--text-secondary);
+  transition: background-color var(--motion-base) var(--ease-standard), color var(--motion-base) var(--ease-standard);
 }
 
 .toolbar-icon-svg {
@@ -115,13 +104,13 @@
 }
 
 .toolbar-btn:hover {
-  background: #f0f0f0;
-  color: #333;
+  background: var(--surface-hover);
+  color: var(--text);
 }
 
 .toolbar-btn.active {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* Toggle Open Mode / Share Snapshot Buttons: icon-only, label kept for screen readers */
@@ -156,8 +145,8 @@
 /* Expand Bar (shown when toolbar is collapsed) */
 #toolbar-expand-bar {
   height: 24px;
-  background: #f5f5f5;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -170,21 +159,21 @@
 }
 
 #toolbar-expand-bar:hover {
-  background: #e8e8e8;
+  background: var(--surface-hover-strong);
 }
 
 #toolbar-expand-bar button {
   background: none;
   border: none;
   cursor: pointer;
-  color: #666;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   padding: 2px 8px;
 }
 
 #toolbar-expand-bar button:hover {
-  color: #333;
+  color: var(--text);
 }
 
 /* Panel Selectors */
@@ -217,28 +206,28 @@
   min-width: 58px;
   max-width: 150px;
   padding: 2px 5px 2px 8px;
-  border: 1px solid #e0e0e0;
-  border-radius: 20px;
-  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 22px;
   white-space: nowrap;
-  color: #333;
-  transition: all 0.2s;
+  color: var(--text);
+  transition: background-color var(--motion-base) var(--ease-standard), border-color var(--motion-base) var(--ease-standard), color var(--motion-base) var(--ease-standard);
   container-type: inline-size;
   container-name: panel-chip;
 }
 
 .panel-selector:hover {
-  border-color: #1976d2;
-  background: #e3f2fd;
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .panel-selector.panel-focused {
-  border-color: #1976d2;
-  background: #e3f2fd;
-  color: #1565c0;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 .panel-selector .provider-icon {
@@ -274,8 +263,8 @@
 .panel-selector[data-activity="running"] .panel-activity {
   inset: -3px;
   border: 2px solid transparent;
-  border-top-color: #1976d2;
-  border-right-color: #1976d2;
+  border-top-color: var(--activity-running);
+  border-right-color: var(--activity-running);
   border-radius: 50%;
   animation: panel-activity-spin 0.9s linear infinite;
 }
@@ -287,18 +276,18 @@
   bottom: -2px;
   width: 7px;
   height: 7px;
-  border: 1.5px solid #fff;
+  border: 1.5px solid var(--activity-ring);
   border-radius: 50%;
   box-sizing: border-box;
 }
 
 .panel-selector[data-activity="done"] .panel-activity {
-  background: #2e7d32;
+  background: var(--activity-done);
 }
 
 .panel-selector[data-activity="stalled"] .panel-activity,
 .panel-selector[data-activity="not-ready"] .panel-activity {
-  background: #f9a825;
+  background: var(--activity-waiting);
 }
 
 /* Gold, silver and bronze crowns on the three fastest answers of the latest
@@ -311,7 +300,7 @@
   line-height: 0;
   pointer-events: none;
   transform: rotate(-28deg);
-  filter: drop-shadow(0 0 0.6px rgba(0, 0, 0, 0.55)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+  filter: var(--crown-shadow);
 }
 
 .panel-selector[data-speed-rank] .panel-speed-crown {
@@ -319,9 +308,9 @@
   animation: panel-speed-crown-pop 0.45s cubic-bezier(.2, .8, .2, 1.4);
 }
 
-.panel-selector[data-speed-rank="1"] .panel-speed-crown { color: #ffc61a; }
-.panel-selector[data-speed-rank="2"] .panel-speed-crown { color: #b0bec5; }
-.panel-selector[data-speed-rank="3"] .panel-speed-crown { color: #a8703f; }
+.panel-selector[data-speed-rank="1"] .panel-speed-crown { color: var(--rank-1); }
+.panel-selector[data-speed-rank="2"] .panel-speed-crown { color: var(--rank-2); }
+.panel-selector[data-speed-rank="3"] .panel-speed-crown { color: var(--rank-3); }
 
 @keyframes panel-speed-crown-pop {
   from { opacity: 0; transform: translateY(-4px) rotate(-28deg) scale(0.4); }
@@ -345,7 +334,7 @@
 
   .panel-selector[data-activity="running"] .panel-activity {
     animation: none;
-    border-color: #1976d2;
+    border-color: var(--activity-running);
   }
   .panel-selector[data-speed-rank] .panel-speed-crown {
     animation: none;
@@ -364,13 +353,13 @@
   border-radius: 50%;
   background: transparent;
   cursor: pointer;
-  color: #999;
-  font-size: 13px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
 }
 
 .panel-selector .remove-panel:hover {
-  background: #ffebee;
-  color: #d32f2f;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .panel-selector .remove-panel .material-symbols-outlined {

@@ -11,7 +11,7 @@
 }
 
 .panel-header-right .adopt-answer-btn.adopted {
-  color: #1976d2;
+  color: var(--accent);
 }
 
 .panel-header-right .adopt-answer-btn.adopted .material-symbols-outlined,
@@ -24,7 +24,7 @@
 }
 
 .panel-header-right .reject-answer-btn.rejected {
-  color: #d32f2f;
+  color: var(--danger);
 }
 
 #answer-stats-modal .modal-content.modal-large {
@@ -33,8 +33,8 @@
 
 .answer-stats-empty {
   margin: 0;
-  color: #666;
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: var(--fs-md);
   line-height: 1.5;
 }
 
@@ -44,8 +44,8 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-  color: #555;
-  font-size: 13px;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
 }
 
 #answer-stats-category {
@@ -65,17 +65,17 @@
 
 .answer-stats-best-chip {
   padding: 3px 9px;
-  border: 1px solid #bbdefb;
-  border-radius: 12px;
-  background: #e3f2fd;
-  color: #1565c0;
-  font-size: 12px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-xl);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
 }
 
 .answer-stats-best-empty {
-  color: #888;
-  font-size: 12px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
 }
 
 .answer-stats-table-wrapper {
@@ -86,21 +86,21 @@
 .answer-stats-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
-  color: #333;
+  font-size: var(--fs-sm);
+  color: var(--text);
 }
 
 .answer-stats-table th,
 .answer-stats-table td {
   padding: 8px 10px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border);
   text-align: left;
   white-space: nowrap;
 }
 
 .answer-stats-table th {
-  font-weight: 600;
-  color: #666;
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
   /* Two-word headers wrap so every column fits without scrolling. */
   white-space: normal;
   vertical-align: bottom;
@@ -111,14 +111,14 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #fff;
+  background: var(--surface);
 }
 
 .answer-stats-table .answer-stats-provider,
 .answer-stats-table thead th:first-child {
   position: sticky;
   left: 0;
-  background: #fff;
+  background: var(--surface);
 }
 
 .answer-stats-table thead th:first-child {
@@ -136,23 +136,23 @@
 
 .answer-stats-notes summary {
   cursor: pointer;
-  color: #666;
-  font-size: 12px;
-  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
 }
 
 .answer-stats-note {
   margin: 8px 0 0;
-  color: #888;
-  font-size: 12px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
   line-height: 1.5;
 }
 
 .answer-stats-section-title {
   margin: 20px 0 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
 }
 
 #answer-log-modal .modal-content.modal-large {
@@ -173,11 +173,11 @@
 .answer-log-search,
 .answer-log-select {
   padding: 6px 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: #fff;
-  color: #333;
-  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-input);
+  color: var(--text);
+  font-size: var(--fs-sm);
 }
 
 .answer-log-list {
@@ -188,14 +188,14 @@
 
 .answer-log-list li {
   padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .answer-log-list .answer-log-day {
   padding: 12px 0 4px;
-  color: #999;
-  font-size: 12px;
-  font-weight: 600;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
 }
 
 .answer-log-more {
@@ -208,14 +208,14 @@
 }
 
 .answer-stats-table .answer-stats-score {
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .answer-log-header {
   display: flex;
   gap: 12px;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .answer-log-prompt {
@@ -223,13 +223,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #333;
+  color: var(--text);
 }
 
 .answer-log-time {
   flex-shrink: 0;
-  color: #999;
-  font-size: 12px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
 }
 
 .answer-log-category {
@@ -237,10 +237,10 @@
   max-width: fit-content;
   margin-top: 4px;
   padding: 1px 7px;
-  border: 1px solid #e0e0e0;
-  border-radius: 9px;
-  color: #777;
-  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
   line-height: 1.4;
 }
 
@@ -253,114 +253,32 @@
 
 .answer-log-chip {
   padding: 2px 8px;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  color: #666;
-  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
 }
 
 .answer-log-chip.adopted {
-  border-color: #1976d2;
-  background: #e3f2fd;
-  color: #1565c0;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 .answer-log-chip.rejected {
-  border-color: #d32f2f;
-  background: #ffebee;
-  color: #b71c1c;
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .answer-stats-clear-btn {
   margin-right: auto;
-  color: #d32f2f;
+  color: var(--danger);
 }
 
 .modal-footer button:disabled {
   opacity: 0.5;
   cursor: default;
-}
-
-[data-theme="dark"] .panel-header-right .adopt-answer-btn.adopted {
-  color: #64b5f6;
-}
-
-[data-theme="dark"] .panel-header-right .reject-answer-btn.rejected {
-  color: #ff6b6b;
-}
-
-[data-theme="dark"] .answer-stats-empty,
-[data-theme="dark"] .answer-stats-notes summary,
-[data-theme="dark"] .answer-stats-table th,
-[data-theme="dark"] .answer-stats-category-filter {
-  color: #aaa;
-}
-
-[data-theme="dark"] .answer-stats-table thead th,
-[data-theme="dark"] .answer-stats-table .answer-stats-provider {
-  background: #2d2d2d;
-}
-
-[data-theme="dark"] .answer-log-search,
-[data-theme="dark"] .answer-log-select {
-  border-color: #444;
-  background: #1e1e1e;
-  color: #e0e0e0;
-}
-
-[data-theme="dark"] .answer-stats-table,
-[data-theme="dark"] .answer-stats-section-title,
-[data-theme="dark"] .answer-log-prompt {
-  color: #e0e0e0;
-}
-
-[data-theme="dark"] .answer-stats-best-chip {
-  border-color: #315b7b;
-  background: #1e3a52;
-  color: #90caf9;
-}
-
-[data-theme="dark"] .answer-stats-best-empty {
-  color: #999;
-}
-
-[data-theme="dark"] .answer-stats-table th,
-[data-theme="dark"] .answer-stats-table td {
-  border-bottom-color: #444;
-}
-
-[data-theme="dark"] .answer-log-list li {
-  border-bottom-color: #3a3a3a;
-}
-
-[data-theme="dark"] .answer-log-list .answer-log-day {
-  color: #888;
-}
-
-[data-theme="dark"] .answer-log-category {
-  border-color: #444;
-  color: #aaa;
-}
-
-[data-theme="dark"] .answer-log-chip {
-  border-color: #444;
-  color: #aaa;
-}
-
-[data-theme="dark"] .answer-log-chip.adopted {
-  border-color: #64b5f6;
-  background: #1e3a52;
-  color: #90caf9;
-}
-
-[data-theme="dark"] .answer-log-chip.rejected {
-  border-color: #ff6b6b;
-  background: #4a2424;
-  color: #ff8a80;
-}
-
-[data-theme="dark"] .answer-stats-clear-btn {
-  color: #ff6b6b;
 }
 

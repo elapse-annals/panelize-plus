@@ -6,11 +6,11 @@ body.blind-mode .blind-label {
   display: inline-flex;
   align-items: center;
   padding: 1px 8px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.04);
-  color: #8b8794;
-  font-size: 12px;
-  font-weight: 500;
+  border-radius: var(--radius-lg);
+  background: var(--blind-bg);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
   white-space: nowrap;
 }
 body.blind-mode .panel-header-left .provider-icon,
@@ -30,8 +30,6 @@ body.blind-mode #answer-log-btn {
 @container (max-width: 300px) {
   body.blind-mode .panel-header-left .blind-label { display: inline-flex; }
 }
-[data-theme="dark"] body.blind-mode .blind-label { background: rgba(255, 255, 255, 0.06); color: #9d98a8; }
-
 /* Top-bar blind chips: the anonymous label shrinks and ellipsizes like a name. */
 body.blind-mode .panel-selector .blind-label {
   display: block;
@@ -44,7 +42,7 @@ body.blind-mode .panel-selector .blind-label {
 @container panel-chip (max-width: 68px) {
   body.blind-mode .panel-selector .blind-label {
     padding: 1px 2px;
-    font-size: 11px;
+    font-size: var(--fs-2xs);
   }
 }
 /* Panels are being dealt into a new order; clicks wait for the animation. */
