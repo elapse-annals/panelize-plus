@@ -78,6 +78,8 @@
       flushHostFocusGuardKeys(guard);
       window.removeEventListener('keydown', guard.keydownHandler, true);
       document.removeEventListener('pointerdown', guard.pointerHandler, true);
+      document.removeEventListener('mousedown', guard.pointerHandler, true);
+      window.removeEventListener('focusin', guard.focusinHandler, true);
     }
 
     function flushHostFocusGuardKeys(guard) {
@@ -136,8 +138,23 @@
         rememberUserFocus();
         getReportingController().postMultiPanelProviderStatus(getProtocolController().PANELIZE_PROVIDER_USER_INTERACTION, requestId, 'user-interaction', provider);
       };
+      guard.focusinHandler = (event) => {
+        if (hostFocusGuard !== guard) {
+          return;
+        }
+        if (window.parent !== window) {
+          window.parent.postMessage({
+            type: getProtocolController().PANELIZE_REFOCUS_UNIFIED_INPUT,
+            requestId: guard.requestId,
+            provider: guard.provider,
+            context: getProtocolController().MULTI_PANEL_PROVIDER_STATUS_CONTEXT
+          }, '*');
+        }
+      };
       window.addEventListener('keydown', guard.keydownHandler, true);
       document.addEventListener('pointerdown', guard.pointerHandler, true);
+      document.addEventListener('mousedown', guard.pointerHandler, true);
+      window.addEventListener('focusin', guard.focusinHandler, true);
       const duration = Math.min(Math.max(Number(durationMs) || 0, 0), getConfigController().FOCUS_GUARD_MAX_MS);
       guard.timeoutId = setTimeout(() => {
         if (hostFocusGuard === guard) stopHostFocusGuard();

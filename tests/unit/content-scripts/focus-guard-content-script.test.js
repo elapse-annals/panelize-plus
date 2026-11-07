@@ -77,6 +77,15 @@ describe('host focus guard in provider frames', () => {
     expect(typeKey(document.getElementById('prompt-textarea'), 'x').defaultPrevented).toBe(false);
   });
 
+  it('notifies the host to refocus when an element receives focus without prior pointer interaction', () => {
+    dispatchGuard({ active: true, requestId: 'guard-focusin', durationMs: 8000 });
+    const input = document.getElementById('prompt-textarea');
+    input.dispatchEvent(new window.Event('focusin', { bubbles: true }));
+    expect(sentMessages('PANELIZE_REFOCUS_UNIFIED_INPUT')).toEqual([
+      expect.objectContaining({ requestId: 'guard-focusin', provider: 'chatgpt' })
+    ]);
+  });
+
   it('expires on its own and ignores guards not sent by the host', () => {
     dispatchGuard({ active: true, requestId: 'guard-3', durationMs: 1000 });
     vi.advanceTimersByTime(1000);

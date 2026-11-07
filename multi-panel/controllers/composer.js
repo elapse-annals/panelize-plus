@@ -342,6 +342,10 @@ export function createComposerController({
         return;
       }
 
+      if (event.target instanceof Element && event.target.tagName === 'IFRAME') {
+        return;
+      }
+
       if (getFocusController().isUnifiedInputOrNewChatControl(event.target)) {
         return;
       }
@@ -357,6 +361,10 @@ export function createComposerController({
 
     const cancelSendFocusRestoreOnUserIntent = (event) => {
       if (!getFocusController().isRestoringFocusAfterSend) {
+        return;
+      }
+
+      if (event.target instanceof Element && event.target.tagName === 'IFRAME') {
         return;
       }
 

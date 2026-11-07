@@ -254,6 +254,10 @@ export function createConversationsController({
     try {
       if (isTemporaryChatModeEnabled) startTemporaryChatActivationCycle();
       getFocusController().restoreUnifiedInputFocusAfterNewChat(requestId);
+      targetPanels.forEach(target => {
+        const panel = getPanelsController().findCurrentPanel(target);
+        if (panel) getFocusController().startPanelFocusGuard(panel);
+      });
       const { results } = await runNewChatBatch({
         panels: targetPanels,
         requestId,

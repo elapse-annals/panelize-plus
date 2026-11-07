@@ -20,7 +20,7 @@ import {
   isSendHeldByReadiness,
   summarizePanelReadiness
 } from '../../modules/panels/panel-readiness.js';
-import { MULTI_PANEL_PROVIDER_STATUS_CONTEXT, PANELIZE_ANSWER_ENGAGEMENT, PANELIZE_ANSWER_TEXT, PANELIZE_FORWARD_KEYS, PANELIZE_LOCATE_ANSWER_RESULT, PANELIZE_PAGE_WIDTH, PANELIZE_PROVIDER_BUSY, PANELIZE_PROVIDER_IDLE, PANELIZE_PROVIDER_LOCATION, PANELIZE_PROVIDER_USER_INTERACTION, PANELIZE_RESPONSE_TIMING, PANELIZE_TEMP_CHAT_ENABLED } from './protocol.js';
+import { MULTI_PANEL_PROVIDER_STATUS_CONTEXT, PANELIZE_ANSWER_ENGAGEMENT, PANELIZE_ANSWER_TEXT, PANELIZE_FORWARD_KEYS, PANELIZE_LOCATE_ANSWER_RESULT, PANELIZE_PAGE_WIDTH, PANELIZE_PROVIDER_BUSY, PANELIZE_PROVIDER_IDLE, PANELIZE_PROVIDER_LOCATION, PANELIZE_PROVIDER_USER_INTERACTION, PANELIZE_REFOCUS_UNIFIED_INPUT, PANELIZE_RESPONSE_TIMING, PANELIZE_TEMP_CHAT_ENABLED } from './protocol.js';
 import { isChatgptProvider } from './ui.js';
 
 export function createMessagingController({
@@ -103,10 +103,14 @@ export function createMessagingController({
           getFocusController().returnFocusToPanel(panel);
         } else if (data.requestId === getFocusController().panelFocusGuardIds.get(panel.id)) {
           // The user chose this panel: stop pulling focus back to the question box.
-          getFocusController().panelFocusGuardIds.delete(panel.id);
-          getFocusController().stopPanelFocusGuards();
-          getPanelsController().loadingPanelIds.clear();
+          getFocusController().stopPanelFocusGuard(panel.id);
+          getPanelsController().loadingPanelIds.delete(panel.id);
           getFocusController().returnFocusToPanel(panel);
+        }
+        break;
+      case PANELIZE_REFOCUS_UNIFIED_INPUT:
+        if (data.requestId === getFocusController().panelFocusGuardIds.get(panel.id)) {
+          getFocusController().focusUnifiedInput({ force: true });
         }
         break;
       case PANELIZE_FORWARD_KEYS:

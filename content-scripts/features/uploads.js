@@ -110,7 +110,7 @@
         // Fills protect the unified input's focus too, so report a click in
         // the panel to hand focus back to the user.
         if (requestId) {
-          getFocusController().startMultiPanelUserInteractionTracking(requestId, provider);
+          getFocusController().startMultiPanelUserInteractionTracking(requestId, provider, { pointerOnly: true });
         } else {
           getFocusController().stopMultiPanelUserInteractionTracking();
         }

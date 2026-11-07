@@ -92,7 +92,7 @@
             ? getGoogleController().normalizeGoogleProviderMode(event.data.providerMode)
             : null;
           if (event.data.requestId) {
-            getFocusController().startMultiPanelUserInteractionTracking(event.data.requestId, provider);
+            getFocusController().startMultiPanelUserInteractionTracking(event.data.requestId, provider, { pointerOnly: true });
           } else {
             getFocusController().stopMultiPanelUserInteractionTracking();
           }
@@ -218,7 +218,7 @@
         : null;
 
       if (event.data.requestId) {
-        getFocusController().startMultiPanelUserInteractionTracking(event.data.requestId, provider);
+        getFocusController().startMultiPanelUserInteractionTracking(event.data.requestId, provider, { pointerOnly: true });
       } else {
         getFocusController().stopMultiPanelUserInteractionTracking();
       }

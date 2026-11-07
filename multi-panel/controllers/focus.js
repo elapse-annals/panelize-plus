@@ -80,7 +80,10 @@ export function createFocusController({
   }
 
   function shouldPreserveUnifiedInputFocus() {
-    return getPanelsController().loadingPanelIds.size > 0 || isRestoringFocusAfterNewChat || isRestoringFocusAfterSend;
+    return getPanelsController().loadingPanelIds.size > 0
+      || panelFocusGuardIds.size > 0
+      || isRestoringFocusAfterNewChat
+      || isRestoringFocusAfterSend;
   }
 
   function cancelUnifiedInputFocusRestore() {
@@ -169,7 +172,7 @@ export function createFocusController({
   // has focus, so a panel the user is working in is never guarded.
   function startPanelFocusGuard(panel) {
     const active = document.activeElement;
-    if (active !== document.getElementById('unified-input') && active !== document.body && active) {
+    if (active && active !== document.getElementById('unified-input') && active !== document.body && active.tagName !== 'IFRAME') {
       return;
     }
     panelFocusGuardCounter += 1;
@@ -184,6 +187,15 @@ export function createFocusController({
       active: true,
       requestId,
       durationMs: PANEL_FOCUS_GUARD_MS
+    }, '*');
+  }
+
+  function stopPanelFocusGuard(panelId) {
+    const requestId = panelFocusGuardIds.get(panelId);
+    if (!requestId) return;
+    panelFocusGuardIds.delete(panelId);
+    getPanelsController().panels.find(panel => panel.id === panelId)?.iframe?.contentWindow?.postMessage({
+      type: PANELIZE_FOCUS_GUARD, context: 'multi-panel', active: false, requestId
     }, '*');
   }
 
@@ -370,6 +382,7 @@ export function createFocusController({
     get sendFocusFillingPanelIds() { return sendFocusFillingPanelIds; },
     shouldPreserveUnifiedInputFocus,
     startPanelFocusGuard,
+    stopPanelFocusGuard,
     stopPanelFocusGuards,
   };
 }

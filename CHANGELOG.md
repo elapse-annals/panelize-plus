@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.91.1 - 2026-11-07
+- Fixed focus protection in Multi-Panel when typing during panel loading or New Chat resets:
+  - Focus guards are now initialized on all loading panels even if another panel was already focused by an autofocus script.
+  - User interaction in one panel now only releases the guard for that panel, leaving guards active on other loading or resetting panels.
+  - New Chat batches now activate focus guards on all resetting panels, capturing and forwarding any stolen keystrokes back to the unified input while dropping bare Enters.
+  - Programmatic `focusin` events landing on iframe elements no longer prematurely cancel New Chat or Send focus restoration.
+  - Guarded panels now immediately notify the host to refocus the unified input when focused without a prior user pointer interaction.
+  - Send, fill, and upload interaction tracking now strictly requires pointer interaction, preventing stolen keystrokes from cancelling focus protection.
+
 ## 2.91.0 - 2026-11-07
 - Refined the Multi-Panel page in light and dark themes with a shared token layer for surfaces, text, borders, accents, semantic states, radii, shadows, type, motion, and focus. The toolbar, panel frames, composer, dialogs, prompts, sharing, answers, AI summary, rating banner, and blind mode now use the same values; dark-only overrides were consolidated into tokens, muted text meets WCAG AA contrast, keyboard focus is visible, the brand title is static instead of a looping gradient, and loading shimmer/pulse stop under reduced motion. No layout, behavior, URL, storage, or exported share-snapshot changes.
 
