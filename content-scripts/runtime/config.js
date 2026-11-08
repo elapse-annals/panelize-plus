@@ -106,6 +106,12 @@
     const CHATGPT_STOP_BUTTON_SELECTOR = 'button[data-testid="stop-button"]';
     const CHATGPT_SEND_TRACKING_IDLE_DELAY_MS = 800;
     const CHATGPT_SEND_TRACKING_NO_BUSY_TIMEOUT_MS = 2000;
+    // Text sends wait for a visible composer and for ChatGPT to stop generating;
+    // the whole wait is bounded so a stuck stop button cannot hold a prompt forever.
+    const CHATGPT_TEXT_SEND_POLL_MS = 400;
+    const CHATGPT_TEXT_SEND_TIMEOUT_MS = 120000;
+    const CHATGPT_COMPOSER_WAIT_TIMEOUT_MS = 10000;
+    const CHATGPT_SEND_CONFIRM_MS = 2000;
 
     // Response timing for answer stats. An answer is the last assistant turn
     // added after the send; it is done once the provider's stop control is gone
@@ -518,9 +524,14 @@
     const SEND_BUTTON_SELECTORS = {
       chatgpt: [
         'button[data-testid="send-button"]',
+        // The thread composer after the first message may use this test id.
+        'button[data-testid="fruitjuice-send-button"]',
         'button[aria-label="Send prompt"]',
         'button[aria-label="Send"]',
-        'form button[type="submit"]'
+        // The ChatGPT click path scopes its search to the composer form, where
+        // "form button[...]" would require a nested form and never match.
+        'form button[type="submit"]',
+        'button[type="submit"]'
       ],
       claude: [
         'button[aria-label="Send Message"]',
@@ -886,9 +897,13 @@
       get ANSWER_ENGAGEMENT_REPORT_INTERVAL_MS() { return ANSWER_ENGAGEMENT_REPORT_INTERVAL_MS; },
       get ANSWER_TEXT_BLOCK_BOUNDARY_TAGS() { return ANSWER_TEXT_BLOCK_BOUNDARY_TAGS; },
       get ANSWER_TEXT_MAX_LENGTH() { return ANSWER_TEXT_MAX_LENGTH; },
+      get CHATGPT_SEND_CONFIRM_MS() { return CHATGPT_SEND_CONFIRM_MS; },
       get CHATGPT_SEND_TRACKING_IDLE_DELAY_MS() { return CHATGPT_SEND_TRACKING_IDLE_DELAY_MS; },
       get CHATGPT_SEND_TRACKING_NO_BUSY_TIMEOUT_MS() { return CHATGPT_SEND_TRACKING_NO_BUSY_TIMEOUT_MS; },
       get CHATGPT_STOP_BUTTON_SELECTOR() { return CHATGPT_STOP_BUTTON_SELECTOR; },
+      get CHATGPT_TEXT_SEND_POLL_MS() { return CHATGPT_TEXT_SEND_POLL_MS; },
+      get CHATGPT_TEXT_SEND_TIMEOUT_MS() { return CHATGPT_TEXT_SEND_TIMEOUT_MS; },
+      get CHATGPT_COMPOSER_WAIT_TIMEOUT_MS() { return CHATGPT_COMPOSER_WAIT_TIMEOUT_MS; },
       get COMPOSER_ATTACHMENT_REMOVE_LABEL() { return COMPOSER_ATTACHMENT_REMOVE_LABEL; },
       get COMPOSER_READY_CHECK_THROTTLE_MS() { return COMPOSER_READY_CHECK_THROTTLE_MS; },
       get COMPOSER_READY_MAX_WAIT_MS() { return COMPOSER_READY_MAX_WAIT_MS; },

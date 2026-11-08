@@ -14,8 +14,68 @@
     getDomController,
     getGoogleController
   }) {
+    const CHATGPT_SEND_LABELS = ['send', '发送', '送信', 'отправить', 'enviar', 'envoyer', 'senden', 'invia', '보내기'];
+
+    function getButtonLabel(element) {
+      return `${element?.getAttribute?.('data-testid') || ''} ${element?.getAttribute?.('aria-label') || ''} ${element?.textContent || ''}`
+        .toLowerCase();
+    }
+
+    function isChatgptStopControl(element) {
+      if (!element?.matches) {
+        return false;
+      }
+      if (element.matches(getConfigController().CHATGPT_STOP_BUTTON_SELECTOR)) {
+        return true;
+      }
+      return /stop|停止|中止/.test(getButtonLabel(element));
+    }
+
+    // The composer sits at the bottom of a scrollable conversation, so a send
+    // control outside the current viewport is still the right one. Reject only
+    // controls that are detached, display/visibility hidden, or zero-sized.
+    function isChatgptSendControlVisible(element) {
+      if (!element?.isConnected || element.offsetParent === null
+        || element.getAttribute('aria-hidden') === 'true'
+        || element.closest('[aria-hidden="true"]')) {
+        return false;
+      }
+      const rect = element.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) {
+        // happy-dom reports no layout (offsetParent undefined) with empty rects.
+        return element.offsetParent !== null;
+      }
+      try {
+        const style = window.getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+          return false;
+        }
+      } catch {
+        // Older DOM implementations may not expose computed styles.
+      }
+      return true;
+    }
+
+    // Last resort inside the composer form: the thread composer has appeared
+    // with a localized aria-label and no test id the explicit selectors know.
+    function findChatgptSendControl(root) {
+      if (!root || typeof root.querySelectorAll !== 'function') {
+        return null;
+      }
+      const candidates = [...root.querySelectorAll('button')]
+        .filter(button => !isChatgptStopControl(button)
+          && getComposerController().isProviderSendControlEnabled('chatgpt', button)
+          && isChatgptSendControlVisible(button));
+
+      const byTestId = candidates.find(button => (button.getAttribute('data-testid') || '').toLowerCase().includes('send'));
+      if (byTestId) {
+        return byTestId;
+      }
+      return candidates.find(button => CHATGPT_SEND_LABELS.some(label => getButtonLabel(button).includes(label))) || null;
+    }
+
     // Find and click send button
-    function clickSendButton(provider, providerMode = null) {
+    function clickSendButton(provider, providerMode = null, { editor = null } = {}) {
       if (provider === 'google') {
         return getGoogleController().clickGoogleSendButton(providerMode);
       }
@@ -43,10 +103,24 @@
       console.log('[Text Injection] Attempting to click send button for provider:', provider);
 
       // ChatGPT's send button lives in the composer's form; searching only there
-      // keeps another form's Send (e.g. an inline edit) from being clicked.
-      const searchRoot = provider === 'chatgpt'
-        ? getChatgptController().getChatgptComposer()?.findForm() || document
-        : document;
+      // keeps another form's Send (e.g. an inline edit) from being clicked. The
+      // editor captured at injection time is preferred so a re-rendered composer
+      // cannot move the click into a different form.
+      let chatgptEditor = null;
+      let searchRoot = document;
+      if (provider === 'chatgpt') {
+        const composer = getChatgptController().getChatgptComposer();
+        chatgptEditor = editor?.isConnected ? editor : composer?.findVisibleEditor?.() || null;
+        if (!chatgptEditor || (composer?.isVisibleEditor && !composer.isVisibleEditor(chatgptEditor))) {
+          console.warn('[Text Injection] No visible ChatGPT composer for send');
+          return false;
+        }
+        searchRoot = chatgptEditor.closest('form');
+        if (!searchRoot) {
+          console.warn('[Text Injection] ChatGPT composer has no form for send');
+          return false;
+        }
+      }
 
       // Try each selector
       for (const selector of selectors) {
@@ -61,8 +135,8 @@
               // Look for parent button or clickable container
               let parent = element.parentElement;
               while (parent && parent !== document.body) {
-                if (parent.tagName === 'BUTTON' || 
-                    parent.role === 'button' || 
+                if (parent.tagName === 'BUTTON' ||
+                    parent.role === 'button' ||
                     parent.classList.contains('send-button-container') ||
                     parent.onclick ||
                     parent.getAttribute('role') === 'button') {
@@ -72,7 +146,18 @@
                 parent = parent.parentElement;
               }
             }
-            
+
+            if (provider === 'chatgpt') {
+              if (isChatgptStopControl(targetElement)) {
+                console.log('[Text Injection] Skipping ChatGPT stop control:', selector);
+                continue;
+              }
+              if (!isChatgptSendControlVisible(targetElement)) {
+                console.log('[Text Injection] ChatGPT control is not visible:', selector);
+                continue;
+              }
+            }
+
             // Check if element or its parent is disabled
             if (getComposerController().isProviderSendControlEnabled(provider, targetElement)) {
               console.log('[Text Injection] Clicking send button:', selector, targetElement);
@@ -95,6 +180,15 @@
           }
         } catch (error) {
           console.warn('[Text Injection] Error finding button with selector:', selector, error);
+        }
+      }
+
+      if (provider === 'chatgpt' && chatgptEditor) {
+        const fallback = findChatgptSendControl(searchRoot);
+        if (fallback) {
+          console.log('[Text Injection] Clicking ChatGPT send fallback:', fallback);
+          fallback.click();
+          return true;
         }
       }
 
@@ -162,10 +256,10 @@
       return false;
     }
 
-    async function clickSendButtonWhenReady(provider, providerMode = null) {
+    async function clickSendButtonWhenReady(provider, providerMode = null, options = {}) {
       const deadline = Date.now() + getConfigController().SEND_READY_TIMEOUT_MS;
       while (true) {
-        if (clickSendButton(provider, providerMode)) {
+        if (clickSendButton(provider, providerMode, options)) {
           return true;
         }
         if (Date.now() >= deadline) {

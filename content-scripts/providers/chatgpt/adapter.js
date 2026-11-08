@@ -19,6 +19,10 @@
       return document.querySelector(getConfigController().CHATGPT_STOP_BUTTON_SELECTOR);
     }
 
+    function isChatgptGenerating() {
+      return Boolean(findChatgptBusyButton());
+    }
+
     function nodeContainsChatgptBusyButton(node) {
       if (node?.nodeType !== Node.ELEMENT_NODE) {
         return false;
@@ -200,6 +204,7 @@
       get chatgptSendTracking() { return chatgptSendTracking; },
       getChatgptComposer,
       injectImageToChatGPT,
+      isChatgptGenerating,
       startChatgptSendTracking,
       stopChatgptSendTracking,
     };

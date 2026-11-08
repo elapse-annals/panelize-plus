@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.91.2 - 2026-11-08
+- Fixed ChatGPT not submitting the second Send All after the first message. The thread composer's send control is now found by its `fruitjuice` test id, form-scoped submit selector, or localized label instead of the home composer's test id only. Sends target a visible composer and the same form the text was injected into, so a retired hidden home composer is never used.
+- ChatGPT text sends now wait (bounded to two minutes) while the previous answer is still streaming, then submit once when the stop button clears. A newer Send All replaces a queued prompt, Clear/New Chat cancels it, and the click is never repeated to avoid duplicate submissions.
+
 ## 2.91.1 - 2026-11-07
 - Fixed focus protection in Multi-Panel when typing during panel loading or New Chat resets:
   - Focus guards are now initialized on all loading panels even if another panel was already focused by an autofocus script.

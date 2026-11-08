@@ -387,4 +387,188 @@ describe('chatgpt content script provider status', () => {
     expect(prompt.textContent).toBe('Legacy prompt');
     expect(click).toHaveBeenCalledOnce();
   });
+
+  it('clicks a thread send control that only uses type=submit and a localized label', async () => {
+    document.body.innerHTML = `
+      <form data-chatgpt-composer data-composer-placement="thread">
+        <div data-composer-markdown contenteditable="true"></div>
+        <button type="submit" aria-label="发送消息">发送</button>
+      </form>
+    `;
+    const editor = document.querySelector('[data-composer-markdown]');
+    const sendButton = document.querySelector('button');
+    const sentTexts = [];
+    sendButton.addEventListener('click', event => {
+      event.preventDefault();
+      sentTexts.push(editor.textContent);
+      editor.textContent = '';
+    });
+
+    dispatchMultiPanelMessage({
+      type: 'INJECT_TEXT', text: '第二条消息', autoSubmit: true, requestId: 'req-thread-submit',
+      context: 'multi-panel',
+    });
+    await wait(800);
+
+    expect(sentTexts).toEqual(['第二条消息']);
+  });
+
+  it('clicks the fruitjuice thread send button after the first message', async () => {
+    document.body.innerHTML = `
+      <form data-chatgpt-composer data-composer-placement="thread">
+        <div data-composer-markdown contenteditable="true"></div>
+        <button type="button" data-testid="fruitjuice-send-button" aria-label="发送">发送</button>
+      </form>
+    `;
+    const editor = document.querySelector('[data-composer-markdown]');
+    const sendButton = document.querySelector('button');
+    const sentTexts = [];
+    sendButton.addEventListener('click', event => {
+      event.preventDefault();
+      sentTexts.push(editor.textContent);
+      editor.textContent = '';
+    });
+
+    dispatchMultiPanelMessage({
+      type: 'INJECT_TEXT', text: 'fruitjuice prompt', autoSubmit: true, requestId: 'req-fruitjuice',
+      context: 'multi-panel',
+    });
+    await wait(800);
+
+    expect(sentTexts).toEqual(['fruitjuice prompt']);
+  });
+
+  it('waits for the ChatGPT stop button to clear and never clicks it', async () => {
+    document.body.innerHTML = `
+      <form data-chatgpt-composer data-composer-placement="thread">
+        <div data-composer-markdown contenteditable="true"></div>
+        <button type="submit" aria-label="发送">发送</button>
+        <button type="button" data-testid="stop-button" aria-label="停止生成">停止</button>
+      </form>
+    `;
+    const editor = document.querySelector('[data-composer-markdown]');
+    const sendButton = document.querySelector('button[type="submit"]');
+    const stopButton = document.querySelector('[data-testid="stop-button"]');
+    const sentTexts = [];
+    let stopClicks = 0;
+    sendButton.addEventListener('click', event => {
+      event.preventDefault();
+      sentTexts.push(editor.textContent);
+      editor.textContent = '';
+    });
+    stopButton.addEventListener('click', event => {
+      event.preventDefault();
+      stopClicks += 1;
+    });
+
+    dispatchMultiPanelMessage({
+      type: 'INJECT_TEXT', text: 'queued prompt', autoSubmit: true, requestId: 'req-busy',
+      context: 'multi-panel',
+    });
+    await wait(900);
+    expect(sentTexts).toEqual([]);
+
+    stopButton.remove();
+    await wait(900);
+
+    expect(sentTexts).toEqual(['queued prompt']);
+    expect(stopClicks).toBe(0);
+  });
+
+  it('replaces a queued prompt when a newer Send All arrives while ChatGPT is busy', async () => {
+    document.body.innerHTML = `
+      <form data-chatgpt-composer data-composer-placement="thread">
+        <div data-composer-markdown contenteditable="true"></div>
+        <button type="submit" aria-label="发送">发送</button>
+        <button type="button" data-testid="stop-button" aria-label="停止生成">停止</button>
+      </form>
+    `;
+    const editor = document.querySelector('[data-composer-markdown]');
+    const sendButton = document.querySelector('button[type="submit"]');
+    const stopButton = document.querySelector('[data-testid="stop-button"]');
+    const sentTexts = [];
+    sendButton.addEventListener('click', event => {
+      event.preventDefault();
+      sentTexts.push(editor.textContent);
+      editor.textContent = '';
+    });
+
+    dispatchMultiPanelMessage({
+      type: 'INJECT_TEXT', text: 'first prompt', autoSubmit: true, requestId: 'req-first',
+      context: 'multi-panel',
+    });
+    await wait(250);
+    dispatchMultiPanelMessage({
+      type: 'INJECT_TEXT', text: 'second prompt', autoSubmit: true, requestId: 'req-second',
+      context: 'multi-panel',
+    });
+    await wait(250);
+    expect(editor.textContent).toBe('second prompt');
+
+    stopButton.remove();
+    await wait(900);
+
+    expect(sentTexts).toEqual(['second prompt']);
+  });
+
+  it('injects only into a visible thread composer when the home composer is hidden', async () => {
+    document.body.innerHTML = `
+      <div aria-hidden="true">
+        <form data-chatgpt-composer data-composer-placement="home">
+          <div data-composer-markdown contenteditable="true" id="hidden-home"></div>
+          <button type="submit" aria-label="发送">发送</button>
+        </form>
+      </div>
+      <form data-chatgpt-composer data-composer-placement="thread">
+        <div data-composer-markdown contenteditable="true" id="visible-thread"></div>
+        <button type="submit" aria-label="发送">发送</button>
+      </form>
+    `;
+    const homeEditor = document.getElementById('hidden-home');
+    const threadEditor = document.getElementById('visible-thread');
+    const threadSend = threadEditor.closest('form').querySelector('button');
+    const sentTexts = [];
+    threadSend.addEventListener('click', event => {
+      event.preventDefault();
+      sentTexts.push(threadEditor.textContent);
+      threadEditor.textContent = '';
+    });
+
+    dispatchMultiPanelMessage({
+      type: 'INJECT_TEXT', text: 'visible only', autoSubmit: true, requestId: 'req-visible',
+      context: 'multi-panel',
+    });
+    await wait(800);
+
+    expect(homeEditor.textContent).toBe('');
+    expect(sentTexts).toEqual(['visible only']);
+  });
+
+  it('cancels a queued ChatGPT send when inputs are cleared', async () => {
+    document.body.innerHTML = `
+      <form data-chatgpt-composer data-composer-placement="thread">
+        <div data-composer-markdown contenteditable="true"></div>
+        <button type="submit" aria-label="发送">发送</button>
+        <button type="button" data-testid="stop-button" aria-label="停止生成">停止</button>
+      </form>
+    `;
+    const sendButton = document.querySelector('button[type="submit"]');
+    const stopButton = document.querySelector('[data-testid="stop-button"]');
+    let sends = 0;
+    sendButton.addEventListener('click', event => {
+      event.preventDefault();
+      sends += 1;
+    });
+
+    dispatchMultiPanelMessage({
+      type: 'INJECT_TEXT', text: 'do not send', autoSubmit: true, requestId: 'req-clear',
+      context: 'multi-panel',
+    });
+    await wait(300);
+    dispatchMultiPanelMessage({ type: 'CLEAR_INPUT', context: 'multi-panel' });
+    stopButton.remove();
+    await wait(900);
+
+    expect(sends).toBe(0);
+  });
 });

@@ -102,6 +102,49 @@ describe('ChatGPT composer content scripts', () => {
     expect(composer.isEditor(document.querySelector('textarea'))).toBe(false);
   });
 
+  it('ignores hidden composers when picking a visible one to send into', () => {
+    loadScripts(`
+      <form data-chatgpt-composer data-composer-placement="home">
+        <div data-composer-markdown contenteditable="true" style="visibility: hidden"></div>
+        <button type="submit" aria-label="Send">Send</button>
+      </form>
+      <div aria-hidden="true">
+        <form data-chatgpt-composer data-composer-placement="thread">
+          <div data-composer-markdown contenteditable="true"></div>
+          <button type="submit" aria-label="Send">Send</button>
+        </form>
+      </div>
+      <form data-chatgpt-composer data-composer-placement="thread">
+        <div data-composer-markdown contenteditable="true" id="visible-thread"></div>
+        <button type="submit" aria-label="Send">Send</button>
+      </form>
+    `);
+
+    const composer = testWindow.PanelizeChatgptComposer;
+    expect(composer.findVisibleEditor()).toBe(document.getElementById('visible-thread'));
+    expect(composer.isVisibleEditor(document.querySelector('[aria-hidden="true"] [data-composer-markdown]'))).toBe(false);
+    expect(composer.isVisibleEditor(document.querySelector('[style*="visibility: hidden"]'))).toBe(false);
+  });
+
+  it('prefers the thread composer when several composers are visible', () => {
+    loadScripts(CURRENT_COMPOSER_DOM);
+    const { editor } = getThreadComposer();
+
+    expect(testWindow.PanelizeChatgptComposer.findVisibleEditor()).toBe(editor);
+  });
+
+  it('keeps a visible legacy prompt-textarea composer usable', () => {
+    loadScripts(`
+      <form data-type="unified-composer">
+        <div id="prompt-textarea" contenteditable="true"></div>
+        <button type="submit" data-testid="send-button" aria-label="Send prompt">Send</button>
+      </form>
+    `);
+
+    expect(testWindow.PanelizeChatgptComposer.findVisibleEditor())
+      .toBe(document.getElementById('prompt-textarea'));
+  });
+
   it('sends from the focused current composer with its own form button', () => {
     loadScripts(CURRENT_COMPOSER_DOM);
     const { editor, sendButton } = getThreadComposer();
