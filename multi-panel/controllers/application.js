@@ -114,10 +114,18 @@ export function createApplicationController({
       getPanelName: getPresentationController().getPanelDisplayName,
       isBlindMode: () => getPresentationController().isBlindModeEnabled,
       loadModePrompts: getModePrompts,
+      // A mode edit or deletion changes the per-panel choices and names.
+      onModePromptsChanged: () => {
+        getProviderControlsController().syncPanelPromptModeControls();
+        getPresentationController().renderPanelNames();
+      },
       editModePrompt: prompt => getPromptsController().openPromptEditor(prompt.id),
       newModePrompt: () => getPromptsController().openPromptEditor(null, { asMode: true }),
       deleteModePrompt: getPromptsController().deleteModePrompt
     });
+    // The initial mode load runs before composerControls is assigned above.
+    getProviderControlsController().syncPanelPromptModeControls();
+    getPresentationController().renderPanelNames();
     getPresentationController().updatePageStyleButtons();
     getConversationsController().updateTemporaryChatButtonState();
     getFocusController().focusUnifiedInput({ force: true });

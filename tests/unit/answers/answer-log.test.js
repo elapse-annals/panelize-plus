@@ -103,6 +103,17 @@ describe('renderAnswerLog', () => {
     expect(items[1].querySelectorAll('.answer-log-chip')[1].textContent).toBe('Claude');
   });
 
+  it('uses a per-answer name when the caller supplies one', () => {
+    const list = document.createElement('ul');
+    renderAnswerLog(list, [round('modes', NOW, 'Explain closures', ['chatgpt'])], {
+      ...OPTIONS,
+      limit: 20,
+      getAnswerName: () => 'ChatGPT · Concise'
+    });
+
+    expect(list.querySelector('.answer-log-chip').textContent).toBe('ChatGPT · Concise · pending');
+  });
+
   it('shows a placeholder for questions without text', () => {
     const list = document.createElement('ul');
     renderAnswerLog(list, [round('empty', NOW, '')], { ...OPTIONS, limit: 20 });

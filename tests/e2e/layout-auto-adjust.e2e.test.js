@@ -133,6 +133,20 @@ test.describe('Layout auto-adjust E2E', () => {
     await expect.poll(storedLayout).toBe('1x3');
   });
 
+  test('keeps duplicate same-provider panels when the layout grows', async () => {
+    await openLayout('1x1', 1);
+    const [duplicatedProvider] = ALL_PROVIDERS;
+
+    await page.click('#panel-grid .clone-panel-btn');
+    await expect(page.locator('#panel-grid iframe')).toHaveCount(2);
+
+    await chooseLayout('1x3');
+    await expect(page.locator('#panel-grid iframe')).toHaveCount(3);
+    expect(await page.locator('#panel-grid .panel-header .provider-icon').evaluateAll((images, providerId) =>
+      images.filter(image => image.dataset.providerId === providerId).length
+    , duplicatedProvider)).toBe(2);
+  });
+
   test('walks 1x2 through 4x2 and 1x9 up to 1x30, then stops at 30 panels', async () => {
     test.setTimeout(120000);
     await openLayout('1x2', 2);
@@ -159,7 +173,7 @@ test.describe('Layout auto-adjust E2E', () => {
     await expectGridGeometry({ columns: MAX_PANELS, rows: 1 });
     await expect.poll(async () => page.evaluate(() => {
       const snapshot = JSON.parse(localStorage.getItem('panelize.startupSnapshot'));
-      return snapshot?.startupProviderIds.length;
+      return snapshot?.panels.length;
     })).toBe(MAX_PANELS);
 
     await page.click('#add-panel-btn');

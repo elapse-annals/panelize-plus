@@ -88,6 +88,9 @@ export function createRound({ id, createdAt, text, panels, blind = false, catego
   panels.forEach(panel => {
     answers[panel.id] = {
       providerId: panel.providerId,
+      // Only a panel's fixed prompt mode is stored; inherit panels keep the
+      // provider-only answer shape older rounds have.
+      ...(typeof panel.promptMode === 'string' && panel.promptMode ? { promptMode: panel.promptMode } : {}),
       timed: isAnswerTimingProvider(panel.providerId),
       status: isAnswerTimingProvider(panel.providerId) ? ANSWER_STATUS.PENDING : null,
       firstOutputMs: null,

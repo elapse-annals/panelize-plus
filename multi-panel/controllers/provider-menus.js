@@ -4,7 +4,7 @@
  */
 import { getEnabledProviders } from '../../modules/providers/providers.js';
 import { MAX_PANELS } from '../../modules/panels/layout-auto-adjust.js';
-import { getDropdownThemePalette, getThemeAwareProviderIcon, showToast } from './ui.js';
+import { getDropdownThemePalette, getLocalizedText, getThemeAwareProviderIcon, showToast } from './ui.js';
 
 export function createProviderMenusController({
   getPanelsController
@@ -99,11 +99,9 @@ export function createProviderMenusController({
     }
 
     const enabledProviders = await getEnabledProviders();
-    const usedProviders = getPanelsController().panels.map(p => p.providerId);
-    const availableProviders = enabledProviders.filter(p => !usedProviders.includes(p.id));
 
-    if (availableProviders.length === 0) {
-      showToast('All providers are already in use');
+    if (enabledProviders.length === 0) {
+      showToast(getLocalizedText('addPanelNoProviders', 'No providers are enabled'));
       return;
     }
 
@@ -126,7 +124,7 @@ export function createProviderMenusController({
     padding: 8px 0;
   `;
 
-    menu.innerHTML = availableProviders.map(provider => `
+    menu.innerHTML = enabledProviders.map(provider => `
     <div class="add-panel-item" data-provider-id="${provider.id}" style="
       display: flex;
       align-items: center;

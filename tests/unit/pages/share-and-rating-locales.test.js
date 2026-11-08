@@ -211,7 +211,11 @@ const FEATURE_KEYS = [
   'msgAiSummaryTestOk',
   'msgAiSummaryTestFailed',
   'labelAboutAuthor',
-  'labelAboutForkedFrom'
+  'labelAboutForkedFrom',
+  'labelGitHubRepo',
+  'panelPromptModeInherit',
+  'panelCloneTitle',
+  'addPanelNoProviders'
 ];
 
 const locales = readdirSync(LOCALES_DIR);

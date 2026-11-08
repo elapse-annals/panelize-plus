@@ -1,6 +1,6 @@
 {
   "extensionName": {
-    "message": "Panelize Plus（百家）- 多个 AI 并排对比"
+    "message": "Panelize Plus（百家争鸣）- 多个 AI 并排对比"
   },
   "extensionDescription": {
     "message": "一次提问，同时问多个 AI 聊天助手，回答并排对比。直接使用你自己的账号，免费，无需 API Key。"
@@ -15,7 +15,7 @@
     "message": "打开 Panelize"
   },
   "settingsTitle": {
-    "message": "设置： Panelize（百家）"
+    "message": "设置： Panelize（百家争鸣）"
   },
   "settingsSubtitle": {
     "message": "自定义您的多 AI 比较体验"
@@ -275,8 +275,11 @@
   "linkDownloadLatest": {
     "message": "下载最新版本"
   },
+  "labelGitHubRepo": {
+    "message": "GitHub 源码仓库"
+  },
   "descAbout1": {
-    "message": "Panelize Plus（百家）让您在一个窗口中并排比较多个 AI 聊天机器人。"
+    "message": "Panelize Plus（百家争鸣）让您在一个窗口中并排比较多个 AI 聊天机器人。"
   },
   "descAbout2": {
     "message": "采用隐私优先架构构建。所有数据本地存储。"
@@ -615,10 +618,10 @@
     "message": "加载中..."
   },
   "optionsPageTitle": {
-    "message": "Panelize Plus（百家）- 设置"
+    "message": "Panelize Plus（百家争鸣）- 设置"
   },
   "headerSettingsTitle": {
-    "message": "设置： Panelize（百家）"
+    "message": "设置： Panelize（百家争鸣）"
   },
   "headerSettingsSubtitle": {
     "message": "自定义您的多 AI 比较体验"
@@ -1460,6 +1463,9 @@
   "panelNoteEditTitle": {
     "message": "为这个 AI 写一句话备注"
   },
+  "panelCloneTitle": {
+    "message": "复制此 AI 面板"
+  },
   "composerInputPlaceholder": {
     "message": "输入问题，发送给所有 AI..."
   },
@@ -1517,6 +1523,9 @@
   "composerAddPanel": {
     "message": "添加面板"
   },
+  "addPanelNoProviders": {
+    "message": "没有已启用的 AI"
+  },
   "composerToggleToolbar": {
     "message": "收起或展开工具栏"
   },
@@ -1540,6 +1549,9 @@
   },
   "promptModeDefault": {
     "message": "默认"
+  },
+  "panelPromptModeInherit": {
+    "message": "跟随全局"
   },
   "promptModeLearning": {
     "message": "学习"

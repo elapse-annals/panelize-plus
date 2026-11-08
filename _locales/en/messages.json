@@ -329,6 +329,9 @@
   "linkDownloadLatest": {
     "message": "Download Latest Version"
   },
+  "labelGitHubRepo": {
+    "message": "GitHub Repository"
+  },
   "descAbout1": {
     "message": "Panelize Plus lets you compare multiple AI chatbots side-by-side in one window."
   },
@@ -1481,6 +1484,9 @@
   "panelNoteEditTitle": {
     "message": "Add a one-line note about this AI"
   },
+  "panelCloneTitle": {
+    "message": "Duplicate this AI panel"
+  },
   "composerInputPlaceholder": {
     "message": "Enter your question to send to all AI providers..."
   },
@@ -1538,6 +1544,9 @@
   "composerAddPanel": {
     "message": "Add panel"
   },
+  "addPanelNoProviders": {
+    "message": "No providers are enabled"
+  },
   "composerToggleToolbar": {
     "message": "Collapse or expand toolbar"
   },
@@ -1561,6 +1570,9 @@
   },
   "promptModeDefault": {
     "message": "Default"
+  },
+  "panelPromptModeInherit": {
+    "message": "Follow global"
   },
   "promptModeLearning": {
     "message": "Learning"

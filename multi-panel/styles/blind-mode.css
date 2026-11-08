@@ -23,6 +23,7 @@ body.blind-mode .panel-loading,
 body.blind-mode .panel-header-right .open-provider-top-level-btn,
 body.blind-mode .panel-header-right .switch-provider-btn,
 body.blind-mode .panel-header-right .panel-google-mode-select,
+body.blind-mode .panel-header-right .panel-prompt-mode-select,
 body.blind-mode #answer-stats-btn,
 body.blind-mode #answer-log-btn {
   display: none !important;

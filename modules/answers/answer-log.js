@@ -80,7 +80,7 @@ export function getAnswerLogProviderIds(rounds) {
   return [...providerIds];
 }
 
-function createAnswerChip(round, panelId, answer, { getText, getProviderName }) {
+function createAnswerChip(round, panelId, answer, { getText, getProviderName, getAnswerName }) {
   const isAdopted = round.adoptedPanelId === panelId;
   let timing = '';
   if (answer.timed) {
@@ -88,7 +88,7 @@ function createAnswerChip(round, panelId, answer, { getText, getProviderName }) 
       ? formatAnswerDuration(answer.completeMs)
       : getText(`answerStatsStatus_${answer.status}`, answer.status);
   }
-  const providerName = getProviderName(answer.providerId);
+  const providerName = getAnswerName?.(answer, round) || getProviderName(answer.providerId);
   const chip = createCell(
     'span',
     timing ? `${providerName} · ${timing}` : providerName,
@@ -107,10 +107,11 @@ function createAnswerChip(round, panelId, answer, { getText, getProviderName }) 
  *
  * @param {HTMLUListElement} list
  * @param {Array<object>} rounds Filtered rounds, newest first.
- * @param {{ limit: number, locale?: string, getText: Function, getProviderName: Function }} options
+ * @param {{ limit: number, locale?: string, getText: Function, getProviderName: Function,
+ *   getAnswerName?: (answer: object, round: object) => string }} options
  * @returns {{ total: number, shown: number }}
  */
-export function renderAnswerLog(list, rounds, { limit, locale, getText, getProviderName }) {
+export function renderAnswerLog(list, rounds, { limit, locale, getText, getProviderName, getAnswerName }) {
   const shownRounds = rounds.slice(0, limit);
   const items = [];
   let lastDay = null;
@@ -140,7 +141,7 @@ export function renderAnswerLog(list, rounds, { limit, locale, getText, getProvi
     const answers = document.createElement('div');
     answers.className = 'answer-log-answers';
     Object.entries(round.answers || {}).forEach(([panelId, answer]) => {
-      answers.appendChild(createAnswerChip(round, panelId, answer, { getText, getProviderName }));
+      answers.appendChild(createAnswerChip(round, panelId, answer, { getText, getProviderName, getAnswerName }));
     });
 
     item.append(header, category, answers);

@@ -16,7 +16,7 @@ import {
   summarizeFillResults
 } from '../../modules/panels/panel-action-results.js';
 import { PANEL_READY_STATE, PANEL_READY_TIMEOUT_MS, isSendHeldByReadiness, summarizePanelReadiness } from '../../modules/panels/panel-readiness.js';
-import { applyPromptMode } from '../../modules/prompts/prompt-modes.js';
+import { applyPromptMode, normalizePanelPromptMode } from '../../modules/prompts/prompt-modes.js';
 import { getLocalizedText, showToast } from './ui.js';
 
 export function createSendingController({
@@ -38,9 +38,14 @@ export function createSendingController({
 
   let pendingFillImageIdsByPanel = new Map();
 
-  // Prompt mode of the last file fill, reused when retrying its failed panels so
-  // every panel in one question gets the same instruction; undefined when unset.
-  let pendingFillPromptMode = undefined;
+  // Each panel's text and prompt mode from the last file fill, reused when
+  // retrying only its failed panels so the outgoing payload stays the one
+  // originally planned.
+  let pendingFillPayloadsByPanel = new Map();
+
+  // Prompt modes captured when a Fill succeeded, reused when Send submits the
+  // already-filled text so the answer round matches what was injected.
+  let pendingFilledPanelPromptModes = new Map();
 
   const broadcastGate = createBroadcastGate();
 
@@ -89,7 +94,7 @@ export function createSendingController({
   function resetFillRetryState() {
     fillPayloadRevision += 1;
     pendingFillImageIdsByPanel = new Map();
-    pendingFillPromptMode = undefined;
+    pendingFillPayloadsByPanel = new Map();
     if (failedFillPanelIds.size === 0) {
       updateFillRetryButton();
       return;
@@ -140,9 +145,34 @@ export function createSendingController({
     const { isFillAction, shouldAutoSubmit, waitForActionResult } = broadcastParams;
     // Auto mode removes the trigger words (say /study) it finds and uses their
     // modes for this send; the trimmed question is what stats and snapshots keep.
-    const resolvedMode = getComposerController().composerControls?.resolvePromptMode?.(typedText, { promptMode: promptModeOverride })
-      ?? { text: typedText, instruction: getComposerController().composerControls?.getPromptMode() ?? null };
+    const composerControls = getComposerController().composerControls;
+    const resolvedMode = composerControls?.resolvePromptMode?.(typedText, { promptMode: promptModeOverride })
+      ?? { text: typedText, instruction: composerControls?.getPromptMode() ?? null };
     const text = resolvedMode.text;
+
+    // Each panel gets the question plus its own instruction; a retried file fill
+    // reuses the payload captured when that panel was first filled.
+    const panelPayloads = new Map();
+    const panelPayloadFor = panel => {
+      if (hasImages && hasFailedPanels && pendingFillPayloadsByPanel.has(panel.id)) {
+        return pendingFillPayloadsByPanel.get(panel.id);
+      }
+      const panelMode = normalizePanelPromptMode(panel.promptMode);
+      const instruction = composerControls?.resolvePanelPromptInstruction?.(panelMode, resolvedMode.instruction)
+        ?? resolvedMode.instruction;
+      return {
+        promptMode: panelMode,
+        text: text.trim() ? applyPromptMode(text, instruction) : instruction || text
+      };
+    };
+    // The panels that took part, with the mode each actually received.
+    const answerPanelsFor = panelIds => getPanelsController().panels
+      .filter(panel => panelIds.has(panel.id))
+      .map(panel => ({
+        id: panel.id,
+        providerId: panel.providerId,
+        promptMode: panelPayloads.get(panel.id)?.promptMode
+      }));
 
     try {
       if (typedText.trim() && !text.trim() && !hasImages) {
@@ -161,15 +191,6 @@ export function createSendingController({
       // Only the message the AIs receive carries the prompt-mode instruction:
       // the question stays as typed for answer stats, snapshots and the draft.
       // Files sent without text get the instruction on its own.
-      const promptMode = hasImages && hasFailedPanels && pendingFillPromptMode !== undefined
-        ? pendingFillPromptMode
-        : resolvedMode.instruction;
-      if (hasImages) {
-        pendingFillPromptMode = promptMode;
-      }
-      const panelText = text.trim()
-        ? applyPromptMode(text, promptMode)
-        : promptMode || text;
 
       // Filling focuses each provider's composer too. Keep the unified input
       // focused, or the next Enter lands in one panel and sends only there.
@@ -198,6 +219,9 @@ export function createSendingController({
         : getPanelsController().panels).filter(panel => !loadingPanelIds.has(panel.id));
       const previousFailedPanelIds = new Set(failedFillPanelIds);
       const attemptedImagesByPanel = new Map();
+      if (hasImages && !hasFailedPanels && pendingFillPayloadsByPanel.size) {
+        pendingFillPayloadsByPanel = new Map();
+      }
       if (waitForActionResult) {
         targetPanels.forEach(panel => getFocusController().sendFocusFillingPanelIds.add(panel.id));
       }
@@ -207,6 +231,9 @@ export function createSendingController({
       const panelResults = await Promise.allSettled(
         targetPanels.map(panel => {
           const isPanelRetry = previousFailedPanelIds.has(panel.id);
+          const payload = panelPayloadFor(panel);
+          panelPayloads.set(panel.id, payload);
+          if (hasImages) pendingFillPayloadsByPanel.set(panel.id, payload);
           let panelImages = [];
           if (hasImages) {
             if (isPanelRetry && pendingFillImageIdsByPanel.has(panel.id)) {
@@ -225,7 +252,7 @@ export function createSendingController({
 
           return sendToPanel(
             panel,
-            panelText,
+            payload.text,
             panelImages,
             shouldAutoSubmit,
             requestId,
@@ -250,7 +277,11 @@ export function createSendingController({
       ];
       if (loadingPanels.length && !hasImages) {
         loadingPanels.forEach(panel => catchUpSends.set(panel.id, {
-          providerId: panel.providerId, text: panelText, autoSubmit: shouldAutoSubmit, isFillAction, waitForActionResult
+          providerId: panel.providerId,
+          text: panelPayloadFor(panel).text,
+          autoSubmit: shouldAutoSubmit,
+          isFillAction,
+          waitForActionResult
         }));
       }
       if (loadingPanels.length) {
@@ -282,6 +313,7 @@ export function createSendingController({
           if (result.ok) {
             failedFillPanelIds.delete(result.panelId);
             pendingFillImageIdsByPanel.delete(result.panelId);
+            pendingFillPayloadsByPanel.delete(result.panelId);
           } else {
             failedFillPanelIds.add(result.panelId);
             const pendingIds = calculatePendingImageIds(attemptedIds, result.succeededImageIds);
@@ -332,14 +364,20 @@ export function createSendingController({
         );
         if (shouldAutoSubmit && roundPanelIds.size > 0) {
           getRatingController().recordSendForRatingPrompt();
-          getAnswersController().startAnswerRound(requestId, text, sentAt, getPanelsController().panels.filter(panel => roundPanelIds.has(panel.id)));
+          getAnswersController().startAnswerRound(requestId, text, sentAt, answerPanelsFor(roundPanelIds));
           pendingFilledPromptText = '';
+          pendingFilledPanelPromptModes = new Map();
         }
 
         if (successfulCount > 0) {
           getSharingController().rememberSnapshotPrompt(text);
           if (!shouldAutoSubmit) {
             pendingFilledPromptText = text;
+            pendingFilledPanelPromptModes = new Map(
+              [...roundPanelIds]
+                .filter(panelId => panelPayloads.has(panelId))
+                .map(panelId => [panelId, panelPayloads.get(panelId).promptMode])
+            );
           }
         }
 
@@ -394,10 +432,16 @@ export function createSendingController({
         const sentPanelIds = new Set(
           normalizedResults.filter(result => result.ok).map(result => result.panelId)
         );
-        getAnswersController().startAnswerRound(requestId, text, sentAt, getPanelsController().panels.filter(panel => sentPanelIds.has(panel.id)));
+        getAnswersController().startAnswerRound(requestId, text, sentAt, answerPanelsFor(sentPanelIds));
         pendingFilledPromptText = '';
+        pendingFilledPanelPromptModes = new Map();
       } else if (!shouldAutoSubmit && totalSuccessful > 0) {
         pendingFilledPromptText = text;
+        pendingFilledPanelPromptModes = new Map(
+          normalizedResults
+            .filter(result => result.ok && panelPayloads.has(result.panelId))
+            .map(result => [result.panelId, panelPayloads.get(result.panelId).promptMode])
+        );
       }
 
       if (totalSuccessful > 0) {
@@ -662,8 +706,18 @@ export function createSendingController({
           sentPanels.push(panel);
         }
       });
-      getAnswersController().startAnswerRound(sendFocusRequestId, pendingFilledPromptText, sentAt, sentPanels);
+      getAnswersController().startAnswerRound(
+        sendFocusRequestId,
+        pendingFilledPromptText,
+        sentAt,
+        sentPanels.map(panel => ({
+          id: panel.id,
+          providerId: panel.providerId,
+          promptMode: pendingFilledPanelPromptModes.get(panel.id) ?? normalizePanelPromptMode(panel.promptMode)
+        }))
+      );
       pendingFilledPromptText = '';
+      pendingFilledPanelPromptModes = new Map();
 
       // Update status
       statusEl.textContent = `Sent to ${getPanelsController().panels.length} AIs`;

@@ -6,6 +6,7 @@ import { getProviderById } from '../../modules/providers/providers.js';
 import { normalizeGoogleProviderMode } from '../../modules/providers/google-mode.js';
 import { createMultiPanelPopupWindow, savePopupWindowBounds } from '../../modules/platform/open-multi-panel.js';
 import { t } from '../../modules/platform/i18n.js';
+import { normalizePanelPromptMode } from '../../modules/prompts/prompt-modes.js';
 
 export function createWindowModeController({
   getAttachmentsController,
@@ -82,7 +83,8 @@ export function createWindowModeController({
       uploadedImages: [...getAttachmentsController().uploadedImages],
       currentLayout: getLayoutController().currentLayout,
       panels: getPanelsController().panels.map(p => ({
-        providerId: p.providerId
+        providerId: p.providerId,
+        promptMode: p.promptMode
       })),
       googleProviderMode: getProviderControlsController().currentGoogleProviderMode,
       timestamp: Date.now()
@@ -167,8 +169,14 @@ export function createWindowModeController({
 
         // 恢复面板配置（保存到 multiPanelProviders）
         if (Array.isArray(state.panels) && state.panels.length > 0) {
-          getPanelsController().restoredStartupProviderIds = state.panels.map(p => p?.providerId).filter(id => getProviderById(id));
-          restoredSettings.multiPanelProviders = getPanelsController().restoredStartupProviderIds;
+          const restoredPanels = state.panels
+            .filter(panel => getProviderById(panel?.providerId))
+            .map(panel => ({
+              providerId: panel.providerId,
+              promptMode: normalizePanelPromptMode(panel.promptMode)
+            }));
+          getPanelsController().restoredStartupPanels = restoredPanels;
+          restoredSettings.multiPanelProviders = restoredPanels.map(panel => panel.providerId);
         }
 
         if (state.googleProviderMode) {

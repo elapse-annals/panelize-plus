@@ -147,10 +147,14 @@ test.describe('startup localStorage snapshot', () => {
 
   function makeSnapshot(providerIds, frameUrls = {}, layout = '1x3') {
     return {
-      version: 1,
+      version: 2,
       layout,
-      startupProviderIds: providerIds,
-      frameUrls: Object.fromEntries(providerIds.map(id => [id, frameUrls[id] || PROVIDER_URLS[id]])),
+      settingsStartupProviderIds: [...new Set(providerIds)],
+      panels: providerIds.map(id => ({
+        providerId: id,
+        frameUrl: frameUrls[id] || PROVIDER_URLS[id],
+        promptMode: 'inherit',
+      })),
     };
   }
 
@@ -422,7 +426,68 @@ test.describe('startup localStorage snapshot', () => {
     await expect(page.locator('#panel-grid iframe')).toHaveCount(0);
     await releaseStorageAndWait(page);
     await expect(page.locator('#panel-grid iframe')).toHaveCount(2);
-    await expect.poll(async () => (await readSnapshot(page))?.startupProviderIds).toEqual(providerIds);
+    await expect.poll(async () => (await readSnapshot(page))?.panels.length).toEqual(providerIds.length);
+    await page.close();
+  });
+
+  test('restores duplicate panels and their prompt modes from a snapshot', async () => {
+    await setSettings({
+      enabledProviders: ['chatgpt'],
+      providerOrder: ['chatgpt'],
+      startupProviders: ['chatgpt'],
+      multiPanelLayout: '1x2',
+      blindModeEnabled: false,
+    });
+    const page = await openPage({
+      version: 2,
+      layout: '1x2',
+      settingsStartupProviderIds: ['chatgpt'],
+      panels: [
+        { providerId: 'chatgpt', frameUrl: PROVIDER_URLS.chatgpt, promptMode: 'concise' },
+        { providerId: 'chatgpt', frameUrl: PROVIDER_URLS.chatgpt, promptMode: 'deep' },
+      ],
+    });
+    await expect(page.locator('#panel-grid iframe')).toHaveCount(2);
+
+    await releaseStorageAndWait(page);
+    await expect(page.locator('#panel-grid iframe')).toHaveCount(2);
+    expect(await page.locator('.panel-prompt-mode-select').evaluateAll(selects =>
+      selects.map(select => select.value)
+    )).toEqual(['concise', 'deep']);
+    await expect(page.locator('#panel-grid .panel-header .provider-name').first())
+      .toContainText(/精简|Concise/);
+    await expect(page.locator('#panel-grid .panel-header .provider-name').nth(1))
+      .toContainText(/深度思考|Deep thinking/);
+    await page.close();
+  });
+
+  test('still restores a version 1 snapshot', async () => {
+    const providerIds = ['chatgpt', 'claude'];
+    await setSettings({
+      enabledProviders: providerIds,
+      providerOrder: providerIds,
+      startupProviders: providerIds,
+      multiPanelLayout: '1x2',
+      blindModeEnabled: false,
+    });
+    const page = await openPage({
+      version: 1,
+      layout: '1x2',
+      startupProviderIds: providerIds,
+      frameUrls: {
+        chatgpt: PROVIDER_URLS.chatgpt,
+        claude: PROVIDER_URLS.claude,
+      },
+    });
+    await expect(page.locator('#panel-grid iframe')).toHaveCount(2);
+
+    await releaseStorageAndWait(page);
+    expect(await page.locator('#panel-grid .provider-icon').evaluateAll(images =>
+      images.map(image => image.dataset.providerId)
+    )).toEqual(providerIds);
+    expect(await page.locator('.panel-prompt-mode-select').evaluateAll(selects =>
+      selects.map(select => select.value)
+    )).toEqual(['inherit', 'inherit']);
     await page.close();
   });
 });

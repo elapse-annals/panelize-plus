@@ -12,6 +12,7 @@ import {
   DEFAULT_PROMPT_MODE,
   DEEP_PROMPT_TEXTS,
   DEEP_PROMPT_MIGRATED_KEY,
+  PANEL_PROMPT_MODE_INHERIT,
   PROMPT_MODES,
   PROMPT_MODE_IDS,
   PROMPT_MODES_SEEDED_KEY,
@@ -21,14 +22,17 @@ import {
   createModeKey,
   describePromptSend,
   detectPromptModeTriggers,
+  findPanelPromptMode,
   findPromptTriggerCompletion,
   cleanupSamplePrompts,
   ensureDefaultModePrompts,
   ensureDefaultModeTriggers,
   migrateCompetePrompt,
   migrateDeepPrompt,
+  normalizePanelPromptMode,
   normalizePromptTriggers,
   restoreDefaultModePrompts,
+  resolvePanelPromptInstruction,
   resolvePromptModeForText,
   getDefaultModePrompts,
   getPromptAiContent,
@@ -124,6 +128,39 @@ describe('applyPromptMode', () => {
     const text = 'Line one\n\nLine two';
 
     expect(applyPromptMode(text, 'Be brief.')).toBe(`${text}\n\nBe brief.`);
+  });
+});
+
+describe('per-panel prompt modes', () => {
+  const modePrompts = [
+    { title: 'Concise', content: 'Be brief.', modeKey: 'concise' },
+    { title: 'Teaching', content: '', contentEn: 'Teach me.', modeKey: 'custom-teach' }
+  ];
+
+  it('normalizes a panel mode to a mode key or the inherit sentinel', () => {
+    expect(normalizePanelPromptMode(' concise ')).toBe('concise');
+    expect(normalizePanelPromptMode('custom-teach')).toBe('custom-teach');
+    expect(normalizePanelPromptMode(PANEL_PROMPT_MODE_INHERIT)).toBe(PANEL_PROMPT_MODE_INHERIT);
+    expect(normalizePanelPromptMode('')).toBe(PANEL_PROMPT_MODE_INHERIT);
+    expect(normalizePanelPromptMode(null)).toBe(PANEL_PROMPT_MODE_INHERIT);
+    expect(normalizePanelPromptMode(42)).toBe(PANEL_PROMPT_MODE_INHERIT);
+  });
+
+  it('finds built-in and custom library modes but never the inherit sentinel', () => {
+    expect(findPanelPromptMode('concise', modePrompts)).toBe(modePrompts[0]);
+    expect(findPanelPromptMode('custom-teach', modePrompts)).toBe(modePrompts[1]);
+    expect(findPanelPromptMode(PANEL_PROMPT_MODE_INHERIT, modePrompts)).toBeNull();
+    expect(findPanelPromptMode('missing', modePrompts)).toBeNull();
+    expect(findPanelPromptMode('concise', null)).toBeNull();
+  });
+
+  it('resolves a fixed mode instruction, falling back to the global one', () => {
+    expect(resolvePanelPromptInstruction('concise', 'Global.', modePrompts)).toBe('Be brief.');
+    expect(resolvePanelPromptInstruction('custom-teach', 'Global.', modePrompts)).toBe('Teach me.');
+    expect(resolvePanelPromptInstruction(PANEL_PROMPT_MODE_INHERIT, 'Global.', modePrompts)).toBe('Global.');
+    expect(resolvePanelPromptInstruction('missing', 'Global.', modePrompts)).toBe('Global.');
+    expect(resolvePanelPromptInstruction('concise', null, modePrompts)).toBe('Be brief.');
+    expect(resolvePanelPromptInstruction(PANEL_PROMPT_MODE_INHERIT, null, modePrompts)).toBeNull();
   });
 });
 

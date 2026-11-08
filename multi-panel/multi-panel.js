@@ -70,8 +70,10 @@ const conversations = createConversationsController({
 
 const providerControls = createProviderControlsController({
   getAnswersController: () => answers,
+  getComposerController: () => composer,
   getConversationsController: () => conversations,
   getPanelsController: () => panels,
+  getPresentationController: () => presentation,
   getProviderMenusController: () => providerMenus,
   getSendingController: () => sending
 });
@@ -148,6 +150,7 @@ const attachments = createAttachmentsController({
 });
 
 const answers = createAnswersController({
+  getComposerController: () => composer,
   getPanelsController: () => panels,
   getPresentationController: () => presentation,
   getQuestionHistoryController: () => questionHistory,

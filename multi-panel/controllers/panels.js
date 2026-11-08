@@ -2,7 +2,7 @@
  * Owns panels behavior and its page-local state.
  * Deferred controller getters keep composition in the entry point.
  */
-import { getProviderById, getEnabledProviders, getProviderShortName } from '../../modules/providers/providers.js';
+import { getProviderById, getEnabledProviders } from '../../modules/providers/providers.js';
 import { DEFAULT_PROVIDER_IDS, DEFAULT_PROVIDER_ORDER, DEFAULT_STARTUP_PROVIDER_IDS } from '../../modules/providers/provider-defaults.js';
 import { GROK_WEBSOCKET_COOKIE_SYNC_ACTION } from '../../modules/providers/grok-websocket-cookies.js';
 import { MIMO_SESSION_COOKIE_SYNC_ACTION, reconcileMimoSessionCookies } from '../../modules/providers/mimo-session-cookies.js';
@@ -21,7 +21,8 @@ import { getStartupLayout, resolveStartupProviderIds } from '../../modules/panel
 import { clearStartupSnapshot, readStartupSnapshot, writeStartupSnapshot } from '../../modules/panels/startup-snapshot.js';
 import { getRoundSpeedRanks } from '../../modules/answers/answer-stats.js';
 import { PANEL_READY_STATE, PANEL_ACTIVITY, getPanelActivity } from '../../modules/panels/panel-readiness.js';
-import { getLocalizedText, getThemeAwareProviderIcon, isGoogleProvider, showToast } from './ui.js';
+import { normalizePanelPromptMode, PANEL_PROMPT_MODE_INHERIT } from '../../modules/prompts/prompt-modes.js';
+import { escapeHtml, getLocalizedText, getThemeAwareProviderIcon, isGoogleProvider, showToast } from './ui.js';
 
 export function createPanelsController({
   getAnswersController,
@@ -35,7 +36,7 @@ export function createPanelsController({
 }) {
   let panels = [];
 
-  // Array of { id, providerId, iframe, state }
+  // Array of { id, providerId, promptMode, iframe, state }
   let focusedPanelId = null;
 
   let loadingPanelIds = new Set();
@@ -47,7 +48,12 @@ export function createPanelsController({
 
   let hasAuthoritativePanels = false;
 
-  let restoredStartupProviderIds = null;
+  // Panels restored by a tab/popup switch, kept until the next initialization.
+  let restoredStartupPanels = null;
+
+  // The providers settings resolved during the last initialization, written
+  // into the snapshot so a later startup can tell whether the selection changed.
+  let startupSettingsProviderIds = null;
 
   // The service worker owns the forwarding rule and serializes updates to it;
   // a failed sync must not block the panel from loading.
@@ -91,11 +97,11 @@ export function createPanelsController({
 
     getLayoutController().currentLayout = snapshot.layout;
     getLayoutController().applyLayoutToGrid();
-    for (const providerId of snapshot.startupProviderIds) {
+    for (const entry of snapshot.panels) {
       // Session work and optional host grants must be checked before navigation.
       // A cached grant cannot prove permission is still present on this device.
-      if (Object.hasOwn(PROVIDER_SESSION_SYNC, providerId) || getProviderById(providerId).optionalOrigins) continue;
-      createPanel(providerId, { frameUrl: snapshot.frameUrls[providerId] });
+      if (Object.hasOwn(PROVIDER_SESSION_SYNC, entry.providerId) || getProviderById(entry.providerId).optionalOrigins) continue;
+      createPanel(entry.providerId, { frameUrl: entry.frameUrl, promptMode: entry.promptMode });
     }
   }
 
@@ -103,9 +109,51 @@ export function createPanelsController({
     if (!hasAuthoritativePanels) return;
     writeStartupSnapshot({
       layout: getLayoutController().currentLayout,
-      startupProviderIds: panels.map(panel => panel.providerId),
-      frameUrls: Object.fromEntries(panels.map(panel => [panel.providerId, getProviderControlsController().getProviderFrameUrl(panel.providerId)]))
+      settingsStartupProviderIds: startupSettingsProviderIds,
+      panels: panels.map(panel => ({
+        providerId: panel.providerId,
+        frameUrl: getProviderControlsController().getProviderFrameUrl(panel.providerId),
+        promptMode: normalizePanelPromptMode(panel.promptMode)
+      }))
     });
+  }
+
+  function sameProviderSet(left, right) {
+    const rightIds = new Set(right);
+    return left.length === rightIds.size && left.every(id => rightIds.has(id));
+  }
+
+  // The panels this page starts with: a restored tab/popup switch first, then
+  // the snapshot's panel list when the startup provider selection is unchanged,
+  // then the providers settings resolve to.
+  function resolveStartupEntries(providerIds, resolvedProviderIds) {
+    const restored = restoredStartupPanels
+      ?.filter(entry => providerIds.includes(entry.providerId))
+      .slice(0, MAX_PANELS);
+    if (restored?.length) {
+      return restored.map(entry => ({
+        providerId: entry.providerId,
+        promptMode: normalizePanelPromptMode(entry.promptMode)
+      }));
+    }
+
+    const snapshot = readStartupSnapshot();
+    if (snapshot) {
+      const fingerprint = snapshot.settingsStartupProviderIds
+        || [...new Set(snapshot.panels.map(panel => panel.providerId))];
+      if (sameProviderSet(fingerprint, resolvedProviderIds)) {
+        const entries = snapshot.panels
+          .filter(entry => providerIds.includes(entry.providerId))
+          .slice(0, MAX_PANELS)
+          .map(entry => ({ providerId: entry.providerId, promptMode: entry.promptMode }));
+        if (entries.length) return entries;
+      }
+    }
+
+    return resolvedProviderIds.map(providerId => ({
+      providerId,
+      promptMode: PANEL_PROMPT_MODE_INHERIT
+    }));
   }
 
   async function syncProviderSession(providerId) {
@@ -135,32 +183,33 @@ export function createPanelsController({
       const panelCount = isAutoLayout(currentLayout)
         ? AUTO_LAYOUT_STARTUP_PANEL_COUNT
         : (LAYOUT_PANEL_COUNTS[currentLayout] || 4);
-      const restoredProviderIds = restoredStartupProviderIds?.filter(id => providerIds.includes(id)).slice(0, MAX_PANELS);
-      const startupProviderIds = restoredProviderIds?.length ? restoredProviderIds : resolveStartupProviderIds(
+      const resolvedProviderIds = resolveStartupProviderIds(
         providerIds,
         settings.startupProviders,
         panelCount,
         MAX_PANELS
       );
+      startupSettingsProviderIds = resolvedProviderIds;
+      const startupEntries = resolveStartupEntries(providerIds, resolvedProviderIds);
 
-      let startupLayout = getStartupLayout(getLayoutController().currentLayout, startupProviderIds.length);
+      let startupLayout = getStartupLayout(getLayoutController().currentLayout, startupEntries.length);
       // Apply the same growth steps even when all frames came from the snapshot.
-      for (let count = 1; count <= startupProviderIds.length; count += 1) {
+      for (let count = 1; count <= startupEntries.length; count += 1) {
         startupLayout = getAutoAdjustedLayout(startupLayout, count) || startupLayout;
       }
       if (startupLayout !== getLayoutController().currentLayout) {
         getLayoutController().currentLayout = startupLayout;
-        getLayoutController().applyLayoutToGrid({ panelCount: startupProviderIds.length });
+        getLayoutController().applyLayoutToGrid({ panelCount: startupEntries.length });
       }
 
       // Keep matching early frames in their existing relative order. Moving an
       // iframe's DOM ancestor would reload it, so reordered entries are recreated
       // instead, and new panels are inserted around the retained nodes.
       let previousIndex = -1;
-      const reusablePanels = startupProviderIds.map(providerId => {
-        const expectedUrl = new URL(getProviderControlsController().getProviderFrameUrl(providerId)).href;
+      const reusablePanels = startupEntries.map(entry => {
+        const expectedUrl = new URL(getProviderControlsController().getProviderFrameUrl(entry.providerId)).href;
         const index = panels.findIndex((panel, position) => position > previousIndex &&
-          panel.providerId === providerId && panel.iframe.src === expectedUrl);
+          panel.providerId === entry.providerId && panel.iframe.src === expectedUrl);
         if (index !== -1) {
           previousIndex = index;
           return panels[index];
@@ -175,10 +224,18 @@ export function createPanelsController({
       }
 
       // Session synchronization stays ahead of any new Grok/MiMo navigation.
-      await Promise.all([...new Set(startupProviderIds)].map(syncProviderSession));
-      const orderedPanels = startupProviderIds.map((providerId, index) => {
+      await Promise.all([...new Set(startupEntries.map(entry => entry.providerId))].map(syncProviderSession));
+      const orderedPanels = startupEntries.map((entry, index) => {
+        const reusable = reusablePanels[index];
+        if (reusable) {
+          reusable.promptMode = normalizePanelPromptMode(entry.promptMode);
+          return reusable;
+        }
         const nextPanel = reusablePanels.slice(index + 1).find(Boolean);
-        return reusablePanels[index] || createPanel(providerId, { beforePanelId: nextPanel?.id });
+        return createPanel(entry.providerId, {
+          beforePanelId: nextPanel?.id,
+          promptMode: entry.promptMode
+        });
       }).filter(Boolean);
       panels = orderedPanels;
       hasAuthoritativePanels = true;
@@ -188,6 +245,7 @@ export function createPanelsController({
         getPresentationController().postPageStyleToPanel(panel);
       });
       getProviderControlsController().syncGoogleModeControls();
+      getProviderControlsController().syncPanelPromptModeControls();
 
       // The auto layout's columns track the reconciled panel count.
       getLayoutController().syncAutoLayoutColumns();
@@ -250,13 +308,19 @@ export function createPanelsController({
     getPresentationController().updatePanelEdgeButtons?.();
   }
 
-  async function addPanel(providerId) {
-    // Sync before the capacity check so no await separates the check from the
-    // panel being added.
+  async function addPanel(providerId, options = {}) {
+    if (panels.length >= MAX_PANELS) {
+      showToast(`Maximum number of panels reached (${MAX_PANELS})`);
+      return null;
+    }
+
+    // The early check avoids a needless session sync; createPanel repeats it
+    // synchronously after the await so concurrent callers cannot both pass.
     await syncProviderSession(providerId);
 
-    if (!createPanel(providerId)) {
-      return;
+    const panel = createPanel(providerId, options);
+    if (!panel) {
+      return null;
     }
 
     // Save provider configuration
@@ -264,11 +328,34 @@ export function createPanelsController({
 
     // Update panel selectors to show logo and name
     updatePanelSelectors();
+    return panel;
+  }
+
+  // Duplicates the panel's provider right after it. The provider is already
+  // loaded in this page, so no session sync is needed before the new frame.
+  function clonePanel(panelId) {
+    const panel = panels.find(candidate => candidate.id === panelId);
+    if (!panel) return null;
+
+    const clone = createPanel(panel.providerId, {
+      afterPanelId: panelId,
+      promptMode: panel.promptMode
+    });
+    if (!clone) return null;
+
+    void getPresentationController().saveProviderConfiguration();
+    updatePanelSelectors();
+    return clone;
   }
 
   // Synchronous so concurrent callers cannot both pass the capacity check.
   // Callers sync the provider session first.
-  function createPanel(providerId, { frameUrl = getProviderControlsController().getProviderFrameUrl(providerId), beforePanelId } = {}) {
+  function createPanel(providerId, {
+    frameUrl = getProviderControlsController().getProviderFrameUrl(providerId),
+    beforePanelId,
+    afterPanelId,
+    promptMode
+  } = {}) {
     if (panels.length >= MAX_PANELS) {
       showToast(`Maximum number of panels reached (${MAX_PANELS})`);
       return null;
@@ -279,6 +366,8 @@ export function createPanelsController({
       console.error('Provider not found:', providerId);
       return null;
     }
+
+    const panelPromptMode = normalizePanelPromptMode(promptMode);
 
     // Everything from the capacity check to panels.push() below runs without
     // awaiting, so concurrent calls cannot both pass the check.
@@ -316,7 +405,7 @@ export function createPanelsController({
         <span class="provider-note" role="button" tabindex="0"></span>
         <span class="blind-label" aria-hidden="true"></span>
       </div>
-      <div class="panel-header-right">${getProviderControlsController().getPanelHeaderRightHtml(providerId)}</div>
+      <div class="panel-header-right">${getProviderControlsController().getPanelHeaderRightHtml(providerId, { promptMode: panelPromptMode })}</div>
     </div>
     <div class="panel-iframe-container">
       <div class="panel-loading">
@@ -376,6 +465,7 @@ export function createPanelsController({
     const panel = {
       id: panelId,
       providerId,
+      promptMode: panelPromptMode,
       iframe,
       currentUrl: null,
       state: 'loading',
@@ -383,11 +473,19 @@ export function createPanelsController({
       fit: createPanelFitState()
     };
     // The summary answer card is the grid's last child; new panels go before it.
-    const insertionPoint = beforePanelId
-      ? document.getElementById(beforePanelId)
-      : document.getElementById('ai-summary-panel');
+    const anchorEl = afterPanelId ? document.getElementById(afterPanelId) : null;
+    const insertionPoint = anchorEl
+      ? anchorEl.nextElementSibling
+      : (beforePanelId
+        ? document.getElementById(beforePanelId)
+        : document.getElementById('ai-summary-panel'));
     panelGrid.insertBefore(panelEl, insertionPoint?.parentElement === panelGrid ? insertionPoint : null);
-    panels.push(panel);
+    const anchorIndex = afterPanelId || beforePanelId
+      ? panels.findIndex(candidate => candidate.id === (afterPanelId || beforePanelId))
+      : -1;
+    if (afterPanelId && anchorIndex !== -1) panels.splice(anchorIndex + 1, 0, panel);
+    else if (beforePanelId && anchorIndex !== -1) panels.splice(anchorIndex, 0, panel);
+    else panels.push(panel);
     getLayoutController().syncAutoLayoutColumns();
     getSendingController().startPanelReadiness(panel);
     getLayoutController().panelFitObserver?.observe(iframe.parentElement);
@@ -480,7 +578,9 @@ export function createPanelsController({
     headerIcon.alt = provider.name;
     headerName.textContent = provider.name;
     getPresentationController().renderPanelNote(panelEl, newProviderId);
-    headerRight.innerHTML = getProviderControlsController().getPanelHeaderRightHtml(newProviderId);
+    headerRight.innerHTML = getProviderControlsController().getPanelHeaderRightHtml(newProviderId, {
+      promptMode: panel.promptMode
+    });
 
     // Update iframe
     const iframe = panelEl.querySelector('iframe');
@@ -523,7 +623,7 @@ export function createPanelsController({
           <svg viewBox="0 0 24 16" width="13" height="9" fill="currentColor"><path d="M2 14 0.5 3.5l6 4.5L12 0l5.5 8 6-4.5L22 14z"/><rect x="2" y="14" width="20" height="2" rx="1"/></svg>
         </span>
       </span>
-      <span class="provider-name">${getProviderShortName(provider)}</span>
+      <span class="provider-name">${escapeHtml(getPresentationController().getPanelDisplayName(panel, { short: true }))}</span>
       <span class="blind-label" aria-hidden="true"></span>
       <button class="remove-panel" title="Remove panel">
         <span class="material-symbols-outlined">close</span>
@@ -599,6 +699,7 @@ export function createPanelsController({
   return {
     get DEFAULT_PROVIDERS() { return DEFAULT_PROVIDERS; },
     addPanel,
+    clonePanel,
     createPanelsFromStartupSnapshot,
     findCurrentPanel,
     get focusedPanelId() { return focusedPanelId; },
@@ -608,8 +709,8 @@ export function createPanelsController({
     removePanel,
     renderPanelActivity,
     requestMimoSessionCookieSync,
-    get restoredStartupProviderIds() { return restoredStartupProviderIds; },
-    set restoredStartupProviderIds(value) { restoredStartupProviderIds = value; },
+    get restoredStartupPanels() { return restoredStartupPanels; },
+    set restoredStartupPanels(value) { restoredStartupPanels = value; },
     saveStartupSnapshot,
     setFocusedPanel,
     switchPanelProvider,

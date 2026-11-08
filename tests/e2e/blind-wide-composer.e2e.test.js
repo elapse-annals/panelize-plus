@@ -85,6 +85,7 @@ test.describe('Blind mode, wide content and composer overhang', () => {
       await expect(page.locator('#panel-grid .panel-header .provider-name').first()).toBeHidden();
       await expect(page.locator('.open-provider-top-level-btn').first()).toBeHidden();
       await expect(page.locator('.switch-provider-btn').first()).toBeHidden();
+      await expect(page.locator('.panel-prompt-mode-select').first()).toBeHidden();
       await expect(page.locator('#answer-stats-btn')).toBeHidden();
       await expect(page.locator('#answer-log-btn')).toBeHidden();
       await expect(page.locator('.panel-selector .blind-label')).toHaveText([/匿名模型|Anonymous model/, /匿名模型|Anonymous model/]);

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.92.0 - 2026-11-08
+- Renamed the Chinese brand to Panelize Plus（百家争鸣） and added a GitHub repository link to Settings > About.
+- Panels can now be duplicated: the add-panel menu lists every enabled AI (including ones already open), and each panel header has a duplicate button.
+- Every panel has its own prompt mode (Follow global or any Prompt Library mode); Send All composes the question with each panel's instruction, including Auto trigger words for inherit panels and per-panel text for image-fill retries and delayed sends.
+- Panel headers, tab chips, AI summary sources and the answer log distinguish same-AI panels (`ChatGPT · Concise`, `ChatGPT #2`), while blind mode hides the mode select and numbers anonymous panels.
+- The startup snapshot now stores each panel's provider, frame URL and prompt mode (v2, with v1 migration), restoring duplicate panels and their modes across reloads and tab/popup switches.
+- Fixed layout resizing so duplicate same-provider panels are not removed when a larger layout is chosen.
+
 ## 2.91.2 - 2026-11-08
 - Fixed ChatGPT not submitting the second Send All after the first message. The thread composer's send control is now found by its `fruitjuice` test id, form-scoped submit selector, or localized label instead of the home composer's test id only. Sends target a visible composer and the same form the text was injected into, so a retired hidden home composer is never used.
 - ChatGPT text sends now wait (bounded to two minutes) while the previous answer is still streaming, then submit once when the stop button clears. A newer Send All replaces a queued prompt, Clear/New Chat cancels it, and the click is never repeated to avoid duplicate submissions.

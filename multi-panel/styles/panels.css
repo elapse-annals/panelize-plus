@@ -538,7 +538,8 @@
   min-width: 0;
 }
 
-.panel-google-mode-select {
+.panel-google-mode-select,
+.panel-prompt-mode-select {
   height: 24px;
   padding: 0 24px 0 6px;
   border: 1px solid var(--border-strong);

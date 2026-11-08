@@ -20,11 +20,13 @@ import {
   AUTO_PROMPT_MODE,
   DEFAULT_PROMPT_MODE,
   describePromptSend,
+  findPanelPromptMode,
   findPromptTriggerCompletion,
   getPromptAiContent,
   getPromptDisplayContent,
   isPromptMode,
   normalizePromptTriggers,
+  resolvePanelPromptInstruction,
   resolvePromptModeForText,
   selectModePrompts
 } from '../prompts/prompt-modes.js';
@@ -118,6 +120,7 @@ export async function setupComposerControls({
   scrollPanels = () => {},
   jumpToPanel = () => {},
   loadModePrompts = async () => [],
+  onModePromptsChanged = () => {},
   editModePrompt = () => {},
   deleteModePrompt = async () => {},
   newModePrompt = () => {}
@@ -134,6 +137,8 @@ export async function setupComposerControls({
   // then reads as Default without overwriting the synced choice.
   let promptMode = toModeKey(settings.selectedPromptMode);
   let modePrompts = [];
+  let hasLoadedPromptModes = false;
+  let modePromptsSignature = '';
   let bindings = settings.keyboardShortcutBindings || {};
   let shortcutsEnabled = settings.pageShortcutsEnabled !== false;
   let draftBindings = {};
@@ -707,10 +712,21 @@ export async function setupComposerControls({
   async function refreshPromptModes() {
     try {
       modePrompts = selectModePrompts(await loadModePrompts());
+      hasLoadedPromptModes = true;
     } catch (error) {
       console.warn('Prompt modes unavailable', error);
     }
     renderPromptMode();
+    // Only rebuild the per-panel controls when the choices actually changed;
+    // a failed load keeps the last known list and must not clear panel modes.
+    const signature = modePrompts.map(prompt => `${prompt.modeKey}\u0000${prompt.title}`).join('\n');
+    if (signature === modePromptsSignature) return;
+    modePromptsSignature = signature;
+    try {
+      onModePromptsChanged();
+    } catch (error) {
+      console.warn('Could not sync the panel prompt modes', error);
+    }
   }
 
   function isAnyModalOpen() {
@@ -1142,6 +1158,14 @@ export async function setupComposerControls({
     // The selected mode's instruction for the AIs (the displayed text), or null for
     // Default and Auto.
     getPromptMode: () => getPromptAiContent(currentModePrompt()) || null,
+    // The choices a per-panel prompt-mode select offers, in menu order.
+    getPromptModeOptions: () => modePrompts.map(prompt => ({ value: prompt.modeKey, title: prompt.title })),
+    getPromptModeTitle: modeKey => findPanelPromptMode(modeKey, modePrompts)?.title || null,
+    getPromptModeInstruction: modeKey => getPromptAiContent(findPanelPromptMode(modeKey, modePrompts)) || null,
+    // The instruction one panel receives; inherit uses the global instruction.
+    resolvePanelPromptInstruction: (panelMode, globalInstruction) =>
+      resolvePanelPromptInstruction(panelMode, globalInstruction, modePrompts),
+    get hasLoadedPromptModes() { return hasLoadedPromptModes; },
     // The text and instruction for one send: Auto removes the trigger words
     // it finds and uses their modes; other modes keep the text as typed. A
     // native client's per-send override never changes the saved mode.

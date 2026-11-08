@@ -1,11 +1,11 @@
-# Panelize Plus（百家）
+# Panelize Plus（百家争鸣）
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> |
   <a href="README.zh-CN.md"><strong>简体中文</strong></a>
 </p>
 
-> **Panelize Plus（百家）** is a personal, MIT-licensed fork of [Panelize](https://github.com/Manho/Panelize) by [Manho](https://github.com/Manho), maintained by Ben at [elapse-annals/panelize-plus](https://github.com/elapse-annals/panelize-plus). It keeps the original idea — one prompt to every AI, each provider's real website, the account you already use — and builds on it with AI summary, answer stats, prompt modes, a macOS menu-bar client and more. Upstream Panelize remains the original project; see [Upstream Panelize](#upstream-panelize).
+> **Panelize Plus（百家争鸣）** is a personal, MIT-licensed fork of [Panelize](https://github.com/Manho/Panelize) by [Manho](https://github.com/Manho), maintained by Ben at [elapse-annals/panelize-plus](https://github.com/elapse-annals/panelize-plus). It keeps the original idea — one prompt to every AI, each provider's real website, the account you already use — and builds on it with AI summary, answer stats, prompt modes, a macOS menu-bar client and more. Upstream Panelize remains the original project; see [Upstream Panelize](#upstream-panelize).
 
 <p align="center">
   <img src="assets/screenshots/promo-en.gif" alt="Panelize Plus demo: ask ChatGPT, Claude, Gemini and DeepSeek at once and compare answers side by side" width="800">
@@ -35,7 +35,7 @@
 
 ## Why Panelize Plus?
 
-Panelize Plus（百家）is a free, open-source Chrome and Edge extension that sends one prompt to ChatGPT, Claude, Gemini, Grok, DeepSeek and other AI chatbots at the same time and shows their answers side by side in one window. It loads each provider's real website with your existing login, so there are no API keys and no extra subscription.
+Panelize Plus（百家争鸣）is a free, open-source Chrome and Edge extension that sends one prompt to ChatGPT, Claude, Gemini, Grok, DeepSeek and other AI chatbots at the same time and shows their answers side by side in one window. It loads each provider's real website with your existing login, so there are no API keys and no extra subscription.
 
 Ever found yourself copying the same prompt across multiple AI tabs just to compare answers? Panelize Plus eliminates that workflow entirely.
 
@@ -59,7 +59,7 @@ Panelize Plus starts from upstream Panelize **v2.0.1** (2026-10-23) and continue
 | **Composer & panels** | Image and document attachments, a readiness gate before sending, recent-question suggestions, per-AI status chips, click-to-locate, panel capacity and layout auto-adjust, popup position/size memory, wide mode and swipe feedback. |
 | **Panelize Link (macOS)** | Optional menu-bar client with a global shortcut (`Option + Space` by default), a floating composer, prompt-mode picker, `Tab` completion and recent questions; it sends through the existing Send All flow over an opt-in Native Messaging bridge. |
 | **Providers** | Adds StepFun, Agnes, Perplexity, Copilot and Wenxin (the last three optional), plus provider billing markers (including rate-limited) and many site-control fixes. |
-| **Brand & language** | Renamed to **Panelize Plus（百家）**, with a new package name and About credits. The interface is reduced to Simplified Chinese and English, with Chinese as the default; the other eight language packs were removed. |
+| **Brand & language** | Renamed to **Panelize Plus（百家争鸣）**, with a new package name and About credits. The interface is reduced to Simplified Chinese and English, with Chinese as the default; the other eight language packs were removed. |
 | **Defaults** | Fresh installs start from the maintainer's exported configuration — enabled providers and order, startup panels, Deep thinking as the default prompt mode, and a preconfigured AI summary endpoint (the API key stays on your device). |
 
 The full change list is in [CHANGELOG.md](CHANGELOG.md). Upstream features and fixes that arrive later are merged into `master` through the `upstream` remote; see [Upstream Panelize](#upstream-panelize).

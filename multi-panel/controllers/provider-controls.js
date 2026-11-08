@@ -12,13 +12,16 @@ import {
   normalizeGoogleProviderMode
 } from '../../modules/providers/google-mode.js';
 import { getProviderOpenUrl } from '../../modules/providers/provider-open-url.js';
+import { PANEL_PROMPT_MODE_INHERIT, normalizePanelPromptMode } from '../../modules/prompts/prompt-modes.js';
 import { saveSetting } from '../../modules/platform/settings.js';
 import { fitPanelSelectWidth, getLocalizedText, getThemeAwareProviderIcon, isGoogleProvider } from './ui.js';
 
 export function createProviderControlsController({
   getAnswersController,
+  getComposerController,
   getConversationsController,
   getPanelsController,
+  getPresentationController,
   getProviderMenusController,
   getSendingController
 }) {
@@ -53,10 +56,23 @@ export function createProviderControlsController({
   `;
   }
 
-  function getPanelHeaderRightHtml(providerId) {
+  function getPromptModeSelectHtml(promptMode = PANEL_PROMPT_MODE_INHERIT) {
+    const title = getLocalizedText('composerPromptModeLabel', 'Prompt mode');
+    const inheritLabel = getLocalizedText('panelPromptModeInherit', 'Follow global');
+    const selected = normalizePanelPromptMode(promptMode) === PANEL_PROMPT_MODE_INHERIT ? ' selected' : '';
+    return `
+    <select class="panel-prompt-mode-select" title="${title}" aria-label="${title}">
+      <option value="${PANEL_PROMPT_MODE_INHERIT}"${selected}>${inheritLabel}</option>
+    </select>
+  `;
+  }
+
+  function getPanelHeaderRightHtml(providerId, { promptMode = PANEL_PROMPT_MODE_INHERIT } = {}) {
     const googleModeSelect = isGoogleProvider(providerId)
       ? getGoogleModeSelectHtml()
       : '';
+    const promptModeSelect = getPromptModeSelectHtml(promptMode);
+    const cloneTitle = getLocalizedText('panelCloneTitle', 'Duplicate this AI panel');
 
     const openTopLevelBtn = `<button class="open-provider-top-level-btn" title="${getLocalizedText('openProviderTopLevelTitle', 'Open in new tab')}">
       <span class="material-symbols-outlined">open_in_new</span>
@@ -64,6 +80,7 @@ export function createProviderControlsController({
 
     return `
     ${googleModeSelect}
+    ${promptModeSelect}
     <button class="adopt-answer-btn" title="${getLocalizedText('adoptAnswerTitle', 'Adopt this answer')}" aria-pressed="false" disabled>
       <span class="material-symbols-outlined">thumb_up</span>
     </button>
@@ -77,10 +94,61 @@ export function createProviderControlsController({
     <button class="focus-panel-btn" title="${getLocalizedText('focusPanelTitle', 'Focus this panel')}" aria-pressed="false">
       <span class="material-symbols-outlined">open_in_full</span>
     </button>
+    <button class="clone-panel-btn" title="${cloneTitle}" aria-label="${cloneTitle}">
+      <span class="material-symbols-outlined">content_copy</span>
+    </button>
     <button class="switch-provider-btn" title="Switch Provider">
       <span class="material-symbols-outlined">swap_horiz</span>
     </button>
   `;
+  }
+
+  function populatePanelPromptModeSelect(select, panel, options) {
+    const title = getLocalizedText('composerPromptModeLabel', 'Prompt mode');
+    select.title = title;
+    select.setAttribute('aria-label', title);
+    const signature = options.map(option => `${option.value}\u0000${option.title}`).join('\n');
+    if (select.dataset.optionsSignature !== signature) {
+      select.replaceChildren(...options.map(({ value, title }) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = title;
+        return option;
+      }));
+      select.dataset.optionsSignature = signature;
+    }
+    const mode = normalizePanelPromptMode(panel.promptMode);
+    select.value = options.some(option => option.value === mode) ? mode : PANEL_PROMPT_MODE_INHERIT;
+  }
+
+  function getPanelPromptModeOptions(controls) {
+    return [
+      { value: PANEL_PROMPT_MODE_INHERIT, title: getLocalizedText('panelPromptModeInherit', 'Follow global') },
+      ...(controls?.getPromptModeOptions?.() || [])
+    ];
+  }
+
+  // Rebuilds every panel's mode choices from the library. A fixed mode deleted
+  // from the library falls back to inherit; only a successful load may reset.
+  function syncPanelPromptModeControls() {
+    const controls = getComposerController().composerControls;
+    if (!controls?.hasLoadedPromptModes) return;
+
+    const modeOptions = controls.getPromptModeOptions();
+    const options = getPanelPromptModeOptions(controls);
+    let resetMode = false;
+    getPanelsController().panels.forEach(panel => {
+      if (panel.promptMode !== PANEL_PROMPT_MODE_INHERIT
+          && !modeOptions.some(option => option.value === panel.promptMode)) {
+        panel.promptMode = PANEL_PROMPT_MODE_INHERIT;
+        resetMode = true;
+      }
+      const select = document.getElementById(panel.id)?.querySelector('.panel-prompt-mode-select');
+      if (!select) return;
+      populatePanelPromptModeSelect(select, panel, options);
+      fitPanelSelectWidth(select);
+    });
+    if (resetMode) getPanelsController().saveStartupSnapshot();
   }
 
   function syncGoogleModeControls() {
@@ -210,6 +278,31 @@ export function createProviderControlsController({
         await updateGoogleProviderMode(event.target.value, { persist: true, reloadPanels: true });
       });
     }
+
+    const promptModeSelect = panelEl.querySelector('.panel-prompt-mode-select');
+    if (promptModeSelect) {
+      const controls = getComposerController().composerControls;
+      if (controls?.hasLoadedPromptModes) {
+        populatePanelPromptModeSelect(promptModeSelect, panel, getPanelPromptModeOptions(controls));
+      }
+      fitPanelSelectWidth(promptModeSelect);
+      promptModeSelect.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
+      promptModeSelect.addEventListener('mousedown', (event) => {
+        event.stopPropagation();
+      });
+      promptModeSelect.addEventListener('change', (event) => {
+        panel.promptMode = normalizePanelPromptMode(event.target.value);
+        fitPanelSelectWidth(event.target);
+        getPanelsController().saveStartupSnapshot();
+        getPresentationController().renderPanelNames();
+      });
+    }
+
+    panelEl.querySelector('.clone-panel-btn')?.addEventListener('click', () => {
+      getPanelsController().clonePanel(panelId);
+    });
   }
 
   async function updateGoogleProviderMode(mode, { persist = false, reloadPanels = false } = {}) {
@@ -239,6 +332,7 @@ export function createProviderControlsController({
     getProviderFrameUrl,
     reloadPanelIframe,
     syncGoogleModeControls,
+    syncPanelPromptModeControls,
     updateGoogleProviderMode,
   };
 }

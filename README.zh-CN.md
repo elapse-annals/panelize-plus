@@ -1,11 +1,11 @@
-# Panelize Plus（百家）
+# Panelize Plus（百家争鸣）
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> |
   <a href="README.zh-CN.md"><strong>简体中文</strong></a>
 </p>
 
-> **Panelize Plus（百家）** 是 [Manho](https://github.com/Manho) 的 [Panelize](https://github.com/Manho/Panelize) 的个人衍生版本（MIT 许可证），由 Ben 在 [elapse-annals/panelize-plus](https://github.com/elapse-annals/panelize-plus) 维护。它保留原项目的核心思路 —— 一次提问发给所有 AI，每个面板加载官方网站，直接使用你已登录的账号 —— 并在此基础上增加了 AI 总结、回答统计、提示词模式、macOS 菜单栏客户端等能力。上游 Panelize 仍是原始项目，见 [上游 Panelize](#上游-panelize)。
+> **Panelize Plus（百家争鸣）** 是 [Manho](https://github.com/Manho) 的 [Panelize](https://github.com/Manho/Panelize) 的个人衍生版本（MIT 许可证），由 Ben 在 [elapse-annals/panelize-plus](https://github.com/elapse-annals/panelize-plus) 维护。它保留原项目的核心思路 —— 一次提问发给所有 AI，每个面板加载官方网站，直接使用你已登录的账号 —— 并在此基础上增加了 AI 总结、回答统计、提示词模式、macOS 菜单栏客户端等能力。上游 Panelize 仍是原始项目，见 [上游 Panelize](#上游-panelize)。
 
 <p align="center">
   <img src="assets/screenshots/promo-zh.gif" alt="Panelize Plus 演示：一次提问，并排对比 ChatGPT、Claude、Gemini、DeepSeek 的回答" width="800">
@@ -35,7 +35,7 @@
 
 ## 为什么选择 Panelize Plus？
 
-Panelize Plus（百家）是一个免费、开源的 Chrome / Edge 扩展：一次输入，同时发给 ChatGPT、Claude、Gemini、DeepSeek、Kimi、豆包等 AI，并在同一个窗口里并排显示它们的回答。每个面板加载的都是官方网站，直接使用你已登录的账号，不需要 API Key，也不用额外订阅。
+Panelize Plus（百家争鸣）是一个免费、开源的 Chrome / Edge 扩展：一次输入，同时发给 ChatGPT、Claude、Gemini、DeepSeek、Kimi、豆包等 AI，并在同一个窗口里并排显示它们的回答。每个面板加载的都是官方网站，直接使用你已登录的账号，不需要 API Key，也不用额外订阅。
 
 还在把同一个 Prompt 复制到多个 AI 标签页里逐个比较吗？
 
@@ -59,7 +59,7 @@ Panelize Plus 从上游 Panelize **v2.0.1**（2026-10-23）继续，拥有独立
 | **输入与面板体验** | 图片 / 文档附件、发送前的就绪状态门控、最近提问建议、每个 AI 的状态芯片、点击芯片定位并高亮、面板容量与布局自适应、弹窗位置和尺寸记忆、宽屏模式与滑动边界提示。 |
 | **Panelize Link（macOS）** | 可选的菜单栏客户端：全局快捷键（默认 `Option + Space`）唤起浮动输入框，支持提示词模式选择、`Tab` 触发词补全和最近提问，通过现有的 Send All 流程发送，Native Messaging 桥接默认关闭、可在设置中开启。 |
 | **平台** | 新增 StepFun、Agnes、Perplexity、Copilot 和文心（后三个为可选平台），增加平台计费标记（含限流），并修复多项站点控件与新对话适配。 |
-| **品牌与语言** | 改名为 **Panelize Plus（百家）**，使用新的包名，并在“关于”中标注作者与上游来源。界面精简为简体中文与英文（默认中文），移除了其余 8 种语言包。 |
+| **品牌与语言** | 改名为 **Panelize Plus（百家争鸣）**，使用新的包名，并在“关于”中标注作者与上游来源。界面精简为简体中文与英文（默认中文），移除了其余 8 种语言包。 |
 | **默认配置** | 新安装按维护者导出的配置初始化：启用的平台及顺序、启动面板、默认使用“深度思考”模式，以及预配置的 AI 总结接口（API Key 仍只保存在本机）。 |
 
 完整改动见 [CHANGELOG.md](CHANGELOG.md)。上游后续的功能与修复会通过 `upstream` 远程合并进 `master`，详见 [上游 Panelize](#上游-panelize)。

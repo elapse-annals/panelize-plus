@@ -53,6 +53,20 @@ describe('createRound', () => {
     expect(round.answers.p3).toMatchObject({ providerId: 'claude', timed: false, status: null });
   });
 
+  it('stores a fixed panel prompt mode for later attribution', () => {
+    const round = createRound({
+      id: 'r-modes',
+      createdAt: 1,
+      text: 'Q',
+      panels: [
+        { id: 'p1', providerId: 'chatgpt', promptMode: 'concise' },
+        { id: 'p2', providerId: 'chatgpt' }
+      ]
+    });
+    expect(round.answers.p1.promptMode).toBe('concise');
+    expect(round.answers.p2).not.toHaveProperty('promptMode');
+  });
+
   it('marks rounds sent in blind mode and leaves other rounds unchanged', () => {
     expect(newRound()).not.toHaveProperty('blind');
     expect(createRound({ id: 'r-blind', createdAt: 1, text: 'Q', panels: PANELS, blind: true }).blind).toBe(true);

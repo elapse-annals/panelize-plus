@@ -817,12 +817,49 @@ describe('prompt mode control', () => {
     expect(loadModePrompts).toHaveBeenCalledOnce();
   });
 
+  it('offers library modes to per-panel selects and resolves their instructions', async () => {
+    const { controls } = await setupWithModes();
+
+    expect(controls.hasLoadedPromptModes).toBe(true);
+    expect(controls.getPromptModeOptions()).toEqual([
+      { value: 'concise', title: 'Concise' },
+      { value: 'learning', title: 'Learning' },
+      { value: 'compete', title: 'Challenge' }
+    ]);
+    expect(controls.getPromptModeTitle('concise')).toBe('Concise');
+    expect(controls.getPromptModeTitle('missing')).toBeNull();
+    expect(controls.getPromptModeInstruction('concise')).toBe('Be brief.');
+    expect(controls.getPromptModeInstruction('missing')).toBeNull();
+    expect(controls.resolvePanelPromptInstruction('inherit', 'Global.')).toBe('Global.');
+    expect(controls.resolvePanelPromptInstruction('concise', 'Global.')).toBe('Be brief.');
+    expect(controls.resolvePanelPromptInstruction('missing', 'Global.')).toBe('Global.');
+  });
+
+  it('reports library changes only when the mode choices change', async () => {
+    const prompts = modePrompts();
+    const onModePromptsChanged = vi.fn();
+    const controls = await setupControls([], {
+      loadModePrompts: vi.fn(async () => prompts),
+      onModePromptsChanged
+    });
+    const callsAfterMount = onModePromptsChanged.mock.calls.length;
+
+    await controls.refreshPromptModes();
+    expect(onModePromptsChanged).toHaveBeenCalledTimes(callsAfterMount);
+
+    prompts[0].title = 'Study';
+    await controls.refreshPromptModes();
+    expect(onModePromptsChanged).toHaveBeenCalledTimes(callsAfterMount + 1);
+  });
+
   it('keeps Default only when the library cannot be read', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const controls = await setupControls([], { loadModePrompts: vi.fn().mockRejectedValue(new Error('idb')) });
 
     expect(optionLabels()).toHaveLength(2);
     expect(controls.getPromptMode()).toBeNull();
+    expect(controls.hasLoadedPromptModes).toBe(false);
+    expect(controls.getPromptModeOptions()).toEqual([]);
   });
 
   describe('Auto mode', () => {

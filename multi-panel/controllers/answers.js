@@ -23,9 +23,11 @@ import {
 import { renderAnswerStatsTable, renderBestByCategory } from '../../modules/answers/answer-stats-view.js';
 import { classifyTask } from '../../modules/answers/task-category.js';
 import { filterAnswerLogRounds, getAnswerLogProviderIds, renderAnswerLog } from '../../modules/answers/answer-log.js';
+import { PANEL_PROMPT_MODE_INHERIT } from '../../modules/prompts/prompt-modes.js';
 import { getLocalizedText, showToast } from './ui.js';
 
 export function createAnswersController({
+  getComposerController,
   getPanelsController,
   getPresentationController,
   getQuestionHistoryController,
@@ -94,7 +96,11 @@ export function createAnswersController({
       createdAt: sentAt,
       text,
       category: classifyTask(text),
-      panels: roundPanels.map(panel => ({ id: panel.id, providerId: panel.providerId })),
+      panels: roundPanels.map(panel => ({
+        id: panel.id,
+        providerId: panel.providerId,
+        promptMode: panel.promptMode === PANEL_PROMPT_MODE_INHERIT ? undefined : panel.promptMode
+      })),
       blind: getPresentationController().isBlindModeEnabled
     });
     latestAnswerRoundId = round.id;
@@ -351,7 +357,28 @@ export function createAnswersController({
   }
 
   function getAnswerViewOptions() {
-    return { getText: getLocalizedText, getProviderName: getProviderDisplayName };
+    return {
+      getText: getLocalizedText,
+      getProviderName: getProviderDisplayName,
+      getAnswerName: getAnswerDisplayName
+    };
+  }
+
+  // A fixed prompt mode names the answer; otherwise duplicate panels of one
+  // provider are numbered in the round's answer order.
+  function getAnswerDisplayName(answer, round) {
+    const providerName = getProviderDisplayName(answer.providerId);
+    const modeTitle = answer?.promptMode && answer.promptMode !== PANEL_PROMPT_MODE_INHERIT
+      ? getComposerController().composerControls?.getPromptModeTitle?.(answer.promptMode)
+      : null;
+    if (modeTitle) return `${providerName} · ${modeTitle}`;
+    const sameProvider = Object.entries(round?.answers || {})
+      .filter(([, candidate]) => candidate?.providerId === answer.providerId);
+    if (sameProvider.length > 1) {
+      const index = sameProvider.findIndex(([, candidate]) => candidate === answer) + 1;
+      if (index > 0) return `${providerName} #${index}`;
+    }
+    return providerName;
   }
 
   function getProviderDisplayName(providerId) {

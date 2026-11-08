@@ -2,7 +2,7 @@
  * Owns presentation behavior and its page-local state.
  * Deferred controller getters keep composition in the entry point.
  */
-import { getProviderById } from '../../modules/providers/providers.js';
+import { getProviderById, getProviderShortName } from '../../modules/providers/providers.js';
 import { saveSetting } from '../../modules/platform/settings.js';
 import { formatShortcutForTooltip, matchesShortcut } from '../../modules/composer/keyboard-shortcuts.js';
 import { shuffleOrder, syncDisplayOrder } from '../../modules/panels/blind-shuffle.js';
@@ -30,11 +30,41 @@ export function createPresentationController({
 
   // ===== Blind mode & wide content =====
 
-  function getPanelDisplayName(panel, { blind = isBlindModeEnabled } = {}) {
+  function getPanelDisplayName(panel, { blind = isBlindModeEnabled, short = false } = {}) {
     if (blind) {
-      return getLocalizedText('blindPanelLabel', 'Anonymous model');
+      const position = getDisplayedPanels().findIndex(candidate => candidate.id === panel.id) + 1;
+      return `${getLocalizedText('blindPanelLabel', 'Anonymous model')} ${position > 0 ? position : 1}`;
     }
-    return getProviderById(panel.providerId)?.name || panel.providerId;
+    const provider = getProviderById(panel.providerId);
+    const baseName = short ? getProviderShortName(provider) : (provider?.name || panel.providerId);
+    // A fixed mode names the panel even when its AI is open once.
+    const modeTitle = getComposerController().composerControls?.getPromptModeTitle?.(panel.promptMode);
+    if (modeTitle) return `${baseName} · ${modeTitle}`;
+    const sameProvider = getPanelsController().panels
+      .filter(candidate => candidate.providerId === panel.providerId);
+    if (sameProvider.length > 1) {
+      const index = sameProvider.findIndex(candidate => candidate.id === panel.id) + 1;
+      if (index > 0) return `${baseName} #${index}`;
+    }
+    return baseName;
+  }
+
+  // Panel headers and tab chips share the same per-panel label; the chips use
+  // the short provider name to fit the toolbar.
+  function renderPanelNames() {
+    const panels = getPanelsController().panels;
+    panels.forEach(panel => {
+      const headerName = document.getElementById(panel.id)?.querySelector('.panel-header-left .provider-name');
+      if (headerName) headerName.textContent = getPanelDisplayName(panel);
+    });
+    document.querySelectorAll('#panel-selectors .panel-selector').forEach(selector => {
+      const panel = panels.find(candidate => candidate.id === selector.dataset.panelId);
+      const nameEl = selector.querySelector('.provider-name');
+      if (panel && nameEl) nameEl.textContent = getPanelDisplayName(panel, { short: true });
+    });
+    getPanelsController().renderPanelActivity();
+    getSendingController().renderReadinessStatus();
+    getComposerController().composerControls?.panelsChanged();
   }
 
   // ===== Panel Notes =====
@@ -298,8 +328,7 @@ export function createPresentationController({
       document.querySelectorAll(`#${CSS.escape(panel.id)} .blind-label, .panel-selector[data-panel-id="${panel.id}"] .blind-label`)
         .forEach(label => { label.textContent = text; });
     });
-    getPanelsController().renderPanelActivity();
-    getComposerController().composerControls?.panelsChanged();
+    renderPanelNames();
   }
 
   function postPageStyleToPanel(panel) {
@@ -385,6 +414,7 @@ export function createPresentationController({
     set providerNotes(value) { providerNotes = value; },
     renderAllPanelNotes,
     renderBlindLabels,
+    renderPanelNames,
     renderPanelNote,
     saveProviderConfiguration,
     scrollPanels,

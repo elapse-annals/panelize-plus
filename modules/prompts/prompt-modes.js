@@ -155,6 +155,10 @@ export const AUTO_PROMPT_MODE = 'auto';
 // Wire sentinel for a native client's explicit "Default" choice: no instruction.
 export const DEFAULT_PROMPT_MODE = 'default';
 
+// A panel choosing this follows the composer's saved mode; anything else is a
+// Prompt Library modeKey fixed for that panel.
+export const PANEL_PROMPT_MODE_INHERIT = 'inherit';
+
 export const PROMPT_MODE_IDS = PROMPT_MODES.map(mode => mode.id);
 
 // chrome.storage.local, not sync: the library lives in this device's IndexedDB.
@@ -247,6 +251,48 @@ export function getPromptDisplayContent(prompt) {
  */
 export function getPromptAiContent(prompt) {
   return getPromptDisplayContent(prompt);
+}
+
+/**
+ * A panel's prompt-mode value as stored: a Prompt Library modeKey, or the
+ * inherit sentinel so a panel without a choice follows the composer.
+ *
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function normalizePanelPromptMode(value) {
+  const modeKey = typeof value === 'string' ? value.trim() : '';
+  return modeKey && modeKey !== PANEL_PROMPT_MODE_INHERIT ? modeKey : PANEL_PROMPT_MODE_INHERIT;
+}
+
+/**
+ * The library mode prompt for `modeKey`, matching built-in and user-created
+ * modes alike. The inherit sentinel never matches.
+ *
+ * @param {string | null | undefined} modeKey
+ * @param {Array<object>} modePrompts - Prompts from selectModePrompts.
+ * @returns {object | null}
+ */
+export function findPanelPromptMode(modeKey, modePrompts) {
+  if (typeof modeKey !== 'string' || !modeKey || modeKey === PANEL_PROMPT_MODE_INHERIT) return null;
+  return (Array.isArray(modePrompts) ? modePrompts : [])
+    .find(prompt => prompt?.modeKey === modeKey) || null;
+}
+
+/**
+ * The instruction one panel receives: its fixed mode's text, or the global
+ * instruction for an inherit panel. A mode deleted from the library falls
+ * back to the global instruction instead of sending nothing.
+ *
+ * @param {string | null | undefined} panelMode
+ * @param {string | null | undefined} globalInstruction
+ * @param {Array<object>} modePrompts - Prompts from selectModePrompts.
+ * @returns {string | null}
+ */
+export function resolvePanelPromptInstruction(panelMode, globalInstruction, modePrompts) {
+  if (!panelMode || panelMode === PANEL_PROMPT_MODE_INHERIT) return globalInstruction || null;
+  const instruction = getPromptAiContent(findPanelPromptMode(panelMode, modePrompts));
+  return instruction || globalInstruction || null;
 }
 
 /**

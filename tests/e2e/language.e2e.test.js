@@ -14,9 +14,17 @@ test('Chinese is the default and English stays selected after reload; retired la
     expect(await language.locator('option').evaluateAll(options => options.map(option => option.value)))
       .toEqual(['zh_CN', 'en']);
     await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+    await expect(page.locator('h1[data-i18n="headerSettingsTitle"]'))
+      .toHaveText('设置： Panelize（百家争鸣）');
+    const repoLink = page.locator('#github-repo-link');
+    await expect(repoLink).toHaveAttribute('href', 'https://github.com/elapse-annals/panelize-plus');
+    await expect(repoLink).toHaveAttribute('target', '_blank');
+    await expect(repoLink).toHaveAttribute('rel', /noopener/);
+    await expect(repoLink).toHaveText('GitHub 源码仓库');
 
     await language.selectOption('en');
     await expect(label).toHaveText('Language');
+    await expect(repoLink).toHaveText('GitHub Repository');
     await page.reload();
     await expect(language).toHaveValue('en');
     await expect(label).toHaveText('Language');

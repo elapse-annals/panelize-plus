@@ -124,7 +124,9 @@ export function createLayoutController({
     const enabledProviders = await getEnabledProviders();
     if (currentLayout !== targetLayout) return;
 
-    const maxAllowedCount = Math.min(targetCount, MAX_PANELS, enabledProviders.length);
+    // Same-provider panels are allowed, so provider count no longer caps the
+    // panel count; only the product ceiling does.
+    const maxAllowedCount = Math.min(targetCount, MAX_PANELS);
 
     // Remove excess panels
     while (getPanelsController().panels.length > maxAllowedCount) {
@@ -136,13 +138,13 @@ export function createLayoutController({
     // Add missing panels
     while (getPanelsController().panels.length < maxAllowedCount) {
       if (currentLayout !== targetLayout) return;
-      // Find a provider not already in use
+      // New panels still come from providers not already open; the user adds
+      // same-provider duplicates from the panel header instead.
       const usedProviders = getPanelsController().panels.map(p => p.providerId);
       const availableProvider = enabledProviders.find(p => !usedProviders.includes(p.id));
 
-      if (availableProvider) {
-        await getPanelsController().addPanel(availableProvider.id);
-      }
+      if (!availableProvider) break;
+      await getPanelsController().addPanel(availableProvider.id);
     }
   }
 
