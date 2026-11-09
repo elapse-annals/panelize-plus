@@ -90,6 +90,18 @@
   .panel-edge-flash.flashing { animation-duration: 0.2s; }
 }
 
+/* Every single-row layout keeps overflow panels in horizontal columns, even
+   while an inline wide-mode template is stale. When the summary card is
+   visible it owns the implicit trailing column, so summary.css's card width
+   must win; the :has guard yields to it. */
+#panel-grid[class*="layout-1x"] {
+  grid-auto-flow: column;
+}
+
+#panel-grid[class*="layout-1x"]:not(:has(.ai-summary-panel:not([hidden]))) {
+  grid-auto-columns: minmax(var(--panel-min-width, 320px), 1fr);
+}
+
 /* Layout variations */
 /* 1xN Auto 单行，列数由 JS 写入 --panel-count */
 .layout-1x-auto {

@@ -87,15 +87,20 @@ export function createLayoutController({
     getPresentationController().updatePanelEdgeButtons?.();
   }
 
-  // Panel count changes in the auto layout do not change the grid class, so
-  // resize handles and edge buttons need an explicit refresh.
+  // Panel count changes may keep the layout class (auto) or change it (fixed
+  // 1xN). Either way the inline wide-mode template, resize handles and edge
+  // buttons must follow the current DOM. Startup can change the class after the
+  // resize controller's first measurement, so this is the shared sync point.
+  // Only the auto layout also rewrites its column variables; fixed layouts take
+  // their column count from the class.
   function syncAutoLayoutColumns() {
-    if (!isAutoLayout(currentLayout)) return;
-
     const panelGrid = document.getElementById('panel-grid');
     if (!panelGrid) return;
 
-    writeAutoLayoutColumns(panelGrid, getPanelsController().panels.length);
+    if (isAutoLayout(currentLayout)) {
+      writeAutoLayoutColumns(panelGrid, getPanelsController().panels.length);
+    }
+
     panelResize?.refresh();
     getPresentationController().updatePanelEdgeButtons?.();
   }

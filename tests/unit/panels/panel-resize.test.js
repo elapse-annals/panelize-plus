@@ -293,4 +293,45 @@ describe('setupPanelResize', () => {
     controller.refresh();
     expect(grid.style.gridTemplateColumns).toBe('688px 672px');
   });
+
+  it('drops saved weights from a different column count and rebuilds equal wide columns', async () => {
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+    });
+    const grid = document.createElement('div');
+    document.body.append(grid);
+    Object.defineProperty(grid, 'clientWidth', { configurable: true, value: 1000 });
+    Object.defineProperty(grid, 'scrollWidth', { configurable: true, value: 10000 });
+    let trackCount = 14;
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((element) => ({
+      gridTemplateColumns: element.style.gridTemplateColumns || Array(trackCount).fill('320px').join(' '),
+      columnGap: '4px',
+      paddingLeft: '0px',
+      paddingRight: '0px',
+      getPropertyValue: () => '320px'
+    }));
+    const storage = {
+      get: vi.fn().mockResolvedValue({
+        [PANEL_COLUMN_WEIGHTS_KEY]: { '1x15': [1.4, 1] }
+      }),
+      set: vi.fn().mockResolvedValue(undefined)
+    };
+
+    const controller = await setupPanelResize({
+      grid,
+      getLayout: () => '1x15',
+      getWideScale: () => PANEL_WIDE_SCALE,
+      storage,
+      label: 'Resize panels'
+    });
+    expect(grid.style.gridTemplateColumns.split(' ')).toHaveLength(14);
+
+    // The layout class grew after the resize controller's first measurement.
+    trackCount = 15;
+    controller.refresh();
+
+    const tracks = grid.style.gridTemplateColumns.split(' ');
+    expect(tracks).toHaveLength(15);
+    expect(new Set(tracks).size).toBe(1);
+  });
 });

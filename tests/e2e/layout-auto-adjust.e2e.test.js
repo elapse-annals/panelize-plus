@@ -87,6 +87,10 @@ test.describe('Layout auto-adjust E2E', () => {
       return {
         columns: styles.gridTemplateColumns.split(/\s+/).filter(Boolean).length,
         rows: styles.gridTemplateRows.split(/\s+/).filter(Boolean).length,
+        autoFlow: styles.gridAutoFlow,
+        autoColumns: styles.gridAutoColumns,
+        clientWidth: grid.clientWidth,
+        scrollWidth: grid.scrollWidth,
         gridTop: gridRect.top,
         gridBottom: gridRect.bottom,
         gridHeight: gridRect.height,
@@ -102,6 +106,7 @@ test.describe('Layout auto-adjust E2E', () => {
     expect(geometry.panelBounds.every(({ height, top, bottom }) => (
       height > 0 && top >= geometry.gridTop && bottom <= geometry.gridBottom
     ))).toBe(true);
+    return geometry;
   }
 
   async function chooseLayout(layout) {
@@ -235,5 +240,73 @@ test.describe('Layout auto-adjust E2E', () => {
     await openLayout(AUTO_LAYOUT_ID, 4, { startupProviders: ALL_PROVIDERS.slice(0, 4) });
 
     await expectGridGeometry({ columns: 4, rows: 1 });
+  });
+
+  test('starts fifteen fixed-row panels on a single row after startup growth', async () => {
+    // The stored layout is 1x14 while fifteen startup providers are selected,
+    // so initializePanels grows the class after the first resize measurement.
+    await openLayout('1x14', 15, { startupProviders: ALL_PROVIDERS.slice(0, 15) });
+
+    await expect(panelGrid()).toHaveClass('layout-1x15');
+    await expect(page.locator('#panel-grid iframe')).toHaveCount(15);
+    const geometry = await expectGridGeometry({ columns: 15, rows: 1 });
+    expect(geometry.autoFlow).toBe('column');
+    expect(geometry.scrollWidth).toBeGreaterThan(geometry.clientWidth);
+  });
+
+  test('adds and removes the fifteenth panel without creating a second row', async () => {
+    await openLayout('1x14', 14, { startupProviders: ALL_PROVIDERS.slice(0, 14) });
+    await expectGridGeometry({ columns: 14, rows: 1 });
+
+    await addPanel();
+    await expect(panelGrid()).toHaveClass('layout-1x15');
+    await expectGridGeometry({ columns: 15, rows: 1 });
+
+    await removeLastPanel();
+    await expect(panelGrid()).toHaveClass('layout-1x14');
+    await expectGridGeometry({ columns: 14, rows: 1 });
+  });
+
+  test('keeps a stale fourteen-track inline template on a single row', async () => {
+    await openLayout('1x15', 15, { startupProviders: ALL_PROVIDERS.slice(0, 15) });
+    await expectGridGeometry({ columns: 15, rows: 1 });
+
+    const geometry = await panelGrid().evaluate((grid) => {
+      // Simulate the startup race: fourteen wide tracks stay on the element
+      // after the class already describes fifteen columns.
+      grid.style.gridTemplateColumns = Array(14).fill('672px').join(' ');
+      const styles = getComputedStyle(grid);
+      const panels = [...grid.querySelectorAll('.panel-item')].map((panel) => {
+        const rect = panel.getBoundingClientRect();
+        return { top: Math.round(rect.top), width: Math.round(rect.width) };
+      });
+      return {
+        autoFlow: styles.gridAutoFlow,
+        panelTops: panels.map(({ top }) => top),
+        panelWidths: panels.map(({ width }) => width),
+      };
+    });
+
+    // No class or child mutation happened, so only the CSS guarantee holds this.
+    expect(geometry.autoFlow).toBe('column');
+    expect(new Set(geometry.panelTops).size).toBe(1);
+    // The overflow panel uses the panel column width, not the summary card width.
+    expect(geometry.panelWidths.at(-1)).toBeGreaterThanOrEqual(300);
+    expect(geometry.panelWidths.at(-1)).toBeLessThan(400);
+  });
+
+  test('starts the auto layout with fifteen panels on a single row', async () => {
+    await openLayout(AUTO_LAYOUT_ID, 15, { startupProviders: ALL_PROVIDERS.slice(0, 15) });
+
+    await expect(panelGrid()).toHaveClass(`layout-${AUTO_LAYOUT_ID}`);
+    await expect(page.locator('#panel-grid iframe')).toHaveCount(15);
+    const geometry = await expectGridGeometry({ columns: 15, rows: 1 });
+    expect(geometry.scrollWidth).toBeGreaterThan(geometry.clientWidth);
+  });
+
+  test('leaves multi-row layouts in row flow', async () => {
+    await openLayout('2x2', 4, { startupProviders: ALL_PROVIDERS.slice(0, 4) });
+
+    await expect(panelGrid()).toHaveCSS('grid-auto-flow', 'row');
   });
 });

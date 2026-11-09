@@ -288,3 +288,52 @@ describe('Layout Auto-Adjust', () => {
     });
   });
 });
+
+describe('1xN single-row guarantee', () => {
+  const styleRoot = resolve(process.cwd(), 'multi-panel/styles');
+
+  const readStyle = (name) => readFileSync(resolve(styleRoot, name), 'utf8');
+
+  // Body of the first rule whose selector text starts with `selector`.
+  function ruleBody(css, selector) {
+    const start = css.indexOf(selector);
+    expect(start, selector).toBeGreaterThan(-1);
+    return css.slice(start, css.indexOf('}', start));
+  }
+
+  it('crosses the fourteen/fifteen/sixteen-panel boundary in both directions', () => {
+    expect(getAutoAdjustedLayout('1x14', 15)).toBe('1x15');
+    expect(getAutoAdjustedLayout('1x15', 16)).toBe('1x16');
+    expect(getAutoShrunkLayout('1x16', 15)).toBe('1x15');
+    expect(getAutoShrunkLayout('1x15', 14)).toBe('1x14');
+  });
+
+  it('selects every 1xN layout and no multi-row layout', () => {
+    const grid = document.createElement('div');
+    grid.id = 'panel-grid';
+    for (const layout of KNOWN_LAYOUT_IDS) {
+      grid.className = `layout-${layout}`;
+      expect(grid.matches('#panel-grid[class*="layout-1x"]'), layout).toBe(layout.startsWith('1x'));
+    }
+  });
+
+  it('declares column auto-flow and the panel overflow width for 1xN grids', () => {
+    const css = readStyle('panels.css');
+    expect(ruleBody(css, '#panel-grid[class*="layout-1x"]'))
+      .toContain('grid-auto-flow: column;');
+    expect(ruleBody(css, '#panel-grid[class*="layout-1x"]:not(:has(.ai-summary-panel:not([hidden])))'))
+      .toContain('grid-auto-columns: minmax(var(--panel-min-width, 320px), 1fr);');
+  });
+
+  it('keeps the summary card owning the implicit column while it is visible', () => {
+    expect(ruleBody(readStyle('summary.css'), '#panel-grid'))
+      .toContain('grid-auto-columns: var(--ai-summary-card-width);');
+  });
+
+  it('defines a class rule for every layout offered by the picker', () => {
+    const css = readStyle('panels.css');
+    for (const layout of KNOWN_LAYOUT_IDS) {
+      expect(css, layout).toContain(`.layout-${layout} {`);
+    }
+  });
+});

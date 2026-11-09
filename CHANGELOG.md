@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.92.1 - 2026-11-09
+- Fixed 1xN layouts wrapping a fifteenth panel into an implicit second row: single-row grids now keep overflow panels in horizontal columns, and adding, cloning, removing or asynchronously restoring panels refreshes the wide-mode column template, resize handles and edge buttons for fixed 1xN layouts too.
+
 ## 2.92.0 - 2026-11-08
 - Renamed the Chinese brand to Panelize Plus（百家争鸣） and added a GitHub repository link to Settings > About.
 - Panels can now be duplicated: the add-panel menu lists every enabled AI (including ones already open), and each panel header has a duplicate button.
