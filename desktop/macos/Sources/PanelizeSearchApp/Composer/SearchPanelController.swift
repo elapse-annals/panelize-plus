@@ -5,11 +5,44 @@ import PanelizeSearchCore
 /// implementation; tests substitute a bridge that reports progress on demand.
 protocol GlobalSendBridge: AnyObject {
     var connectedBrowserBundleIdentifier: String? { get }
+    var isExtensionConnected: Bool { get }
+    var supportsNewChat: Bool { get }
     func sendPrompt(
         _ text: String,
         promptMode: PromptModeChoice,
         update: @escaping (BridgeSendUpdate) -> Void
     ) -> Bool
+    func sendPrompt(
+        _ text: String,
+        promptMode: PromptModeChoice,
+        newChat: Bool,
+        update: @escaping (BridgeSendUpdate) -> Void
+    ) -> Bool
+    @discardableResult
+    func requestNewChat(requestId: String, update: @escaping (NewChatUpdate) -> Void) -> Bool
+    func requestHistorySync(force: Bool)
+}
+
+extension GlobalSendBridge {
+    var isExtensionConnected: Bool { true }
+    var supportsNewChat: Bool { false }
+
+    func sendPrompt(
+        _ text: String,
+        promptMode: PromptModeChoice,
+        newChat: Bool,
+        update: @escaping (BridgeSendUpdate) -> Void
+    ) -> Bool {
+        sendPrompt(text, promptMode: promptMode, update: update)
+    }
+
+    @discardableResult
+    func requestNewChat(requestId: String, update: @escaping (NewChatUpdate) -> Void) -> Bool {
+        update(.failed("not-connected"))
+        return false
+    }
+
+    func requestHistorySync(force: Bool) {}
 }
 
 extension BridgeServer: GlobalSendBridge {}
@@ -21,15 +54,27 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         isSending: { [weak self] in self?.isSending ?? false },
         promptMode: { [weak self] in self?.selectedPromptMode ?? .auto },
         refreshPreview: { [weak self] in self?.refreshPromptPreview() },
-        hidePanel: { [weak self] in self?.hide() }
+        hidePanel: { [weak self] in self?.hide() },
+        historyStore: historyStore
     )
     private let bridge: GlobalSendBridge
+    private let historyStore: PromptHistoryStore
+    private let newChatPreference: NewChatPreference
+    private var newChatState: NewChatState
+    private lazy var historyBrowser = ComposerHistoryBrowser(
+        content: content,
+        store: historyStore,
+        showStatus: { [weak self] text in
+            self?.showTransientStatus(text, color: .systemGreen)
+        }
+    )
     private let activateBrowserOverride: ((String) -> Bool)?
     private var lastSubmittedText: String?
     private var selectedPromptMode = PromptModeChoice.load()
     private(set) var isSending = false
     private var connectionReady = false
     private var autoHideWorkItem: DispatchWorkItem?
+    private var transientStatusWorkItem: DispatchWorkItem?
     private var didForceRegular = false
     private var currentConnectionText = "浏览器未连接"
     private(set) var latestProgress: SendProgress?
@@ -47,9 +92,17 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
     private var appResignObserver: NSObjectProtocol?
     private var shownAt = Date.distantPast
 
-    init(bridge: GlobalSendBridge, activateBrowser: ((String) -> Bool)? = nil) {
+    init(
+        bridge: GlobalSendBridge,
+        activateBrowser: ((String) -> Bool)? = nil,
+        historyStore: PromptHistoryStore = PromptHistoryStore(),
+        newChatPreference: NewChatPreference = NewChatPreference()
+    ) {
         self.bridge = bridge
         self.activateBrowserOverride = activateBrowser
+        self.historyStore = historyStore
+        self.newChatPreference = newChatPreference
+        self.newChatState = NewChatState(enabled: newChatPreference.load())
         let inset = ComposerMetrics.shadowInset
         let panel = SearchPanel(
             contentRect: NSRect(
@@ -75,14 +128,41 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         content.build(in: panel, mode: selectedPromptMode, delegate: self, actions: ComposerActions(
             hide: { [weak self] in self?.hide() },
             submit: { [weak self] in self?.submit() },
-            handleEscape: { [weak self] in self?.suggestions.handleEscape() },
+            handleEscape: { [weak self] in
+                guard let self else { return }
+                if self.historyBrowser.isVisible {
+                    self.historyBrowser.close(restoreFocus: true)
+                    return
+                }
+                self.suggestions.handleEscape()
+            },
             acceptTriggerCompletion: { [weak self] in self?.suggestions.acceptTriggerCompletion() ?? false },
             cyclePromptMode: { [weak self] in self?.cyclePromptMode(forward: $0) },
-            moveHistorySelection: { [weak self] in self?.suggestions.moveHistorySelection($0) ?? false },
+            moveHistorySelection: { [weak self] delta in
+                guard let self else { return false }
+                if self.historyBrowser.isVisible {
+                    self.historyBrowser.moveSelection(delta)
+                    return true
+                }
+                if delta < 0,
+                   !self.isSending,
+                   self.content.textView.string.isEmpty,
+                   !self.content.textView.hasMarkedText() {
+                    self.suggestions.clearHistorySuggestions()
+                    self.suggestions.suppressHistory = true
+                    if self.historyBrowser.openIfPossible() {
+                        return true
+                    }
+                }
+                return self.suggestions.moveHistorySelection(delta)
+            },
             pickHistorySuggestion: { [weak self] in self?.suggestions.pickHistorySuggestion(at: $0) },
             applyPromptMode: { [weak self] in self?.applyPromptMode($0) },
+            toggleNewChat: { [weak self] in self?.setNewChatEnabled($0) },
             openBridgeSettings: { [weak self] in self?.openBridgeSettingsFromStatus() }
         ))
+        content.newChatCheckbox.state = newChatState.enabled ? .on : .off
+        historyBrowser.onFillRequested = { [weak self] in self?.fillHistorySelection() }
         updateConnection(label: currentConnectionText, ready: false)
         accessibilityObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
@@ -109,7 +189,29 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
     func setConnectionStatus(_ text: String, ready: Bool) {
         currentConnectionText = text
         connectionReady = ready
+        if !ready {
+            newChatState.connectionLost()
+        }
         updateConnection(label: text, ready: ready)
+    }
+
+    /// Called when the extension handshake completes; a checked box can now
+    /// prepare the next round.
+    func handleExtensionConnected() {
+        bridge.requestHistorySync(force: false)
+        if newChatState.enabled {
+            prepareNewChatIfNeeded()
+        }
+    }
+
+    /// The bridge merged new history; refresh a visible browser and the
+    /// inline prefix suggestions without disturbing the selected row.
+    func historyDidChange(_ records: [PromptHistoryRecord]? = nil) {
+        let current = records ?? historyStore.loadRecords()
+        if historyBrowser.isVisible {
+            historyBrowser.update(records: current)
+        }
+        suggestions.refreshHistorySuggestions()
     }
 
     func toggle() {
@@ -193,12 +295,18 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         panel.makeFirstResponder(content.textView)
         suggestions.refreshCompletionOverlay()
         startDismissMonitoring()
+        bridge.requestHistorySync(force: false)
+        if newChatState.enabled {
+            prepareNewChatIfNeeded()
+        }
     }
 
     func repositionForScreenChanges() {
         guard let panel = window,
               panel.isVisible,
               let screen = panel.screen ?? NSScreen.main else { return }
+        // Re-clamp the history browser before measuring the window.
+        content.layout.updateInputHeight(animated: false)
         let origin = composerWindowOrigin(
             visibleFrame: screen.visibleFrame,
             contentSize: content.layout.composerContentSize,
@@ -214,7 +322,10 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         guard let panel = window else { return }
         autoHideWorkItem?.cancel()
         autoHideWorkItem = nil
+        transientStatusWorkItem?.cancel()
+        transientStatusWorkItem = nil
         stopDismissMonitoring()
+        historyBrowser.close(restoreFocus: false)
         suggestions.dismissCompletion()
         content.completionOverlay.dismiss()
 
@@ -317,6 +428,9 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
     }
 
     func textDidChange(_ notification: Notification) {
+        if historyBrowser.isVisible {
+            historyBrowser.close(restoreFocus: false)
+        }
         content.placeholder.isHidden = !content.textView.string.isEmpty
         suggestions.suppressHistory = false
         refreshPromptPreview()
@@ -346,6 +460,11 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
 
     func submit() {
         guard !isSending else { return }
+        // Enter on the two-column browser fills the question without sending.
+        if historyBrowser.isVisible {
+            fillHistorySelection()
+            return
+        }
         // Enter on a highlighted suggestion fills it instead of sending.
         if suggestions.acceptSelectedHistory() { return }
         autoHideWorkItem?.cancel()
@@ -371,7 +490,11 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         setBusy(true)
         showStatus("正在发送…", color: .systemBlue)
 
-        let started = bridge.sendPrompt(text, promptMode: selectedPromptMode) { [weak self] update in
+        let started = bridge.sendPrompt(
+            text,
+            promptMode: selectedPromptMode,
+            newChat: newChatState.enabled && bridge.supportsNewChat
+        ) { [weak self] update in
             guard let self else { return }
             switch update {
             case .accepted:
@@ -400,6 +523,81 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
             setBusy(false)
             endSendProgress()
         }
+    }
+
+    private func fillHistorySelection() {
+        guard let question = historyBrowser.takeSelectedQuestion() else { return }
+        suggestions.applyHistoryQuestion(question)
+    }
+
+    private func setNewChatEnabled(_ enabled: Bool) {
+        guard !isSending else {
+            content.newChatCheckbox.state = newChatState.enabled ? .on : .off
+            return
+        }
+        newChatPreference.save(enabled)
+        newChatState.setEnabled(enabled)
+        content.newChatCheckbox.state = enabled ? .on : .off
+        if enabled {
+            if !bridge.isExtensionConnected {
+                showTransientStatus("浏览器未连接，下次发送时会新建会话", color: .systemOrange)
+                return
+            }
+            prepareNewChatIfNeeded()
+        } else {
+            transientStatusWorkItem?.cancel()
+            updateConnection(label: currentConnectionText, ready: connectionReady)
+        }
+    }
+
+    /// Starts a silent reset in the extension. The result only drives the hint
+    /// and the checkbox state; a send still carries its own new-chat flag.
+    private func prepareNewChatIfNeeded() {
+        guard newChatState.enabled, !isSending, bridge.isExtensionConnected else { return }
+        let requestId = UUID().uuidString
+        guard newChatState.prepareIfNeeded(requestId: requestId) else { return }
+
+        let started = bridge.requestNewChat(requestId: requestId) { [weak self] update in
+            guard let self else { return }
+            switch update {
+            case .succeeded(let outcome):
+                guard self.newChatState.completeRequest(
+                    outcome.requestId,
+                    ok: outcome.ok,
+                    ready: outcome.ready,
+                    total: outcome.total
+                ) else { return }
+                if outcome.ok {
+                    self.showTransientStatus("已为所有 AI 新建会话", color: .systemGreen)
+                } else {
+                    let reason = outcome.reason.isEmpty ? "partial" : outcome.reason
+                    self.showTransientStatus(
+                        BridgeMessages.errorReason(reason),
+                        color: .systemOrange
+                    )
+                }
+            case .failed(let message):
+                if self.newChatState.failRequest(requestId) {
+                    self.showTransientStatus(message, color: .systemOrange)
+                }
+            }
+        }
+        if !started {
+            newChatState.failRequest(requestId)
+        }
+    }
+
+    /// A short, non-blocking status line that returns to the connection label.
+    private func showTransientStatus(_ text: String, color: NSColor) {
+        guard !isSending else { return }
+        transientStatusWorkItem?.cancel()
+        showStatus(text, color: color)
+        let item = DispatchWorkItem { [weak self] in
+            guard let self, !self.isSending else { return }
+            self.updateConnection(label: self.currentConnectionText, ready: self.connectionReady)
+        }
+        transientStatusWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.6, execute: item)
     }
 
     /// Shows readiness and waiting names, and brings the browser forward once
@@ -457,6 +655,9 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         if let prompt = lastSubmittedText {
             suggestions.recordQuestion(prompt)
         }
+        // The prepared fresh session has now been used; the next round needs
+        // another reset (triggered on the next show or send).
+        newChatState.sendSucceeded()
         lastSubmittedText = nil
         suggestions.suppressHistory = true
         suggestions.clearHistorySuggestions()
@@ -506,7 +707,9 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         content.textView.isEditable = !busy
         content.sendButton.setSending(busy, animated: true)
         content.modePicker.isEnabled = !busy
+        content.newChatCheckbox.isEnabled = !busy
         if busy {
+            historyBrowser.close(restoreFocus: false)
             suggestions.dismissCompletion()
             suggestions.suppressHistory = true
             suggestions.clearHistorySuggestions()

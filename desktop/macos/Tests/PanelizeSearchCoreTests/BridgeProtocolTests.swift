@@ -236,4 +236,109 @@ final class BridgeProtocolTests: XCTestCase {
         ShortcutChoice.commandShiftSpace.save(to: defaults)
         XCTAssertEqual(ShortcutChoice.load(from: defaults), .commandShiftSpace)
     }
+
+    func testProtocolVersionAndHelloCapabilities() {
+        XCTAssertEqual(BridgeProtocol.version, 2)
+        guard case .extensionHello(let version, let capabilities)? = BridgeMessages.parse([
+            "type": "hello",
+            "extensionVersion": "2.93.0",
+            "capabilities": ["historySync", "newChat"]
+        ]) else {
+            return XCTFail("Expected an extension hello")
+        }
+        XCTAssertEqual(version, "2.93.0")
+        XCTAssertEqual(capabilities, Set(["historySync", "newChat"]))
+
+        guard case .extensionHello(let oldVersion, let oldCapabilities)? = BridgeMessages.parse([
+            "type": "hello",
+            "extensionVersion": "2.60.0"
+        ]) else {
+            return XCTFail("Expected a legacy hello")
+        }
+        XCTAssertEqual(oldVersion, "2.60.0")
+        XCTAssertTrue(oldCapabilities.isEmpty)
+    }
+
+    func testSendPromptCarriesNewChatOnlyWhenRequested() {
+        let plain = BridgeMessages.sendPrompt(requestId: "r1", text: "Hello")
+        XCTAssertEqual(plain["protocol"] as? Int, 2)
+        XCTAssertNil(plain["newChat"])
+
+        let withFlag = BridgeMessages.sendPrompt(
+            requestId: "r1",
+            text: "Hello",
+            promptMode: .deep,
+            newChat: true
+        )
+        XCTAssertEqual(withFlag["newChat"] as? Bool, true)
+        XCTAssertEqual(withFlag["promptMode"] as? String, "deep")
+    }
+
+    func testParsesHistorySnapshotChunksAndSummaries() {
+        guard case .historySnapshot(let batch)? = BridgeMessages.parse([
+            "type": "historySnapshot",
+            "snapshotId": "snapshot-1",
+            "index": 0,
+            "total": 2,
+            "records": [[
+                "key": "ignored",
+                "text": "How are you?",
+                "createdAt": 900,
+                "updatedAt": 1000,
+                "summary": [
+                    "blind": true,
+                    "formattedText": "Anonymous model 1: fine",
+                    "createdAt": 950
+                ]
+            ]]
+        ]) else {
+            return XCTFail("Expected a history snapshot")
+        }
+        XCTAssertEqual(batch.batchId, "snapshot-1")
+        XCTAssertEqual(batch.index, 0)
+        XCTAssertEqual(batch.total, 2)
+        XCTAssertEqual(batch.records.count, 1)
+        XCTAssertEqual(batch.records[0].key, "how are you?")
+        XCTAssertEqual(batch.records[0].summary?.blind, true)
+        XCTAssertFalse(String(describing: batch).contains("chatgpt"))
+
+        XCTAssertNil(BridgeMessages.parse([
+            "type": "historySnapshot",
+            "snapshotId": "s",
+            "index": 0,
+            "total": HistoryWire.maxChunks + 1,
+            "records": []
+        ]))
+        XCTAssertNil(BridgeMessages.parse([
+            "type": "historyUpsert",
+            "batchId": "b",
+            "index": 1,
+            "total": 1,
+            "records": []
+        ]))
+    }
+
+    func testParsesNewChatResultsAndBoundsCounts() {
+        guard case .newChatResult(let outcome)? = BridgeMessages.parse([
+            "type": "newChatResult",
+            "requestId": "chat-1",
+            "ok": true,
+            "ready": 5,
+            "total": 3,
+            "reason": "partial"
+        ]) else {
+            return XCTFail("Expected a new-chat result")
+        }
+        XCTAssertEqual(outcome.requestId, "chat-1")
+        XCTAssertTrue(outcome.ok)
+        XCTAssertEqual(outcome.ready, 3)
+        XCTAssertEqual(outcome.total, 3)
+        XCTAssertEqual(outcome.reason, "partial")
+
+        XCTAssertNil(BridgeMessages.parse([
+            "type": "newChatResult",
+            "requestId": "",
+            "ok": true
+        ]))
+    }
 }

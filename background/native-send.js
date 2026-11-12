@@ -1,8 +1,13 @@
 import {
   GLOBAL_SEND_ERRORS,
+  GLOBAL_SEND_PROTOCOL_VERSION,
+  NATIVE_MESSAGE_TYPES,
   NATIVE_SEND_HOST,
   createNativeError,
   createNativeHello,
+  createNativeHistorySnapshotChunk,
+  createNativeHistoryUpsertChunk,
+  createNativeNewChatResult,
   createNativeSendAccepted,
   createNativeSendProgress,
   createNativeSendResult,
@@ -10,11 +15,16 @@ import {
   normalizeGlobalPromptMode,
   normalizeRequestId,
   readGlobalSendProgressPayload,
-  readGlobalSendResultPayload
+  readGlobalSendResultPayload,
+  readNewChatResultPayload
 } from '../modules/platform/global-send.js';
+import { createHistoryChunks, readIncomingHistoryBatch } from '../modules/history/history-sync.js';
 
 const COMPLETED_REQUEST_TTL_MS = 60 * 1000;
 const REQUEST_TIMEOUT_MS = 45 * 1000;
+// A send that first has to start a fresh conversation, and a standalone new
+// chat, legitimately take longer than a plain send.
+const NEW_CHAT_TIMEOUT_MS = 90 * 1000;
 const MAX_REMEMBERED_REQUESTS = 32;
 const PROGRESS_STAGE_RANK = Object.freeze({ opening: 0, preparing: 1, sending: 2 });
 
@@ -31,7 +41,11 @@ export function createNativeSendBridge({
   connectNative,
   runtime,
   onSendPrompt,
+  onNewChat = async () => {},
+  onHistoryRequest = () => {},
+  onHistoryUpsert = () => {},
   onStatus = () => {},
+  onDisconnect = () => {},
   now = Date.now,
   setTimeoutFn = setTimeout
 } = {}) {
@@ -43,6 +57,10 @@ export function createNativeSendBridge({
   // Last progress forwarded per request: stage rank plus its payload, so a
   // repeated tick or a late opening event cannot move the client backwards.
   const requestProgress = new Map();
+
+  const activeNewChats = new Set();
+  const completedNewChats = new Map();
+  const newChatTimers = new Map();
 
   function lastErrorMessage() {
     try {
@@ -122,6 +140,9 @@ export function createNativeSendBridge({
     if (promptMode !== undefined) {
       request.promptMode = promptMode;
     }
+    if (message.newChat === true) {
+      request.newChat = true;
+    }
 
     Promise.resolve(onSendPrompt(request))
       .catch(() => {
@@ -132,8 +153,107 @@ export function createNativeSendBridge({
       if (activeRequests.has(requestId)) {
         finishRequest(requestId, { ok: false, reason: 'no-response' });
       }
-    }, REQUEST_TIMEOUT_MS);
+    }, request.newChat ? NEW_CHAT_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
     requestTimers.set(requestId, timer);
+  }
+
+  function clearNewChat(requestId) {
+    activeNewChats.delete(requestId);
+    const timer = newChatTimers.get(requestId);
+    if (timer) {
+      clearTimeout(timer);
+      newChatTimers.delete(requestId);
+    }
+  }
+
+  function finishNewChat(requestId, outcome) {
+    clearNewChat(requestId);
+    const response = createNativeNewChatResult({ requestId, ...outcome });
+    completedNewChats.set(requestId, { response, at: now() });
+    while (completedNewChats.size > MAX_REMEMBERED_REQUESTS) {
+      completedNewChats.delete(completedNewChats.keys().next().value);
+    }
+    post(response);
+    return response;
+  }
+
+  function handleNewChatRequest(message) {
+    const requestId = normalizeRequestId(message.requestId);
+    if (!requestId) {
+      post(createNativeError(null, GLOBAL_SEND_ERRORS.INVALID_REQUEST, 'Missing request ID'));
+      return;
+    }
+
+    const completed = completedNewChats.get(requestId);
+    if (completed && now() - completed.at < COMPLETED_REQUEST_TTL_MS) {
+      // The host can retry after a reconnect; do not reset the chats twice.
+      post(completed.response);
+      return;
+    }
+    if (activeNewChats.has(requestId)) {
+      return;
+    }
+
+    activeNewChats.add(requestId);
+    Promise.resolve(onNewChat({ requestId }))
+      .catch(() => {
+        finishNewChat(requestId, { ok: false, reason: GLOBAL_SEND_ERRORS.SEND_FAILED });
+      });
+
+    const timer = setTimeoutFn(() => {
+      if (activeNewChats.has(requestId)) {
+        finishNewChat(requestId, { ok: false, reason: 'no-response' });
+      }
+    }, NEW_CHAT_TIMEOUT_MS);
+    newChatTimers.set(requestId, timer);
+  }
+
+  /**
+   * Posts a history snapshot or incremental update as chunks. An empty
+   * snapshot still sends one chunk so the desktop assembler sees a complete
+   * (empty) result.
+   */
+  function sendHistory(type, records) {
+    if (!port) return false;
+    const chunks = createHistoryChunks(records);
+    if (!chunks.length) {
+      if (type === NATIVE_MESSAGE_TYPES.HISTORY_UPSERT) return true;
+      chunks.push([]);
+    }
+    const id = `history-${now()}-${Math.random().toString(36).slice(2, 10)}`;
+    chunks.forEach((chunk, index) => {
+      post(type === NATIVE_MESSAGE_TYPES.HISTORY_SNAPSHOT
+        ? createNativeHistorySnapshotChunk({
+          snapshotId: id,
+          index,
+          total: chunks.length,
+          records: chunk
+        })
+        : createNativeHistoryUpsertChunk({
+          batchId: id,
+          index,
+          total: chunks.length,
+          records: chunk
+        }));
+    });
+    return true;
+  }
+
+  function sendHistorySnapshot(records) {
+    return sendHistory(NATIVE_MESSAGE_TYPES.HISTORY_SNAPSHOT, records);
+  }
+
+  function sendHistoryUpsert(records) {
+    return sendHistory(NATIVE_MESSAGE_TYPES.HISTORY_UPSERT, records);
+  }
+
+  function deliverNewChatResult(payload) {
+    const result = readNewChatResultPayload(payload);
+    if (!result || !activeNewChats.has(result.requestId)) {
+      return false;
+    }
+    finishNewChat(result.requestId, result);
+    return true;
   }
 
   function handleNativeMessage(message) {
@@ -142,13 +262,37 @@ export function createNativeSendBridge({
       return;
     }
 
-    if (message.type === 'ping') {
-      post({ protocol: 1, type: 'pong', at: now() });
+    if (message.type === NATIVE_MESSAGE_TYPES.PING) {
+      post({ protocol: GLOBAL_SEND_PROTOCOL_VERSION, type: NATIVE_MESSAGE_TYPES.PONG, at: now() });
       return;
     }
 
-    if (message.type === 'sendPrompt') {
+    if (message.type === NATIVE_MESSAGE_TYPES.SEND_PROMPT) {
       handleSendRequest(message);
+      return;
+    }
+
+    if (message.type === NATIVE_MESSAGE_TYPES.NEW_CHAT) {
+      handleNewChatRequest(message);
+      return;
+    }
+
+    if (message.type === NATIVE_MESSAGE_TYPES.HISTORY_REQUEST) {
+      Promise.resolve(onHistoryRequest()).catch(() => {});
+      return;
+    }
+
+    if (message.type === NATIVE_MESSAGE_TYPES.HISTORY_UPSERT) {
+      const batch = readIncomingHistoryBatch(message, { now: now() });
+      if (!batch) {
+        post(createNativeError(
+          null,
+          GLOBAL_SEND_ERRORS.INVALID_REQUEST,
+          'Invalid history update'
+        ));
+        return;
+      }
+      Promise.resolve(onHistoryUpsert(batch)).catch(() => {});
       return;
     }
 
@@ -159,11 +303,19 @@ export function createNativeSendBridge({
     ));
   }
 
+  function clearAllNewChats() {
+    activeNewChats.clear();
+    newChatTimers.forEach(timer => clearTimeout(timer));
+    newChatTimers.clear();
+  }
+
   function handleDisconnect() {
     if (!port) return;
     const message = lastErrorMessage();
     port = null;
+    clearAllNewChats();
     onStatus({ connected: false, error: message });
+    onDisconnect();
   }
 
   function connect() {
@@ -258,7 +410,9 @@ export function createNativeSendBridge({
     requestProgress.clear();
     requestTimers.forEach(timer => clearTimeout(timer));
     requestTimers.clear();
+    clearAllNewChats();
     onStatus({ connected: false, error: '' });
+    onDisconnect();
   }
 
   function dispose() {
@@ -268,12 +422,15 @@ export function createNativeSendBridge({
 
   return {
     connect,
+    deliverNewChatResult,
     deliverOpened,
     deliverProgress,
     deliverResult,
     disconnect,
     dispose,
     handleNativeMessage,
-    isConnected: () => Boolean(port)
+    isConnected: () => Boolean(port),
+    sendHistorySnapshot,
+    sendHistoryUpsert
   };
 }

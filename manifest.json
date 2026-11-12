@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
   "short_name": "Panelize",
-  "version": "2.92.1",
+  "version": "2.94.0",
   "description": "__MSG_extensionDescription__",
   "default_locale": "zh_CN",
   "permissions": [

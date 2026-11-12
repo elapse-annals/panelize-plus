@@ -690,7 +690,9 @@ export function createSummaryController({
         language,
         panels: summaryPanels,
         sources,
-        summary
+        summary,
+        blind: isAiSummaryRoundBlind(round),
+        formattedText: getSummaryPlainText(summary, sources, round)
       }));
       setState({ status: 'done', sources, missing, summary });
     } catch (error) {
@@ -923,21 +925,30 @@ export function createSummaryController({
       : '';
   }
 
-  async function copyAiSummary() {
-    const round = getAnswersController().answerRounds.get(aiSummaryState.roundId);
-    if (aiSummaryState.status !== 'done' || !aiSummaryState.summary) return;
-    const sourcesById = new Map(aiSummaryState.sources.map(source => [source.sourceId, source]));
-    const text = formatSummaryText(
-      aiSummaryState.summary,
+  /**
+   * The summary as plain text, with the same section titles and source labels
+   * used by the copy button. Saved with the cache entry so the desktop client
+   * can show it without re-deriving labels (which would expose blind sources).
+   */
+  function getSummaryPlainText(summary, sources, round) {
+    const sourcesById = new Map(sources.map(source => [source.sourceId, source]));
+    return formatSummaryText(
+      summary,
       sourceId => getAiSummarySourceLabel(sourcesById.get(sourceId), round),
       {
         verdictTitle: getLocalizedText('aiSummaryVerdict', 'Verdict'),
         consensusTitle: getLocalizedText('aiSummaryConsensus', 'Agreed'),
         uniqueTitle: getLocalizedText('aiSummaryUnique', 'Unique insights'),
         disagreementsTitle: getLocalizedText('aiSummaryDisagreements', 'Disagreements'),
-        sourceOrder: aiSummaryState.sources.map(source => source.sourceId)
+        sourceOrder: sources.map(source => source.sourceId)
       }
     );
+  }
+
+  async function copyAiSummary() {
+    const round = getAnswersController().answerRounds.get(aiSummaryState.roundId);
+    if (aiSummaryState.status !== 'done' || !aiSummaryState.summary) return;
+    const text = getSummaryPlainText(aiSummaryState.summary, aiSummaryState.sources, round);
     try {
       await navigator.clipboard.writeText(text);
       showToast(getLocalizedText('aiSummaryCopied', 'Summary copied'));

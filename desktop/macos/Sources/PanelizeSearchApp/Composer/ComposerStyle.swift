@@ -21,6 +21,7 @@ enum ComposerMetrics {
     static let historyPanelShadowRadius: CGFloat = 12
     /// The history panel is narrower than the input card.
     static let historyPanelSideInset: CGFloat = 28
+    static let historyBrowserListWidth: CGFloat = 232
 
     static let sendButtonSize: CGFloat = 28
     static let progressSize: CGFloat = 14
@@ -58,6 +59,13 @@ enum ComposerFonts {
     static let modeHint = NSFont.systemFont(ofSize: 10.5, weight: .regular)
     static let suggestion = NSFont.systemFont(ofSize: 13.5, weight: .regular)
     static let historyHeader = NSFont.systemFont(ofSize: 11, weight: .medium)
+    static let historyBrowserHeader = NSFont.systemFont(ofSize: 11, weight: .semibold)
+    static let historyBrowserRowTitle = NSFont.systemFont(ofSize: 12.5, weight: .medium)
+    static let historyBrowserRowMeta = NSFont.systemFont(ofSize: 10.5, weight: .regular)
+    static let historyBrowserBody = NSFont.systemFont(ofSize: 12.5, weight: .regular)
+    static let historyBrowserHeading = NSFont.systemFont(ofSize: 12.5, weight: .semibold)
+    static let historyBrowserButton = NSFont.systemFont(ofSize: 11.5, weight: .medium)
+    static let newChatCheckbox = NSFont.systemFont(ofSize: 10.5, weight: .regular)
     static let modeChevronPointSize: CGFloat = 8
 }
 

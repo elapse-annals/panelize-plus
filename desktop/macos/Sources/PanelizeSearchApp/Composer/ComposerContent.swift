@@ -10,6 +10,7 @@ struct ComposerActions {
     let moveHistorySelection: (Int) -> Bool
     let pickHistorySuggestion: (Int) -> Void
     let applyPromptMode: (PromptModeChoice) -> Void
+    let toggleNewChat: (Bool) -> Void
     let openBridgeSettings: () -> Void
 }
 
@@ -32,6 +33,8 @@ final class ComposerContent: NSObject {
     let modeHintLabel = NSTextField(labelWithString: "")
     let completionOverlay = PromptCompletionOverlayView(frame: .zero)
     let historyView = PromptHistorySuggestionView(frame: .zero)
+    let historyBrowserView = PromptHistoryBrowserView(frame: .zero)
+    let newChatCheckbox = NSButton(checkboxWithTitle: "新建会话", target: nil, action: nil)
     let modePicker = ModePickerButton(frame: .zero)
     let rootView = ComposerRootView(frame: .zero)
     let backdrop = ComposerBackdropView()
@@ -48,6 +51,9 @@ final class ComposerContent: NSObject {
 
     @objc private func sendTapped() { actions?.submit() }
     @objc private func openBridgeSettingsFromStatus() { actions?.openBridgeSettings() }
+    @objc private func newChatToggled() {
+        actions?.toggleNewChat(newChatCheckbox.state == .on)
+    }
 
     func build(in panel: NSWindow, mode: PromptModeChoice, delegate: NSTextViewDelegate, actions: ComposerActions) {
         self.actions = actions
@@ -62,6 +68,7 @@ final class ComposerContent: NSObject {
         rootView.addSubview(historyPanelBackdrop)
         rootView.addSubview(historyPanelSurface)
         rootView.addSubview(historyView)
+        rootView.addSubview(historyBrowserView)
 
         shadowView.translatesAutoresizingMaskIntoConstraints = false
         rootView.addSubview(shadowView)
@@ -132,6 +139,19 @@ final class ComposerContent: NSObject {
         historyView.onSelect = { [weak self] index in
             self?.actions?.pickHistorySuggestion(index)
         }
+
+        historyBrowserView.isHidden = true
+        historyBrowserView.translatesAutoresizingMaskIntoConstraints = false
+
+        newChatCheckbox.font = ComposerFonts.newChatCheckbox
+        newChatCheckbox.controlSize = .small
+        newChatCheckbox.target = self
+        newChatCheckbox.action = #selector(newChatToggled)
+        newChatCheckbox.toolTip = "勾选后每轮发送前为所有 AI 开启新会话"
+        newChatCheckbox.setAccessibilityLabel("新建会话")
+        newChatCheckbox.setContentHuggingPriority(.required, for: .horizontal)
+        newChatCheckbox.setContentCompressionResistancePriority(.required, for: .horizontal)
+        newChatCheckbox.translatesAutoresizingMaskIntoConstraints = false
 
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
@@ -227,7 +247,7 @@ final class ComposerContent: NSObject {
         statusStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        let footerLeft = NSStackView(views: [statusStack, modePicker])
+        let footerLeft = NSStackView(views: [statusStack, modePicker, newChatCheckbox])
         footerLeft.orientation = .horizontal
         footerLeft.spacing = 10
         footerLeft.alignment = .centerY
@@ -306,6 +326,11 @@ final class ComposerContent: NSObject {
             historyView.trailingAnchor.constraint(equalTo: historyPanelBackdrop.trailingAnchor),
             historyView.topAnchor.constraint(equalTo: historyPanelBackdrop.topAnchor),
             historyView.bottomAnchor.constraint(equalTo: historyPanelBackdrop.bottomAnchor),
+
+            historyBrowserView.leadingAnchor.constraint(equalTo: historyPanelBackdrop.leadingAnchor),
+            historyBrowserView.trailingAnchor.constraint(equalTo: historyPanelBackdrop.trailingAnchor),
+            historyBrowserView.topAnchor.constraint(equalTo: historyPanelBackdrop.topAnchor),
+            historyBrowserView.bottomAnchor.constraint(equalTo: historyPanelBackdrop.bottomAnchor),
 
             content.leadingAnchor.constraint(
                 equalTo: backdrop.leadingAnchor,
@@ -433,5 +458,6 @@ final class ComposerContent: NSObject {
         modePicker.refreshAppearance()
         sendButton.refreshAppearance()
         completionOverlay.needsDisplay = true
+        historyBrowserView.needsDisplay = true
     }
 }

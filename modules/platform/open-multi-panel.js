@@ -87,11 +87,16 @@ export async function createMultiPanelPopupWindow(chromeApi, url) {
   return win;
 }
 
-/** Open the Multi-Panel page in the configured tab or popup mode. */
-export async function openMultiPanelPage(chromeApi, openMode) {
+/**
+ * Open the Multi-Panel page in the configured tab or popup mode. `silent`
+ * keeps the browser in the background: an existing page is reused without
+ * focus and a new one opens as an inactive tab. Native new-chat commands use
+ * this so the macOS composer keeps keyboard focus.
+ */
+export async function openMultiPanelPage(chromeApi, openMode, { silent = false } = {}) {
   const multiPanelUrl = chromeApi.runtime.getURL(MULTI_PANEL_PAGE_PATH);
 
-  if (openMode === 'popup') {
+  if (openMode === 'popup' && !silent) {
     // Popup mode keeps its existing behavior: focus a window that already
     // contains Multi-Panel, or create a new popup window.
     const windows = await chromeApi.windows.getAll({ populate: true });
@@ -118,6 +123,10 @@ export async function openMultiPanelPage(chromeApi, openMode) {
   }
 
   if (existingTab) {
+    if (silent) {
+      // Reuse the page without stealing focus from whatever is in front.
+      return;
+    }
     await chromeApi.tabs.update(existingTab.id, { active: true });
     if (Number.isInteger(existingTab.windowId) && existingTab.windowId >= 0) {
       await chromeApi.windows.update(existingTab.windowId, { focused: true });
@@ -127,6 +136,6 @@ export async function openMultiPanelPage(chromeApi, openMode) {
 
   await chromeApi.tabs.create({
     url: multiPanelUrl,
-    active: true
+    active: !silent
   });
 }

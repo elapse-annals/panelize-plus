@@ -10,6 +10,7 @@ import { createMessagingController } from './controllers/messaging.js';
 import { createWindowModeController } from './controllers/window-mode.js';
 import { createPresentationController } from './controllers/presentation.js';
 import { createComposerController } from './controllers/composer.js';
+import { createComposerStatusController } from './controllers/composer-status.js';
 import { createSendingController } from './controllers/sending.js';
 import { createRatingController } from './controllers/rating.js';
 import { createSharingController } from './controllers/sharing.js';
@@ -24,6 +25,8 @@ const layout = createLayoutController({
   getPanelsController: () => panels,
   getPresentationController: () => presentation
 });
+
+const composerStatus = createComposerStatusController();
 
 const application = createApplicationController({
   getAnswersController: () => answers,
@@ -62,8 +65,10 @@ const panels = createPanelsController({
 const conversations = createConversationsController({
   getAnswersController: () => answers,
   getComposerController: () => composer,
+  getComposerStatusController: () => composerStatus,
   getFocusController: () => focus,
   getPanelsController: () => panels,
+  getPresentationController: () => presentation,
   getProviderControlsController: () => providerControls,
   getSendingController: () => sending
 });
@@ -111,6 +116,7 @@ const presentation = createPresentationController({
 
 const composer = createComposerController({
   getAttachmentsController: () => attachments,
+  getComposerStatusController: () => composerStatus,
   getConversationsController: () => conversations,
   getFocusController: () => focus,
   getLayoutController: () => layout,
@@ -128,6 +134,7 @@ const sending = createSendingController({
   getAnswersController: () => answers,
   getAttachmentsController: () => attachments,
   getComposerController: () => composer,
+  getComposerStatusController: () => composerStatus,
   getConversationsController: () => conversations,
   getFocusController: () => focus,
   getPanelsController: () => panels,

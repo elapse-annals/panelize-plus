@@ -1,7 +1,7 @@
 import Foundation
 
 public enum BridgeProtocol {
-    public static let version = 1
+    public static let version = 2
     public static let hostName = "com.panelize.global_sender"
     public static let maxFrameBytes = 1_048_576
     public static let maxPromptCharacters = 8000
@@ -230,10 +230,13 @@ public struct SendProgress: Equatable {
 }
 
 public enum BridgeEvent {
-    case extensionHello(version: String)
+    case extensionHello(version: String, capabilities: Set<String>)
     case sendAccepted(requestId: String)
     case sendProgress(SendProgress)
     case sendResult(SendOutcome)
+    case historySnapshot(HistoryBatch)
+    case historyUpsert(HistoryBatch)
+    case newChatResult(NewChatOutcome)
     case bridgeError(requestId: String?, code: String, message: String)
     case pong
 }
@@ -242,7 +245,8 @@ public enum BridgeMessages {
     public static func sendPrompt(
         requestId: String,
         text: String,
-        promptMode: PromptModeChoice? = nil
+        promptMode: PromptModeChoice? = nil,
+        newChat: Bool = false
     ) -> [String: Any] {
         var message: [String: Any] = [
             "protocol": BridgeProtocol.version,
@@ -253,7 +257,32 @@ public enum BridgeMessages {
         if let promptMode {
             message["promptMode"] = promptMode.rawValue
         }
+        if newChat {
+            message["newChat"] = true
+        }
         return message
+    }
+
+    public static func newChat(requestId: String) -> [String: Any] {
+        [
+            "protocol": BridgeProtocol.version,
+            "type": "newChat",
+            "requestId": requestId
+        ]
+    }
+
+    public static func historyRequest() -> [String: Any] {
+        [
+            "protocol": BridgeProtocol.version,
+            "type": "historyRequest"
+        ]
+    }
+
+    public static func historyUpserts(
+        records: [PromptHistoryRecord],
+        batchId: String = UUID().uuidString
+    ) -> [[String: Any]] {
+        HistoryWire.upsertMessages(records: records, batchId: batchId)
     }
 
     public static func tokenHandshake(
@@ -293,12 +322,45 @@ public enum BridgeMessages {
         }
         switch type {
         case "hello":
-            return .extensionHello(version: message["extensionVersion"] as? String ?? "")
+            let capabilities = Set((message["capabilities"] as? [String] ?? []).map { $0 })
+            return .extensionHello(
+                version: message["extensionVersion"] as? String ?? "",
+                capabilities: capabilities
+            )
         case "sendAccepted":
             guard let requestId = message["requestId"] as? String else {
                 return nil
             }
             return .sendAccepted(requestId: requestId)
+        case "historySnapshot", "historyUpsert":
+            let id = message["snapshotId"] as? String ?? message["batchId"] as? String
+            guard let id,
+                  !id.isEmpty,
+                  id.count <= HistoryWire.maxBatchIdLength,
+                  let index = message["index"] as? Int,
+                  let total = message["total"] as? Int,
+                  index >= 0,
+                  index < total,
+                  total <= HistoryWire.maxChunks,
+                  let records = HistoryWire.records(from: message["records"]) else {
+                return nil
+            }
+            let batch = HistoryBatch(batchId: id, index: index, total: total, records: records)
+            return type == "historySnapshot" ? .historySnapshot(batch) : .historyUpsert(batch)
+        case "newChatResult":
+            guard let requestId = message["requestId"] as? String,
+                  PromptInput.isValidRequestId(requestId) else {
+                return nil
+            }
+            let total = max(0, message["total"] as? Int ?? 0)
+            let reportedReady = max(0, message["ready"] as? Int ?? 0)
+            return .newChatResult(NewChatOutcome(
+                requestId: requestId,
+                ok: message["ok"] as? Bool ?? false,
+                ready: total > 0 ? min(reportedReady, total) : reportedReady,
+                total: total,
+                reason: String((message["reason"] as? String ?? "").prefix(HistoryWire.maxReasonLength))
+            ))
         case "sendProgress":
             guard let requestId = message["requestId"] as? String,
                   !requestId.isEmpty,
@@ -363,6 +425,10 @@ public enum BridgeMessages {
             return "AI 仍在加载，请稍后重试"
         case "new-chat-busy":
             return "正在新建会话，请稍后重试"
+        case "partial":
+            return "部分 AI 未确认新建会话"
+        case "no-panels":
+            return "没有可用的 AI 面板"
         case "busy":
             return "Panelize 正忙，请稍后重试"
         case "send-failed", "send-error":

@@ -6,12 +6,13 @@ import { notifyMessage } from '../../modules/platform/messaging.js';
 import { t, initializeLanguage } from '../../modules/platform/i18n.js';
 import { SHARE_SNAPSHOT_ACTION, isMultiPanelTab } from '../../modules/snapshots/share-trigger.js';
 import { openMultiPanelPage } from '../../modules/platform/open-multi-panel.js';
-import { GLOBAL_SEND_ACTION } from '../../modules/platform/global-send.js';
+import { GLOBAL_SEND_ACTION, NEW_CHAT_ACTION } from '../../modules/platform/global-send.js';
 
 export function createPageActionsController({
   getSettingsController
 }) {
   const PENDING_MULTI_PANEL_ACTION_KEY = 'pendingMultiPanelAction';
+  const PENDING_NEW_CHAT_REQUEST_KEY = 'pendingNewChatRequest';
 
   const PAGE_EXTRACTOR_SCRIPTS = [
     'libs/Readability.js',
@@ -39,8 +40,24 @@ export function createPageActionsController({
     }
   }
 
-  async function openMultiPanel() {
-    await openMultiPanelPage(chrome, getSettingsController().openMode);
+  async function setPendingNewChatRequest(request) {
+    const pending = { ...request, createdAt: Date.now() };
+    try {
+      await chrome.storage.session.set({ [PENDING_NEW_CHAT_REQUEST_KEY]: pending });
+      return;
+    } catch (error) {
+      // Fallback to local storage if session storage is unavailable
+    }
+
+    try {
+      await chrome.storage.local.set({ [PENDING_NEW_CHAT_REQUEST_KEY]: pending });
+    } catch (error) {
+      // Ignore storage errors
+    }
+  }
+
+  async function openMultiPanel({ silent = false } = {}) {
+    await openMultiPanelPage(chrome, getSettingsController().openMode, { silent });
   }
 
   // Optional providers in the default setup need site access, which the
@@ -143,10 +160,13 @@ export function createPageActionsController({
    * path as the main composer. Opening Panelize first makes the pending action
    * survive while the page and its AI panels initialize.
    */
-  async function handOffGlobalPrompt({ text, requestId, promptMode }) {
+  async function handOffGlobalPrompt({ text, requestId, promptMode, newChat }) {
     const payload = { text, requestId };
     if (promptMode !== undefined) {
       payload.promptMode = promptMode;
+    }
+    if (newChat === true) {
+      payload.newChat = true;
     }
     await setPendingMultiPanelAction(GLOBAL_SEND_ACTION, payload);
     await openMultiPanel();
@@ -156,6 +176,26 @@ export function createPageActionsController({
         payload
       }).catch(() => {
         // A newly opened Multi-Panel consumes the pending action instead.
+      });
+    }, 500);
+  }
+
+  /**
+   * Starts fresh conversations from the desktop client without bringing the
+   * browser forward. The request is stored separately from pending sends so
+   * the two can never overwrite each other.
+   */
+  async function handOffNewChat({ requestId } = {}) {
+    if (!requestId) return;
+    const payload = { requestId };
+    await setPendingNewChatRequest(payload);
+    await openMultiPanel({ silent: true });
+    setTimeout(() => {
+      notifyMessage({
+        action: NEW_CHAT_ACTION,
+        payload
+      }).catch(() => {
+        // A newly opened Multi-Panel consumes the pending request instead.
       });
     }, 500);
   }
@@ -183,6 +223,7 @@ export function createPageActionsController({
     dispatchToMultiPanel,
     getContentFromContext,
     handOffGlobalPrompt,
+    handOffNewChat,
     openMultiPanel,
     openOptionsAfterInstall,
     requestShareSnapshotOnMultiPanel,

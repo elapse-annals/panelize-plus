@@ -135,18 +135,51 @@ final class NativeBridgeHost {
             reader.append(payload)
             do {
                 while let message = try reader.nextMessage() {
-                    guard message["type"] as? String == "sendPrompt",
-                          let requestId = message["requestId"] as? String,
-                          let text = message["text"] as? String,
-                          PromptInput.isValidRequestId(requestId),
-                          case .success = PromptInput.normalized(text) else {
+                    switch message["type"] as? String {
+                    case "sendPrompt":
+                        guard let requestId = message["requestId"] as? String,
+                              let text = message["text"] as? String,
+                              PromptInput.isValidRequestId(requestId),
+                              case .success = PromptInput.normalized(text) else {
+                            continue
+                        }
+                        nativeIO.write(BridgeMessages.sendPrompt(
+                            requestId: requestId,
+                            text: text,
+                            promptMode: PromptModeChoice.wireValue(from: message),
+                            newChat: message["newChat"] as? Bool == true
+                        ))
+                    case "newChat":
+                        guard let requestId = message["requestId"] as? String,
+                              PromptInput.isValidRequestId(requestId) else {
+                            continue
+                        }
+                        nativeIO.write(BridgeMessages.newChat(requestId: requestId))
+                    case "historyRequest":
+                        nativeIO.write(BridgeMessages.historyRequest())
+                    case "historyUpsert":
+                        guard let batchId = message["batchId"] as? String,
+                              !batchId.isEmpty,
+                              batchId.count <= HistoryWire.maxBatchIdLength,
+                              let index = message["index"] as? Int,
+                              let total = message["total"] as? Int,
+                              index >= 0,
+                              index < total,
+                              total <= HistoryWire.maxChunks,
+                              let records = HistoryWire.records(from: message["records"]) else {
+                            continue
+                        }
+                        nativeIO.write([
+                            "protocol": BridgeProtocol.version,
+                            "type": "historyUpsert",
+                            "batchId": batchId,
+                            "index": index,
+                            "total": total,
+                            "records": records.map(HistoryWire.questionMessage)
+                        ])
+                    default:
                         continue
                     }
-                    nativeIO.write(BridgeMessages.sendPrompt(
-                        requestId: requestId,
-                        text: text,
-                        promptMode: PromptModeChoice.wireValue(from: message)
-                    ))
                 }
             } catch {
                 return

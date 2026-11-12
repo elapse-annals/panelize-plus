@@ -17,12 +17,14 @@ import {
 } from '../../modules/panels/panel-action-results.js';
 import { PANEL_READY_STATE, PANEL_READY_TIMEOUT_MS, isSendHeldByReadiness, summarizePanelReadiness } from '../../modules/panels/panel-readiness.js';
 import { applyPromptMode, normalizePanelPromptMode } from '../../modules/prompts/prompt-modes.js';
+import { COMPOSER_STATUS_PRIORITY } from './composer-status.js';
 import { getLocalizedText, showToast } from './ui.js';
 
 export function createSendingController({
   getAnswersController,
   getAttachmentsController,
   getComposerController,
+  getComposerStatusController,
   getConversationsController,
   getFocusController,
   getPanelsController,
@@ -58,12 +60,11 @@ export function createSendingController({
 
   const NEW_CHAT_STATUS_AUTO_HIDE_MS = 4000;
 
-  let readyStatusHideTimerId = null;
+  // Long enough to read the names once; the panel headers keep the state.
+  const READINESS_NOT_READY_AUTO_HIDE_MS = 7000;
 
   // Set while some panel is loading, so finishing shows "all ready" once.
   let wasPreparingPanels = false;
-
-  let isReadyStatusDismissed = false;
 
   // Text sends skipped for AIs still loading, by panel id; each is sent once
   // that panel is ready, or dropped when it times out or a new send starts.
@@ -365,6 +366,7 @@ export function createSendingController({
         if (shouldAutoSubmit && roundPanelIds.size > 0) {
           getRatingController().recordSendForRatingPrompt();
           getAnswersController().startAnswerRound(requestId, text, sentAt, answerPanelsFor(roundPanelIds));
+          getConversationsController().markSendCompleted();
           pendingFilledPromptText = '';
           pendingFilledPanelPromptModes = new Map();
         }
@@ -433,6 +435,7 @@ export function createSendingController({
           normalizedResults.filter(result => result.ok).map(result => result.panelId)
         );
         getAnswersController().startAnswerRound(requestId, text, sentAt, answerPanelsFor(sentPanelIds));
+        getConversationsController().markSendCompleted();
         pendingFilledPromptText = '';
         pendingFilledPanelPromptModes = new Map();
       } else if (!shouldAutoSubmit && totalSuccessful > 0) {
@@ -605,7 +608,6 @@ export function createSendingController({
   // A panel holds Send until its page shows a question box, or until
   // PANEL_READY_TIMEOUT_MS passes (e.g. the provider is signed out).
   function startPanelReadiness(panel) {
-    isReadyStatusDismissed = false;
     setPanelReadyState(panel, PANEL_READY_STATE.PENDING);
     panel.readyTimerId = setTimeout(() => {
       if (panel.readyState === PANEL_READY_STATE.PENDING) {
@@ -641,42 +643,49 @@ export function createSendingController({
 
   function renderReadinessStatus() {
     updateSendHold();
-    const row = document.getElementById('ai-ready-status-row');
-    const status = document.getElementById('ai-ready-status');
-    if (!row || !status) return;
     const summary = summarizePanelReadiness(getPanelsController().panels);
     const counts = [String(summary.ready.length), String(summary.total)];
-    clearTimeout(readyStatusHideTimerId);
     if (summary.pending.length) {
       wasPreparingPanels = true;
       const names = getReadinessNames(summary.pending);
-      status.textContent = [
-        isSendHeldByReadiness(summary)
-          ? getLocalizedText('composerPreparingHold', 'Preparing AIs: $1/$2 ready. Sending is paused; keep typing.', counts)
-          : getLocalizedText('composerPreparingCanSend', '$1/$2 AIs ready. You can send; the rest get the question once they are ready.', counts),
-        names && getLocalizedText('composerWaitingFor', 'Waiting for $1.', [names])
-      ].filter(Boolean).join(' ');
-      row.hidden = isReadyStatusDismissed;
+      const isHolding = isSendHeldByReadiness(summary);
+      getComposerStatusController().setStatus('readiness', {
+        key: isHolding ? 'readiness-hold' : 'readiness-progress',
+        priority: isHolding ? COMPOSER_STATUS_PRIORITY.READINESS_HOLD : COMPOSER_STATUS_PRIORITY.READINESS_INFO,
+        text: [
+          isHolding
+            ? getLocalizedText('composerPreparingHold', 'Preparing AIs: $1/$2 ready. Sending is paused; keep typing.', counts)
+            : getLocalizedText('composerPreparingCanSend', '$1/$2 AIs ready. You can send; the rest get the question once they are ready.', counts),
+          names && getLocalizedText('composerWaitingFor', 'Waiting for $1.', [names])
+        ].filter(Boolean).join(' ')
+      });
       return;
     }
     if (summary.notReady.length) {
       wasPreparingPanels = false;
       const names = getReadinessNames(summary.notReady);
-      status.textContent = [
-        getLocalizedText('composerNotReady', '$1/$2 AIs ready. Sending is back on; check sign-in or reload the others.', counts),
-        names && getLocalizedText('composerNotReadyNames', 'Not ready: $1.', [names])
-      ].filter(Boolean).join(' ');
-      row.hidden = isReadyStatusDismissed;
+      getComposerStatusController().setStatus('readiness', {
+        key: 'readiness-not-ready',
+        priority: COMPOSER_STATUS_PRIORITY.READINESS_INFO,
+        text: [
+          getLocalizedText('composerNotReady', '$1/$2 AIs ready. Sending is back on; check sign-in or reload the others.', counts),
+          names && getLocalizedText('composerNotReadyNames', 'Not ready: $1.', [names])
+        ].filter(Boolean).join(' '),
+        autoHideMs: READINESS_NOT_READY_AUTO_HIDE_MS
+      });
       return;
     }
     if (wasPreparingPanels && summary.total > 0) {
       wasPreparingPanels = false;
-      status.textContent = getLocalizedText('composerAllReady', 'All $1 AIs are ready.', [String(summary.total)]);
-      row.hidden = isReadyStatusDismissed;
-      readyStatusHideTimerId = setTimeout(() => { row.hidden = true; }, NEW_CHAT_STATUS_AUTO_HIDE_MS);
+      getComposerStatusController().setStatus('readiness', {
+        key: 'readiness-done',
+        priority: COMPOSER_STATUS_PRIORITY.DONE,
+        text: getLocalizedText('composerAllReady', 'All $1 AIs are ready.', [String(summary.total)]),
+        autoHideMs: NEW_CHAT_STATUS_AUTO_HIDE_MS
+      });
       return;
     }
-    row.hidden = true;
+    getComposerStatusController().clearStatus('readiness');
   }
 
   // Trigger send buttons only (no text injection) - used after Fill
@@ -716,6 +725,7 @@ export function createSendingController({
           promptMode: pendingFilledPanelPromptModes.get(panel.id) ?? normalizePanelPromptMode(panel.promptMode)
         }))
       );
+      getConversationsController().markSendCompleted();
       pendingFilledPromptText = '';
       pendingFilledPanelPromptModes = new Map();
 
@@ -750,9 +760,7 @@ export function createSendingController({
     broadcastMessage,
     get catchUpSends() { return catchUpSends; },
     clearAllInputs,
-    get isReadyStatusDismissed() { return isReadyStatusDismissed; },
-    set isReadyStatusDismissed(value) { isReadyStatusDismissed = value; },
-    get readyStatusHideTimerId() { return readyStatusHideTimerId; },
+    get catchUpSends() { return catchUpSends; },
     renderReadinessStatus,
     resetFillRetryState,
     sendToPanel,

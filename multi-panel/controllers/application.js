@@ -131,6 +131,7 @@ export function createApplicationController({
     getFocusController().focusUnifiedInput({ force: true });
 
     getMessagingController().isInitialized = true;
+    await getMessagingController().handlePendingNewChatRequest();
     await getMessagingController().handlePendingMultiPanelAction();
     document.documentElement.dataset.panelizeReady = 'true';
   }

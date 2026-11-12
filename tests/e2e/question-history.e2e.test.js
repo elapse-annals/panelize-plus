@@ -52,10 +52,14 @@ test.describe('recent question suggestions', () => {
     await expect.poll(sends).toBe(1);
     await expect.poll(async () => {
       const stored = await extension.serviceWorker.evaluate(() => chrome.storage.local.get('questionHistory'));
-      return stored.questionHistory?.[0];
+      return stored.questionHistory?.[0]?.text;
     }).toBe('What is new?');
 
     const stored = await extension.serviceWorker.evaluate(() => chrome.storage.local.get('questionHistory'));
-    expect(stored.questionHistory).toHaveLength(3);
+    expect(stored.questionHistory).toHaveLength(4);
+    expect(stored.questionHistory[0]).toMatchObject({
+      key: 'what is new?',
+      text: 'What is new?'
+    });
   });
 });

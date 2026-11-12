@@ -52,7 +52,7 @@ test('global send reports readiness counts and the AIs still loading', async () 
     await expect(page.locator('#panel-grid iframe')).toHaveCount(2);
     // One panel is ready and Gemini stays loading, so preparing never reaches
     // the 70% send threshold before the test ends.
-    await expect(page.locator('#ai-ready-status')).toContainText('1/2');
+    await expect(page.locator('#composer-status-text')).toContainText('1/2');
 
     await dispatchGlobalSend(extension, 'e2e-progress-1');
 
@@ -102,7 +102,7 @@ test('global send progress omits AI names in blind mode', async () => {
     });
     await expect(page.locator('#panel-grid iframe')).toHaveCount(2);
     await expect(page.locator('body')).toHaveClass(/blind-mode/);
-    await expect(page.locator('#ai-ready-status')).toContainText('1/2');
+    await expect(page.locator('#composer-status-text')).toContainText('1/2');
 
     await dispatchGlobalSend(extension, 'e2e-progress-blind');
 

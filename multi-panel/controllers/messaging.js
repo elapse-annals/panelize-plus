@@ -7,6 +7,8 @@ import {
   GLOBAL_SEND_MAX_PROGRESS_NAMES,
   GLOBAL_SEND_PROGRESS_ACTION,
   GLOBAL_SEND_RESULT_ACTION,
+  NEW_CHAT_ACTION,
+  NEW_CHAT_RESULT_ACTION,
   normalizeGlobalPrompt,
   normalizeGlobalPromptMode,
   normalizeRequestId
@@ -36,8 +38,11 @@ export function createMessagingController({
   getSummaryController
 }) {
   const PENDING_MULTI_PANEL_ACTION_KEY = 'pendingMultiPanelAction';
+  const PENDING_NEW_CHAT_REQUEST_KEY = 'pendingNewChatRequest';
 
   const handledGlobalSendRequestIds = new Set();
+
+  const handledNewChatRequestIds = new Set();
 
   const GLOBAL_SEND_READY_TIMEOUT_MS = PANEL_READY_TIMEOUT_MS + 5000;
 
@@ -187,6 +192,93 @@ export function createMessagingController({
     }
   }
 
+  async function getPendingNewChatRequest() {
+    try {
+      const result = await chrome.storage.session.get(PENDING_NEW_CHAT_REQUEST_KEY);
+      if (result && result[PENDING_NEW_CHAT_REQUEST_KEY]) {
+        return result[PENDING_NEW_CHAT_REQUEST_KEY];
+      }
+    } catch (error) {
+      // Ignore session storage errors
+    }
+
+    try {
+      const result = await chrome.storage.local.get(PENDING_NEW_CHAT_REQUEST_KEY);
+      return result ? result[PENDING_NEW_CHAT_REQUEST_KEY] : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function clearPendingNewChatRequest() {
+    try {
+      await chrome.storage.session.remove(PENDING_NEW_CHAT_REQUEST_KEY);
+    } catch (error) {
+      // Ignore session storage errors
+    }
+
+    try {
+      await chrome.storage.local.remove(PENDING_NEW_CHAT_REQUEST_KEY);
+    } catch (error) {
+      // Ignore local storage errors
+    }
+  }
+
+  function rememberNewChatRequest(requestId) {
+    handledNewChatRequestIds.add(requestId);
+    while (handledNewChatRequestIds.size > 64) {
+      handledNewChatRequestIds.delete(handledNewChatRequestIds.values().next().value);
+    }
+  }
+
+  async function reportNewChatResult(requestId, outcome) {
+    if (!requestId) return;
+    try {
+      await chrome.runtime.sendMessage({
+        action: NEW_CHAT_RESULT_ACTION,
+        payload: {
+          requestId,
+          ok: outcome?.ok === true,
+          ready: Number.isFinite(outcome?.ready) ? outcome.ready : 0,
+          total: Number.isFinite(outcome?.total) ? outcome.total : 0,
+          reason: outcome?.reason || ''
+        }
+      });
+    } catch (error) {
+      // The background may be stopped; the desktop client times out.
+    }
+  }
+
+  /**
+   * A new-chat command from the desktop. Reusing a fresh, untouched reset is
+   * idempotent, so a duplicate pending action or runtime message never resets
+   * the panels twice.
+   */
+  async function handleNewChatAction(payload = {}) {
+    const requestId = normalizeRequestId(payload.requestId);
+    if (!requestId) {
+      return true;
+    }
+    if (handledNewChatRequestIds.has(requestId)) {
+      return true;
+    }
+    rememberNewChatRequest(requestId);
+    const outcome = await getConversationsController().ensureNewChatForSend();
+    await reportNewChatResult(requestId, outcome || { ok: false, reason: 'failed' });
+    return true;
+  }
+
+  async function handlePendingNewChatRequest() {
+    const pendingRequest = await getPendingNewChatRequest();
+    if (!pendingRequest?.requestId) {
+      return;
+    }
+    const handled = await handleNewChatAction(pendingRequest);
+    if (handled) {
+      await clearPendingNewChatRequest();
+    }
+  }
+
   function rememberGlobalSendRequest(requestId) {
     handledGlobalSendRequestIds.add(requestId);
     while (handledGlobalSendRequestIds.size > 64) {
@@ -306,6 +398,11 @@ export function createMessagingController({
     }
 
     getPromptsController().applyPromptToInput(prompt.text);
+    if (payload.newChat === true) {
+      // The extension owns freshness: a reset prepared by the checkbox is
+      // reused without clicking new chat again.
+      await getConversationsController().ensureNewChatForSend();
+    }
     await waitForGlobalSendReady(requestId);
     const promptMode = normalizeGlobalPromptMode(payload.promptMode);
     const outcome = await getSendingController().broadcastMessage(prompt.text, true, { promptMode });
@@ -316,6 +413,10 @@ export function createMessagingController({
   async function handleMultiPanelAction(action, payload = {}) {
     if (action === GLOBAL_SEND_ACTION) {
       return handleGlobalSendAction(payload);
+    }
+
+    if (action === NEW_CHAT_ACTION) {
+      return handleNewChatAction(payload);
     }
 
     if (action === 'openPromptLibrary') {
@@ -360,7 +461,10 @@ export function createMessagingController({
       }
 
       handleMultiPanelAction(message.action, message.payload || {}).then((handled) => {
-        if (handled) {
+        if (!handled) return;
+        if (message.action === NEW_CHAT_ACTION) {
+          clearPendingNewChatRequest();
+        } else {
           clearPendingMultiPanelAction();
         }
       });
@@ -369,6 +473,7 @@ export function createMessagingController({
 
   return {
     handlePendingMultiPanelAction,
+    handlePendingNewChatRequest,
     handleProviderStatusMessage,
     get isInitialized() { return isInitialized; },
     set isInitialized(value) { isInitialized = value; },

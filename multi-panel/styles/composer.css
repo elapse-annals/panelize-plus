@@ -206,27 +206,25 @@
 .shortcut-bubble kbd { color: var(--tooltip-kbd-text); background: var(--tooltip-kbd-bg); border-color: var(--tooltip-kbd-border); }
 .shortcut-hinted { outline: var(--focus-width) solid var(--composer-focus-ring) !important; outline-offset: var(--focus-offset); border-radius: var(--radius-sm); }
 .composer-status, .composer-result-row { font-size: var(--fs-xs); color: var(--composer-muted); }
-/* Floats above the composer so a status never takes height from the input. */
+/* Sits inside the composer below the controls: it never covers the panels or
+   the focus ring, and stays put while a multi-line draft overhangs upward. */
 .composer-result-row {
-  position: absolute;
-  left: 14px;
-  bottom: calc(100% + 6px);
-  z-index: 6;
-  max-width: calc(100% - 28px);
-  padding: 3px 4px 3px 12px;
   display: flex;
-  gap: 10px;
   align-items: center;
-  border: 1px solid var(--composer-edge);
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  box-shadow: var(--shadow-popover);
+  gap: 10px;
+  min-width: 0;
+  padding: 4px 12px 6px;
+  border-top: 1px solid var(--composer-line);
 }
 .composer-result-row[hidden] { display: none; }
-.composer-result-row > #new-chat-status,
-.composer-result-row > #ai-ready-status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Both rows can show at once, e.g. when a new temporary chat reloads panels. */
-#new-chat-status-row:not([hidden]) + #ai-ready-status-row { bottom: calc(100% + 40px); }
+.composer-result-row > #composer-status-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composer-result-row > button { flex: none; }
 .composer-result-close { display: inline-flex; flex: none; padding: 2px; border: none; border-radius: 50%; color: inherit; background: transparent; cursor: pointer; }
 .composer-result-close .material-symbols-outlined { font-size: 16px; }
 .composer-result-close:hover { background: var(--hairline); }

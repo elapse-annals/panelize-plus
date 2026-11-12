@@ -5,8 +5,14 @@ import XCTest
 
 private final class FakeSendBridge: GlobalSendBridge {
     var connectedBrowserBundleIdentifier: String? = "com.example.Browser"
+    var isExtensionConnected = true
+    var supportsNewChat = false
     private var updateHandler: ((BridgeSendUpdate) -> Void)?
     private(set) var submitted: [(text: String, mode: PromptModeChoice)] = []
+    private(set) var newChatFlags: [Bool] = []
+    private(set) var newChatRequestIds: [String] = []
+    private(set) var historySyncRequests = 0
+    private var newChatHandler: ((NewChatUpdate) -> Void)?
 
     func sendPrompt(
         _ text: String,
@@ -18,6 +24,41 @@ private final class FakeSendBridge: GlobalSendBridge {
         return true
     }
 
+    func sendPrompt(
+        _ text: String,
+        promptMode: PromptModeChoice,
+        newChat: Bool,
+        update: @escaping (BridgeSendUpdate) -> Void
+    ) -> Bool {
+        newChatFlags.append(newChat)
+        return sendPrompt(text, promptMode: promptMode, update: update)
+    }
+
+    @discardableResult
+    func requestNewChat(requestId: String, update: @escaping (NewChatUpdate) -> Void) -> Bool {
+        guard supportsNewChat else {
+            update(.failed("not-connected"))
+            return false
+        }
+        newChatRequestIds.append(requestId)
+        newChatHandler = update
+        return true
+    }
+
+    func requestHistorySync(force: Bool) {
+        historySyncRequests += 1
+    }
+
+    func completeNewChat(ok: Bool, ready: Int, total: Int) {
+        guard let requestId = newChatRequestIds.last else { return }
+        newChatHandler?(.succeeded(NewChatOutcome(
+            requestId: requestId,
+            ok: ok,
+            ready: ready,
+            total: total
+        )))
+    }
+
     func emit(_ update: BridgeSendUpdate) {
         updateHandler?(update)
     }
@@ -27,18 +68,28 @@ final class SearchPanelControllerTests: XCTestCase {
     private var bridge: FakeSendBridge!
     private var controller: SearchPanelController!
     private var activations: [String] = []
+    private var defaults: UserDefaults!
+    private var defaultsName: String!
+    private var historyStore: PromptHistoryStore!
+    private var newChatPreference: NewChatPreference!
 
     override func setUp() {
         super.setUp()
         _ = NSApplication.shared
         bridge = FakeSendBridge()
         activations = []
+        defaultsName = "PanelizeSearchPanelTests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: defaultsName)
+        historyStore = PromptHistoryStore(defaults: defaults, key: "history")
+        newChatPreference = NewChatPreference(defaults: defaults, key: "newChat")
         controller = SearchPanelController(
             bridge: bridge,
             activateBrowser: { [weak self] identifier in
                 self?.activations.append(identifier)
                 return true
-            }
+            },
+            historyStore: historyStore,
+            newChatPreference: newChatPreference
         )
     }
 
@@ -47,6 +98,10 @@ final class SearchPanelControllerTests: XCTestCase {
         controller?.window?.close()
         controller = nil
         bridge = nil
+        defaults.removePersistentDomain(forName: defaultsName)
+        defaults = nil
+        historyStore = nil
+        newChatPreference = nil
         super.tearDown()
     }
 
@@ -240,5 +295,186 @@ final class SearchPanelControllerTests: XCTestCase {
 
         bridge.emit(.failed("发送失败"))
         XCTAssertFalse(controller.content.previewLabel.stringValue.hasPrefix("等待："))
+    }
+
+    // MARK: - Two-column history browser
+
+    private func seedHistory(_ texts: [String]) {
+        let now = Date().timeIntervalSince1970 * 1000
+        _ = historyStore.merge(texts.enumerated().map { index, text in
+            PromptHistoryRecord(
+                text: text,
+                createdAtMillis: now - Double(index) * 1000,
+                updatedAtMillis: now - Double(index) * 1000
+            )
+        }, nowMillis: now)
+    }
+
+    private func pressKey(_ keyCode: UInt16, characters: String = "") {
+        guard let event = NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: controller.window?.windowNumber ?? 0,
+            context: nil,
+            characters: characters,
+            charactersIgnoringModifiers: characters,
+            isARepeat: false,
+            keyCode: keyCode
+        ) else {
+            return XCTFail("Could not create a key event")
+        }
+        controller.content.textView.keyDown(with: event)
+    }
+
+    func testArrowUpOnEmptyInputOpensHistoryAndEnterFillsWithoutSending() throws {
+        try requireWindowServer()
+        seedHistory(["First question", "Second question"])
+        controller.show()
+
+        pressKey(126)
+        XCTAssertFalse(controller.content.historyBrowserView.isHidden)
+        XCTAssertEqual(controller.content.historyBrowserView.selectedRecord?.text, "First question")
+
+        pressKey(125)
+        XCTAssertEqual(controller.content.historyBrowserView.selectedRecord?.text, "Second question")
+
+        pressKey(36, characters: "\r")
+        XCTAssertTrue(controller.content.historyBrowserView.isHidden)
+        XCTAssertEqual(controller.content.textView.string, "Second question")
+        XCTAssertTrue(bridge.submitted.isEmpty, "Filling history must not send it")
+    }
+
+    func testArrowUpWithTextPreservesTheUsualInputBehavior() throws {
+        try requireWindowServer()
+        seedHistory(["First question"])
+        controller.show()
+        controller.content.textView.string = "abc"
+
+        pressKey(126)
+        XCTAssertTrue(controller.content.historyBrowserView.isHidden)
+    }
+
+    func testEscapeClosesTheBrowserBeforeThePanelAndTypingDismissesIt() throws {
+        try requireWindowServer()
+        seedHistory(["First question"])
+        controller.show()
+        pressKey(126)
+        XCTAssertFalse(controller.content.historyBrowserView.isHidden)
+
+        pressKey(53)
+        XCTAssertTrue(controller.content.historyBrowserView.isHidden)
+        XCTAssertTrue(controller.window?.isVisible == true, "Esc must not hide the panel while it only closes history")
+
+        pressKey(126)
+        XCTAssertFalse(controller.content.historyBrowserView.isHidden)
+        controller.content.textView.string = "typed"
+        controller.textDidChange(Notification(
+            name: NSText.didChangeNotification,
+            object: controller.content.textView
+        ))
+        XCTAssertTrue(controller.content.historyBrowserView.isHidden)
+    }
+
+    func testLiveHistoryUpdateKeepsTheBrowserVisibleAndSelectionStable() throws {
+        try requireWindowServer()
+        seedHistory(["First question", "Second question"])
+        controller.show()
+        pressKey(126)
+        pressKey(125)
+        XCTAssertEqual(controller.content.historyBrowserView.selectedRecord?.text, "Second question")
+
+        let now = Date().timeIntervalSince1970 * 1000
+        let records = historyStore.loadRecords().map { record in
+            if record.text == "First question" {
+                return PromptHistoryRecord(
+                    text: record.text,
+                    createdAtMillis: record.createdAtMillis,
+                    updatedAtMillis: record.updatedAtMillis,
+                    summary: PromptHistorySummary(
+                        blind: true,
+                        formattedText: "Anonymous model 1: fresh summary",
+                        createdAtMillis: now
+                    )
+                )
+            }
+            return record
+        }
+        controller.historyDidChange(records)
+
+        XCTAssertFalse(controller.content.historyBrowserView.isHidden)
+        XCTAssertEqual(controller.content.historyBrowserView.selectedRecord?.text, "Second question")
+        XCTAssertEqual(controller.content.historyBrowserView.records.count, 2)
+    }
+
+    // MARK: - New chat checkbox
+
+    private func toggleNewChat(on: Bool) {
+        let checkbox = controller.content.newChatCheckbox
+        checkbox.state = on ? .on : .off
+        _ = checkbox.sendAction(checkbox.action, to: checkbox.target)
+    }
+
+    func testCheckingNewChatPersistsAndRequestsImmediatelyWhenSupported() {
+        bridge.supportsNewChat = true
+        toggleNewChat(on: true)
+
+        XCTAssertTrue(newChatPreference.load())
+        XCTAssertEqual(bridge.newChatRequestIds.count, 1)
+        XCTAssertEqual(controller.content.newChatCheckbox.state, .on)
+    }
+
+    func testSendsCarryTheNewChatFlagOnlyWhenEnabledAndSupported() {
+        bridge.supportsNewChat = true
+        toggleNewChat(on: true)
+        controller.content.textView.string = "First round"
+        controller.submit()
+        XCTAssertEqual(bridge.newChatFlags.last, true)
+
+        bridge.emit(.succeeded(SendOutcome(requestId: "request", ok: true, sent: 1, total: 1)))
+
+        bridge.supportsNewChat = false
+        controller.content.textView.string = "Second round"
+        controller.submit()
+        XCTAssertEqual(bridge.newChatFlags.last, false)
+    }
+
+    func testSuccessfulSendMakesTheNextShowPrepareAnotherNewChat() throws {
+        try requireWindowServer()
+        bridge.supportsNewChat = true
+        controller.show()
+        toggleNewChat(on: true)
+        XCTAssertEqual(bridge.newChatRequestIds.count, 1)
+        bridge.completeNewChat(ok: true, ready: 3, total: 3)
+
+        controller.content.textView.string = "Round one"
+        controller.submit()
+        bridge.emit(.succeeded(SendOutcome(requestId: "request", ok: true, sent: 1, total: 1)))
+        controller.hide()
+        controller.show()
+
+        XCTAssertEqual(bridge.newChatRequestIds.count, 2)
+    }
+
+    func testPartialNewChatShowsANonBlockingHintAndSendStillWorks() {
+        bridge.supportsNewChat = true
+        toggleNewChat(on: true)
+        bridge.completeNewChat(ok: false, ready: 1, total: 3)
+        XCTAssertEqual(controller.content.statusLabel.stringValue, "部分 AI 未确认新建会话")
+
+        controller.content.textView.string = "Still send"
+        controller.submit()
+        XCTAssertEqual(bridge.submitted.last?.text, "Still send")
+        XCTAssertEqual(bridge.newChatFlags.last, true)
+    }
+
+    func testShowAndExtensionConnectionRequestHistorySync() throws {
+        try requireWindowServer()
+        controller.show()
+        XCTAssertGreaterThanOrEqual(bridge.historySyncRequests, 1)
+        let previous = bridge.historySyncRequests
+        controller.handleExtensionConnected()
+        XCTAssertGreaterThan(bridge.historySyncRequests, previous)
     }
 }

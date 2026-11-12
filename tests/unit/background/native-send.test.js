@@ -14,7 +14,14 @@ function createFakePort() {
   };
 }
 
-function createBridge({ port = createFakePort(), onSendPrompt = vi.fn(() => Promise.resolve()) } = {}) {
+function createBridge({
+  port = createFakePort(),
+  onSendPrompt = vi.fn(() => Promise.resolve()),
+  onNewChat = vi.fn(() => Promise.resolve()),
+  onHistoryRequest = vi.fn(),
+  onHistoryUpsert = vi.fn(),
+  onDisconnect = vi.fn()
+} = {}) {
   const status = vi.fn();
   const bridge = createNativeSendBridge({
     connectNative: vi.fn(() => port),
@@ -24,10 +31,14 @@ function createBridge({ port = createFakePort(), onSendPrompt = vi.fn(() => Prom
       lastError: null
     },
     onSendPrompt,
+    onNewChat,
+    onHistoryRequest,
+    onHistoryUpsert,
+    onDisconnect,
     onStatus: status,
     now: () => 1000
   });
-  return { bridge, port, status, onSendPrompt };
+  return { bridge, port, status, onSendPrompt, onNewChat, onHistoryRequest, onHistoryUpsert, onDisconnect };
 }
 
 describe('createNativeSendBridge', () => {
@@ -36,9 +47,10 @@ describe('createNativeSendBridge', () => {
 
     expect(bridge.connect()).toBe(true);
     expect(port.postMessage).toHaveBeenCalledWith({
-      protocol: 1,
+      protocol: 2,
       type: 'hello',
-      extensionVersion: '2.60.0'
+      extensionVersion: '2.60.0',
+      capabilities: ['historySync', 'newChat']
     });
     expect(status).toHaveBeenCalledWith({ connected: true, error: '' });
     expect(bridge.isConnected()).toBe(true);
@@ -49,9 +61,9 @@ describe('createNativeSendBridge', () => {
     bridge.connect();
     port.postMessage.mockClear();
 
-    bridge.handleNativeMessage({ protocol: 1, type: 'ping' });
+    bridge.handleNativeMessage({ protocol: 2, type: 'ping' });
 
-    expect(port.postMessage).toHaveBeenCalledWith({ protocol: 1, type: 'pong', at: 1000 });
+    expect(port.postMessage).toHaveBeenCalledWith({ protocol: 2, type: 'pong', at: 1000 });
   });
 
   it('hands off a valid prompt once and completes it from the page result', async () => {
@@ -60,13 +72,13 @@ describe('createNativeSendBridge', () => {
     port.postMessage.mockClear();
 
     bridge.handleNativeMessage({
-      protocol: 1,
+      protocol: 2,
       type: 'sendPrompt',
       requestId: 'request-1',
       text: '  Explain closures  '
     });
     bridge.handleNativeMessage({
-      protocol: 1,
+      protocol: 2,
       type: 'sendPrompt',
       requestId: 'request-1',
       text: 'Explain closures'
@@ -79,7 +91,7 @@ describe('createNativeSendBridge', () => {
       requestId: 'request-1'
     });
     expect(port.postMessage).toHaveBeenCalledWith({
-      protocol: 1,
+      protocol: 2,
       type: 'sendAccepted',
       requestId: 'request-1'
     });
@@ -91,7 +103,7 @@ describe('createNativeSendBridge', () => {
       total: 6
     })).toBe(true);
     expect(port.postMessage).toHaveBeenLastCalledWith({
-      protocol: 1,
+      protocol: 2,
       type: 'sendResult',
       requestId: 'request-1',
       ok: true,
@@ -107,7 +119,7 @@ describe('createNativeSendBridge', () => {
     port.postMessage.mockClear();
 
     bridge.handleNativeMessage({
-      protocol: 1,
+      protocol: 2,
       type: 'sendPrompt',
       requestId: 'mode-1',
       text: 'Explain closures',
@@ -128,7 +140,7 @@ describe('createNativeSendBridge', () => {
     port.postMessage.mockClear();
 
     bridge.handleNativeMessage({
-      protocol: 1,
+      protocol: 2,
       type: 'sendPrompt',
       requestId: 'mode-2',
       text: 'Explain closures',
@@ -204,7 +216,7 @@ describe('createNativeSendBridge', () => {
     };
     expect(bridge.deliverProgress(preparing)).toBe(true);
     expect(port.postMessage).toHaveBeenLastCalledWith({
-      protocol: 1,
+      protocol: 2,
       type: 'sendProgress',
       requestId: 'progress-1',
       stage: 'preparing',
@@ -314,5 +326,152 @@ describe('createNativeSendBridge', () => {
     expect(bridge.isConnected()).toBe(false);
     expect(bridge.connect()).toBe(true);
     expect(secondPort.postMessage).toHaveBeenCalled();
+  });
+
+  it('passes the new-chat flag through to the send handoff', async () => {
+    const { bridge, onSendPrompt } = createBridge();
+    bridge.connect();
+
+    bridge.handleNativeMessage({
+      type: 'sendPrompt',
+      requestId: 'new-chat-send',
+      text: 'Question',
+      newChat: true
+    });
+    await Promise.resolve();
+
+    expect(onSendPrompt).toHaveBeenCalledWith({
+      text: 'Question',
+      requestId: 'new-chat-send',
+      newChat: true
+    });
+  });
+
+  it('handles a new-chat request once and reports its result', async () => {
+    const { bridge, port, onNewChat } = createBridge();
+    bridge.connect();
+    port.postMessage.mockClear();
+
+    bridge.handleNativeMessage({ type: 'newChat', requestId: 'chat-1' });
+    bridge.handleNativeMessage({ type: 'newChat', requestId: 'chat-1' });
+    await Promise.resolve();
+    expect(onNewChat).toHaveBeenCalledTimes(1);
+    expect(onNewChat).toHaveBeenCalledWith({ requestId: 'chat-1' });
+
+    expect(bridge.deliverNewChatResult({
+      requestId: 'chat-1',
+      ok: true,
+      ready: 3,
+      total: 3
+    })).toBe(true);
+    expect(port.postMessage).toHaveBeenLastCalledWith({
+      protocol: 2,
+      type: 'newChatResult',
+      requestId: 'chat-1',
+      ok: true,
+      ready: 3,
+      total: 3,
+      reason: ''
+    });
+
+    // A late or unknown result is ignored.
+    expect(bridge.deliverNewChatResult({ requestId: 'chat-1', ok: true })).toBe(false);
+    expect(bridge.deliverNewChatResult({ requestId: 'unknown', ok: true })).toBe(false);
+  });
+
+  it('answers a repeated new-chat request from its remembered result', async () => {
+    const { bridge, port, onNewChat } = createBridge();
+    bridge.connect();
+    bridge.handleNativeMessage({ type: 'newChat', requestId: 'chat-2' });
+    await Promise.resolve();
+    bridge.deliverNewChatResult({ requestId: 'chat-2', ok: true, ready: 1, total: 1 });
+    port.postMessage.mockClear();
+
+    bridge.handleNativeMessage({ type: 'newChat', requestId: 'chat-2' });
+    expect(onNewChat).toHaveBeenCalledTimes(1);
+    expect(port.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'newChatResult',
+      requestId: 'chat-2'
+    }));
+  });
+
+  it('dispatches history requests and validated upsert batches', async () => {
+    const { bridge, port, onHistoryRequest, onHistoryUpsert } = createBridge();
+    bridge.connect();
+    port.postMessage.mockClear();
+
+    bridge.handleNativeMessage({ type: 'historyRequest' });
+    expect(onHistoryRequest).toHaveBeenCalledTimes(1);
+
+    bridge.handleNativeMessage({
+      type: 'historyUpsert',
+      batchId: 'batch-1',
+      index: 0,
+      total: 1,
+      records: [{
+        key: 'from mac',
+        text: 'From Mac',
+        createdAt: 900,
+        updatedAt: 900
+      }]
+    });
+    await Promise.resolve();
+    expect(onHistoryUpsert).toHaveBeenCalledWith({
+      batchId: 'batch-1',
+      index: 0,
+      total: 1,
+      records: [expect.objectContaining({ text: 'From Mac', key: 'from mac' })]
+    });
+
+    port.postMessage.mockClear();
+    bridge.handleNativeMessage({
+      type: 'historyUpsert',
+      batchId: '',
+      index: 0,
+      total: 1,
+      records: []
+    });
+    expect(onHistoryUpsert).toHaveBeenCalledTimes(1);
+    expect(port.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'error',
+      code: 'invalid-request'
+    }));
+  });
+
+  it('sends history snapshots and updates as chunks', () => {
+    const { bridge, port } = createBridge();
+    bridge.connect();
+    port.postMessage.mockClear();
+
+    const records = Array.from({ length: 51 }, (_, index) => ({
+      key: `q${index}`,
+      text: `question ${index}`,
+      createdAt: 900,
+      updatedAt: 900,
+      summary: null
+    }));
+    expect(bridge.sendHistorySnapshot(records)).toBe(true);
+    expect(port.postMessage).toHaveBeenCalledTimes(2);
+    expect(port.postMessage.mock.calls[0][0]).toMatchObject({
+      type: 'historySnapshot',
+      index: 0,
+      total: 2
+    });
+    expect(port.postMessage.mock.calls[1][0]).toMatchObject({
+      type: 'historySnapshot',
+      index: 1,
+      total: 2
+    });
+
+    port.postMessage.mockClear();
+    expect(bridge.sendHistoryUpsert([])).toBe(true);
+    expect(port.postMessage).not.toHaveBeenCalled();
+  });
+
+  it('notifies when the native port disconnects', () => {
+    const { bridge, port, onDisconnect } = createBridge();
+    bridge.connect();
+    port.disconnect();
+    expect(onDisconnect).toHaveBeenCalledTimes(1);
   });
 });

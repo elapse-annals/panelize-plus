@@ -31,7 +31,7 @@ final class ComposerInteractionTests: XCTestCase {
             hide: {}, submit: { [weak self] in self?.submitted += 1 },
             handleEscape: {}, acceptTriggerCompletion: { false }, cyclePromptMode: { _ in },
             moveHistorySelection: { _ in false }, pickHistorySuggestion: { _ in },
-            applyPromptMode: { _ in }, openBridgeSettings: {}
+            applyPromptMode: { _ in }, toggleNewChat: { _ in }, openBridgeSettings: {}
         ))
     }
 

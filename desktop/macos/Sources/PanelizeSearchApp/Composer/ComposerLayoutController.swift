@@ -51,10 +51,28 @@ final class ComposerLayoutController {
         return composerInputHeight(forTextHeight: textHeight)
     }
 
+    private func desiredHistoryHeight() -> CGFloat {
+        guard !content.historyBrowserView.isHidden else {
+            return content.historyView.contentHeight
+        }
+        guard let screen = window?.screen ?? NSScreen.main else {
+            return composerHistoryBrowserPreferredHeight
+        }
+        let visible = screen.visibleFrame
+        let origin = composerOrigin(visibleFrame: visible, panelSize: composerContentSize)
+        let maxHeight = composerHistoryBrowserMaxHeight(
+            visibleFrame: visible,
+            contentOrigin: origin,
+            cardHeight: composerCardHeight(inputHeight: currentInputHeight),
+            shadowInset: ComposerMetrics.shadowInset
+        )
+        return composerHistoryBrowserHeight(maxAvailable: maxHeight)
+    }
+
     func updateInputHeight(animated: Bool) {
         guard let panel = window else { return }
         let desired = desiredInputHeight()
-        let desiredSuggestion = content.historyView.contentHeight
+        let desiredSuggestion = desiredHistoryHeight()
         historyPanelHeight = desiredSuggestion
         updateHistoryPanelVisibility()
         guard abs(desired - currentInputHeight) > 0.5

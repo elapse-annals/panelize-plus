@@ -14,9 +14,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         PromptModeChoice.applyAutoDefaultMigrationIfNeeded()
-        let bridge = BridgeServer()
+        let historyStore = PromptHistoryStore()
+        let bridge = BridgeServer(historyStore: historyStore)
         self.bridge = bridge
-        panelController = SearchPanelController(bridge: bridge)
+        panelController = SearchPanelController(bridge: bridge, historyStore: historyStore)
         panelController?.onOpenBridgeSettings = {
             BridgeSettingsLauncher.openBridgeSettings()
         }
@@ -27,6 +28,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.connectionReady = status.contains("已连接") && !status.contains("等待扩展")
             self.panelController?.setConnectionStatus(status, ready: self.connectionReady)
             self.refreshMenu()
+        }
+
+        bridge.onHistoryChanged = { [weak self] records in
+            self?.panelController?.historyDidChange(records)
+        }
+
+        bridge.onExtensionConnected = { [weak self] in
+            self?.panelController?.handleExtensionConnected()
         }
 
         do {

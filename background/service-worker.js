@@ -3,7 +3,7 @@ import { notifyMessage } from '../modules/platform/messaging.js';
 import { removeDeprecatedClaudeModelMode } from '../modules/platform/settings.js';
 import { MIMO_SESSION_COOKIE_SYNC_ACTION, isMimoSourceCookieChange } from '../modules/providers/mimo-session-cookies.js';
 import { isDeepSeekConsentCookieChange } from '../modules/providers/consent-cookies.js';
-import { GLOBAL_SEND_PROGRESS_ACTION, GLOBAL_SEND_RESULT_ACTION, NATIVE_SEND_KEEPALIVE_ALARM, isTrustedGlobalSendResultSender } from '../modules/platform/global-send.js';
+import { GLOBAL_SEND_PROGRESS_ACTION, GLOBAL_SEND_RESULT_ACTION, NATIVE_SEND_KEEPALIVE_ALARM, NEW_CHAT_RESULT_ACTION, isTrustedGlobalSendResultSender } from '../modules/platform/global-send.js';
 import {
   GROK_WEBSOCKET_COOKIE_SYNC_ACTION,
   handleGrokTabNavigationComplete,
@@ -17,6 +17,7 @@ import { createSettingsController } from './controllers/settings.js';
 import { createPageActionsController } from './controllers/page-actions.js';
 import { createProviderSessionsController } from './controllers/provider-sessions.js';
 import { createNativeBridgeController } from './controllers/native-bridge.js';
+import { createHistorySyncController } from './controllers/history-sync-controller.js';
 import { createVersionController } from './controllers/version.js';
 
 const settings = createSettingsController();
@@ -29,7 +30,12 @@ const providerSessions = createProviderSessionsController();
 
 const nativeBridge = createNativeBridgeController({
   getPageActionsController: () => pageActions,
+  getHistorySyncController: () => historySync,
   getSettingsController: () => settings
+});
+
+const historySync = createHistorySyncController({
+  getNativeSendBridge: () => nativeBridge.nativeSendBridge
 });
 
 const version = createVersionController();
@@ -59,6 +65,10 @@ chrome.runtime.onStartup.addListener(async () => {
 
 // Listen for settings changes and update context menus
 chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'local') {
+    historySync.handleStorageChange(changes);
+  }
+
   if (changes.language) {
     pageActions.createContextMenus();
   }
@@ -197,6 +207,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const trusted = isTrustedGlobalSendResultSender(sender, chrome.runtime);
     if (trusted) {
       nativeBridge.nativeSendBridge.deliverResult(message.payload || {});
+    }
+    sendResponse({ ok: trusted });
+    return false;
+  }
+
+  if (message.action === NEW_CHAT_RESULT_ACTION) {
+    const trusted = isTrustedGlobalSendResultSender(sender, chrome.runtime);
+    if (trusted) {
+      nativeBridge.nativeSendBridge.deliverNewChatResult(message.payload || {});
     }
     sendResponse({ ok: trusted });
     return false;

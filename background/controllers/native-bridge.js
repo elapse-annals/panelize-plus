@@ -7,6 +7,7 @@ import { createNativeSendBridge } from '../native-send.js';
 
 export function createNativeBridgeController({
   getPageActionsController,
+  getHistorySyncController = () => null,
   getSettingsController
 }) {
   const nativeSendBridge = createNativeSendBridge({
@@ -17,7 +18,13 @@ export function createNativeBridgeController({
     onSendPrompt: async request => {
       await getPageActionsController().handOffGlobalPrompt(request);
       nativeSendBridge.deliverOpened(request.requestId);
-    }
+    },
+    onNewChat: async ({ requestId }) => {
+      await getPageActionsController().handOffNewChat({ requestId });
+    },
+    onHistoryRequest: () => getHistorySyncController()?.handleHistoryRequest(),
+    onHistoryUpsert: batch => getHistorySyncController()?.handleHistoryUpsert(batch),
+    onDisconnect: () => getHistorySyncController()?.reset()
   });
 
   function ensureNativeSendBridge() {

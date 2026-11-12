@@ -1,20 +1,40 @@
 // Protocol shared by the browser extension and the macOS global shortcut app.
-// The native host only carries a prompt request and its outcome; it never
-// receives provider cookies, answers, prompts or any other saved extension data.
+// Besides a prompt request and its outcome, the local bridge carries new-chat
+// control and the last three days of question/summary history. Everything stays
+// between this browser and the Panelize Link app on the same machine.
 
 import { AUTO_PROMPT_MODE, DEFAULT_PROMPT_MODE, PROMPT_MODE_IDS } from '../prompts/prompt-modes.js';
 
 export const NATIVE_SEND_HOST = 'com.panelize.global_sender';
-export const GLOBAL_SEND_PROTOCOL_VERSION = 1;
+export const GLOBAL_SEND_PROTOCOL_VERSION = 2;
 export const GLOBAL_SEND_ACTION = 'sendPromptToAll';
 export const GLOBAL_SEND_RESULT_ACTION = 'globalSendResult';
 export const GLOBAL_SEND_PROGRESS_ACTION = 'globalSendProgress';
+export const NEW_CHAT_ACTION = 'newChatAllProviders';
+export const NEW_CHAT_RESULT_ACTION = 'newChatResult';
 export const GLOBAL_SEND_MAX_TEXT_LENGTH = 8000;
 export const GLOBAL_SEND_MAX_REQUEST_ID_LENGTH = 100;
 export const GLOBAL_SEND_MAX_PROGRESS_NAMES = 24;
 export const GLOBAL_SEND_MAX_PROGRESS_NAME_LENGTH = 60;
 export const NATIVE_SEND_KEEPALIVE_ALARM = 'panelize-native-send-keepalive';
 export const NATIVE_SEND_KEEPALIVE_MINUTES = 1;
+
+// Advertised in the native hello so the desktop client can avoid sending
+// message types an older extension would reject.
+export const NATIVE_CAPABILITIES = Object.freeze(['historySync', 'newChat']);
+
+export const NATIVE_MESSAGE_TYPES = Object.freeze({
+  HELLO: 'hello',
+  PING: 'ping',
+  PONG: 'pong',
+  ERROR: 'error',
+  SEND_PROMPT: 'sendPrompt',
+  HISTORY_REQUEST: 'historyRequest',
+  HISTORY_SNAPSHOT: 'historySnapshot',
+  HISTORY_UPSERT: 'historyUpsert',
+  NEW_CHAT: 'newChat',
+  NEW_CHAT_RESULT: 'newChatResult'
+});
 
 // The desktop client shows progress for one send: the panel page is opening or
 // was reused, the AI panels are getting ready, then the prompt is being sent.
@@ -85,11 +105,12 @@ export function isProtocolMessage(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-export function createNativeHello(extensionVersion) {
+export function createNativeHello(extensionVersion, capabilities = NATIVE_CAPABILITIES) {
   return {
     protocol: GLOBAL_SEND_PROTOCOL_VERSION,
-    type: 'hello',
-    extensionVersion: String(extensionVersion || '')
+    type: NATIVE_MESSAGE_TYPES.HELLO,
+    extensionVersion: String(extensionVersion || ''),
+    capabilities: [...capabilities]
   };
 }
 
@@ -108,6 +129,49 @@ export function createNativeSendAccepted(requestId) {
     protocol: GLOBAL_SEND_PROTOCOL_VERSION,
     type: 'sendAccepted',
     requestId
+  };
+}
+
+export function createNativeHistoryRequest() {
+  return {
+    protocol: GLOBAL_SEND_PROTOCOL_VERSION,
+    type: NATIVE_MESSAGE_TYPES.HISTORY_REQUEST
+  };
+}
+
+export function createNativeHistorySnapshotChunk({ snapshotId, index, total, records }) {
+  return {
+    protocol: GLOBAL_SEND_PROTOCOL_VERSION,
+    type: NATIVE_MESSAGE_TYPES.HISTORY_SNAPSHOT,
+    snapshotId,
+    index,
+    total,
+    records
+  };
+}
+
+export function createNativeHistoryUpsertChunk({ batchId, index, total, records }) {
+  return {
+    protocol: GLOBAL_SEND_PROTOCOL_VERSION,
+    type: NATIVE_MESSAGE_TYPES.HISTORY_UPSERT,
+    batchId,
+    index,
+    total,
+    records
+  };
+}
+
+export function createNativeNewChatResult(payload = {}) {
+  const ready = Number.isFinite(payload.ready) ? Math.max(0, Math.trunc(payload.ready)) : 0;
+  const total = Number.isFinite(payload.total) ? Math.max(0, Math.trunc(payload.total)) : 0;
+  return {
+    protocol: GLOBAL_SEND_PROTOCOL_VERSION,
+    type: NATIVE_MESSAGE_TYPES.NEW_CHAT_RESULT,
+    requestId: normalizeRequestId(payload.requestId) || '',
+    ok: payload.ok === true,
+    ready: total > 0 ? Math.min(ready, total) : ready,
+    total,
+    reason: typeof payload.reason === 'string' ? payload.reason.slice(0, 120) : ''
   };
 }
 
@@ -236,4 +300,24 @@ export function isTrustedGlobalSendResultSender(sender, runtime) {
   } catch (sendError) {
     return false;
   }
+}
+
+/** Reads a new-chat result reported by the Multi-Panel page. */
+export function readNewChatResultPayload(payload) {
+  if (!isProtocolMessage(payload)) {
+    return null;
+  }
+  const requestId = normalizeRequestId(payload.requestId);
+  if (!requestId) {
+    return null;
+  }
+  const ready = Number.isFinite(payload.ready) ? Math.max(0, Math.trunc(payload.ready)) : 0;
+  const total = Number.isFinite(payload.total) ? Math.max(0, Math.trunc(payload.total)) : 0;
+  return {
+    requestId,
+    ok: payload.ok === true,
+    ready: total > 0 ? Math.min(ready, total) : ready,
+    total,
+    reason: typeof payload.reason === 'string' ? payload.reason.slice(0, 120) : ''
+  };
 }

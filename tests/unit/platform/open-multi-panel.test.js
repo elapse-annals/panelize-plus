@@ -158,6 +158,55 @@ describe('openMultiPanelPage', () => {
     });
     expect(chromeApi.windows.update).not.toHaveBeenCalled();
   });
+
+  it('reuses an existing tab without focus in silent mode', async () => {
+    const chromeApi = createChromeApi({
+      tabs: [{ id: 9, windowId: 12, url: MULTI_PANEL_URL }]
+    });
+
+    await openMultiPanelPage(chromeApi, 'tab', { silent: true });
+
+    expect(chromeApi.tabs.update).not.toHaveBeenCalled();
+    expect(chromeApi.windows.update).not.toHaveBeenCalled();
+    expect(chromeApi.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it('opens an inactive tab when silent and none exists', async () => {
+    const chromeApi = createChromeApi();
+
+    await openMultiPanelPage(chromeApi, 'tab', { silent: true });
+
+    expect(chromeApi.tabs.create).toHaveBeenCalledWith({
+      url: MULTI_PANEL_URL,
+      active: false
+    });
+  });
+
+  it('does not focus or create a popup window in silent mode', async () => {
+    const chromeApi = createChromeApi({
+      windows: [{ id: 21, tabs: [{ id: 9, url: MULTI_PANEL_URL }] }],
+      tabs: [{ id: 9, windowId: 21, url: MULTI_PANEL_URL }]
+    });
+
+    await openMultiPanelPage(chromeApi, 'popup', { silent: true });
+
+    expect(chromeApi.windows.getAll).not.toHaveBeenCalled();
+    expect(chromeApi.windows.update).not.toHaveBeenCalled();
+    expect(chromeApi.windows.create).not.toHaveBeenCalled();
+    expect(chromeApi.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it('opens an inactive tab instead of a popup window in silent mode', async () => {
+    const chromeApi = createChromeApi();
+
+    await openMultiPanelPage(chromeApi, 'popup', { silent: true });
+
+    expect(chromeApi.windows.create).not.toHaveBeenCalled();
+    expect(chromeApi.tabs.create).toHaveBeenCalledWith({
+      url: MULTI_PANEL_URL,
+      active: false
+    });
+  });
 });
 
 function createStorage(initial = {}) {

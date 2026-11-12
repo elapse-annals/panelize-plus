@@ -29,14 +29,14 @@ The following data is stored in browser-managed storage. Prompt library data rem
 **Purpose:** To compare provider response speed, adopted answers and scores in the Answer stats dialog. Only these counts and times are kept, never what you clicked or read. Stored only in this browser profile; you can export or clear it there.
 
 #### Recent Questions
-- The last three complete questions you successfully sent, newest first
+- The complete questions you successfully sent during the last three days, newest first, with their sent time
 
-**Purpose:** To suggest a matching question above the composer while you type. Stored only in this browser profile (`chrome.storage.local`) and never synced. The optional macOS client keeps its own last three questions in the app's local preferences; they are not shared with the extension.
+**Purpose:** To suggest a matching question above the composer while you type, and to offer the three-day history in the optional macOS client. Stored in this browser profile (`chrome.storage.local`) and, only when you enable the local native bridge, mirrored to the Panelize Link app on the same Mac over Native Messaging. It is never uploaded to a server.
 
 #### AI Summary Cache
-- Up to three recent AI summaries of identical questions, with the question, model, API base URL, UI language, panel positions and creation time (never the API key)
+- AI summaries generated for identical questions during the last three days, with the question, model, API base URL, UI language, panel positions and creation time (never the API key)
 
-**Purpose:** To reuse a summary for the same question within three days instead of calling the summary API again. Stored only in this browser profile; use **Summarize again** to refresh a cached summary.
+**Purpose:** To reuse a summary for the same question within three days instead of calling the summary API again, and to show it in the macOS client's history browser. Only the precomputed summary text and its blind-mode flag cross the local native bridge; API endpoints, model names and provider IDs stay in the browser. Stored only in this browser profile; use **Summarize again** to refresh a cached summary.
 
 #### User Preferences and Settings
 - Selected theme (Light/Dark/Auto)
@@ -132,6 +132,8 @@ Data is retained locally until you:
 - Clear browser data (which removes all extension data)
 - Uninstall the extension
 
+Question history and AI summaries older than three days are pruned automatically on the next read, write or sync.
+
 ---
 
 ## Your Data Control Rights
@@ -179,7 +181,7 @@ Panelize Plus requests the following Chrome extension permissions:
 | `declarativeNetRequest` | Allow AI provider websites to load in embedded panels (bypass X-Frame-Options) |
 | `declarativeNetRequestWithHostAccess` | Apply header modifications for specific AI provider domains |
 | `browsingData` | Remove only Perplexity's service worker before a Perplexity panel loads, because it would block the panel; cookies and sign-ins are not touched |
-| `nativeMessaging` | Connect locally to the optional macOS global-input client, and only after you enable the bridge in Settings; it carries the prompt you type in that client and nothing else |
+| `nativeMessaging` | Connect locally to the optional macOS global-input client, and only after you enable the bridge in Settings; it carries prompts, new-chat commands and the last three days of question/AI-summary history between this browser and Panelize Link on the same Mac, and never uploads them to a server |
 | `alarms` | Reconnect the optional macOS global-input bridge after its native host restarts; no alarm runs while the bridge is off |
 | Host permissions | Access the built-in AI provider websites and check for updates on GitHub |
 | Optional host permissions | Access additional providers only after you enable them and approve the provider-specific browser prompt |

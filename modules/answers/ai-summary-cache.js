@@ -1,13 +1,15 @@
 // Local cache of AI summaries keyed by the question text. A cached summary is
 // reused for an identical question within three days; the drawer labels it and
-// the existing "Summarize again" button bypasses the cache.
+// the existing "Summarize again" button bypasses the cache. Every summary from
+// the last three days is kept so the desktop client can show it in its history
+// browser.
 
 import { hasSummaryContent, normalizeChatCompletionsUrl } from './ai-summary.js';
 
 export const AI_SUMMARY_CACHE_STORAGE_KEY = 'aiSummaryCache';
-export const AI_SUMMARY_CACHE_MAX_ENTRIES = 3;
 export const AI_SUMMARY_CACHE_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 export const AI_SUMMARY_CACHE_VERSION = 1;
+export const AI_SUMMARY_MAX_FORMATTED_TEXT_LENGTH = 200000;
 
 export function normalizeCacheQuestion(text) {
   return typeof text === 'string' ? text.replace(/\r\n?/g, '\n').trim() : '';
@@ -52,7 +54,7 @@ export function isAiSummaryCacheEntryValid(entry) {
   );
 }
 
-/** Valid, unexpired entries, newest question first, at most three. */
+/** Valid, unexpired entries, newest first, with one entry per question. */
 export function readAiSummaryCache(value, now = Date.now(), ttl = AI_SUMMARY_CACHE_TTL_MS) {
   if (!Array.isArray(value)) return [];
   const entries = [];
@@ -61,7 +63,6 @@ export function readAiSummaryCache(value, now = Date.now(), ttl = AI_SUMMARY_CAC
     const question = normalizeCacheQuestion(entry.question);
     if (entries.some(existing => normalizeCacheQuestion(existing.question) === question)) continue;
     entries.push(entry);
-    if (entries.length >= AI_SUMMARY_CACHE_MAX_ENTRIES) break;
   }
   return entries;
 }
@@ -73,6 +74,8 @@ export function createAiSummaryCacheEntry({
   panels,
   sources,
   summary,
+  blind = false,
+  formattedText = '',
   now = Date.now()
 }) {
   return {
@@ -86,6 +89,12 @@ export function createAiSummaryCacheEntry({
       .map(source => Number(source?.position))
       .filter(position => Number.isFinite(position)),
     summary,
+    // Blind mode is recorded at generation time so the synced copy never has
+    // to re-derive provider labels from the panel list.
+    blind: blind === true,
+    formattedText: typeof formattedText === 'string'
+      ? formattedText.slice(0, AI_SUMMARY_MAX_FORMATTED_TEXT_LENGTH)
+      : '',
     createdAt: now
   };
 }
@@ -112,17 +121,16 @@ export function matchAiSummaryCache(entries, query, { now = Date.now(), ttl = AI
   )) || null;
 }
 
-/** Puts the newest summary for a question first, keeping at most three. */
+/** Puts the newest summary for a question first, keeping every fresh question. */
 export function upsertAiSummaryCache(
   entries,
   entry,
-  { now = Date.now(), ttl = AI_SUMMARY_CACHE_TTL_MS, max = AI_SUMMARY_CACHE_MAX_ENTRIES } = {}
+  { now = Date.now(), ttl = AI_SUMMARY_CACHE_TTL_MS } = {}
 ) {
   const current = readAiSummaryCache(entries, now, ttl);
   if (!isAiSummaryCacheEntryValid(entry) || !isAiSummaryCacheEntryFresh(entry, now, ttl)) return current;
   const question = normalizeCacheQuestion(entry.question);
-  return [entry, ...current.filter(existing => normalizeCacheQuestion(existing.question) !== question)]
-    .slice(0, max);
+  return [entry, ...current.filter(existing => normalizeCacheQuestion(existing.question) !== question)];
 }
 
 function defaultStorage() {

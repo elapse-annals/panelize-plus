@@ -211,7 +211,7 @@ test.describe('Composer controls browser fixtures', () => {
       const chatgptFrame = page.frameLocator('iframe[src*="chatgpt.com"]');
       await chatgptFrame.locator('[data-composer-markdown]').press(`${primaryKey}+Shift+Q`);
       await expect.poll(async () => (await readFixture(page, 'https://chatgpt.com/'))?.newChats).toBe(1);
-      await expect(page.locator('#new-chat-status')).not.toContainText(/starting/i);
+      await expect(page.locator('#composer-status-text')).not.toContainText(/starting/i);
 
       const deepseekFrame = page.frameLocator('iframe[src*="chat.deepseek.com"]');
       await deepseekFrame.locator('textarea').press(`${primaryKey}+Shift+5`);
@@ -282,7 +282,7 @@ test.describe('Composer controls browser fixtures', () => {
       await expect.poll(async () => (await readFixture(pageWithBothSupported, 'https://chatgpt.com/'))?.newChats).toBe(1);
       await expect.poll(async () => (await readFixture(pageWithBothSupported, 'https://chat.deepseek.com/'))?.newChats).toBe(1);
       await expect(pageWithBothSupported.locator('#retry-new-chat-btn')).toBeVisible({ timeout: 20000 });
-      await expect(pageWithBothSupported.locator('#new-chat-status')).toContainText(/not confirmed/i);
+      await expect(pageWithBothSupported.locator('#composer-status-text')).toContainText(/not confirmed/i);
       await expect(pageWithBothSupported.locator('#unified-input')).toHaveValue('Retain my draft after new chat');
       await expect(pageWithBothSupported.locator('.image-preview-item')).toHaveCount(1);
       await expect.poll(async () => (await readFixture(pageWithBothSupported, 'https://chatgpt.com/'))?.model).toBe('High');

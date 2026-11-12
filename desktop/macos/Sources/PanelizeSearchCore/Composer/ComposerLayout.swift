@@ -19,6 +19,12 @@ public let composerHistoryHeaderGap: CGFloat = 4
 public let composerHistoryPanelPadding: CGFloat = 6
 public let composerHistoryPanelOverlap: CGFloat = 6
 
+// The two-column history browser shown by ArrowUp on an empty input. Its
+// preferred height shrinks when the screen has no room above the composer.
+public let composerHistoryBrowserPreferredHeight: CGFloat = 336
+public let composerHistoryBrowserMinimumHeight: CGFloat = 160
+public let composerHistoryBrowserTopMargin: CGFloat = 12
+
 public func composerInputHeight(forTextHeight textHeight: CGFloat) -> CGFloat {
     min(max(ceil(textHeight), composerBaseInputHeight), composerMaxInputHeight)
 }
@@ -61,4 +67,28 @@ public func composerWindowOrigin(
 ) -> CGPoint {
     let content = composerOrigin(visibleFrame: visibleFrame, panelSize: contentSize)
     return CGPoint(x: content.x - shadowInset, y: content.y - shadowInset)
+}
+
+/// The tallest history browser the screen can show without moving the card or
+/// letting the window's top edge leave the visible frame.
+public func composerHistoryBrowserMaxHeight(
+    visibleFrame: CGRect,
+    contentOrigin: CGPoint,
+    cardHeight: CGFloat,
+    shadowInset: CGFloat,
+    topMargin: CGFloat = composerHistoryBrowserTopMargin
+) -> CGFloat {
+    let maxContentHeight = visibleFrame.maxY - topMargin - shadowInset - contentOrigin.y
+    let visibleHistory = maxContentHeight - cardHeight
+    return max(0, visibleHistory + composerHistoryPanelOverlap)
+}
+
+/// Prefers the designed height but shrinks (down to zero) on a small screen.
+public func composerHistoryBrowserHeight(
+    maxAvailable: CGFloat,
+    preferred: CGFloat = composerHistoryBrowserPreferredHeight,
+    minimum: CGFloat = composerHistoryBrowserMinimumHeight
+) -> CGFloat {
+    guard maxAvailable > 0 else { return 0 }
+    return max(0, min(max(preferred, minimum), maxAvailable))
 }

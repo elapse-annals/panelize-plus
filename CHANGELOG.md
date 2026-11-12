@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.94.0 - 2026-11-12
+- New-chat and AI readiness notices now sit in a single compact status line at the bottom of the composer instead of floating over the AI panels, so they no longer cover page content or the composer focus ring.
+- Only the highest-priority notice shows at once: starting new conversations or a blocking AI preparation wins, then new-chat failures with "Retry unsuccessful", then non-blocking progress or partial-not-ready feedback, then completion feedback.
+- Partial-not-ready feedback now closes itself after 7 seconds; completion feedback still closes after 4 seconds; new-chat failures stay until retried or dismissed. Long text stays on one line with an ellipsis and the full message on hover, and blind mode still hides AI names.
+
+## 2.93.0 - 2026-11-12
+- Question history and AI summaries now stay for three days instead of three items. The extension keeps every question and summary from the last 72 hours, prunes older records on read/write/sync, and the macOS client mirrors the same history over the local native bridge (with blind-mode summaries staying anonymous).
+- Panelize Link: on an empty input, press `↑` to open a two-column history browser above the composer. The left column lists the last three days of questions with relative times and summary status; the right column shows the selected AI summary with selectable text, a copy button and a "暂无总结" state. `↑`/`↓` switch rows, `Enter`, double-click or "填入提问" fill the question without sending, `Esc` closes only the browser first, and typing dismisses it.
+- Panelize Link: added a persistent "新建会话" checkbox. Checking it silently prepares fresh conversations for every AI without bringing Chrome forward or stealing composer focus; the extension only resets again when a send follows a previous round, and a send that races an in-flight reset waits for it instead of dropping the message.
+- The native bridge protocol is now v2 with capability negotiation: history sync and new-chat commands are only sent to extensions that advertise support, while older extensions keep working for plain sends.
+- Updated `PRIVACY.md` and the macOS READMEs to describe the local three-day history sync and new-chat control.
+
 ## 2.92.1 - 2026-11-09
 - Fixed 1xN layouts wrapping a fifteenth panel into an implicit second row: single-row grids now keep overflow panels in horizontal columns, and adding, cloning, removing or asynchronously restoring panels refreshes the wide-mode column template, resize handles and edge buttons for fixed 1xN layouts too.
 

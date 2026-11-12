@@ -7,6 +7,7 @@ import { isAnyModalOpen, isFocusInOpenModal, isModalOpen } from './ui.js';
 
 export function createComposerController({
   getAttachmentsController,
+  getComposerStatusController,
   getConversationsController,
   getFocusController,
   getLayoutController,
@@ -108,14 +109,8 @@ export function createComposerController({
     composerNewChatBtn.addEventListener('mousedown', preserveNewChatButtonFocus);
     composerNewChatBtn.addEventListener('click', () => getConversationsController().newChatAllProviders());
     document.getElementById('retry-new-chat-btn').addEventListener('click', () => getConversationsController().newChatAllProviders({ retryFailed: true }));
-    document.getElementById('dismiss-new-chat-status-btn').addEventListener('click', () => {
-      clearTimeout(getConversationsController().newChatStatusHideTimerId);
-      document.getElementById('new-chat-status-row').hidden = true;
-    });
-    document.getElementById('dismiss-ai-ready-status-btn').addEventListener('click', () => {
-      clearTimeout(getSendingController().readyStatusHideTimerId);
-      getSendingController().isReadyStatusDismissed = true;
-      document.getElementById('ai-ready-status-row').hidden = true;
+    document.getElementById('dismiss-composer-status-btn').addEventListener('click', () => {
+      getComposerStatusController().dismiss();
     });
 
     // Temporary Chat button

@@ -54,7 +54,7 @@ describe('native send results', () => {
       total: 5,
       reason: ''
     })).toEqual({
-      protocol: 1,
+      protocol: 2,
       type: 'sendResult',
       requestId: 'request-1',
       ok: true,
@@ -92,7 +92,7 @@ describe('native send progress', () => {
       timedOutNames: [],
       blind: false
     })).toEqual({
-      protocol: 1,
+      protocol: 2,
       type: 'sendProgress',
       requestId: 'request-1',
       stage: 'preparing',

@@ -66,7 +66,27 @@ describe('createAiSummaryCacheEntry', () => {
     expect(entry.panels).toEqual(PANELS);
     expect(entry.sourcePositions).toEqual([1, 2]);
     expect(entry.createdAt).toBe(NOW);
+    expect(entry.blind).toBe(false);
+    expect(entry.formattedText).toBe('');
     expect(isAiSummaryCacheEntryValid(entry)).toBe(true);
+  });
+
+  it('records blind mode and the precomputed plain text', () => {
+    const entry = createEntry({
+      blind: true,
+      formattedText: 'Verdict: Anonymous model 1 agrees.'
+    });
+    expect(entry.blind).toBe(true);
+    expect(entry.formattedText).toBe('Verdict: Anonymous model 1 agrees.');
+    expect(isAiSummaryCacheEntryValid(entry)).toBe(true);
+  });
+
+  it('keeps legacy entries without the new fields valid', () => {
+    const { blind, formattedText, ...legacy } = createEntry();
+    expect(blind).toBe(false);
+    expect(formattedText).toBe('');
+    expect(isAiSummaryCacheEntryValid(legacy)).toBe(true);
+    expect(readAiSummaryCache([legacy], NOW)).toEqual([legacy]);
   });
 
   it('rejects entries without summary content or panels', () => {
@@ -122,7 +142,7 @@ describe('matchAiSummaryCache', () => {
 });
 
 describe('upsertAiSummaryCache', () => {
-  it('keeps the newest summary per question and at most three questions', () => {
+  it('keeps the newest summary per question without a count cap', () => {
     const first = createEntry({ question: 'one', now: NOW - 3000 });
     const second = createEntry({ question: 'two', now: NOW - 2000 });
     const third = createEntry({ question: 'three', now: NOW - 1000 });
@@ -134,7 +154,15 @@ describe('upsertAiSummaryCache', () => {
     entries = upsertAiSummaryCache(entries, createEntry({ question: 'four', now: NOW }), { now: NOW });
 
     // Same question after trimming is replaced, not duplicated.
-    expect(entries.map(entry => entry.question)).toEqual(['four', 'one', 'three']);
+    expect(entries.map(entry => entry.question)).toEqual(['four', 'one', 'three', 'two']);
+  });
+
+  it('reads every fresh entry inside the three-day window', () => {
+    const entries = Array.from({ length: 10 }, (_, index) => createEntry({
+      question: `question ${index}`,
+      now: NOW - index * 1000
+    }));
+    expect(readAiSummaryCache(entries, NOW)).toHaveLength(10);
   });
 
   it('drops expired entries', () => {

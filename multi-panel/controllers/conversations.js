@@ -5,13 +5,23 @@
 import { getProviderById } from '../../modules/providers/providers.js';
 import { getGoogleProviderUrl } from '../../modules/providers/google-mode.js';
 import { runNewChatBatch } from '../../modules/panels/new-chat-actions.js';
+import {
+  clearFreshChat,
+  createFreshChatState,
+  isFreshChatUsable,
+  markFreshChatCompleted,
+  markSendCompleted as markFreshChatSendCompleted
+} from '../../modules/panels/new-chat-freshness.js';
+import { COMPOSER_STATUS_PRIORITY } from './composer-status.js';
 import { getLocalizedText, isGoogleProvider, showToast } from './ui.js';
 
 export function createConversationsController({
   getAnswersController,
   getComposerController,
+  getComposerStatusController,
   getFocusController,
   getPanelsController,
+  getPresentationController,
   getProviderControlsController,
   getSendingController
 }) {
@@ -27,11 +37,13 @@ export function createConversationsController({
 
   let isNewChatBusy = false;
 
+  let newChatPromise = null;
+
+  const freshChatState = createFreshChatState();
+
   let failedNewChatPanelIds = new Set();
 
   const newChatResults = new Map();
-
-  let newChatStatusHideTimerId = null;
 
   const TEMP_CHAT_RETRY_DELAYS = [1200, 2500, 4000];
 
@@ -228,24 +240,50 @@ export function createConversationsController({
     }
   }
 
-  async function newChatAllProviders({ retryFailed = false } = {}) {
-    if (isNewChatBusy || getSendingController().broadcastGate.isActive() || getComposerController().composerControls?.isTierBusy()) return;
+  async function newChatAllProviders(options = {}) {
+    if (isNewChatBusy) {
+      return newChatPromise || {
+        ok: false,
+        ready: 0,
+        total: getPanelsController().panels.length,
+        reason: 'busy'
+      };
+    }
+    if (getSendingController().broadcastGate.isActive() || getComposerController().composerControls?.isTierBusy()) {
+      return {
+        ok: false,
+        ready: 0,
+        total: getPanelsController().panels.length,
+        reason: 'busy'
+      };
+    }
+    const promise = runNewChatAllProviders(options);
+    newChatPromise = promise;
+    try {
+      return await promise;
+    } finally {
+      if (newChatPromise === promise) newChatPromise = null;
+    }
+  }
+
+  async function runNewChatAllProviders({ retryFailed = false } = {}) {
     const targetPanels = getPanelsController().panels.filter(panel => !retryFailed || failedNewChatPanelIds.has(panel.id))
       .map(({ id, providerId, iframe }) => ({ id, providerId, iframe }));
-    if (!targetPanels.length) return;
+    if (!targetPanels.length) {
+      return { ok: false, ready: 0, total: 0, reason: 'no-panels' };
+    }
     isNewChatBusy = true;
+    let outcome = { ok: false, ready: 0, total: targetPanels.length, reason: 'failed' };
     getSendingController().catchUpSends.clear();
     getSendingController().updateSendHold();
     setTemporaryChatButtonDisabled(true);
     const buttons = ['new-chat-btn', 'composer-new-chat-btn', 'retry-new-chat-btn'].map(id => document.getElementById(id));
     buttons.forEach(button => { button.disabled = true; });
-    const row = document.getElementById('new-chat-status-row');
-    const status = document.getElementById('new-chat-status');
-    const retry = document.getElementById('retry-new-chat-btn');
-    clearTimeout(newChatStatusHideTimerId);
-    row.hidden = false;
-    status.textContent = getLocalizedText('composerStartingChatsHold', 'Starting new conversations… Sending is paused; keep typing.');
-    retry.hidden = true;
+    getComposerStatusController().setStatus('new-chat', {
+      key: 'new-chat-hold',
+      priority: COMPOSER_STATUS_PRIORITY.NEW_CHAT_HOLD,
+      text: getLocalizedText('composerStartingChatsHold', 'Starting new conversations… Sending is paused; keep typing.')
+    });
     if (!retryFailed) {
       failedNewChatPanelIds.clear();
       newChatResults.clear();
@@ -288,18 +326,52 @@ export function createConversationsController({
         if (result.ok) failedNewChatPanelIds.delete(result.panelId);
         else failedNewChatPanelIds.add(result.panelId);
       });
-      const failedNames = getPanelsController().panels.filter(panel => failedNewChatPanelIds.has(panel.id)).map(panel => getProviderById(panel.providerId)?.name || panel.providerId);
+      // Display names keep blind mode anonymous while still naming failures.
+      const failedNames = getPanelsController().panels
+        .filter(panel => failedNewChatPanelIds.has(panel.id))
+        .map(panel => getPresentationController().getPanelDisplayName(panel));
       const confirmedCount = getPanelsController().panels.filter(panel => {
         const result = newChatResults.get(panel.id);
         return result?.provider === panel.providerId && result.ok;
       }).length;
-      status.textContent = failedNames.length
-        ? getLocalizedText('composerNewChatsPartial', '$1 confirmed; not confirmed: $2', [String(confirmedCount), failedNames.join(', ')])
-        : getLocalizedText('composerNewChatsDone', '$1 new conversations ready', [String(confirmedCount)]);
-      retry.hidden = failedNames.length === 0;
       // A full success needs no action; failures stay until retried or dismissed.
-      if (!failedNames.length) newChatStatusHideTimerId = setTimeout(() => { row.hidden = true; }, getSendingController().NEW_CHAT_STATUS_AUTO_HIDE_MS);
+      getComposerStatusController().setStatus('new-chat', failedNames.length
+        ? {
+          key: 'new-chat-failure',
+          priority: COMPOSER_STATUS_PRIORITY.NEW_CHAT_FAILURE,
+          text: getLocalizedText('composerNewChatsPartial', '$1 confirmed; not confirmed: $2', [String(confirmedCount), failedNames.join(', ')]),
+          showRetry: true
+        }
+        : {
+          key: 'new-chat-done',
+          priority: COMPOSER_STATUS_PRIORITY.DONE,
+          text: getLocalizedText('composerNewChatsDone', '$1 new conversations ready', [String(confirmedCount)]),
+          autoHideMs: getSendingController().NEW_CHAT_STATUS_AUTO_HIDE_MS
+        });
       const successful = targetPanels.filter(panel => currentResults.some(result => result.panelId === panel.id && result.ok));
+      // Only a fully confirmed reset is reusable by the next send.
+      const allPanelResults = getPanelsController().panels.map(panel => (
+        newChatResults.get(panel.id) || { ok: false }
+      ));
+      if (!failedNames.length && markFreshChatCompleted(freshChatState, {
+        panels: getPanelsController().panels,
+        results: allPanelResults
+      })) {
+        outcome = {
+          ok: true,
+          ready: confirmedCount,
+          total: getPanelsController().panels.length,
+          reason: ''
+        };
+      } else {
+        clearFreshChat(freshChatState);
+        outcome = {
+          ok: false,
+          ready: confirmedCount,
+          total: getPanelsController().panels.length,
+          reason: failedNames.length ? 'partial' : 'failed'
+        };
+      }
       // Clear answer attribution only after the provider confirmed a fresh chat.
       if (successful.length) {
         successful.forEach(target => {
@@ -311,11 +383,22 @@ export function createConversationsController({
         await getComposerController().composerControls?.restoreTier(successful);
       }
     } catch (error) {
-      status.textContent = getLocalizedText('composerNotConfirmed', 'Not confirmed');
+      clearFreshChat(freshChatState);
+      outcome = {
+        ok: false,
+        ready: 0,
+        total: getPanelsController().panels.length,
+        reason: 'failed'
+      };
       targetPanels.forEach(panel => {
         if (getPanelsController().findCurrentPanel(panel)) failedNewChatPanelIds.add(panel.id);
       });
-      retry.hidden = false;
+      getComposerStatusController().setStatus('new-chat', {
+        key: 'new-chat-failure',
+        priority: COMPOSER_STATUS_PRIORITY.NEW_CHAT_FAILURE,
+        text: getLocalizedText('composerNotConfirmed', 'Not confirmed'),
+        showRetry: true
+      });
     } finally {
       isNewChatBusy = false;
       getFocusController().finishNewChatFocusRestore(requestId);
@@ -323,6 +406,49 @@ export function createConversationsController({
       buttons.forEach(button => { button.disabled = false; });
       setTemporaryChatButtonDisabled(false);
     }
+    return outcome;
+  }
+
+  function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Guarantees fresh conversations before a Mac-originated send. A reset that
+   * just completed (and has not been used) is reused; an in-flight reset is
+   * awaited; a partial reset retries only the failed panels.
+   */
+  async function ensureNewChatForSend() {
+    const panels = getPanelsController().panels;
+    if (isFreshChatUsable(freshChatState, panels)) {
+      return { ok: true, ready: panels.length, total: panels.length, skipped: true };
+    }
+
+    if (newChatPromise) {
+      const pendingResult = await newChatPromise.catch(() => null);
+      if (isFreshChatUsable(freshChatState, getPanelsController().panels)) {
+        return { ...(pendingResult || {}), ok: true, skipped: true };
+      }
+      if (pendingResult?.reason === 'partial') {
+        return newChatAllProviders({ retryFailed: true });
+      }
+    }
+
+    if (isNewChatBusy) {
+      const deadline = Date.now() + 30 * 1000;
+      while (isNewChatBusy && Date.now() < deadline) {
+        await wait(100);
+      }
+      if (isFreshChatUsable(freshChatState, getPanelsController().panels)) {
+        return { ok: true, ready: panels.length, total: panels.length, skipped: true };
+      }
+    }
+
+    return newChatAllProviders();
+  }
+
+  function markSendCompleted() {
+    markFreshChatSendCompleted(freshChatState);
   }
 
   function scheduleTemporaryChatRetry(panel, delay) {
@@ -382,14 +508,16 @@ export function createConversationsController({
   return {
     clearTemporaryChatRetriesForPanel,
     ensureFreshChat,
+    ensureNewChatForSend,
     get failedNewChatPanelIds() { return failedNewChatPanelIds; },
     getTemporaryChatUrl,
+    get isFreshChatReady() { return isFreshChatUsable(freshChatState, getPanelsController().panels); },
     get isNewChatBusy() { return isNewChatBusy; },
     get isTemporaryChatModeEnabled() { return isTemporaryChatModeEnabled; },
     isUrlDrivenTemporaryChatProvider,
+    markSendCompleted,
     newChatAllProviders,
     get newChatResults() { return newChatResults; },
-    get newChatStatusHideTimerId() { return newChatStatusHideTimerId; },
     requiresTemporaryChatActivationRetry,
     startTemporaryChatActivationForPanel,
     get tempChatPendingPanelIds() { return tempChatPendingPanelIds; },

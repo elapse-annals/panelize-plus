@@ -10,7 +10,8 @@ export function createQuestionHistoryController({
   getPromptsController
 }) {
   // Recently sent questions, newest first; offered above the input when the
-  // draft is a prefix of one. Stored locally, never synced.
+  // draft is a prefix of one. Stored locally for three days and mirrored to the
+  // macOS client only when the local native bridge is enabled.
   let questionHistoryEntries = [];
 
   let questionHistoryMatches = [];

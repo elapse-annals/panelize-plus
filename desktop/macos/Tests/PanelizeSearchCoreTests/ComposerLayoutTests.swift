@@ -121,4 +121,54 @@ final class ComposerLayoutTests: XCTestCase {
 
         XCTAssertTrue(visible.contains(card))
     }
+
+    func testHistoryBrowserUsesPreferredHeightWhenThereIsRoom() {
+        let visible = CGRect(x: 0, y: 0, width: 1440, height: 875)
+        let contentOrigin = composerOrigin(
+            visibleFrame: visible,
+            panelSize: CGSize(width: 680, height: 180)
+        )
+        let maxHeight = composerHistoryBrowserMaxHeight(
+            visibleFrame: visible,
+            contentOrigin: contentOrigin,
+            cardHeight: composerCardHeight(inputHeight: 74),
+            shadowInset: 28
+        )
+        XCTAssertGreaterThan(maxHeight, composerHistoryBrowserPreferredHeight)
+        XCTAssertEqual(
+            composerHistoryBrowserHeight(maxAvailable: maxHeight),
+            composerHistoryBrowserPreferredHeight
+        )
+    }
+
+    func testHistoryBrowserShrinksBelowItsMinimumOnASmallScreen() {
+        let visible = CGRect(x: 0, y: 0, width: 1440, height: 300)
+        let contentOrigin = composerOrigin(
+            visibleFrame: visible,
+            panelSize: CGSize(width: 680, height: 180)
+        )
+        let maxHeight = composerHistoryBrowserMaxHeight(
+            visibleFrame: visible,
+            contentOrigin: contentOrigin,
+            cardHeight: composerCardHeight(inputHeight: 74),
+            shadowInset: 28
+        )
+        XCTAssertLessThan(maxHeight, composerHistoryBrowserMinimumHeight)
+        let height = composerHistoryBrowserHeight(maxAvailable: maxHeight)
+        XCTAssertEqual(height, maxHeight, accuracy: 0.001)
+
+        // The card stays bottom-anchored and the window never leaves the screen.
+        let contentHeight = composerContentHeight(inputHeight: 74, suggestionHeight: height)
+        let origin = composerWindowOrigin(
+            visibleFrame: visible,
+            contentSize: CGSize(width: 680, height: contentHeight),
+            shadowInset: 28
+        )
+        XCTAssertLessThanOrEqual(origin.y + contentHeight + 28, visible.maxY + 0.001)
+    }
+
+    func testHistoryBrowserHeightIsZeroWithoutRoom() {
+        XCTAssertEqual(composerHistoryBrowserHeight(maxAvailable: 0), 0)
+        XCTAssertEqual(composerHistoryBrowserHeight(maxAvailable: -20), 0)
+    }
 }
