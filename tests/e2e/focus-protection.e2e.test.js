@@ -145,6 +145,21 @@ test.describe('Focus protection E2E', () => {
     expect(await activeElementLabel()).toBe('IFRAME');
   });
 
+  test('keeps a panel header select focused while focus protection is active', async () => {
+    // Regression: the composer's blur handler queued a refocus frame that ran
+    // after the click had already focused the select, pulling focus back and
+    // closing the dropdown before an option could be picked.
+    await openPanels({ chatgpt: {} });
+    await page.click('#unified-input');
+    expect(await activeElementLabel()).toBe('unified-input');
+
+    // load grace and the panel's focus guard are still active here.
+    await page.locator('.panel-prompt-mode-select').click();
+    await page.waitForTimeout(300);
+
+    expect(await activeElementLabel()).toBe('SELECT');
+  });
+
   test('re-enables protection when a panel is refreshed', async () => {
     await openPanels({ chatgpt: {} });
     await waitForLoadGracePeriod();

@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.94.1 - 2026-11-13
+- Fixed a panel header's prompt-mode select closing before a choice could be made while that panel was still loading: focus protection no longer pulls focus back from a page control the user has just focused, so the dropdown stays open and the selected mode sticks.
+
 ## 2.94.0 - 2026-11-12
 - New-chat and AI readiness notices now sit in a single compact status line at the bottom of the composer instead of floating over the AI panels, so they no longer cover page content or the composer focus ring.
 - Only the highest-priority notice shows at once: starting new conversations or a blocking AI preparation wins, then new-chat failures with "Retry unsuccessful", then non-blocking progress or partial-not-ready feedback, then completion feedback.

@@ -88,4 +88,34 @@ describe('multi-panel focus controller', () => {
     controller.stopPanelFocusGuard('panel-1');
     expect(controller.shouldPreserveUnifiedInputFocus()).toBe(false);
   });
+
+  it('still refocuses the question box while protection is active', async () => {
+    loadingPanelIds.add('panel-1');
+    const input = document.getElementById('unified-input');
+    input.focus();
+    // The blur handler runs while the body is the active element.
+    input.blur();
+
+    controller.focusUnifiedInput();
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('leaves focus on a control the user just focused', async () => {
+    loadingPanelIds.add('panel-1');
+    const input = document.getElementById('unified-input');
+    const select = document.createElement('select');
+    document.body.append(select);
+    input.focus();
+    input.blur();
+
+    // The click's focus change lands before the queued refocus frame runs.
+    controller.focusUnifiedInput();
+    select.focus();
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(document.activeElement).toBe(select);
+    select.remove();
+  });
 });

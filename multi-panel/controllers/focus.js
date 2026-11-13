@@ -71,6 +71,14 @@ export function createFocusController({
       if (isFocusInOpenModal()) {
         return;
       }
+      // The click that queued this frame may have focused a page control of
+      // its own — a panel header's prompt-mode select, say. Pulling focus back
+      // would close its open dropdown before the choice can be made.
+      const focused = document.activeElement;
+      if (!force && focused && focused !== inputTextarea && focused !== document.body
+          && focused !== document.documentElement && focused.tagName !== 'IFRAME') {
+        return;
+      }
       try {
         inputTextarea.focus({ preventScroll: true });
       } catch {
