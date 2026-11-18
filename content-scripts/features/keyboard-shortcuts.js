@@ -125,6 +125,7 @@
     if (host === 'perplexity.ai' || host.endsWith('.perplexity.ai')) return 'perplexity';
     if (host === 'copilot.com' || host.endsWith('.copilot.com') || host === 'copilot.microsoft.com') return 'copilot';
     if (host === 'wenxin.baidu.com') return 'wenxin';
+    if (host === 'lingguang.com' || host === 'www.lingguang.com') return 'lingguang';
     if (host === 'aistudio.tencent.com') return 'hy-aistudio';
     return null;
   }

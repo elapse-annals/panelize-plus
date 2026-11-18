@@ -272,6 +272,21 @@ export const OPTIONAL_PROVIDER_CONFIGS = Object.freeze({
       'content-scripts/providers/wenxin/enter-behavior.js'
     )),
     frameRule: Object.freeze(createFrameRule(1012, 'https://wenxin.baidu.com/*'))
+  }),
+  lingguang: Object.freeze({
+    origins: Object.freeze(['https://www.lingguang.com/*', 'https://lingguang.com/*']),
+    contentScript: Object.freeze(createContentScript(
+      'lingguang-scripts',
+      ['https://www.lingguang.com/*', 'https://lingguang.com/*'],
+      'content-scripts/providers/lingguang/enter-behavior.js'
+    )),
+    // Both hosts serve the chat; only frames opened by the panels lose their
+    // framing headers.
+    frameRule: Object.freeze(createDomainFrameRule(
+      1013,
+      ['www.lingguang.com', 'lingguang.com'],
+      { scopeToPanels: true }
+    ))
   })
 });
 

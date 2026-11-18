@@ -66,6 +66,11 @@ describe('provider open URL helpers', () => {
     expect(isProviderCurrentUrl('copilot', 'https://copilot.com/chats/abc123')).toBe(false);
     expect(isProviderCurrentUrl('copilot', 'https://copilot.microsoft.com/chats/abc123')).toBe(false);
     expect(isProviderCurrentUrl('wenxin', 'https://wenxin.baidu.com/chat/abc123')).toBe(false);
+    expect(isProviderCurrentUrl('lingguang', 'https://www.lingguang.com/chat/abc123')).toBe(false);
+    expect(isProviderCurrentUrl('lingguang', 'https://lingguang.com/chat/abc123')).toBe(false);
+    expect(isProviderAllowedUrl('lingguang', 'https://www.lingguang.com/chat')).toBe(true);
+    expect(isProviderAllowedUrl('lingguang', 'https://lingguang.com/chat')).toBe(true);
+    expect(isProviderAllowedUrl('lingguang', 'https://evil.example/chat')).toBe(false);
     expect(isProviderAllowedUrl('stepfun', 'https://studio.stepfun.com/')).toBe(true);
     expect(isProviderAllowedUrl('agnes', 'https://app.agnes-ai.com/')).toBe(true);
     expect(isProviderAllowedUrl('agnes', 'https://evil.example/')).toBe(false);
@@ -109,6 +114,12 @@ describe('provider open URL helpers', () => {
     );
     expect(getProviderOpenUrl(getProviderById('wenxin'), 'https://wenxin.baidu.com/chat/abc123')).toBe(
       'https://wenxin.baidu.com/'
+    );
+    expect(getProviderOpenUrl(getProviderById('lingguang'), 'https://www.lingguang.com/chat/abc123')).toBe(
+      'https://www.lingguang.com/chat'
+    );
+    expect(getProviderFallbackUrl(getProviderById('lingguang'))).toBe(
+      'https://www.lingguang.com/chat'
     );
   });
 });

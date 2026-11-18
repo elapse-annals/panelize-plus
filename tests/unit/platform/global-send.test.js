@@ -2,11 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   GLOBAL_SEND_MAX_TEXT_LENGTH,
   GLOBAL_SEND_PROMPT_MODES,
+  NATIVE_APP_BUNDLE_ID_MAX_LENGTH,
+  NATIVE_CAPABILITIES,
+  NATIVE_CLIENT_VERSION_MAX_LENGTH,
+  createNativeHello,
   createNativeSendProgress,
   createNativeSendResult,
   isTrustedGlobalSendResultSender,
   normalizeGlobalPrompt,
   normalizeGlobalPromptMode,
+  readClientHello,
   readGlobalSendProgressPayload,
   readGlobalSendResultPayload
 } from '../../../modules/platform/global-send.js';
@@ -180,5 +185,49 @@ describe('isTrustedGlobalSendResultSender', () => {
       frameId: 0,
       url: 'https://chatgpt.com/'
     }, runtime)).toBe(false);
+  });
+});
+
+describe('client hello', () => {
+  it('advertises the version handshake capability', () => {
+    expect([...NATIVE_CAPABILITIES]).toContain('versionHandshake');
+    expect(createNativeHello('2.95.0')).toEqual({
+      protocol: 2,
+      type: 'hello',
+      extensionVersion: '2.95.0',
+      capabilities: ['historySync', 'newChat', 'versionHandshake']
+    });
+  });
+
+  it('reads and trims a valid client hello', () => {
+    expect(readClientHello({
+      protocol: 2,
+      type: 'clientHello',
+      clientVersion: ' 2.95.0 ',
+      appBundleId: ' com.panelize.search '
+    })).toEqual({
+      clientVersion: '2.95.0',
+      appBundleId: 'com.panelize.search'
+    });
+    expect(readClientHello({
+      type: 'clientHello',
+      clientVersion: '2.95.0'
+    })).toEqual({ clientVersion: '2.95.0', appBundleId: '' });
+  });
+
+  it('rejects other types, missing versions and oversized fields', () => {
+    expect(readClientHello({ type: 'hello', clientVersion: '2.95.0' })).toBeNull();
+    expect(readClientHello({ type: 'clientHello' })).toBeNull();
+    expect(readClientHello({ type: 'clientHello', clientVersion: '   ' })).toBeNull();
+    expect(readClientHello({ type: 'clientHello', clientVersion: 2950 })).toBeNull();
+    expect(readClientHello({
+      type: 'clientHello',
+      clientVersion: '9'.repeat(NATIVE_CLIENT_VERSION_MAX_LENGTH + 1)
+    })).toBeNull();
+    expect(readClientHello({
+      type: 'clientHello',
+      clientVersion: '2.95.0',
+      appBundleId: 'x'.repeat(NATIVE_APP_BUNDLE_ID_MAX_LENGTH + 1)
+    })).toBeNull();
   });
 });

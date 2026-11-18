@@ -4,6 +4,7 @@ import { removeDeprecatedClaudeModelMode } from '../modules/platform/settings.js
 import { MIMO_SESSION_COOKIE_SYNC_ACTION, isMimoSourceCookieChange } from '../modules/providers/mimo-session-cookies.js';
 import { isDeepSeekConsentCookieChange } from '../modules/providers/consent-cookies.js';
 import { GLOBAL_SEND_PROGRESS_ACTION, GLOBAL_SEND_RESULT_ACTION, NATIVE_SEND_KEEPALIVE_ALARM, NEW_CHAT_RESULT_ACTION, isTrustedGlobalSendResultSender } from '../modules/platform/global-send.js';
+import { NATIVE_BRIDGE_STATUS_ACTION } from '../modules/platform/native-bridge-status.js';
 import {
   GROK_WEBSOCKET_COOKIE_SYNC_ACTION,
   handleGrokTabNavigationComplete,
@@ -219,6 +220,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     sendResponse({ ok: trusted });
     return false;
+  }
+
+  if (message.action === NATIVE_BRIDGE_STATUS_ACTION) {
+    return nativeBridge.handleStatusRequest(sender, sendResponse);
   }
 
   if (message.action === MIMO_SESSION_COOKIE_SYNC_ACTION) {

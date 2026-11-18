@@ -167,8 +167,13 @@ final class UnixSocketServer {
                         authenticated = true
                         let browserBundleIdentifier = (message["browserBundleId"] as? String)
                             .flatMap { $0.isEmpty ? nil : $0 }
+                        // The handshake carries the host's version and
+                        // capabilities. Report the connection first so the app
+                        // can then gate features on what this host supports.
                         DispatchQueue.main.async { [weak self] in
-                            self?.onPeerConnected?(browserBundleIdentifier)
+                            guard let self else { return }
+                            self.onPeerConnected?(browserBundleIdentifier)
+                            self.onMessage?(message)
                         }
                         continue
                     }

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.96.0 - 2026-11-18
+- Added 灵光 (Lingguang, `www.lingguang.com/chat`) as an optional provider with a drawn light/dark icon, the toolbar short name "Ling", default enable/startup/order entries after 文心, optional site access for both hosts, a dynamically registered content script, and a frame rule (1013) scoped to panel frames.
+- Lingguang panels fill its visible antd composer while skipping the hidden autosize textarea, support textarea and contenteditable editors, click the send icon only when it is enabled, and follow the Enter/Shift+Enter configuration. New chat falls back to `/chat`.
+- Registered Lingguang in provider detection, shortcuts, focus, blind-mode page styling and thinking-tier discovery. Guest-page embedding, composer fill and the send control were verified on the live site on 2026-11-18; signed-in login and sending remain unverified.
+
+## 2.95.0 - 2026-11-13
+- Panelize Link now checks GitHub Releases for a newer macOS client: the menu bar has "检查更新..." with new-version, up-to-date and offline alerts plus a link to the release page, and a silent check five seconds after launch turns the item into "发现新版本 (vX.Y.Z)" without interrupting typing.
+- The native bridge handshake is now bidirectional: the macOS client sends a `clientHello` with its version after both sides advertise `versionHandshake`, the extension records it, and the options page shows the connected client version.
+- Version gaps are advisory only: the menu bar and composer footer recommend aligning the older side (minor, major or protocol mismatch), while sending, new chats and history sync keep working. Older extension/host combinations never receive the new message.
+
+## 2.94.2 - 2026-11-13
+- Panelize Link now asks the native host for its capabilities during the local bridge handshake. If an older host is still running (for example after upgrading the extension without reinstalling the app and restarting the browser), checking "新建会话" shows a clear reinstall hint instead of silently sending a command the old host drops; history sync is gated the same way. Plain sends keep working with older hosts.
+
 ## 2.94.1 - 2026-11-13
 - Fixed a panel header's prompt-mode select closing before a choice could be made while that panel was still loading: focus protection no longer pulls focus back from a page control the user has just focused, so the dropdown stays open and the selected mode sticks.
 

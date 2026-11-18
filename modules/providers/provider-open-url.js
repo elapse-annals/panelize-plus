@@ -21,7 +21,8 @@ const PROVIDER_ALLOWED_HOSTS = {
   'hy-aistudio': new Set(['aistudio.tencent.com']),
   perplexity: new Set(['www.perplexity.ai']),
   copilot: new Set(['copilot.com', 'copilot.microsoft.com']),
-  wenxin: new Set(['wenxin.baidu.com'])
+  wenxin: new Set(['wenxin.baidu.com']),
+  lingguang: new Set(['www.lingguang.com', 'lingguang.com'])
 };
 
 const QWEN_GLOBAL_NON_CONVERSATION_IDS = new Set(['new-chat', 'new-branch', 'guest']);
@@ -118,6 +119,7 @@ export function isProviderCurrentUrl(providerId, rawUrl) {
     case 'perplexity':
     case 'copilot':
     case 'wenxin':
+    case 'lingguang':
       // No verified stable conversation URL yet.
       return false;
     default:

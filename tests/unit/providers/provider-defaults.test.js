@@ -26,15 +26,18 @@ describe('provider defaults', () => {
       'grok',
       'perplexity',
       'wenxin',
+      'lingguang',
     ]);
   });
 
-  it('orders new optional providers last without auto-starting copilot', () => {
-    const optionalProviderIds = ['perplexity', 'copilot', 'wenxin'];
+  it('appends new optional providers last without auto-starting copilot', () => {
+    const optionalProviderIds = ['perplexity', 'copilot', 'wenxin', 'lingguang'];
 
     expect(DEFAULT_PROVIDER_ORDER.slice(-optionalProviderIds.length)).toEqual(optionalProviderIds);
     expect(DEFAULT_PROVIDER_IDS).not.toContain('copilot');
+    expect(DEFAULT_PROVIDER_IDS).toContain('lingguang');
     expect(DEFAULT_STARTUP_PROVIDER_IDS).not.toContain('copilot');
+    expect(DEFAULT_STARTUP_PROVIDER_IDS).toContain('lingguang');
   });
 
   it('appends doubao to the legacy list for the update migration', () => {

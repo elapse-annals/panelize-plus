@@ -7,6 +7,8 @@ protocol GlobalSendBridge: AnyObject {
     var connectedBrowserBundleIdentifier: String? { get }
     var isExtensionConnected: Bool { get }
     var supportsNewChat: Bool { get }
+    /// Whether the native host running now can relay new-chat commands.
+    var hostSupportsNewChat: Bool { get }
     func sendPrompt(
         _ text: String,
         promptMode: PromptModeChoice,
@@ -26,6 +28,7 @@ protocol GlobalSendBridge: AnyObject {
 extension GlobalSendBridge {
     var isExtensionConnected: Bool { true }
     var supportsNewChat: Bool { false }
+    var hostSupportsNewChat: Bool { true }
 
     func sendPrompt(
         _ text: String,
@@ -73,6 +76,8 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
     private var selectedPromptMode = PromptModeChoice.load()
     private(set) var isSending = false
     private var connectionReady = false
+    private var connectionVersionHint: String?
+    private var isShowingVersionHint = false
     private var autoHideWorkItem: DispatchWorkItem?
     private var transientStatusWorkItem: DispatchWorkItem?
     private var didForceRegular = false
@@ -186,13 +191,14 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         }
     }
 
-    func setConnectionStatus(_ text: String, ready: Bool) {
+    func setConnectionStatus(_ text: String, ready: Bool, versionHint: String? = nil) {
         currentConnectionText = text
         connectionReady = ready
+        connectionVersionHint = versionHint
         if !ready {
             newChatState.connectionLost()
         }
-        updateConnection(label: text, ready: ready)
+        updateConnection(label: text, ready: ready, hint: versionHint)
     }
 
     /// Called when the extension handshake completes; a checked box can now
@@ -289,7 +295,11 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
             // the latest progress instead of a stale connection label.
             renderSendProgress()
         } else {
-            updateConnection(label: currentConnectionText, ready: connectionReady)
+            updateConnection(
+                label: currentConnectionText,
+                ready: connectionReady,
+                hint: connectionVersionHint
+            )
         }
         refreshPromptPreview()
         panel.makeFirstResponder(content.textView)
@@ -546,7 +556,11 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
             prepareNewChatIfNeeded()
         } else {
             transientStatusWorkItem?.cancel()
-            updateConnection(label: currentConnectionText, ready: connectionReady)
+            updateConnection(
+                label: currentConnectionText,
+                ready: connectionReady,
+                hint: connectionVersionHint
+            )
         }
     }
 
@@ -554,6 +568,16 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
     /// and the checkbox state; a send still carries its own new-chat flag.
     private func prepareNewChatIfNeeded() {
         guard newChatState.enabled, !isSending, bridge.isExtensionConnected else { return }
+        guard bridge.hostSupportsNewChat else {
+            // Older native hosts drop new-chat messages without a reply, which
+            // used to look like a no-op. Say how to fix it instead.
+            showTransientStatus("原生宿主版本过旧，请重新安装 Panelize Link 并重启浏览器", color: .systemOrange)
+            return
+        }
+        guard bridge.supportsNewChat else {
+            showTransientStatus("扩展版本过旧，请重载最新版 Panelize 扩展", color: .systemOrange)
+            return
+        }
         let requestId = UUID().uuidString
         guard newChatState.prepareIfNeeded(requestId: requestId) else { return }
 
@@ -594,7 +618,11 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         showStatus(text, color: color)
         let item = DispatchWorkItem { [weak self] in
             guard let self, !self.isSending else { return }
-            self.updateConnection(label: self.currentConnectionText, ready: self.connectionReady)
+            self.updateConnection(
+                label: self.currentConnectionText,
+                ready: self.connectionReady,
+                hint: self.connectionVersionHint
+            )
         }
         transientStatusWorkItem = item
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.6, execute: item)
@@ -721,9 +749,20 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         }
     }
 
-    private func updateConnection(label: String, ready: Bool) {
+    private func updateConnection(label: String, ready: Bool, hint: String? = nil) {
         guard !isSending else { return }
-        if ready {
+        if ready, let hint, !hint.isEmpty {
+            isShowingVersionHint = true
+            content.statusIcon.update(
+                symbolName: "exclamationmark.triangle.fill",
+                color: .systemOrange,
+                accessibilityLabel: nil
+            )
+            content.statusLabel.isHidden = false
+            content.statusLabel.stringValue = hint
+            content.statusLabel.textColor = .systemOrange
+        } else if ready {
+            isShowingVersionHint = false
             content.statusIcon.update(
                 symbolName: "checkmark.circle.fill",
                 color: .systemGreen,
@@ -732,6 +771,7 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
             content.statusLabel.stringValue = ""
             content.statusLabel.isHidden = true
         } else {
+            isShowingVersionHint = false
             let short = shortConnectionText(label)
             content.statusIcon.update(
                 symbolName: "exclamationmark.circle.fill",
@@ -753,6 +793,7 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
     }
 
     private func showStatus(_ text: String, color: NSColor) {
+        isShowingVersionHint = false
         if content.statusLabel.stringValue != text {
             crossfade(content.statusLabel)
         }
@@ -783,10 +824,12 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         return "circle.fill"
     }
 
-    /// Only a real connection problem should take the click; transient send
-    /// results keep the footer read-only.
+    /// A version warning is advisory but clickable; a real disconnect keeps
+    /// its own click target. Transient send results stay read-only.
     private var canOpenBridgeSettings: Bool {
-        guard !isSending, !connectionReady else { return false }
+        guard !isSending else { return false }
+        if isShowingVersionHint { return true }
+        guard !connectionReady else { return false }
         let text = content.statusLabel.stringValue
         return text.contains("未连接") || text.contains("等待扩展")
     }
@@ -794,7 +837,9 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
     private func refreshStatusInteraction() {
         let actionable = canOpenBridgeSettings
         content.statusStack.isActionable = actionable
-        let help = "打开扩展设置，开启「启用全局输入桥接」"
+        let help = isShowingVersionHint
+            ? "打开扩展设置，更新 Panelize 扩展或 macOS 客户端"
+            : "打开扩展设置，开启「启用全局输入桥接」"
         content.statusLabel.toolTip = actionable ? help : nil
         content.statusLabel.setAccessibilityRole(actionable ? .button : .staticText)
         content.statusLabel.setAccessibilityHelp(actionable ? help : nil)
@@ -802,8 +847,13 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
 
     @objc private func openBridgeSettingsFromStatus() {
         guard canOpenBridgeSettings else { return }
+        let versionHint = isShowingVersionHint
         if onOpenBridgeSettings?() != true {
-            showStatus("未找到扩展设置，请在扩展中开启「启用全局输入桥接」", color: .systemOrange)
+            if versionHint {
+                showStatus("未找到扩展设置，请从浏览器扩展页打开设置", color: .systemOrange)
+            } else {
+                showStatus("未找到扩展设置，请在扩展中开启「启用全局输入桥接」", color: .systemOrange)
+            }
         }
     }
 

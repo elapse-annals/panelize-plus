@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Lingguang">
+  <defs>
+    <linearGradient id="lingguang-background" x1="14" y1="10" x2="116" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2BE0E8"/>
+      <stop offset="0.42" stop-color="#2C8CF5"/>
+      <stop offset="1" stop-color="#4A4BE8"/>
+    </linearGradient>
+    <radialGradient id="lingguang-glow" cx="0" cy="0" r="1" gradientTransform="translate(64 62) rotate(90) scale(46)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="lingguang-spark" x1="42" y1="30" x2="88" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.6" stop-color="#F2FEFF"/>
+      <stop offset="1" stop-color="#D7F7FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#lingguang-background)"/>
+  <circle cx="64" cy="62" r="42" fill="url(#lingguang-glow)"/>
+  <circle cx="64" cy="63" r="33" fill="none" stroke="#FFFFFF" stroke-opacity="0.24" stroke-width="2"/>
+  <path d="M61.5 25.5C63.8 48.9 75.1 60.2 98.5 62.5C75.1 64.8 63.8 76.1 61.5 99.5C59.2 76.1 47.9 64.8 24.5 62.5C47.9 60.2 59.2 48.9 61.5 25.5Z" fill="url(#lingguang-spark)"/>
+  <path d="M92.5 76.5C93.7 87.3 98.7 92.3 109.5 93.5C98.7 94.7 93.7 99.7 92.5 110.5C91.3 99.7 86.3 94.7 75.5 93.5C86.3 92.3 91.3 87.3 92.5 76.5Z" fill="#FFFFFF" fill-opacity="0.9"/>
+  <circle cx="38" cy="94" r="3.5" fill="#FFFFFF" fill-opacity="0.75"/>
+</svg>

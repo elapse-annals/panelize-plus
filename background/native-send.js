@@ -14,6 +14,7 @@ import {
   normalizeGlobalPrompt,
   normalizeGlobalPromptMode,
   normalizeRequestId,
+  readClientHello,
   readGlobalSendProgressPayload,
   readGlobalSendResultPayload,
   readNewChatResultPayload
@@ -51,6 +52,8 @@ export function createNativeSendBridge({
 } = {}) {
   let port = null;
   let disposed = false;
+  let clientVersion = null;
+  let clientAppBundleId = null;
   const activeRequests = new Set();
   const completedRequests = new Map();
   const requestTimers = new Map();
@@ -68,6 +71,15 @@ export function createNativeSendBridge({
     } catch {
       return '';
     }
+  }
+
+  function resetClientInfo() {
+    clientVersion = null;
+    clientAppBundleId = null;
+  }
+
+  function reportStatus(connected, error = '') {
+    onStatus({ connected, error, clientVersion, clientAppBundleId });
   }
 
   function post(message) {
@@ -296,6 +308,16 @@ export function createNativeSendBridge({
       return;
     }
 
+    if (message.type === NATIVE_MESSAGE_TYPES.CLIENT_HELLO) {
+      const hello = readClientHello(message);
+      if (hello && port) {
+        clientVersion = hello.clientVersion;
+        clientAppBundleId = hello.appBundleId || null;
+        reportStatus(true);
+      }
+      return;
+    }
+
     post(createNativeError(
       normalizeRequestId(message.requestId),
       GLOBAL_SEND_ERRORS.INVALID_REQUEST,
@@ -314,7 +336,8 @@ export function createNativeSendBridge({
     const message = lastErrorMessage();
     port = null;
     clearAllNewChats();
-    onStatus({ connected: false, error: message });
+    resetClientInfo();
+    reportStatus(false, message);
     onDisconnect();
   }
 
@@ -323,16 +346,17 @@ export function createNativeSendBridge({
       return false;
     }
 
+    resetClientInfo();
     let nativePort;
     try {
       nativePort = connectNative(NATIVE_SEND_HOST);
     } catch {
-      onStatus({ connected: false, error: 'Native host is not installed' });
+      reportStatus(false, 'Native host is not installed');
       return false;
     }
 
     if (!nativePort?.postMessage) {
-      onStatus({ connected: false, error: 'Native host did not start' });
+      reportStatus(false, 'Native host did not start');
       return false;
     }
 
@@ -343,11 +367,11 @@ export function createNativeSendBridge({
       port.postMessage(createNativeHello(runtime?.getManifest?.().version || ''));
     } catch {
       port = null;
-      onStatus({ connected: false, error: 'Could not start the native host' });
+      reportStatus(false, 'Could not start the native host');
       return false;
     }
 
-    onStatus({ connected: true, error: '' });
+    reportStatus(true);
     return true;
   }
 
@@ -411,7 +435,8 @@ export function createNativeSendBridge({
     requestTimers.forEach(timer => clearTimeout(timer));
     requestTimers.clear();
     clearAllNewChats();
-    onStatus({ connected: false, error: '' });
+    resetClientInfo();
+    reportStatus(false);
     onDisconnect();
   }
 
@@ -429,6 +454,7 @@ export function createNativeSendBridge({
     disconnect,
     dispose,
     handleNativeMessage,
+    getClientVersion: () => clientVersion,
     isConnected: () => Boolean(port),
     sendHistorySnapshot,
     sendHistoryUpsert

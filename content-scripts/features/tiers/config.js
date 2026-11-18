@@ -96,7 +96,8 @@
       'hy-aistudio': { ...DISCOVERY_CONFIG },
       perplexity: { ...DISCOVERY_CONFIG },
       copilot: { ...DISCOVERY_CONFIG },
-      wenxin: { ...DISCOVERY_CONFIG }
+      wenxin: { ...DISCOVERY_CONFIG },
+      lingguang: { ...DISCOVERY_CONFIG }
     };
 
     const hostname = String(window.location?.hostname || '').toLowerCase();
@@ -121,7 +122,8 @@
       ['hy-aistudio', ['aistudio.tencent.com']],
       ['perplexity', ['perplexity.ai']],
       ['copilot', ['copilot.com', 'copilot.microsoft.com']],
-      ['wenxin', ['wenxin.baidu.com']]
+      ['wenxin', ['wenxin.baidu.com']],
+      ['lingguang', ['lingguang.com']]
     ];
 
     function hostMatches(host, domain) {

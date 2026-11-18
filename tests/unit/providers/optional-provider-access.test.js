@@ -192,6 +192,35 @@ describe('optional provider access', () => {
         condition: { urlFilter: 'https://wenxin.baidu.com/*', resourceTypes: ['sub_frame'] },
       },
     });
+    expect(OPTIONAL_PROVIDER_CONFIGS.lingguang).toMatchObject({
+      origins: ['https://www.lingguang.com/*', 'https://lingguang.com/*'],
+      contentScript: {
+        id: 'lingguang-scripts',
+        matches: ['https://www.lingguang.com/*', 'https://lingguang.com/*'],
+      },
+      frameRule: {
+        id: 1013,
+        condition: {
+          requestDomains: expect.arrayContaining(['www.lingguang.com', 'lingguang.com']),
+          resourceTypes: ['sub_frame'],
+        },
+      },
+    });
+  });
+
+  it('lets only the panels frame both Lingguang hosts', () => {
+    const { frameRule } = OPTIONAL_PROVIDER_CONFIGS.lingguang;
+
+    expect(frameRule.condition.requestDomains).toEqual(['www.lingguang.com', 'lingguang.com']);
+    expect(frameRule.condition.initiatorDomains).toEqual(expect.arrayContaining([
+      'lingguang.com',
+      'www.lingguang.com',
+    ]));
+    expect(frameRule.condition).not.toHaveProperty('urlFilter');
+    expect(frameRule.action.responseHeaders).toEqual([
+      { header: 'X-Frame-Options', operation: 'remove' },
+      { header: 'Content-Security-Policy', operation: 'remove' },
+    ]);
   });
 
   it('lets the MiMo panel frame its Xiaomi Account sign-in page', () => {
@@ -314,7 +343,7 @@ describe('optional provider access', () => {
       'content-scripts/features/page-style.js',
       'content-scripts/features/focus-toggle.js',
     ]);
-    for (const providerId of ['perplexity', 'copilot', 'wenxin']) {
+    for (const providerId of ['perplexity', 'copilot', 'wenxin', 'lingguang']) {
       expect(OPTIONAL_PROVIDER_CONFIGS[providerId].contentScript.js).toEqual([
         'content-scripts/runtime/button-finder-utils.js',
         'content-scripts/runtime/enter-behavior-utils.js',
@@ -550,6 +579,7 @@ describe('optional provider access', () => {
       { id: 'perplexity-scripts' },
       { id: 'copilot-scripts' },
       { id: 'wenxin-scripts' },
+      { id: 'lingguang-scripts' },
       { id: 'unrelated-script' },
     ]);
     chrome.declarativeNetRequest.getDynamicRules.mockResolvedValue([
@@ -565,6 +595,7 @@ describe('optional provider access', () => {
       { id: 1010 },
       { id: 1011 },
       { id: 1012 },
+      { id: 1013 },
       { id: 9999 },
     ]);
 
@@ -585,10 +616,11 @@ describe('optional provider access', () => {
         'perplexity-scripts',
         'copilot-scripts',
         'wenxin-scripts',
+        'lingguang-scripts',
       ],
     });
     expect(chrome.declarativeNetRequest.updateDynamicRules).toHaveBeenCalledWith({
-      removeRuleIds: [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012],
+      removeRuleIds: [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013],
       addRules: [],
     });
   });

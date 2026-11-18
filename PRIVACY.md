@@ -88,7 +88,7 @@ All data collected by Panelize Plus is used solely for providing extension funct
 
 ### AI Provider Websites
 
-Panelize Plus loads AI provider websites (ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen, ChatGLM, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), and Google AI Mode) inside embedded panels. Perplexity, Copilot, and ERNIE (Wenxin) are optional providers and require site access to be enabled and approved. These providers operate under their own privacy policies.
+Panelize Plus loads AI provider websites (ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen, ChatGLM, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), Lingguang, and Google AI Mode) inside embedded panels. Perplexity, Copilot, ERNIE (Wenxin), and Lingguang are optional providers and require site access to be enabled and approved. These providers operate under their own privacy policies.
 
 When you interact with these AI providers through Panelize Plus, you are subject to their respective privacy policies. Panelize Plus does not collect or store the content of your conversations with these services.
 

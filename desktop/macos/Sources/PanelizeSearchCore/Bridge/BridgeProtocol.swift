@@ -8,6 +8,8 @@ public enum BridgeProtocol {
     public static let maxRequestIdLength = 100
     public static let maxProgressNames = 24
     public static let maxProgressNameLength = 60
+    public static let maxClientVersionLength = 64
+    public static let maxAppBundleIdLength = 128
     /// Lets an isolated app and native host (integration tests, a parallel
     /// instance) use their own socket and token instead of the installed
     /// client's application-support directory.
@@ -60,6 +62,29 @@ public enum BridgeProtocol {
             return false
         }
         return fileManager.fileExists(atPath: url.path)
+    }
+}
+
+/// Message types the native host can forward between the desktop app and the
+/// browser extension. An older host silently drops types it does not know, so
+/// the app only offers new-chat and history features when the host advertises
+/// them in its handshake.
+public enum BridgeHostCapabilities {
+    public static let historySync = "historySync"
+    public static let newChat = "newChat"
+    /// Advertising this tells the desktop app the host can relay `clientHello`.
+    public static let versionHandshake = "versionHandshake"
+    public static let supported: Set<String> = [historySync, newChat, versionHandshake]
+}
+
+/// The semantic client version the desktop app reports to the extension.
+public struct ClientHelloPayload: Equatable {
+    public let clientVersion: String
+    public let appBundleId: String
+
+    public init(clientVersion: String, appBundleId: String) {
+        self.clientVersion = clientVersion
+        self.appBundleId = appBundleId
     }
 }
 
@@ -231,6 +256,9 @@ public struct SendProgress: Equatable {
 
 public enum BridgeEvent {
     case extensionHello(version: String, capabilities: Set<String>)
+    /// Capabilities reported by the native host itself, before the extension
+    /// connects. A legacy host reports version 0 and no capabilities.
+    case hostHello(version: Int, capabilities: Set<String>)
     case sendAccepted(requestId: String)
     case sendProgress(SendProgress)
     case sendResult(SendOutcome)
@@ -278,6 +306,18 @@ public enum BridgeMessages {
         ]
     }
 
+    public static func clientHello(
+        clientVersion: String,
+        appBundleId: String = BridgeProtocol.appBundleIdentifier
+    ) -> [String: Any] {
+        [
+            "protocol": BridgeProtocol.version,
+            "type": "clientHello",
+            "clientVersion": clientVersion,
+            "appBundleId": appBundleId
+        ]
+    }
+
     public static func historyUpserts(
         records: [PromptHistoryRecord],
         batchId: String = UUID().uuidString
@@ -292,7 +332,9 @@ public enum BridgeMessages {
         var message: [String: Any] = [
             "protocol": BridgeProtocol.version,
             "type": "bridgeHello",
-            "token": token
+            "token": token,
+            "hostVersion": BridgeProtocol.version,
+            "hostCapabilities": BridgeHostCapabilities.supported.sorted()
         ]
         if let browserBundleIdentifier, !browserBundleIdentifier.isEmpty {
             message["browserBundleId"] = browserBundleIdentifier
@@ -316,11 +358,60 @@ public enum BridgeMessages {
         return Array(cleaned.prefix(BridgeProtocol.maxProgressNames))
     }
 
+    private static func hostVersionValue(_ value: Any?) -> Int {
+        let version = value as? Int ?? 0
+        return max(0, version)
+    }
+
+    /// Validates an app-to-host `clientHello` before the native host forwards
+    /// it. A missing protocol is treated as the local version because
+    /// NativeFrameReader fills it in for framed messages.
+    public static func parseClientHello(_ message: [String: Any]) -> ClientHelloPayload? {
+        guard message["type"] as? String == "clientHello" else {
+            return nil
+        }
+        if let protocolValue = message["protocol"] {
+            guard let version = protocolValue as? Int,
+                  version == BridgeProtocol.version else {
+                return nil
+            }
+        }
+        guard let rawVersion = message["clientVersion"] as? String else {
+            return nil
+        }
+        let clientVersion = rawVersion.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clientVersion.isEmpty,
+              clientVersion.count <= BridgeProtocol.maxClientVersionLength else {
+            return nil
+        }
+
+        var appBundleId = BridgeProtocol.appBundleIdentifier
+        if let rawBundleId = message["appBundleId"] {
+            guard let rawBundleId = rawBundleId as? String else {
+                return nil
+            }
+            let trimmedBundleId = rawBundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmedBundleId.count <= BridgeProtocol.maxAppBundleIdLength else {
+                return nil
+            }
+            if !trimmedBundleId.isEmpty {
+                appBundleId = trimmedBundleId
+            }
+        }
+        return ClientHelloPayload(clientVersion: clientVersion, appBundleId: appBundleId)
+    }
+
     public static func parse(_ message: [String: Any]) -> BridgeEvent? {
         guard let type = message["type"] as? String else {
             return nil
         }
         switch type {
+        case "bridgeHello":
+            // Legacy hosts send only protocol/type/token, so they report
+            // version 0 with no capabilities.
+            let capabilities = Set(message["hostCapabilities"] as? [String] ?? [])
+            let hostVersion = hostVersionValue(message["hostVersion"])
+            return .hostHello(version: hostVersion, capabilities: capabilities)
         case "hello":
             let capabilities = Set((message["capabilities"] as? [String] ?? []).map { $0 })
             return .extensionHello(

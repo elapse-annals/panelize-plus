@@ -16,15 +16,18 @@ export const GLOBAL_SEND_MAX_TEXT_LENGTH = 8000;
 export const GLOBAL_SEND_MAX_REQUEST_ID_LENGTH = 100;
 export const GLOBAL_SEND_MAX_PROGRESS_NAMES = 24;
 export const GLOBAL_SEND_MAX_PROGRESS_NAME_LENGTH = 60;
+export const NATIVE_CLIENT_VERSION_MAX_LENGTH = 64;
+export const NATIVE_APP_BUNDLE_ID_MAX_LENGTH = 128;
 export const NATIVE_SEND_KEEPALIVE_ALARM = 'panelize-native-send-keepalive';
 export const NATIVE_SEND_KEEPALIVE_MINUTES = 1;
 
 // Advertised in the native hello so the desktop client can avoid sending
 // message types an older extension would reject.
-export const NATIVE_CAPABILITIES = Object.freeze(['historySync', 'newChat']);
+export const NATIVE_CAPABILITIES = Object.freeze(['historySync', 'newChat', 'versionHandshake']);
 
 export const NATIVE_MESSAGE_TYPES = Object.freeze({
   HELLO: 'hello',
+  CLIENT_HELLO: 'clientHello',
   PING: 'ping',
   PONG: 'pong',
   ERROR: 'error',
@@ -112,6 +115,38 @@ export function createNativeHello(extensionVersion, capabilities = NATIVE_CAPABI
     extensionVersion: String(extensionVersion || ''),
     capabilities: [...capabilities]
   };
+}
+
+/**
+ * Reads the semantic version the macOS client reports. Malformed messages are
+ * ignored rather than answered with an error so an older client/host
+ * combination stays quiet.
+ */
+export function readClientHello(message) {
+  if (!isProtocolMessage(message) || message.type !== NATIVE_MESSAGE_TYPES.CLIENT_HELLO) {
+    return null;
+  }
+  const clientVersion = readBoundedText(message.clientVersion, NATIVE_CLIENT_VERSION_MAX_LENGTH);
+  if (!clientVersion) {
+    return null;
+  }
+  let appBundleId = '';
+  if (message.appBundleId !== undefined && message.appBundleId !== null) {
+    const parsed = readBoundedText(message.appBundleId, NATIVE_APP_BUNDLE_ID_MAX_LENGTH);
+    if (parsed === null) {
+      return null;
+    }
+    appBundleId = parsed;
+  }
+  return { clientVersion, appBundleId };
+}
+
+function readBoundedText(value, maxLength) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const text = value.trim();
+  return text.length <= maxLength ? text : null;
 }
 
 export function createNativeError(requestId, code, message) {

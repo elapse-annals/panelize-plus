@@ -171,7 +171,8 @@
     ['perplexity', ['perplexity.ai']],
     ['copilot', ['copilot.com', 'copilot.microsoft.com']],
     ['wenxin', ['wenxin.baidu.com']],
-    ['hy-aistudio', ['aistudio.tencent.com']]
+    ['hy-aistudio', ['aistudio.tencent.com']],
+    ['lingguang', ['lingguang.com']]
   ];
   const hostname = String(window.location?.hostname || '').toLowerCase();
   const provider = PROVIDER_HOSTS.find(([, domains]) => domains.some(domain =>

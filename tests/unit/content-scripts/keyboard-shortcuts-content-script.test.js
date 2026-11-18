@@ -289,7 +289,9 @@ describe('provider keyboard shortcut forwarding content script', () => {
       ['www.perplexity.ai', 'perplexity'],
       ['copilot.com', 'copilot'],
       ['copilot.microsoft.com', 'copilot'],
-      ['wenxin.baidu.com', 'wenxin']
+      ['wenxin.baidu.com', 'wenxin'],
+      ['www.lingguang.com', 'lingguang'],
+      ['lingguang.com', 'lingguang']
     ]) {
       setProviderHost(hostname);
       const controller = evaluateContentScript();

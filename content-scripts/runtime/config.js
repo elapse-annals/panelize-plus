@@ -324,7 +324,7 @@
     const COMPOSER_ATTACHMENT_REMOVE_LABEL = /remove|delete|dismiss|close|移除|删除|清除|取消/i;
     const SLOW_COMPOSER_PROVIDERS = new Set([
       'deepseek', 'kimi', 'doubao', 'chatglm', 'zai-global', 'yuanbao', 'mimo', 'meta-ai',
-      'stepfun', 'agnes', 'hy-aistudio', 'perplexity', 'copilot', 'wenxin'
+      'stepfun', 'agnes', 'hy-aistudio', 'perplexity', 'copilot', 'wenxin', 'lingguang'
     ]);
 
     const IMAGE_INJECTION_REASONS = Object.freeze({
@@ -420,6 +420,20 @@
         '#m365-chat-input-shared-container span#m365-chat-editor-target-element[role="textbox"][contenteditable="true"][data-lexical-editor="true"]'
       ],
       wenxin: ['textarea#chat-textarea.ci-textarea'],
+      // Verified in the browser on 2026-11-18: the signed-out and embedded
+      // composer is an antd textarea with this placeholder. The site also
+      // renders a hidden autosize textarea (name="hiddenTextarea"), so never
+      // fall back to a bare textarea selector. Contenteditable variants stay
+      // supported in case the site swaps editors.
+      lingguang: [
+        'textarea[placeholder="问一问灵光"]',
+        '[class*="input-textarea-container-"] textarea.ant-input',
+        '[class*="input-container-"] textarea.ant-input',
+        'textarea[class*="input-textarea-"]',
+        '[class*="input-textarea-container-"] [contenteditable="true"][role="textbox"]',
+        '[class*="input-textarea-container-"] [contenteditable="true"]',
+        '[class*="input-container-"] [contenteditable="true"][role="textbox"]'
+      ],
       'hy-aistudio': ['.hy-chat-input__content textarea.t-textarea__inner', 'textarea[placeholder="有问题，尽管问"]'],
       google: [
         'textarea.ITIRGe',
@@ -632,6 +646,20 @@
         '#m365-chat-input-shared-container button[aria-label="发送"]'
       ],
       wenxin: ['img#ci-submit-button-ai.ci-submit-button-ai-active'],
+      // Verified in the browser on 2026-11-18: the send control is an antd icon
+      // span (not a button), scoped to the composer footer, and it carries
+      // `.disabled` until the composer has text. Labels remain as fallbacks.
+      lingguang: [
+        '[class*="input-footer-"] [class*="input-button-"] .anticon[role="img"]:not(.disabled)',
+        '[class*="input-footer-"] [class*="input-button-"] .anticon:not(.disabled)',
+        '[class*="button-container-"] .anticon[role="img"]:not(.disabled)',
+        'span[data-aspm$=".d568860"] .anticon:not(.disabled)',
+        'span[data-aspm$=".d568860"]',
+        'button[aria-label="发送"]',
+        'button[title="发送"]',
+        'button[aria-label="Send"]',
+        'button[title="Send"]'
+      ],
       agnes: [
         'button[title="Send"]',
         'button[title="发送"]',
@@ -762,6 +790,8 @@
       perplexity: 'https://www.perplexity.ai/',
       copilot: 'https://copilot.com/chat',
       wenxin: 'https://wenxin.baidu.com/',
+      // No verified in-panel new chat control yet; the chat root is a new chat.
+      lingguang: 'https://www.lingguang.com/chat',
       'hy-aistudio': 'https://aistudio.tencent.com/',
       google: 'https://www.google.com/search?udm=50'
     };
@@ -828,6 +858,8 @@
         return 'copilot';
       } else if (hostname === 'wenxin.baidu.com') {
         return 'wenxin';
+      } else if (hostname === 'www.lingguang.com' || hostname === 'lingguang.com') {
+        return 'lingguang';
       } else if (hostname === 'aistudio.tencent.com') {
         return 'hy-aistudio';
       } else if (hostname.includes('google.com') || hostname.includes('google.') || hostname === 'www.google.com') {

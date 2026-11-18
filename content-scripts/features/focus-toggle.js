@@ -103,6 +103,18 @@ function findProviderInput() {
     return document.querySelector('textarea#chat-textarea.ci-textarea');
   }
 
+  // Lingguang: skip the hidden autosize textarea the site keeps next to the
+  // visible composer.
+  if (host === 'www.lingguang.com' || host === 'lingguang.com') {
+    const selectors = [
+      'textarea[placeholder="问一问灵光"]',
+      '[class*="input-textarea-container-"] textarea.ant-input',
+      '[class*="input-textarea-container-"] [contenteditable="true"][role="textbox"]',
+      '[class*="input-textarea-container-"] [contenteditable="true"]'
+    ];
+    return selectors.map(selector => document.querySelector(selector)).find(element => element && element.offsetParent !== null) || null;
+  }
+
   // Generic fallback: find any visible textarea or contenteditable
   const textarea = document.querySelector('textarea:not([hidden])');
   if (textarea && textarea.offsetParent !== null) return textarea;

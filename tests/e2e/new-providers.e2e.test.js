@@ -30,6 +30,14 @@ const PROVIDERS = [
     ruleId: 1012,
     composer: '#chat-textarea',
     messages: '#sent-messages'
+  },
+  {
+    id: 'lingguang',
+    origin: 'https://www.lingguang.com',
+    scriptId: 'lingguang-scripts',
+    ruleId: 1013,
+    composer: 'textarea[placeholder="问一问灵光"]',
+    messages: '#sent-messages'
   }
 ];
 
@@ -38,13 +46,17 @@ function providerFixture(providerId) {
     ? '<div id="ask-input" contenteditable="true" role="textbox" data-lexical-editor="true" aria-label="Ask anything"></div>'
     : providerId === 'copilot'
       ? '<span id="m365-chat-editor-target-element" contenteditable="true" role="textbox" data-lexical-editor="true" aria-label="Message Copilot" style="display:block;min-width:240px;min-height:36px"></span>'
-      : '<textarea id="chat-textarea" class="ci-textarea" aria-label="输入消息"></textarea>';
+      : providerId === 'lingguang'
+        ? '<textarea id="lingguang-editor" class="ant-input input-textarea-f0YiLm4o" placeholder="问一问灵光"></textarea><textarea name="hiddenTextarea" aria-hidden="true"></textarea>'
+        : '<textarea id="chat-textarea" class="ci-textarea" aria-label="输入消息"></textarea>';
 
   const sendControl = providerId === 'perplexity'
     ? '<button type="button" aria-label="提交">Send</button>'
     : providerId === 'copilot'
       ? '<button type="submit" aria-label="Send" class="fai-SendButton fai-BebopLiteChatInput__send">Send</button>'
-      : '<span class="ci-submit-button"><img id="ci-submit-button-ai" class="ci-submit-button-ai-active" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27%3E%3Crect width=%2724%27 height=%2724%27 rx=%274%27 fill=%27%23333%27/%3E%3C/svg%3E" width="24" height="24" alt="Send"></span>';
+      : providerId === 'lingguang'
+        ? '<div class="input-button-SEl1BODX"><div class="button-container-W3aBX_JK"><span data-aspm="c414395.d568860"><span id="lingguang-send" role="img" class="anticon disabled">Send</span></span></div></div>'
+        : '<span class="ci-submit-button"><img id="ci-submit-button-ai" class="ci-submit-button-ai-active" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27%3E%3Crect width=%2724%27 height=%2724%27 rx=%274%27 fill=%27%23333%27/%3E%3C/svg%3E" width="24" height="24" alt="Send"></span>';
 
   const wenxinHandler = providerId === 'wenxin'
     ? `
@@ -55,11 +67,35 @@ function providerFixture(providerId) {
       sendIcon.addEventListener('click', () => form.requestSubmit());
     `
     : '';
+
+  const lingguangHandler = providerId === 'lingguang'
+    ? `
+      const sendIcon = document.querySelector('#lingguang-send');
+      composer.addEventListener('input', () => {
+        sendIcon.classList.toggle('disabled', !composer.value.trim());
+      });
+      sendIcon.addEventListener('click', event => {
+        if (sendIcon.classList.contains('disabled')) return;
+        sendMessage(event);
+      });
+    `
+    : '';
+
   const composerContainer = providerId === 'perplexity'
     ? `<div class="bg-composer">${composer}${sendControl}</div>`
     : providerId === 'copilot'
       ? `<form id="composer-form"><div id="m365-chat-input-shared-container" data-test-id="chat-input-wrapper">${composer}${sendControl}</div></form>`
-      : `<form id="composer-form">${composer}${sendControl}</form>`;
+      : providerId === 'lingguang'
+        ? `<div class="input-container-Cz5jN3Ed"><div class="input-textarea-container-9QLdbTK5">${composer}</div><div class="input-footer-fm9AgwoI">${sendControl}</div></div>`
+        : `<form id="composer-form">${composer}${sendControl}</form>`;
+
+  const composerId = providerId === 'perplexity'
+    ? 'ask-input'
+    : providerId === 'copilot'
+      ? 'm365-chat-editor-target-element'
+      : providerId === 'lingguang'
+        ? 'lingguang-editor'
+        : 'chat-textarea';
 
   return `<!doctype html>
     <html><head><meta charset="utf-8"><title>${providerId} fixture</title></head>
@@ -68,7 +104,7 @@ function providerFixture(providerId) {
       <ol id="sent-messages" aria-label="Sent messages"></ol>
       <script>
         const form = document.querySelector('#composer-form');
-        const composer = document.querySelector('#${providerId === 'perplexity' ? 'ask-input' : providerId === 'copilot' ? 'm365-chat-editor-target-element' : 'chat-textarea'}');
+        const composer = document.querySelector('#${composerId}');
         function sendMessage(event) {
           event?.preventDefault();
           const text = composer.isContentEditable ? composer.textContent : composer.value;
@@ -85,6 +121,7 @@ function providerFixture(providerId) {
           document.querySelector('.bg-composer button[aria-label="提交"]').addEventListener('click', sendMessage);
         }
         ${wenxinHandler}
+        ${lingguangHandler}
       </script>
     </body></html>`;
 }
@@ -137,7 +174,10 @@ test('registers and sends through the new optional providers', async ({}, testIn
     const page = await openMultiPanel(extension, {
       providers: PROVIDERS.map(({ id }) => id),
       enabledProviders: PROVIDERS.map(({ id }) => id),
-      layout: '1x3'
+      layout: '1x4',
+      // Open every fixture at startup; the default startup selection only
+      // includes some of the optional providers.
+      settings: { startupProviders: PROVIDERS.map(({ id }) => id) }
     });
 
     for (const provider of PROVIDERS) {

@@ -55,6 +55,7 @@ describe('provider tier contract', () => {
     expect(PROVIDER_TIER_CONFIG.deepseek.sharedTiers).toEqual(['balanced', 'deep']);
     expect(PROVIDER_TIER_CONFIG['qwen-global'].strategy).toBe('recipe');
     expect(PROVIDER_TIER_CONFIG.grok.strategy).toBe('unsupported');
+    expect(PROVIDER_TIER_CONFIG.lingguang.strategy).toBe('discover');
   });
 
   it('gives every recipe provider the recipe strategy and three tiers of steps', () => {

@@ -10,6 +10,14 @@ export function createNativeBridgeController({
   getHistorySyncController = () => null,
   getSettingsController
 }) {
+  let nativeStatus = {
+    connected: false,
+    error: '',
+    clientVersion: null,
+    clientAppBundleId: null
+  };
+  let initializationPromise = null;
+
   const nativeSendBridge = createNativeSendBridge({
     connectNative: name => chrome.runtime.connectNative(name),
     runtime: chrome.runtime,
@@ -24,6 +32,9 @@ export function createNativeBridgeController({
     },
     onHistoryRequest: () => getHistorySyncController()?.handleHistoryRequest(),
     onHistoryUpsert: batch => getHistorySyncController()?.handleHistoryUpsert(batch),
+    onStatus: status => {
+      nativeStatus = { ...nativeStatus, ...status };
+    },
     onDisconnect: () => getHistorySyncController()?.reset()
   });
 
@@ -51,17 +62,49 @@ export function createNativeBridgeController({
   }
 
   async function initializeNativeSendBridge() {
-    await getSettingsController().loadGlobalSendSetting();
-    if (getSettingsController().globalSendBridgeEnabled) {
-      ensureNativeSendBridge();
-    } else {
-      disableNativeSendBridge();
+    if (!initializationPromise) {
+      initializationPromise = (async () => {
+        await getSettingsController().loadGlobalSendSetting();
+        if (getSettingsController().globalSendBridgeEnabled) {
+          ensureNativeSendBridge();
+        } else {
+          disableNativeSendBridge();
+        }
+      })().catch(error => {
+        initializationPromise = null;
+        throw error;
+      });
     }
+    return initializationPromise;
+  }
+
+  function getStatus() {
+    return {
+      enabled: getSettingsController().globalSendBridgeEnabled === true,
+      connected: nativeStatus.connected,
+      clientVersion: nativeStatus.clientVersion,
+      error: nativeStatus.error
+    };
+  }
+
+  // Answers the options page without letting content scripts probe the
+  // local bridge state.
+  function handleStatusRequest(sender, sendResponse) {
+    if (!sender || sender.id !== chrome.runtime?.id) {
+      sendResponse({ ok: false });
+      return false;
+    }
+    initializeNativeSendBridge()
+      .then(() => sendResponse({ ok: true, status: getStatus() }))
+      .catch(() => sendResponse({ ok: false, status: getStatus() }));
+    return true;
   }
 
   return {
     disableNativeSendBridge,
     ensureNativeSendBridge,
+    getStatus,
+    handleStatusRequest,
     initializeNativeSendBridge,
     get nativeSendBridge() { return nativeSendBridge; },
   };

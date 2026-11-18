@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
   "short_name": "Panelize",
-  "version": "2.94.1",
+  "version": "2.96.0",
   "description": "__MSG_extensionDescription__",
   "default_locale": "zh_CN",
   "permissions": [
@@ -57,6 +57,8 @@
     "https://login.microsoftonline.com/*",
     "https://login.live.com/*",
     "https://wenxin.baidu.com/*",
+    "https://www.lingguang.com/*",
+    "https://lingguang.com/*",
     "https://*/*",
     "http://localhost/*",
     "http://127.0.0.1/*"

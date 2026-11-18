@@ -157,6 +157,14 @@ final class NativeBridgeHost {
                         nativeIO.write(BridgeMessages.newChat(requestId: requestId))
                     case "historyRequest":
                         nativeIO.write(BridgeMessages.historyRequest())
+                    case "clientHello":
+                        guard let hello = BridgeMessages.parseClientHello(message) else {
+                            continue
+                        }
+                        nativeIO.write(BridgeMessages.clientHello(
+                            clientVersion: hello.clientVersion,
+                            appBundleId: hello.appBundleId
+                        ))
                     case "historyUpsert":
                         guard let batchId = message["batchId"] as? String,
                               !batchId.isEmpty,

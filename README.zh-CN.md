@@ -58,7 +58,7 @@ Panelize Plus 从上游 Panelize **v2.0.1**（2026-10-23）继续，拥有独立
 | **提示词模式** | 模式就是 Prompt Library 中的条目，可设置触发词；**自动**模式按触发词在本次发送中应用，支持幽灵预览与 `Tab` 补全。新增深度思考和对抗式审阅的挑战模式。提示词可同时保存中文（界面显示）和英文（实际发送）两版。 |
 | **输入与面板体验** | 图片 / 文档附件、发送前的就绪状态门控、最近提问建议、每个 AI 的状态芯片、点击芯片定位并高亮、面板容量与布局自适应、弹窗位置和尺寸记忆、宽屏模式与滑动边界提示。 |
 | **Panelize Link（macOS）** | 可选的菜单栏客户端：全局快捷键（默认 `Option + Space`）唤起浮动输入框，支持提示词模式选择、`Tab` 触发词补全和最近提问，通过现有的 Send All 流程发送，Native Messaging 桥接默认关闭、可在设置中开启。 |
-| **平台** | 新增 StepFun、Agnes、Perplexity、Copilot 和文心（后三个为可选平台），增加平台计费标记（含限流），并修复多项站点控件与新对话适配。 |
+| **平台** | 新增 StepFun、Agnes、Perplexity、Copilot、文光和灵光（后四个为可选平台），增加平台计费标记（含限流），并修复多项站点控件与新对话适配。 |
 | **品牌与语言** | 改名为 **Panelize Plus（百家争鸣）**，使用新的包名，并在“关于”中标注作者与上游来源。界面精简为简体中文与英文（默认中文），移除了其余 8 种语言包。 |
 | **默认配置** | 新安装按维护者导出的配置初始化：启用的平台及顺序、启动面板、默认使用“深度思考”模式，以及预配置的 AI 总结接口（API Key 仍只保存在本机）。 |
 
@@ -70,7 +70,7 @@ Panelize Plus 从上游 Panelize **v2.0.1**（2026-10-23）继续，拥有独立
 
 ### 一次提问，同时对比
 
-在统一输入框中输入一次内容，就能同时发送到 ChatGPT、Claude、Gemini、Grok、Doubao、DeepSeek、Kimi、Qwen、Zhipu (China)、Z.ai (Global)、元宝、MiMo、Meta AI、阶跃 StepFun、Agnes、腾讯混元 Hy AI Studio、Perplexity、Copilot、文心、Google。输入框也支持添加图片和文档（PDF、Office、文本和代码文件），并随问题发送给支持的平台。
+在统一输入框中输入一次内容，就能同时发送到 ChatGPT、Claude、Gemini、Grok、Doubao、DeepSeek、Kimi、Qwen、Zhipu (China)、Z.ai (Global)、元宝、MiMo、Meta AI、阶跃 StepFun、Agnes、腾讯混元 Hy AI Studio、Perplexity、Copilot、文心、灵光、Google。输入框也支持添加图片和文档（PDF、Office、文本和代码文件），并随问题发送给支持的平台。
 
 ### Panelize Link 系统级快捷发送（macOS）
 
@@ -143,9 +143,10 @@ Panelize Plus 从上游 Panelize **v2.0.1**（2026-10-23）继续，拥有独立
 - Perplexity
 - Copilot
 - 文心
+- 灵光
 - Google
 
-Perplexity、Copilot 和文心是可选平台，需要在设置中启用并授予对应的网站访问权限。三个站点登录后的输入框和发送控件均已在真实网页中核实；受 Cloudflare 验证和 Microsoft 登录要求影响，Perplexity、Copilot 的内嵌发送仍未验证。文心已于 2026-10-28 通过真实网站的内嵌、填充、Send All 和 Enter 发送验证。三者暂不支持图片附件。
+Perplexity、Copilot、文心和灵光是可选平台，需要在设置中启用并授予对应的网站访问权限。Perplexity、Copilot 登录后的输入框和发送控件已在真实网页中核实；受 Cloudflare 验证和 Microsoft 登录要求影响，两者的内嵌发送仍未验证。文心已于 2026-10-28 通过真实网站的内嵌、填充、Send All 和 Enter 发送验证。灵光已于 2026-11-18 验证游客页内嵌、输入框和发送控件，登录后发送仍未验证。四者暂不支持图片附件。
 
 <p align="center">
   <img src="assets/screenshots/settings.png" alt="设置与平台管理" width="700">

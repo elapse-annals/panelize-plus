@@ -95,7 +95,7 @@ If the Panelize page is not open, the extension opens it first and waits for the
 
 **History or “新建会话” does not work after upgrading**
 
-The browser keeps the old native-host process until it restarts. Quit Chrome/Edge completely and reopen it, reload Panelize 2.93.0 or later on the extensions page, then reopen Panelize Link. An older extension still sends prompts, but it advertises no history/new-chat capability, so the app hides those results.
+The browser keeps the old native-host process until it restarts. Quit Chrome/Edge completely and reopen it, reload Panelize 2.93.0 or later on the extensions page, then reopen Panelize Link. An older extension still sends prompts, but it advertises no history/new-chat capability, so the app hides those results. Starting with 2.94.2 the client also asks the native host which commands it can relay: if the host is older than the app, checking “新建会话” now shows a reinstall hint instead of silently doing nothing. Reinstall the app and restart the browser to update the host.
 
 **Clicking the status opens “This page has been blocked by Chrome” (`ERR_BLOCKED_BY_CLIENT`)**
 

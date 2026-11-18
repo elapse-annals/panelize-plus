@@ -5,6 +5,7 @@ import {
   getProviderByIdWithSettings,
   getEnabledProviders,
   getProviderIcon,
+  getProviderShortName,
 } from '../../../modules/providers/providers.js';
 
 describe('providers module', () => {
@@ -14,7 +15,7 @@ describe('providers module', () => {
 
   describe('PROVIDERS constant', () => {
     it('should contain all expected providers', () => {
-      expect(PROVIDERS).toHaveLength(21);
+      expect(PROVIDERS).toHaveLength(22);
       const providerIds = PROVIDERS.map((p) => p.id);
       expect(providerIds).toEqual([
         'chatgpt',
@@ -38,6 +39,7 @@ describe('providers module', () => {
         'perplexity',
         'copilot',
         'wenxin',
+        'lingguang',
       ]);
     });
 
@@ -133,6 +135,16 @@ describe('providers module', () => {
         iconDark: '/icons/providers/dark/wenxin.png',
         optionalOrigins: ['https://wenxin.baidu.com/*'],
       });
+      expect(getProviderById('lingguang')).toMatchObject({
+        name: '灵光',
+        url: 'https://www.lingguang.com/chat',
+        topLevelUrl: 'https://www.lingguang.com/chat',
+        icon: '/icons/providers/lingguang.png',
+        iconDark: '/icons/providers/dark/lingguang.png',
+        enabled: true,
+        optionalOrigins: ['https://www.lingguang.com/*', 'https://lingguang.com/*'],
+      });
+      expect(getProviderShortName(getProviderById('lingguang'))).toBe('Ling');
     });
 
     it('should have required properties for each provider', () => {

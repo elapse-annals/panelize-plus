@@ -58,7 +58,7 @@ Panelize Plus starts from upstream Panelize **v2.0.1** (2026-10-23) and continue
 | **Prompt modes** | Modes are Prompt Library entries with trigger words; **Auto** applies them per send, with a ghost preview and `Tab` completion. Adds Deep thinking and an adversarial Challenge mode. Prompts can carry separate Chinese (shown) and English (sent) text. |
 | **Composer & panels** | Image and document attachments, a readiness gate before sending, recent-question suggestions, per-AI status chips, click-to-locate, panel capacity and layout auto-adjust, popup position/size memory, wide mode and swipe feedback. |
 | **Panelize Link (macOS)** | Optional menu-bar client with a global shortcut (`Option + Space` by default), a floating composer, prompt-mode picker, `Tab` completion and recent questions; it sends through the existing Send All flow over an opt-in Native Messaging bridge. |
-| **Providers** | Adds StepFun, Agnes, Perplexity, Copilot and Wenxin (the last three optional), plus provider billing markers (including rate-limited) and many site-control fixes. |
+| **Providers** | Adds StepFun, Agnes, Perplexity, Copilot, Wenxin and Lingguang (the last four optional), plus provider billing markers (including rate-limited) and many site-control fixes. |
 | **Brand & language** | Renamed to **Panelize Plus（百家争鸣）**, with a new package name and About credits. The interface is reduced to Simplified Chinese and English, with Chinese as the default; the other eight language packs were removed. |
 | **Defaults** | Fresh installs start from the maintainer's exported configuration — enabled providers and order, startup panels, Deep thinking as the default prompt mode, and a preconfigured AI summary endpoint (the API key stays on your device). |
 
@@ -70,7 +70,7 @@ The full change list is in [CHANGELOG.md](CHANGELOG.md). Upstream features and f
 
 ### 🎯 Ask Once, Compare All
 
-Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, DeepSeek, Kimi, Qwen, Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), and Google simultaneously. See which AI gives you the best answer—no tab switching required. The composer also accepts images and documents (PDF, Office, text and code files) and sends them to providers that support them.
+Type your question once and send it to ChatGPT, Claude, Gemini, Grok, Doubao, DeepSeek, Kimi, Qwen, Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), Lingguang, and Google simultaneously. See which AI gives you the best answer—no tab switching required. The composer also accepts images and documents (PDF, Office, text and code files) and sends them to providers that support them.
 
 ### 🌍 Panelize Link (macOS)
 
@@ -156,13 +156,13 @@ The composer suggests your last three sent questions above the input as you type
   </tr>
   <tr>
     <td align="center"><strong>ERNIE (Wenxin)</strong></td>
-    <td></td>
+    <td align="center"><strong>Lingguang</strong></td>
     <td></td>
     <td></td>
   </tr>
 </table>
 
-Perplexity, Copilot, and ERNIE (Wenxin) are optional providers. Enable them in Settings and approve the requested site access. Their signed-in editors and send controls were inspected on the live pages, but embedded sending for Perplexity and Copilot remains unverified because of Cloudflare and Microsoft sign-in requirements. Wenxin embedding, text fill, Send All and Enter sending were verified on 2026-10-28. Image attachments are not enabled for these three providers.
+Perplexity, Copilot, ERNIE (Wenxin) and Lingguang are optional providers. Enable them in Settings and approve the requested site access. Perplexity's and Copilot's signed-in editors and send controls were inspected on the live pages, but embedded sending remains unverified because of Cloudflare and Microsoft sign-in requirements. Wenxin embedding, text fill, Send All and Enter sending were verified on 2026-10-28. Lingguang's guest page was verified embedded on 2026-11-18, including its composer and send control; signed-in login and sending remain unverified. Image attachments are not enabled for these four providers.
 
 <p align="center">
   <img src="assets/screenshots/settings.png" alt="Settings & Providers" width="700">
@@ -247,7 +247,7 @@ The bottom bar can switch between manual and popularity-first ordering; populari
 → ChatHub and ChatALL put many models behind one chat interface. Panelize Plus shows each provider's real website instead, so you keep your own plans, model pickers and chat history.
 
 **Which AI chatbots are supported?**
-→ ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Qwen, Doubao, Zhipu, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin) and Google AI Mode. See [Supported AI Providers](#supported-ai-providers).
+→ ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Qwen, Doubao, Zhipu, Z.ai, Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), Lingguang and Google AI Mode. See [Supported AI Providers](#supported-ai-providers).
 
 ## Troubleshooting
 

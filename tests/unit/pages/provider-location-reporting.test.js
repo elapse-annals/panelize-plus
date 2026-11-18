@@ -40,7 +40,9 @@ describe('provider location reporting content script', () => {
     ['https://www.perplexity.ai/', 'perplexity'],
     ['https://copilot.com/chat', 'copilot'],
     ['https://copilot.microsoft.com/', 'copilot'],
-    ['https://wenxin.baidu.com/', 'wenxin']
+    ['https://wenxin.baidu.com/', 'wenxin'],
+    ['https://www.lingguang.com/chat', 'lingguang'],
+    ['https://lingguang.com/chat', 'lingguang']
   ])('detects the provider on %s', (url, provider) => {
     const frame = new Window({ url });
     Object.defineProperty(frame, 'parent', {

@@ -64,4 +64,23 @@ describe('provider focus toggle for new providers', () => {
     expect(takeFocus()).toEqual({ success: true });
     expect(focus).toHaveBeenCalledOnce();
   });
+
+  it('targets Lingguang\'s visible composer and skips its hidden autosize textarea', () => {
+    window.happyDOM.setURL('https://www.lingguang.com/chat');
+    document.body.innerHTML = `
+      <div class="input-container-Cz5jN3Ed">
+        <div class="input-textarea-container-9QLdbTK5">
+          <textarea id="hidden-mirror" name="hiddenTextarea" aria-hidden="true"></textarea>
+          <textarea id="composer" class="ant-input" placeholder="问一问灵光"></textarea>
+        </div>
+      </div>
+    `;
+    const composer = document.getElementById('composer');
+    markVisible(composer);
+    const focus = vi.spyOn(composer, 'focus');
+    window.eval(source);
+
+    expect(takeFocus()).toEqual({ success: true });
+    expect(focus).toHaveBeenCalledOnce();
+  });
 });

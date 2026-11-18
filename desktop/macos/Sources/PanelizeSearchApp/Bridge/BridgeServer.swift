@@ -23,13 +23,17 @@ final class BridgeServer {
     private var pendingNewChats: [String: (NewChatUpdate) -> Void] = [:]
     private var snapshotAssembler = HistorySnapshotAssembler()
     private var extensionVersion = ""
+    private var extensionProtocolVersion = BridgeProtocol.version
     private var extensionCapabilities: Set<String> = []
+    private var hostVersion = 0
+    private var hostCapabilities: Set<String> = []
     private var browserBundleIdentifier: String?
     private var hostConnected = false
     private var extensionConnected = false
+    private var didSendClientHello = false
     private var lastHistoryRequestAt = Date.distantPast
 
-    var onStatusChange: ((String) -> Void)?
+    var onStatusChange: ((BridgeStatusSnapshot) -> Void)?
     var onExtensionConnected: (() -> Void)?
     var onHistoryChanged: (([PromptHistoryRecord]) -> Void)?
 
@@ -49,12 +53,29 @@ final class BridgeServer {
         stateQueue.sync { extensionCapabilities }
     }
 
+    /// Features need both peers to support them: the extension to handle the
+    /// command and the native host to forward it. A legacy host advertises
+    /// nothing, so its messages would otherwise be dropped silently.
     var supportsHistorySync: Bool {
-        capabilities.contains("historySync")
+        stateQueue.sync {
+            extensionConnected
+                && extensionCapabilities.contains("historySync")
+                && hostCapabilities.contains("historySync")
+        }
     }
 
     var supportsNewChat: Bool {
-        capabilities.contains("newChat")
+        stateQueue.sync {
+            extensionConnected
+                && extensionCapabilities.contains("newChat")
+                && hostCapabilities.contains("newChat")
+        }
+    }
+
+    /// Whether the running native host can relay new-chat commands. Lets the
+    /// composer tell a stale host apart from an outdated extension.
+    var hostSupportsNewChat: Bool {
+        stateQueue.sync { hostCapabilities.contains("newChat") }
     }
 
     /// The browser app that hosts the native bridge, as reported by the host's
@@ -78,7 +99,11 @@ final class BridgeServer {
                 self.hostConnected = false
                 self.extensionConnected = false
                 self.extensionVersion = ""
+                self.extensionProtocolVersion = BridgeProtocol.version
                 self.extensionCapabilities = []
+                self.hostVersion = 0
+                self.hostCapabilities = []
+                self.didSendClientHello = false
                 self.browserBundleIdentifier = nil
                 let callbacks = Array(self.pending.values)
                 self.pending.removeAll()
@@ -135,7 +160,11 @@ final class BridgeServer {
             return false
         }
 
-        let supportsNewChat = stateQueue.sync { extensionConnected && extensionCapabilities.contains("newChat") }
+        let supportsNewChat = stateQueue.sync {
+            extensionConnected
+                && extensionCapabilities.contains("newChat")
+                && hostCapabilities.contains("newChat")
+        }
         guard stateQueue.sync(execute: { extensionConnected }) else {
             update(.failed("浏览器未连接，请先启动 Chrome 或 Edge"))
             return false
@@ -171,7 +200,9 @@ final class BridgeServer {
     @discardableResult
     func requestNewChat(requestId: String, update: @escaping (NewChatUpdate) -> Void) -> Bool {
         let supported = stateQueue.sync {
-            extensionConnected && extensionCapabilities.contains("newChat")
+            extensionConnected
+                && extensionCapabilities.contains("newChat")
+                && hostCapabilities.contains("newChat")
         }
         guard supported else {
             update(.failed("请更新扩展或确认浏览器已连接"))
@@ -201,7 +232,11 @@ final class BridgeServer {
     /// Sends a history request, throttled so repeatedly opening the composer
     /// does not flood the extension.
     func requestHistorySync(force: Bool = false) {
-        guard stateQueue.sync(execute: { extensionConnected && extensionCapabilities.contains("historySync") }) else {
+        guard stateQueue.sync(execute: {
+            extensionConnected
+                && extensionCapabilities.contains("historySync")
+                && hostCapabilities.contains("historySync")
+        }) else {
             return
         }
         let now = Date()
@@ -216,15 +251,25 @@ final class BridgeServer {
         guard let event = BridgeMessages.parse(message) else {
             return
         }
+        let messageProtocolVersion = message["protocol"] as? Int ?? BridgeProtocol.version
 
         switch event {
+        case .hostHello(let version, let capabilities):
+            stateQueue.async {
+                self.hostVersion = version
+                self.hostCapabilities = capabilities
+                self.emitStatus()
+            }
+            maybeSendClientHello()
         case .extensionHello(let version, let capabilities):
             stateQueue.async {
                 self.extensionConnected = true
                 self.extensionVersion = version
+                self.extensionProtocolVersion = messageProtocolVersion
                 self.extensionCapabilities = capabilities
                 self.emitStatus()
             }
+            maybeSendClientHello()
             if capabilities.contains("historySync") {
                 requestHistorySync(force: true)
                 // Questions typed on this Mac are also useful to the extension,
@@ -306,19 +351,41 @@ final class BridgeServer {
         }
     }
 
-    private func emitStatus() {
-        let status: String
-        if extensionConnected {
-            status = extensionVersion.isEmpty
-                ? "Panelize 已连接"
-                : "Panelize \(extensionVersion) 已连接"
-        } else if hostConnected {
-            status = "原生桥已连接，等待扩展"
-        } else {
-            status = "浏览器未连接"
+    /// Tells the extension which client version it is talking to. Both sides
+    /// must advertise the handshake because an older extension answers
+    /// unknown message types with an error and an older host drops them.
+    private func maybeSendClientHello() {
+        let clientVersion: String? = stateQueue.sync {
+            guard extensionConnected,
+                  extensionCapabilities.contains(BridgeHostCapabilities.versionHandshake),
+                  hostCapabilities.contains(BridgeHostCapabilities.versionHandshake),
+                  !didSendClientHello else {
+                return nil
+            }
+            didSendClientHello = true
+            return VersionUtils.currentAppVersion()
         }
+        guard let clientVersion else { return }
+        do {
+            try socket.send(BridgeMessages.clientHello(clientVersion: clientVersion))
+        } catch {
+            stateQueue.async { [weak self] in
+                self?.didSendClientHello = false
+            }
+        }
+    }
+
+    private func emitStatus() {
+        let snapshot = BridgeStatusSnapshot.make(
+            hostConnected: hostConnected,
+            extensionConnected: extensionConnected,
+            extensionVersion: extensionVersion,
+            extensionProtocolVersion: extensionProtocolVersion,
+            clientVersion: VersionUtils.currentAppVersion(),
+            clientProtocol: BridgeProtocol.version
+        )
         DispatchQueue.main.async { [weak self] in
-            self?.onStatusChange?(status)
+            self?.onStatusChange?(snapshot)
         }
     }
 }

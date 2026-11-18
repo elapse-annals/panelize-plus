@@ -29,6 +29,7 @@ export const DEFAULT_PROVIDER_IDS = [
   'grok',
   'perplexity',
   'wenxin',
+  'lingguang',
 ];
 
 export const DEFAULT_PROVIDER_ORDER = [
@@ -53,6 +54,7 @@ export const DEFAULT_PROVIDER_ORDER = [
   'perplexity',
   'copilot',
   'wenxin',
+  'lingguang',
 ];
 
 export const DEFAULT_STARTUP_PROVIDER_IDS = [
@@ -75,6 +77,7 @@ export const DEFAULT_STARTUP_PROVIDER_IDS = [
   'zai-global',
   'perplexity',
   'wenxin',
+  'lingguang',
 ];
 
 export function migrateEnabledProvidersOnUpdate(enabledProviders, providerOrder) {

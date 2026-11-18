@@ -195,7 +195,7 @@
     "message": "Customize how Enter and modifier keys work when typing in AI provider input fields."
   },
   "descEnterBehavior2": {
-    "message": "<strong>Applies to:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), and Google (AI Mode)."
+    "message": "<strong>Applies to:</strong> ChatGPT, Claude, Gemini, Grok, DeepSeek, Kimi, Doubao, Qwen (China), Qwen (Global), Zhipu (China), Z.ai (Global), Yuanbao, MiMo, Meta AI, StepFun, Agnes, Hy AI Studio, Perplexity, Copilot, ERNIE (Wenxin), Lingguang, and Google (AI Mode)."
   },
   "labelEnableEnterCustomization": {
     "message": "Enable Enter Key Customization"
@@ -1873,5 +1873,23 @@
   },
   "promptModeDeleted": {
     "message": "Mode deleted"
+  },
+  "labelNativeBridgeStatus": {
+    "message": "Native Bridge status"
+  },
+  "msgNativeBridgeConnected": {
+    "message": "Connected to Panelize Link v$1"
+  },
+  "msgNativeBridgeConnectedNoVersion": {
+    "message": "Connected to Panelize Link (client version not reported)"
+  },
+  "msgNativeBridgeDisconnected": {
+    "message": "Panelize Link is not connected"
+  },
+  "msgNativeBridgeDisabled": {
+    "message": "Global input bridge is off"
+  },
+  "msgNativeBridgeUnknown": {
+    "message": "Unable to read bridge status"
   }
 }

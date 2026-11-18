@@ -4,6 +4,7 @@ import { createProvidersController } from './controllers/providers.js';
 import { createApplicationController } from './controllers/application.js';
 import { createDataController } from './controllers/data.js';
 import { createInputSettingsController } from './controllers/input-settings.js';
+import { createNativeBridgeStatusController } from './controllers/native-bridge-status.js';
 import { createSummaryController } from './controllers/summary.js';
 import { createVersionController } from './controllers/version.js';
 
@@ -34,5 +35,7 @@ const summary = createSummaryController();
 
 const version = createVersionController();
 
+const nativeBridgeStatus = createNativeBridgeStatusController();
+
 // Initialize on load
-application.init();
+application.init().then(() => nativeBridgeStatus.start());

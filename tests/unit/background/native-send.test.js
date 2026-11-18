@@ -50,9 +50,14 @@ describe('createNativeSendBridge', () => {
       protocol: 2,
       type: 'hello',
       extensionVersion: '2.60.0',
-      capabilities: ['historySync', 'newChat']
+      capabilities: ['historySync', 'newChat', 'versionHandshake']
     });
-    expect(status).toHaveBeenCalledWith({ connected: true, error: '' });
+    expect(status).toHaveBeenCalledWith({
+      connected: true,
+      error: '',
+      clientVersion: null,
+      clientAppBundleId: null
+    });
     expect(bridge.isConnected()).toBe(true);
   });
 
@@ -64,6 +69,61 @@ describe('createNativeSendBridge', () => {
     bridge.handleNativeMessage({ protocol: 2, type: 'ping' });
 
     expect(port.postMessage).toHaveBeenCalledWith({ protocol: 2, type: 'pong', at: 1000 });
+  });
+
+  it('records the client version announced by the desktop app', () => {
+    const { bridge, port, status } = createBridge();
+    bridge.connect();
+    status.mockClear();
+    port.postMessage.mockClear();
+
+    port.emitMessage({
+      protocol: 2,
+      type: 'clientHello',
+      clientVersion: '2.95.0',
+      appBundleId: 'com.panelize.search'
+    });
+
+    expect(status).toHaveBeenCalledWith({
+      connected: true,
+      error: '',
+      clientVersion: '2.95.0',
+      clientAppBundleId: 'com.panelize.search'
+    });
+    expect(bridge.getClientVersion()).toBe('2.95.0');
+    expect(port.postMessage).not.toHaveBeenCalled();
+  });
+
+  it('ignores malformed client hello messages without answering with an error', () => {
+    const { bridge, port, status } = createBridge();
+    bridge.connect();
+    status.mockClear();
+    port.postMessage.mockClear();
+
+    port.emitMessage({ type: 'clientHello' });
+    port.emitMessage({ type: 'clientHello', clientVersion: '   ' });
+    port.emitMessage({ type: 'clientHello', clientVersion: 2950 });
+
+    expect(status).not.toHaveBeenCalled();
+    expect(port.postMessage).not.toHaveBeenCalled();
+    expect(bridge.getClientVersion()).toBeNull();
+  });
+
+  it('clears the client version when the bridge disconnects', () => {
+    const { bridge, port, status } = createBridge();
+    bridge.connect();
+    port.emitMessage({ type: 'clientHello', clientVersion: '2.95.0' });
+    expect(bridge.getClientVersion()).toBe('2.95.0');
+
+    port.disconnect();
+
+    expect(bridge.getClientVersion()).toBeNull();
+    expect(status).toHaveBeenLastCalledWith({
+      connected: false,
+      error: '',
+      clientVersion: null,
+      clientAppBundleId: null
+    });
   });
 
   it('hands off a valid prompt once and completes it from the page result', async () => {
@@ -302,7 +362,12 @@ describe('createNativeSendBridge', () => {
     firstPort.disconnect();
 
     expect(bridge.isConnected()).toBe(false);
-    expect(status).toHaveBeenLastCalledWith({ connected: false, error: '' });
+    expect(status).toHaveBeenLastCalledWith({
+      connected: false,
+      error: '',
+      clientVersion: null,
+      clientAppBundleId: null
+    });
     expect(bridge.connect()).toBe(true);
     expect(secondPort.postMessage).toHaveBeenCalled();
   });

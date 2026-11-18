@@ -7,6 +7,7 @@ private final class FakeSendBridge: GlobalSendBridge {
     var connectedBrowserBundleIdentifier: String? = "com.example.Browser"
     var isExtensionConnected = true
     var supportsNewChat = false
+    var hostSupportsNewChat = true
     private var updateHandler: ((BridgeSendUpdate) -> Void)?
     private(set) var submitted: [(text: String, mode: PromptModeChoice)] = []
     private(set) var newChatFlags: [Bool] = []
@@ -455,6 +456,66 @@ final class SearchPanelControllerTests: XCTestCase {
         controller.show()
 
         XCTAssertEqual(bridge.newChatRequestIds.count, 2)
+    }
+
+    func testCheckingNewChatWithLegacyHostShowsReinstallHintAndSkipsRequest() {
+        bridge.supportsNewChat = false
+        bridge.hostSupportsNewChat = false
+        toggleNewChat(on: true)
+
+        XCTAssertTrue(controller.content.statusLabel.stringValue.contains("重新安装"))
+        XCTAssertTrue(bridge.newChatRequestIds.isEmpty)
+        XCTAssertEqual(controller.content.newChatCheckbox.state, .on)
+    }
+
+    func testCheckingNewChatWithAnOlderExtensionShowsExtensionHint() {
+        bridge.supportsNewChat = false
+        bridge.hostSupportsNewChat = true
+        toggleNewChat(on: true)
+
+        XCTAssertTrue(controller.content.statusLabel.stringValue.contains("扩展"))
+        XCTAssertTrue(bridge.newChatRequestIds.isEmpty)
+        XCTAssertEqual(controller.content.newChatCheckbox.state, .on)
+    }
+
+    func testVersionHintIsShownAndDoesNotBlockSending() {
+        controller.setConnectionStatus(
+            "Panelize 2.94.1 已连接",
+            ready: true,
+            versionHint: "扩展版本较旧，建议更新"
+        )
+
+        XCTAssertEqual(controller.content.statusLabel.stringValue, "扩展版本较旧，建议更新")
+        XCTAssertFalse(controller.content.statusLabel.isHidden)
+        XCTAssertTrue(controller.content.statusStack.isActionable)
+
+        controller.content.textView.string = "Still send"
+        controller.submit()
+        XCTAssertEqual(bridge.submitted.last?.text, "Still send")
+    }
+
+    func testTransientStatusRestoresTheVersionHint() {
+        controller.setConnectionStatus(
+            "Panelize 2.94.1 已连接",
+            ready: true,
+            versionHint: "扩展版本较旧，建议更新"
+        )
+        bridge.supportsNewChat = false
+        bridge.hostSupportsNewChat = true
+        toggleNewChat(on: true)
+        XCTAssertTrue(controller.content.statusLabel.stringValue.contains("扩展版本过旧"))
+
+        XCTAssertTrue(waitUntil(timeout: 3) {
+            self.controller.content.statusLabel.stringValue == "扩展版本较旧，建议更新"
+        })
+    }
+
+    func testReadyWithoutHintKeepsTheGreenCheckOnly() {
+        controller.setConnectionStatus("Panelize 2.95.0 已连接", ready: true)
+
+        XCTAssertTrue(controller.content.statusLabel.isHidden)
+        XCTAssertEqual(controller.content.statusLabel.stringValue, "")
+        XCTAssertFalse(controller.content.statusStack.isActionable)
     }
 
     func testPartialNewChatShowsANonBlockingHintAndSendStillWorks() {

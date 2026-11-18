@@ -214,6 +214,16 @@ export const PROVIDERS = [
     iconDark: '/icons/providers/dark/wenxin.png',
     enabled: true,
     optionalOrigins: OPTIONAL_PROVIDER_CONFIGS.wenxin.origins
+  },
+  {
+    id: 'lingguang',
+    name: '灵光',
+    url: 'https://www.lingguang.com/chat',
+    topLevelUrl: 'https://www.lingguang.com/chat',
+    icon: '/icons/providers/lingguang.png',
+    iconDark: '/icons/providers/dark/lingguang.png',
+    enabled: true,
+    optionalOrigins: OPTIONAL_PROVIDER_CONFIGS.lingguang.origins
   }
 ];
 
@@ -257,7 +267,8 @@ const PROVIDER_SHORT_NAMES = {
   'hy-aistudio': 'Hy',
   perplexity: 'Pplx',
   copilot: 'Copilot',
-  wenxin: '文心'
+  wenxin: '文心',
+  lingguang: 'Ling'
 };
 
 export function getProviderShortName(provider) {

@@ -259,6 +259,100 @@ final class BridgeProtocolTests: XCTestCase {
         XCTAssertTrue(oldCapabilities.isEmpty)
     }
 
+    func testHostHandshakeAdvertisesCapabilitiesAndParsesLegacyHosts() {
+        let handshake = BridgeMessages.tokenHandshake(
+            "token",
+            browserBundleIdentifier: "com.example.Browser"
+        )
+        XCTAssertEqual(handshake["hostVersion"] as? Int, BridgeProtocol.version)
+        XCTAssertEqual(
+            Set(handshake["hostCapabilities"] as? [String] ?? []),
+            Set(["historySync", "newChat", "versionHandshake"])
+        )
+
+        guard case .hostHello(let version, let capabilities)? = BridgeMessages.parse(handshake) else {
+            return XCTFail("Expected a host hello")
+        }
+        XCTAssertEqual(version, BridgeProtocol.version)
+        XCTAssertEqual(capabilities, Set(["historySync", "newChat", "versionHandshake"]))
+
+        // Hosts built before the new-chat/history protocol only send the token.
+        guard case .hostHello(let legacyVersion, let legacyCapabilities)? = BridgeMessages.parse([
+            "protocol": 1,
+            "type": "bridgeHello",
+            "token": "token"
+        ] as [String: Any]) else {
+            return XCTFail("Expected a legacy host hello")
+        }
+        XCTAssertEqual(legacyVersion, 0)
+        XCTAssertTrue(legacyCapabilities.isEmpty)
+    }
+
+    func testClientHelloCarriesTheClientVersionAndBundleIdentifier() {
+        let hello = BridgeMessages.clientHello(clientVersion: "2.95.0")
+        XCTAssertEqual(hello["protocol"] as? Int, BridgeProtocol.version)
+        XCTAssertEqual(hello["type"] as? String, "clientHello")
+        XCTAssertEqual(hello["clientVersion"] as? String, "2.95.0")
+        XCTAssertEqual(hello["appBundleId"] as? String, BridgeProtocol.appBundleIdentifier)
+
+        guard let parsed = BridgeMessages.parseClientHello(hello) else {
+            return XCTFail("Expected a parsed client hello")
+        }
+        XCTAssertEqual(
+            parsed,
+            ClientHelloPayload(
+                clientVersion: "2.95.0",
+                appBundleId: BridgeProtocol.appBundleIdentifier
+            )
+        )
+
+        let custom = BridgeMessages.parseClientHello([
+            "type": "clientHello",
+            "clientVersion": " 2.95.1 ",
+            "appBundleId": " com.example.Browser "
+        ])
+        XCTAssertEqual(
+            custom,
+            ClientHelloPayload(clientVersion: "2.95.1", appBundleId: "com.example.Browser")
+        )
+    }
+
+    func testClientHelloRejectsInvalidValues() {
+        XCTAssertNil(BridgeMessages.parseClientHello([
+            "type": "hello",
+            "clientVersion": "2.95.0"
+        ]))
+        XCTAssertNil(BridgeMessages.parseClientHello(["type": "clientHello"]))
+        XCTAssertNil(BridgeMessages.parseClientHello([
+            "type": "clientHello",
+            "clientVersion": "   "
+        ]))
+        XCTAssertNil(BridgeMessages.parseClientHello([
+            "type": "clientHello",
+            "clientVersion": String(
+                repeating: "9",
+                count: BridgeProtocol.maxClientVersionLength + 1
+            )
+        ]))
+        XCTAssertNil(BridgeMessages.parseClientHello([
+            "type": "clientHello",
+            "clientVersion": "2.95.0",
+            "protocol": 3
+        ]))
+        XCTAssertNil(BridgeMessages.parseClientHello([
+            "type": "clientHello",
+            "clientVersion": 2950
+        ] as [String: Any]))
+        XCTAssertNil(BridgeMessages.parseClientHello([
+            "type": "clientHello",
+            "clientVersion": "2.95.0",
+            "appBundleId": String(
+                repeating: "x",
+                count: BridgeProtocol.maxAppBundleIdLength + 1
+            )
+        ]))
+    }
+
     func testSendPromptCarriesNewChatOnlyWhenRequested() {
         let plain = BridgeMessages.sendPrompt(requestId: "r1", text: "Hello")
         XCTAssertEqual(plain["protocol"] as? Int, 2)

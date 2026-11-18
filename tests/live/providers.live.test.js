@@ -35,6 +35,7 @@ const NEW_CHAT_VIA_URL_IN_PANEL = {
   perplexity: 'Perplexity uses its root to start a new chat; its signed-in controls are not yet verified',
   copilot: 'Copilot uses its chat URL; its signed-in controls are not yet verified',
   wenxin: 'Wenxin uses its root to start a new chat',
+  lingguang: 'Lingguang uses its /chat URL to start a new conversation',
 };
 
 const LIVE_TOKEN_PREFIX = 'panelize-live-';

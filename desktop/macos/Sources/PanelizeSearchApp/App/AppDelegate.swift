@@ -7,10 +7,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var panelController: SearchPanelController?
     private let shortcutManager = GlobalShortcutManager()
     private var shortcutChoice = ShortcutChoice.load()
-    private var connectionStatus = "浏览器未连接"
-    private var connectionReady = false
+    private let versionChecker: VersionChecking = VersionChecker()
+    private var latestStatus = BridgeStatusSnapshot.make(
+        hostConnected: false,
+        extensionConnected: false,
+        extensionVersion: "",
+        clientVersion: VersionUtils.currentAppVersion()
+    )
+    private var latestKnownVersion: String?
+    private var isCheckingUpdates = false
     private var shortcutMenu: NSMenu?
     private var statusMenuItem: NSMenuItem?
+    private var updateMenuItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         PromptModeChoice.applyAutoDefaultMigrationIfNeeded()
@@ -22,11 +30,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             BridgeSettingsLauncher.openBridgeSettings()
         }
 
-        bridge.onStatusChange = { [weak self] status in
+        bridge.onStatusChange = { [weak self] snapshot in
             guard let self else { return }
-            self.connectionStatus = status
-            self.connectionReady = status.contains("已连接") && !status.contains("等待扩展")
-            self.panelController?.setConnectionStatus(status, ready: self.connectionReady)
+            self.latestStatus = snapshot
+            self.panelController?.setConnectionStatus(
+                snapshot.text,
+                ready: snapshot.ready,
+                versionHint: snapshot.versionHint
+            )
             self.refreshMenu()
         }
 
@@ -41,8 +52,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         do {
             try bridge.start()
         } catch {
-            connectionStatus = "本地桥启动失败"
-            panelController?.setConnectionStatus(connectionStatus, ready: false)
+            latestStatus = .bridgeUnavailable()
+            panelController?.setConnectionStatus(latestStatus.text, ready: false)
         }
 
         shortcutManager.onPressed = { [weak self] in
@@ -55,6 +66,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
                 self?.panelController?.show()
             }
+        }
+
+        // Ask GitHub quietly once the menu bar is up; a newer release only
+        // changes the menu item, so typing is never interrupted.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            self?.performUpdateCheck(userInitiated: false)
         }
 
         NotificationCenter.default.addObserver(
@@ -217,6 +234,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(statusItem)
         self.statusMenuItem = statusItem
 
+        let updateItem = NSMenuItem(
+            title: "检查更新...",
+            action: #selector(checkForUpdatesManually),
+            keyEquivalent: ""
+        )
+        updateItem.target = self
+        updateItem.isEnabled = true
+        menu.addItem(updateItem)
+        self.updateMenuItem = updateItem
+
         menu.addItem(.separator())
         let quitItem = NSMenuItem(
             title: "退出 Panelize Link",
@@ -231,8 +258,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func refreshMenu() {
-        statusMenuItem?.title = "浏览器：\(connectionStatus)"
-        statusMenuItem?.isEnabled = !connectionReady
+        statusMenuItem?.title = latestStatus.menuTitle
+        statusMenuItem?.isEnabled = !latestStatus.ready
+        updateMenuItem?.title = updateMenuTitle
+        updateMenuItem?.isEnabled = !isCheckingUpdates
         for item in shortcutMenu?.items ?? [] {
             guard let raw = item.representedObject as? String,
                   let choice = ShortcutChoice(rawValue: raw) else {
@@ -241,6 +270,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             item.state = choice == shortcutChoice ? .on : .off
         }
         statusItem?.button?.toolTip = "Panelize 全局发送（\(shortcutChoice.title)）"
+    }
+
+    private var updateMenuTitle: String {
+        if isCheckingUpdates {
+            return "正在检查更新…"
+        }
+        if let latestKnownVersion {
+            return "发现新版本 (v\(latestKnownVersion))"
+        }
+        return "检查更新..."
     }
 
     @objc private func openPanel() {
@@ -252,6 +291,86 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let alert = NSAlert()
         alert.messageText = "未找到扩展设置"
         alert.informativeText = "请先在浏览器打开 Panelize 扩展设置，并在「全局快捷输入（macOS）」中开启「启用全局输入桥接」。"
+        alert.runModal()
+    }
+
+    @objc private func checkForUpdatesManually() {
+        performUpdateCheck(userInitiated: true)
+    }
+
+    private func performUpdateCheck(userInitiated: Bool) {
+        guard !isCheckingUpdates else { return }
+        isCheckingUpdates = true
+        refreshMenu()
+        versionChecker.checkForUpdates { [weak self] result in
+            guard let self else { return }
+            self.isCheckingUpdates = false
+            switch result {
+            case .success(let check):
+                if check.updateAvailable {
+                    self.latestKnownVersion = check.latestVersion
+                    self.refreshMenu()
+                    if userInitiated {
+                        self.presentUpdateAlert(check)
+                    }
+                } else {
+                    self.latestKnownVersion = nil
+                    self.refreshMenu()
+                    if userInitiated {
+                        self.presentUpToDateAlert(check)
+                    }
+                }
+            case .failure(let error):
+                self.refreshMenu()
+                if userInitiated {
+                    self.presentUpdateFailureAlert(error)
+                } else {
+                    NSLog("Panelize Link update check failed: \(error)")
+                }
+            }
+        }
+    }
+
+    private func presentUpdateAlert(_ check: UpdateCheckResult) {
+        let alert = NSAlert()
+        alert.messageText = "发现新版本 v\(check.latestVersion)"
+        alert.informativeText = """
+        当前版本：v\(check.currentVersion)
+        最新版本：v\(check.latestVersion)
+        发布页：\(check.releaseURL.absoluteString)
+
+        前往下载并安装最新版 Panelize Link。
+        """
+        alert.addButton(withTitle: "前往下载发布页")
+        alert.addButton(withTitle: "稍后")
+        if alert.runModal() == .alertFirstButtonReturn {
+            NSWorkspace.shared.open(check.releaseURL)
+        }
+    }
+
+    private func presentUpToDateAlert(_ check: UpdateCheckResult) {
+        let alert = NSAlert()
+        alert.messageText = "当前已是最新版本 (v\(check.currentVersion))"
+        alert.informativeText = "已通过 GitHub Releases 检查更新。"
+        alert.addButton(withTitle: "好")
+        alert.runModal()
+    }
+
+    private func presentUpdateFailureAlert(_ error: VersionCheckError) {
+        let reason: String
+        switch error {
+        case .timeout:
+            reason = "网络连接超时，请稍后重试。"
+        case .network:
+            reason = "请检查网络连接后重试。"
+        case .invalidResponse:
+            reason = "GitHub 返回了无法识别的数据，请稍后重试。"
+        }
+        let alert = NSAlert()
+        alert.messageText = "无法检查更新"
+        alert.informativeText = reason
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "好")
         alert.runModal()
     }
 
