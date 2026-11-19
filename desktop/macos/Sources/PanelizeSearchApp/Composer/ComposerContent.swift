@@ -108,7 +108,7 @@ final class ComposerContent: NSObject {
 
         historyPanelSurface.translatesAutoresizingMaskIntoConstraints = false
 
-        rootView.cardViews = [backdrop, historyPanelBackdrop]
+        rootView.cardViews = [surfaceView, historyPanelSurface]
 
         textView.isRichText = false
         textView.allowsUndo = true
@@ -142,6 +142,7 @@ final class ComposerContent: NSObject {
 
         historyBrowserView.isHidden = true
         historyBrowserView.translatesAutoresizingMaskIntoConstraints = false
+        rootView.historyBrowserView = historyBrowserView
 
         newChatCheckbox.font = ComposerFonts.newChatCheckbox
         newChatCheckbox.controlSize = .small

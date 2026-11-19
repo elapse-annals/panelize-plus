@@ -64,7 +64,7 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
     private let historyStore: PromptHistoryStore
     private let newChatPreference: NewChatPreference
     private var newChatState: NewChatState
-    private lazy var historyBrowser = ComposerHistoryBrowser(
+    private(set) lazy var historyBrowser = ComposerHistoryBrowser(
         content: content,
         store: historyStore,
         showStatus: { [weak self] text in

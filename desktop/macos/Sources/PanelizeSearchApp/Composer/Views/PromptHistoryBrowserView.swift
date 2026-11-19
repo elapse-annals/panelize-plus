@@ -179,9 +179,13 @@ final class PromptHistoryBrowserView: NSView {
     let copyButton = NSButton(title: "复制总结", target: nil, action: nil)
     let hintLabel = NSTextField(labelWithString: "↑↓ 切换 · ↵ 填入 · esc 关闭")
     private let separator = NSBox()
+    /// The identity of the text currently in the summary viewport, so an
+    /// unrelated history refresh can keep the selection and scroll position.
+    private var renderedSummaryIdentity: String?
 
     override var isFlipped: Bool { false }
     override var acceptsFirstResponder: Bool { false }
+    override var mouseDownCanMoveWindow: Bool { false }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -232,7 +236,16 @@ final class PromptHistoryBrowserView: NSView {
         summaryTextView.isVerticallyResizable = true
         summaryTextView.isHorizontallyResizable = false
         summaryTextView.autoresizingMask = [.width]
+        summaryTextView.minSize = NSSize(width: 0, height: 0)
+        summaryTextView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
         summaryTextView.textContainer?.widthTracksTextView = true
+        summaryTextView.textContainer?.containerSize = NSSize(
+            width: 0,
+            height: CGFloat.greatestFiniteMagnitude
+        )
         summaryTextView.textContainer?.lineFragmentPadding = 0
         summaryTextView.setAccessibilityLabel("AI 总结")
 
@@ -325,6 +338,7 @@ final class PromptHistoryBrowserView: NSView {
             width: max(0, width - summaryX - 12),
             height: listHeight
         )
+        layoutSummaryDocument()
 
         guard listHeight > 0 else { return }
         let listWidth = max(0, listScrollView.contentSize.width)
@@ -336,21 +350,93 @@ final class PromptHistoryBrowserView: NSView {
         )
     }
 
+    /// Keeps the text view at least as large as its viewport, so a click
+    /// anywhere in the right column lands on text rather than falling through
+    /// to the panel background. The document grows with wrapped text so the
+    /// scroll view handles long summaries.
+    private func layoutSummaryDocument() {
+        let viewport = summaryScrollView.contentSize
+        guard viewport.width > 0, viewport.height > 0 else { return }
+        summaryTextView.minSize = NSSize(width: viewport.width, height: viewport.height)
+        summaryTextView.maxSize = NSSize(
+            width: viewport.width,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        guard let container = summaryTextView.textContainer,
+              let layoutManager = summaryTextView.layoutManager else { return }
+        container.containerSize = NSSize(
+            width: viewport.width,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        container.widthTracksTextView = true
+        layoutManager.ensureLayout(for: container)
+        let textHeight = layoutManager.usedRect(for: container).height
+            + summaryTextView.textContainerInset.height * 2
+        summaryTextView.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: viewport.width,
+            height: max(viewport.height, ceil(textHeight))
+        )
+    }
+
+    /// Decoration labels, the separator and the scroll containers' own blank
+    /// areas would otherwise let AppKit start a window drag (or drop the click
+    /// on nothing). Route those to the browser; text, rows, scrollers and
+    /// buttons keep their native hit handling.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard !isHidden else { return nil }
+        guard let hit = super.hitTest(point) else { return self }
+        if hit === self
+            || hit === headerLabel
+            || hit === hintLabel
+            || hit === separator
+            || hit === listScrollView
+            || hit === listScrollView.contentView
+            || hit === summaryScrollView
+            || hit === summaryScrollView.contentView {
+            return self
+        }
+        return hit
+    }
+
+    /// The browser owns every click inside its panel: consume the ones no
+    /// subview handled so the root view never drags or dismisses the window.
+    /// A click in the right column's blank space focuses the summary there.
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard summaryScrollView.frame.contains(point) else { return }
+        focusSummary(at: point)
+    }
+
+    private func focusSummary(at point: NSPoint) {
+        guard let window else { return }
+        window.makeFirstResponder(summaryTextView)
+        let local = summaryTextView.convert(point, from: self)
+        let index = summaryTextView.characterIndexForInsertion(at: local)
+        let range = NSRange(location: index, length: 0)
+        summaryTextView.setSelectedRange(range)
+        summaryTextView.scrollRangeToVisible(range)
+    }
+
     func present(records: [PromptHistoryRecord], nowMillis: Double = PromptHistoryStore.currentMillis()) {
         self.records = records
         self.nowMillis = nowMillis
         selectedIndex = max(0, min(selectedIndex, max(0, records.count - 1)))
         isHidden = records.isEmpty
+        // Reopening starts from a clean selection and scroll position.
+        renderedSummaryIdentity = nil
+        summaryTextView.setSelectedRange(NSRange(location: 0, length: 0))
         refresh()
     }
 
     func update(records: [PromptHistoryRecord], nowMillis: Double = PromptHistoryStore.currentMillis()) {
         guard !isHidden else { return }
-        let selectedKey = selectedRecord?.text
+        let selectedKey = selectedRecord?.key
         self.records = records
         self.nowMillis = nowMillis
         if let selectedKey,
-           let index = records.firstIndex(where: { $0.text == selectedKey }) {
+           let index = records.firstIndex(where: { $0.key == selectedKey }) {
             selectedIndex = index
         } else {
             selectedIndex = max(0, min(selectedIndex, max(0, records.count - 1)))
@@ -360,6 +446,8 @@ final class PromptHistoryBrowserView: NSView {
 
     func dismiss() {
         isHidden = true
+        renderedSummaryIdentity = nil
+        summaryTextView.setSelectedRange(NSRange(location: 0, length: 0))
     }
 
     func select(_ index: Int) {
@@ -395,14 +483,31 @@ final class PromptHistoryBrowserView: NSView {
         listView.scrollToVisible(rect)
     }
 
+    /// Replaces the right column only when the shown question or summary
+    /// actually changed, so a background history refresh keeps the reader's
+    /// selection and scroll position. Switching records resets both.
     private func renderSummary() {
-        guard let record = selectedRecord else {
-            setSummaryText("暂无最近提问", color: .tertiaryLabelColor)
-            return
-        }
+        let record = selectedRecord
+        let identity = summaryIdentity(for: record)
+        guard identity != renderedSummaryIdentity else { return }
+        renderedSummaryIdentity = identity
+
+        summaryTextView.textStorage?.setAttributedString(attributedSummary(for: record))
+        summaryTextView.setSelectedRange(NSRange(location: 0, length: 0))
+        layoutSummaryDocument()
+        summaryTextView.scrollToBeginningOfDocument(nil)
+    }
+
+    private func summaryIdentity(for record: PromptHistoryRecord?) -> String {
+        guard let record else { return "<no-record>" }
+        return [record.key, record.text, record.summary?.formattedText ?? ""]
+            .joined(separator: "\u{1}")
+    }
+
+    private func attributedSummary(for record: PromptHistoryRecord?) -> NSAttributedString {
+        guard let record else { return summaryPlaceholder("暂无最近提问") }
         guard let summary = record.summary, record.hasSummary else {
-            setSummaryText("暂无总结", color: .tertiaryLabelColor)
-            return
+            return summaryPlaceholder("暂无总结")
         }
         let text = NSMutableAttributedString()
         let question = NSAttributedString(
@@ -414,19 +519,17 @@ final class PromptHistoryBrowserView: NSView {
         )
         text.append(question)
         text.append(renderSummaryBody(summary.formattedText))
-        summaryTextView.textStorage?.setAttributedString(text)
-        summaryTextView.scrollToBeginningOfDocument(nil)
+        return text
     }
 
-    private func setSummaryText(_ value: String, color: NSColor) {
-        summaryTextView.textStorage?.setAttributedString(NSAttributedString(
+    private func summaryPlaceholder(_ value: String) -> NSAttributedString {
+        NSAttributedString(
             string: value,
             attributes: [
                 .font: ComposerFonts.historyBrowserBody,
-                .foregroundColor: color
+                .foregroundColor: NSColor.tertiaryLabelColor
             ]
-        ))
-        summaryTextView.scrollToBeginningOfDocument(nil)
+        )
     }
 
     /// A deliberately small Markdown pass: bold headings and indented bullets,

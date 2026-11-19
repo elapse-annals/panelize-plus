@@ -9,18 +9,43 @@ final class ComposerContentView: NSView {
 /// The window's content view. The composer card is inset to leave room for the
 /// custom shadow; clicks in that transparent margin dismiss the panel.
 final class ComposerRootView: NSView {
+    enum Interaction {
+        case drag
+        case dismiss
+        case protect
+    }
+
     /// The card and the history panel above it. Their union includes the gap
     /// between them, so clicks there drag rather than dismiss the composer.
+    /// These are the always-present surfaces, not the material backdrops,
+    /// which "reduce transparency" hides.
     var cardViews: [NSView] = []
+    /// The two-column history browser. Its full frame is never an outside
+    /// click and never starts a window drag.
+    var historyBrowserView: NSView?
     var onOutsideClick: (() -> Void)?
+
+    func interaction(at point: NSPoint) -> Interaction {
+        if let historyBrowserView, !historyBrowserView.isHidden,
+           historyBrowserView.frame.contains(point) {
+            return .protect
+        }
+        let frames = cardViews.filter { !$0.isHidden }.map(\.frame)
+        guard let first = frames.first else { return .dismiss }
+        let region = frames.dropFirst().reduce(first) { $0.union($1) }
+        return region.contains(point) ? .drag : .dismiss
+    }
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        let frames = cardViews.filter { !$0.isHidden }.map(\.frame)
-        let region = frames.dropFirst().reduce(frames.first ?? .zero) { $0.union($1) }
-        if region.contains(point) {
+        switch interaction(at: point) {
+        case .protect:
+            // The browser consumes its own clicks; anything left here is
+            // blank panel space and must not move or dismiss the window.
+            return
+        case .drag:
             window?.performDrag(with: event)
-        } else {
+        case .dismiss:
             onOutsideClick?()
         }
     }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.96.1 - 2026-11-19
+- Fixed macOS client history summaries closing or moving the prompt panel: clicks on the panel's blank space, decorations or right-column text no longer reach the root view's drag and outside-click handling, so selecting text, right-click menus and focus changes keep the panel visible.
+- The summary text view now fills its viewport and reflows with the window; with no selection ⌘C copies the whole AI summary and shows "总结已复制", with a selection it copies only the selection, ↑/↓ move the caret inside the text, and switching records or reopening the browser clears the old selection.
+
 ## 2.96.0 - 2026-11-18
 - Added 灵光 (Lingguang, `www.lingguang.com/chat`) as an optional provider with a drawn light/dark icon, the toolbar short name "Ling", default enable/startup/order entries after 文心, optional site access for both hosts, a dynamically registered content script, and a frame rule (1013) scoped to panel frames.
 - Lingguang panels fill its visible antd composer while skipping the hidden autosize textarea, support textarea and contenteditable editors, click the send icon only when it is enabled, and follow the Enter/Shift+Enter configuration. New chat falls back to `/chat`.

@@ -311,6 +311,20 @@ final class SearchPanelControllerTests: XCTestCase {
         }, nowMillis: now)
     }
 
+    private func seedHistoryWithSummaries(_ items: [(text: String, summary: String?)]) {
+        let now = Date().timeIntervalSince1970 * 1000
+        _ = historyStore.merge(items.enumerated().map { index, item in
+            PromptHistoryRecord(
+                text: item.text,
+                createdAtMillis: now - Double(index) * 1000,
+                updatedAtMillis: now - Double(index) * 1000,
+                summary: item.summary.map {
+                    PromptHistorySummary(blind: false, formattedText: $0, createdAtMillis: now)
+                }
+            )
+        }, nowMillis: now)
+    }
+
     private func pressKey(_ keyCode: UInt16, characters: String = "") {
         guard let event = NSEvent.keyEvent(
             with: .keyDown,
@@ -327,6 +341,55 @@ final class SearchPanelControllerTests: XCTestCase {
             return XCTFail("Could not create a key event")
         }
         controller.content.textView.keyDown(with: event)
+    }
+
+    /// Delivers the key through the application so the browser's local key
+    /// monitor sees it, unlike `pressKey`, which calls the input directly.
+    private func sendKey(
+        _ keyCode: UInt16,
+        characters: String = "",
+        modifiers: NSEvent.ModifierFlags = []
+    ) {
+        guard let window = controller.window,
+              let event = NSEvent.keyEvent(
+                  with: .keyDown,
+                  location: .zero,
+                  modifierFlags: modifiers,
+                  timestamp: 0,
+                  windowNumber: window.windowNumber,
+                  context: nil,
+                  characters: characters,
+                  charactersIgnoringModifiers: characters,
+                  isARepeat: false,
+                  keyCode: keyCode
+              ) else {
+            return XCTFail("Could not create a key event")
+        }
+        NSApp.sendEvent(event)
+    }
+
+    private func openHistoryBrowser() {
+        pressKey(126)
+        // The open animates the panel height; let the constraints settle.
+        pump(0.4)
+        controller.content.layout.updateInputHeight(animated: false)
+        controller.window?.contentView?.layoutSubtreeIfNeeded()
+    }
+
+    private func focusSummary() {
+        let summaryTextView = controller.content.historyBrowserView.summaryTextView
+        controller.window?.makeFirstResponder(summaryTextView)
+        XCTAssertTrue(controller.window?.firstResponder === summaryTextView)
+    }
+
+    private func withGeneralPasteboard(_ body: () -> Void) {
+        let pasteboard = NSPasteboard.general
+        let saved = pasteboard.string(forType: .string)
+        body()
+        pasteboard.clearContents()
+        if let saved {
+            pasteboard.setString(saved, forType: .string)
+        }
     }
 
     func testArrowUpOnEmptyInputOpensHistoryAndEnterFillsWithoutSending() throws {
@@ -407,6 +470,224 @@ final class SearchPanelControllerTests: XCTestCase {
         XCTAssertFalse(controller.content.historyBrowserView.isHidden)
         XCTAssertEqual(controller.content.historyBrowserView.selectedRecord?.text, "Second question")
         XCTAssertEqual(controller.content.historyBrowserView.records.count, 2)
+    }
+
+    func testHistoryBrowserFrameNeverDismissesOrDragsThePanel() throws {
+        try requireWindowServer()
+        seedHistory(["First question"])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        let root = controller.content.rootView
+        let browser = controller.content.historyBrowserView
+        let surface = controller.content.surfaceView
+        XCTAssertFalse(browser.isHidden)
+        XCTAssertGreaterThan(browser.frame.width, 0)
+
+        let browserPoint = root.convert(
+            NSPoint(x: browser.bounds.midX, y: browser.bounds.midY),
+            from: browser
+        )
+        XCTAssertEqual(root.interaction(at: browserPoint), .protect)
+
+        let cardPoint = root.convert(
+            NSPoint(x: surface.bounds.midX, y: surface.bounds.midY),
+            from: surface
+        )
+        XCTAssertEqual(root.interaction(at: cardPoint), .drag)
+
+        XCTAssertEqual(root.interaction(at: NSPoint(x: 0, y: 0)), .dismiss)
+    }
+
+    func testSummaryDocumentTracksTheViewportAndGrowsWithLongText() throws {
+        try requireWindowServer()
+        let longSummary = (0..<80)
+            .map { "Line \($0) of a long AI summary that wraps when needed." }
+            .joined(separator: "\n")
+        seedHistoryWithSummaries([("Long question", longSummary), ("Short question", "Short.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        let textView = browser.summaryTextView
+        let viewport = browser.summaryScrollView.contentSize
+        XCTAssertGreaterThan(viewport.width, 0)
+        XCTAssertEqual(textView.frame.width, viewport.width, accuracy: 0.5)
+        XCTAssertGreaterThan(textView.frame.height, viewport.height)
+
+        // A narrower window reflows the document to the new viewport width.
+        guard var frame = controller.window?.frame else { return XCTFail("Missing window") }
+        frame.size.width -= 80
+        controller.window?.setFrame(frame, display: false)
+        controller.window?.contentView?.layoutSubtreeIfNeeded()
+        let narrower = browser.summaryScrollView.contentSize
+        XCTAssertLessThan(narrower.width, viewport.width)
+        XCTAssertEqual(textView.frame.width, narrower.width, accuracy: 0.5)
+        XCTAssertGreaterThanOrEqual(textView.frame.height, narrower.height)
+
+        // Switching to the short summary clears the old selection and still
+        // fills the viewport.
+        browser.select(1)
+        controller.window?.contentView?.layoutSubtreeIfNeeded()
+        XCTAssertEqual(textView.selectedRange(), NSRange(location: 0, length: 0))
+        XCTAssertTrue(textView.string.contains("Short."))
+        XCTAssertGreaterThanOrEqual(
+            textView.frame.height,
+            browser.summaryScrollView.contentSize.height
+        )
+        XCTAssertEqual(textView.frame.width, browser.summaryScrollView.contentSize.width, accuracy: 0.5)
+    }
+
+    func testUnrelatedHistoryUpdateKeepsTheSummarySelection() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([
+            ("First question", "First summary body.\nSecond line."),
+            ("Second question", "Second summary body.")
+        ])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        let textView = controller.content.historyBrowserView.summaryTextView
+        let selection = NSRange(location: 5, length: 6)
+        textView.setSelectedRange(selection)
+
+        controller.historyDidChange(historyStore.loadRecords())
+        XCTAssertEqual(textView.selectedRange(), selection)
+
+        // A different record replaces the text and starts a clean selection.
+        controller.content.historyBrowserView.select(1)
+        XCTAssertTrue(textView.string.contains("Second summary body."))
+        XCTAssertEqual(textView.selectedRange(), NSRange(location: 0, length: 0))
+    }
+
+    func testCommandCCopiesTheWholeSummaryAndTheButtonDoesToo() throws {
+        try requireWindowServer()
+        let summary = "## Heading\nA summary body line."
+        seedHistoryWithSummaries([("Summarized question", summary)])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        var copied: String?
+        controller.historyBrowser.pasteboardWriter = { text in
+            copied = text
+            return true
+        }
+
+        sendKey(8, characters: "c", modifiers: .command)
+        XCTAssertEqual(copied, summary)
+        XCTAssertEqual(controller.content.statusLabel.stringValue, "总结已复制")
+
+        // The copy button always copies the whole summary, selection or not.
+        controller.content.historyBrowserView.summaryTextView.setSelectedRange(
+            NSRange(location: 0, length: 4)
+        )
+        copied = nil
+        controller.content.historyBrowserView.copyButton.performClick(nil)
+        XCTAssertEqual(copied, summary)
+    }
+
+    func testCopyFailureOmitsTheSuccessHint() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("Summarized question", "A summary body.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        let before = controller.content.statusLabel.stringValue
+        controller.historyBrowser.pasteboardWriter = { _ in false }
+        sendKey(8, characters: "c", modifiers: .command)
+        XCTAssertEqual(controller.content.statusLabel.stringValue, before)
+    }
+
+    func testCommandCCopiesTheSelectionWhenThereIsOne() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("Summarized question", "Selection target text.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        focusSummary()
+
+        let textView = controller.content.historyBrowserView.summaryTextView
+        let selection = NSRange(location: 0, length: 6)
+        textView.setSelectedRange(selection)
+        let expected = (textView.string as NSString).substring(with: selection)
+
+        var wholeCopy: String?
+        controller.historyBrowser.pasteboardWriter = { text in
+            wholeCopy = text
+            return true
+        }
+        withGeneralPasteboard {
+            NSPasteboard.general.clearContents()
+            sendKey(8, characters: "c", modifiers: .command)
+            XCTAssertEqual(NSPasteboard.general.string(forType: .string), expected)
+        }
+        XCTAssertNil(wholeCopy, "a selection must not copy the whole summary")
+    }
+
+    func testCommandCWithoutASummaryConsumesTheKeyAndKeepsTheClipboard() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("Plain question", nil)])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        let before = controller.content.statusLabel.stringValue
+        var copied: String?
+        controller.historyBrowser.pasteboardWriter = { text in
+            copied = text
+            return true
+        }
+        XCTAssertFalse(controller.content.historyBrowserView.copyButton.isEnabled)
+
+        withGeneralPasteboard {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString("sentinel", forType: .string)
+            sendKey(8, characters: "c", modifiers: .command)
+            XCTAssertEqual(NSPasteboard.general.string(forType: .string), "sentinel")
+        }
+        XCTAssertNil(copied)
+        XCTAssertEqual(controller.content.statusLabel.stringValue, before)
+    }
+
+    func testArrowKeysMoveTheSummaryCaretAndCollapseSelections() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([
+            ("Q", "line one is here\nline two is here\nline three is here")
+        ])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        focusSummary()
+
+        let textView = controller.content.historyBrowserView.summaryTextView
+        let text = textView.string as NSString
+        let secondLine = text.range(of: "line two").location
+        XCTAssertNotEqual(secondLine, NSNotFound)
+
+        let caret = secondLine + 4
+        textView.setSelectedRange(NSRange(location: caret, length: 0))
+        sendKey(126)
+        let afterUp = textView.selectedRange()
+        XCTAssertEqual(afterUp.length, 0)
+        XCTAssertLessThan(afterUp.location, caret)
+
+        sendKey(125)
+        let afterDown = textView.selectedRange()
+        XCTAssertEqual(afterDown.length, 0)
+        XCTAssertGreaterThan(afterDown.location, afterUp.location)
+
+        textView.setSelectedRange(NSRange(location: secondLine, length: 4))
+        sendKey(126)
+        XCTAssertEqual(textView.selectedRange(), NSRange(location: secondLine, length: 0))
+
+        textView.setSelectedRange(NSRange(location: secondLine, length: 4))
+        sendKey(125)
+        XCTAssertEqual(textView.selectedRange(), NSRange(location: secondLine + 4, length: 0))
     }
 
     // MARK: - New chat checkbox
