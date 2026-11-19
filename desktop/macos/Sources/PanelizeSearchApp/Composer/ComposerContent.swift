@@ -459,6 +459,6 @@ final class ComposerContent: NSObject {
         modePicker.refreshAppearance()
         sendButton.refreshAppearance()
         completionOverlay.needsDisplay = true
-        historyBrowserView.needsDisplay = true
+        historyBrowserView.applyAccessibilityOptions()
     }
 }

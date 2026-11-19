@@ -170,5 +170,138 @@ final class ComposerLayoutTests: XCTestCase {
     func testHistoryBrowserHeightIsZeroWithoutRoom() {
         XCTAssertEqual(composerHistoryBrowserHeight(maxAvailable: 0), 0)
         XCTAssertEqual(composerHistoryBrowserHeight(maxAvailable: -20), 0)
+        XCTAssertEqual(composerHistoryBrowserHeight(maxAvailable: 0, mode: .zoomed), 0)
+        XCTAssertEqual(composerHistoryBrowserHeight(maxAvailable: -20, mode: .zoomed), 0)
+    }
+
+    // MARK: - Expanded reading mode
+
+    func testHistoryBrowserPreferredHeightDependsOnMode() {
+        XCTAssertEqual(composerHistoryBrowserPreferredHeight(for: .twoColumn), 336)
+        XCTAssertEqual(composerHistoryBrowserPreferredHeight(for: .zoomed), 520)
+        XCTAssertEqual(composerHistoryBrowserPreferredHeight, 336)
+        XCTAssertEqual(composerHistoryBrowserZoomedPreferredHeight, 520)
+    }
+
+    func testZoomedBrowserUsesPreferredHeightWhenThereIsRoom() {
+        let visible = CGRect(x: 0, y: 0, width: 1440, height: 875)
+        let contentOrigin = composerOrigin(
+            visibleFrame: visible,
+            panelSize: CGSize(width: 680, height: 180)
+        )
+        let maxHeight = composerHistoryBrowserMaxHeight(
+            visibleFrame: visible,
+            contentOrigin: contentOrigin,
+            cardHeight: composerCardHeight(inputHeight: 74),
+            shadowInset: 28
+        )
+        XCTAssertEqual(maxHeight, 556, accuracy: 0.001)
+        XCTAssertEqual(composerHistoryBrowserHeight(maxAvailable: maxHeight), 336)
+        XCTAssertEqual(
+            composerHistoryBrowserHeight(maxAvailable: maxHeight, mode: .zoomed),
+            520
+        )
+    }
+
+    func testZoomedBrowserShrinksOnASmallScreenAndKeepsTheWindowTopInside() {
+        let visible = CGRect(x: 0, y: 0, width: 1440, height: 300)
+        let contentOrigin = composerOrigin(
+            visibleFrame: visible,
+            panelSize: CGSize(width: 680, height: 180)
+        )
+        let maxHeight = composerHistoryBrowserMaxHeight(
+            visibleFrame: visible,
+            contentOrigin: contentOrigin,
+            cardHeight: composerCardHeight(inputHeight: 74),
+            shadowInset: 28
+        )
+        XCTAssertLessThan(maxHeight, composerHistoryBrowserMinimumUsableHeight)
+
+        let zoomed = composerHistoryBrowserHeight(maxAvailable: maxHeight, mode: .zoomed)
+        XCTAssertEqual(zoomed, maxHeight, accuracy: 0.001)
+
+        // The card keeps its bottom edge and the window top stays 12pt under
+        // the visible frame's top.
+        let contentHeight = composerContentHeight(inputHeight: 74, suggestionHeight: zoomed)
+        let origin = composerWindowOrigin(
+            visibleFrame: visible,
+            contentSize: CGSize(width: 680, height: contentHeight),
+            shadowInset: 28
+        )
+        XCTAssertEqual(origin.y + 28, contentOrigin.y, accuracy: 0.001)
+        XCTAssertLessThanOrEqual(
+            origin.y + contentHeight + 28,
+            visible.maxY - composerHistoryBrowserTopMargin + 0.001
+        )
+    }
+
+    func testZoomedBrowserClampsAgainstTheDraggedCardBottom() {
+        // The user dragged the panel up; the available room is measured from
+        // the real bottom edge rather than the designed position.
+        let visible = CGRect(x: 0, y: 0, width: 1440, height: 875)
+        let contentBottom: CGFloat = 600
+        let cardHeight = composerCardHeight(inputHeight: 74)
+        let maxHeight = composerHistoryBrowserMaxHeight(
+            visibleFrame: visible,
+            contentOrigin: CGPoint(x: 0, y: contentBottom),
+            cardHeight: cardHeight,
+            shadowInset: 28
+        )
+        XCTAssertEqual(maxHeight, 61, accuracy: 0.001)
+
+        let zoomed = composerHistoryBrowserHeight(maxAvailable: maxHeight, mode: .zoomed)
+        XCTAssertEqual(zoomed, 61, accuracy: 0.001)
+        let windowTop = contentBottom + cardHeight + (zoomed - composerHistoryPanelOverlap) + 28
+        XCTAssertEqual(windowTop, visible.maxY - composerHistoryBrowserTopMargin, accuracy: 0.001)
+    }
+
+    func testZoomedBrowserOnANegativeOriginScreen() {
+        let visible = CGRect(x: -1920, y: -25, width: 1920, height: 1055)
+        let contentOrigin = composerOrigin(
+            visibleFrame: visible,
+            panelSize: CGSize(width: 680, height: 180)
+        )
+        let maxHeight = composerHistoryBrowserMaxHeight(
+            visibleFrame: visible,
+            contentOrigin: contentOrigin,
+            cardHeight: composerCardHeight(inputHeight: 74),
+            shadowInset: 28
+        )
+        XCTAssertGreaterThan(maxHeight, composerHistoryBrowserZoomedPreferredHeight)
+
+        let zoomed = composerHistoryBrowserHeight(maxAvailable: maxHeight, mode: .zoomed)
+        XCTAssertEqual(zoomed, composerHistoryBrowserZoomedPreferredHeight)
+
+        let contentHeight = composerContentHeight(inputHeight: 74, suggestionHeight: zoomed)
+        let origin = composerWindowOrigin(
+            visibleFrame: visible,
+            contentSize: CGSize(width: 680, height: contentHeight),
+            shadowInset: 28
+        )
+        XCTAssertLessThanOrEqual(
+            origin.y + contentHeight + 28,
+            visible.maxY - composerHistoryBrowserTopMargin + 0.001
+        )
+        XCTAssertEqual(origin.y + 28, contentOrigin.y, accuracy: 0.001)
+    }
+
+    func testSystemRepositionUsesTheTargetBottomForZoomedHeight() {
+        // After a screen change the panel returns to the designed position, so
+        // the browser must be measured from that target, not its old frame.
+        let visible = CGRect(x: 0, y: 0, width: 1440, height: 875)
+        let targetOrigin = composerOrigin(
+            visibleFrame: visible,
+            panelSize: CGSize(width: 680, height: 180)
+        )
+        let maxHeight = composerHistoryBrowserMaxHeight(
+            visibleFrame: visible,
+            contentOrigin: CGPoint(x: 0, y: targetOrigin.y),
+            cardHeight: composerCardHeight(inputHeight: 74),
+            shadowInset: 28
+        )
+        XCTAssertEqual(
+            composerHistoryBrowserHeight(maxAvailable: maxHeight, mode: .zoomed),
+            520
+        )
     }
 }

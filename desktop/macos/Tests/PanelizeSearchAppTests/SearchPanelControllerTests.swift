@@ -348,7 +348,8 @@ final class SearchPanelControllerTests: XCTestCase {
     private func sendKey(
         _ keyCode: UInt16,
         characters: String = "",
-        modifiers: NSEvent.ModifierFlags = []
+        modifiers: NSEvent.ModifierFlags = [],
+        isARepeat: Bool = false
     ) {
         guard let window = controller.window,
               let event = NSEvent.keyEvent(
@@ -360,7 +361,7 @@ final class SearchPanelControllerTests: XCTestCase {
                   context: nil,
                   characters: characters,
                   charactersIgnoringModifiers: characters,
-                  isARepeat: false,
+                  isARepeat: isARepeat,
                   keyCode: keyCode
               ) else {
             return XCTFail("Could not create a key event")
@@ -688,6 +689,667 @@ final class SearchPanelControllerTests: XCTestCase {
         textView.setSelectedRange(NSRange(location: secondLine, length: 4))
         sendKey(125)
         XCTAssertEqual(textView.selectedRange(), NSRange(location: secondLine + 4, length: 0))
+    }
+
+    // MARK: - Expanded reading mode
+
+    private func zoomHistoryBrowser(file: StaticString = #filePath, line: UInt = #line) {
+        sendKey(124)
+        pump(0.4)
+        controller.window?.contentView?.layoutSubtreeIfNeeded()
+        XCTAssertTrue(
+            controller.content.historyBrowserView.isZoomed,
+            "→ must expand a record that has a summary",
+            file: file,
+            line: line
+        )
+    }
+
+    private func returnToTwoColumn(file: StaticString = #filePath, line: UInt = #line) {
+        sendKey(123)
+        pump(0.5)
+        controller.window?.contentView?.layoutSubtreeIfNeeded()
+        XCTAssertFalse(
+            controller.content.historyBrowserView.isZoomed,
+            "← must return to the two-column layout",
+            file: file,
+            line: line
+        )
+    }
+
+    private func doubleClickSummary() {
+        let textView = controller.content.historyBrowserView.summaryTextView
+        guard let window = controller.window else { return XCTFail("Missing window") }
+        let point = textView.convert(NSPoint(x: 12, y: 12), to: nil)
+        guard let event = NSEvent.mouseEvent(
+            with: .leftMouseDown,
+            location: point,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: window.windowNumber,
+            context: nil,
+            eventNumber: 0,
+            clickCount: 2,
+            pressure: 1
+        ) else {
+            return XCTFail("Could not create a mouse event")
+        }
+        textView.mouseDown(with: event)
+        pump(0.3)
+        controller.window?.contentView?.layoutSubtreeIfNeeded()
+    }
+
+    private func doubleClickSummaryBlankArea() {
+        let browser = controller.content.historyBrowserView
+        guard let window = controller.window else { return XCTFail("Missing window") }
+        let point = browser.summaryScrollView.convert(
+            NSPoint(x: 4, y: 4),
+            to: nil
+        )
+        guard let event = NSEvent.mouseEvent(
+            with: .leftMouseDown,
+            location: point,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: window.windowNumber,
+            context: nil,
+            eventNumber: 0,
+            clickCount: 2,
+            pressure: 1
+        ) else {
+            return XCTFail("Could not create a mouse event")
+        }
+        browser.mouseDown(with: event)
+        pump(0.3)
+        controller.window?.contentView?.layoutSubtreeIfNeeded()
+    }
+
+    private func longSummary(_ lines: Int = 80) -> String {
+        (0..<lines)
+            .map { "Line \($0) of a long AI summary that wraps when needed." }
+            .joined(separator: "\n")
+    }
+
+    func testArrowRightExpandsTheSummaryAndEscapeReturnsThenCloses() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("Summarized question", "A summary body.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        guard let panel = controller.window,
+              let screen = panel.screen ?? NSScreen.main else {
+            return XCTFail("Missing screen")
+        }
+        let browser = controller.content.historyBrowserView
+        let cardBottom = panel.frame.minY
+        let twoColumnWindowHeight = panel.frame.height
+        let twoColumnSummaryWidth = browser.summaryScrollView.frame.width
+
+        zoomHistoryBrowser()
+        XCTAssertTrue(browser.isZoomed)
+        XCTAssertTrue(browser.listScrollView.isHidden)
+        XCTAssertTrue(browser.questionCard.isHidden == false)
+        XCTAssertEqual(browser.hintLabel.stringValue, "← / esc 返回列表 · ↑↓ 滚动 · ↵ 填入")
+        XCTAssertGreaterThan(browser.summaryScrollView.frame.width, twoColumnSummaryWidth + 100)
+        XCTAssertGreaterThan(panel.frame.height, twoColumnWindowHeight, "the panel grows upward")
+        XCTAssertEqual(panel.frame.minY, cardBottom, accuracy: 0.5, "the card bottom stays fixed")
+        XCTAssertLessThanOrEqual(
+            panel.frame.maxY,
+            screen.visibleFrame.maxY - composerHistoryBrowserTopMargin + 0.5,
+            "the expanded window must stay inside the screen"
+        )
+
+        sendKey(53)
+        pump(0.5)
+        controller.window?.contentView?.layoutSubtreeIfNeeded()
+        XCTAssertFalse(browser.isZoomed)
+        XCTAssertFalse(browser.isHidden)
+        XCTAssertTrue(panel.isVisible, "the first Esc only leaves the expanded view")
+        XCTAssertEqual(panel.frame.minY, cardBottom, accuracy: 0.5)
+
+        pressKey(53)
+        XCTAssertTrue(browser.isHidden)
+        XCTAssertTrue(panel.isVisible, "the second Esc closes only the browser")
+    }
+
+    func testEveryEntryPointExpandsTheSameReadingView() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("Summarized question", "A summary body.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        browser.zoomButton.performClick(nil)
+        pump(0.3)
+        XCTAssertTrue(browser.isZoomed, "the bottom-bar button expands")
+
+        returnToTwoColumn()
+        browser.zoomIconButton.performClick(nil)
+        pump(0.3)
+        XCTAssertTrue(browser.isZoomed, "the top-right icon expands")
+
+        returnToTwoColumn()
+        doubleClickSummary()
+        XCTAssertTrue(browser.isZoomed, "a double click on the body expands")
+
+        returnToTwoColumn()
+        doubleClickSummaryBlankArea()
+        XCTAssertTrue(browser.isZoomed, "a double click on the viewport's blank space expands")
+
+        returnToTwoColumn()
+        browser.backButton.performClick(nil)
+        pump(0.4)
+        XCTAssertFalse(browser.isZoomed, "the back button returns to two columns")
+    }
+
+    func testZoomIsDisabledWithoutASummary() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("Plain question", nil)])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        XCTAssertFalse(browser.zoomButton.isEnabled)
+        XCTAssertFalse(browser.zoomIconButton.isEnabled)
+        XCTAssertFalse(browser.canZoom)
+        print("DEBUG after open hidden=\(browser.isHidden) responder=\(String(describing: controller.window?.firstResponder))")
+
+        sendKey(124)
+        pump(0.2)
+        print("DEBUG after right hidden=\(browser.isHidden) responder=\(String(describing: controller.window?.firstResponder))")
+        XCTAssertFalse(browser.isZoomed)
+        XCTAssertFalse(browser.isHidden, "→ without a summary must not close history")
+
+        doubleClickSummary()
+        XCTAssertFalse(browser.isZoomed)
+        XCTAssertFalse(browser.isHidden)
+
+        doubleClickSummaryBlankArea()
+        XCTAssertFalse(browser.isZoomed)
+        XCTAssertFalse(browser.isHidden)
+
+        browser.zoomButton.performClick(nil)
+        browser.zoomIconButton.performClick(nil)
+        pump(0.2)
+        XCTAssertFalse(browser.isZoomed)
+        XCTAssertFalse(browser.isHidden)
+    }
+
+    func testZoomedQuestionCardShowsTheQuestionAndTimeAndOpensAFullOverlay() throws {
+        try requireWindowServer()
+        let question = String(repeating: "A very long original question. ", count: 12)
+        seedHistoryWithSummaries([(question, "A summary body.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        XCTAssertEqual(browser.questionCard.questionText, question)
+        XCTAssertEqual(browser.questionCard.timeText, "刚刚")
+        XCTAssertEqual(browser.questionCard.accessibilityLabel(), "原始提问")
+        XCTAssertEqual(browser.questionCard.accessibilityValue() as? String, question)
+
+        browser.questionCard.onOpen?()
+        XCTAssertTrue(browser.isQuestionOverlayVisible)
+        XCTAssertEqual(browser.questionOverlay.textView.string, question)
+        XCTAssertTrue(controller.window?.firstResponder === browser.questionOverlay.textView)
+
+        sendKey(53)
+        XCTAssertFalse(browser.isQuestionOverlayVisible)
+        XCTAssertTrue(browser.isZoomed, "closing the overlay keeps the expanded view")
+        XCTAssertTrue(controller.window?.firstResponder === browser.questionCard)
+
+        // A record change closes the overlay with the expanded view.
+        browser.questionCard.onOpen?()
+        XCTAssertTrue(browser.isQuestionOverlayVisible)
+        let withoutSummary = historyStore.loadRecords().map {
+            PromptHistoryRecord(
+                text: $0.text,
+                createdAtMillis: $0.createdAtMillis,
+                updatedAtMillis: $0.updatedAtMillis
+            )
+        }
+        controller.historyDidChange(withoutSummary)
+        pump(0.4)
+        XCTAssertFalse(browser.isQuestionOverlayVisible)
+        XCTAssertFalse(browser.isZoomed)
+        XCTAssertFalse(browser.isHidden)
+        XCTAssertTrue(browser.summaryTextView.string.contains("暂无总结"))
+    }
+
+    func testZoomedBodyUsesFormattedTextIncludingAnonymousLabels() throws {
+        try requireWindowServer()
+        let now = Date().timeIntervalSince1970 * 1000
+        let summary = "## 综合总结\n- Anonymous model 1: first answer\n  匿名模型 2：second answer"
+        _ = historyStore.merge([PromptHistoryRecord(
+            text: "Blind question",
+            createdAtMillis: now,
+            updatedAtMillis: now,
+            summary: PromptHistorySummary(
+                blind: true,
+                formattedText: summary,
+                createdAtMillis: now
+            )
+        )], nowMillis: now)
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        let body = browser.summaryTextView.string
+        XCTAssertTrue(body.contains("Anonymous model 1"))
+        XCTAssertTrue(body.contains("匿名模型 2"))
+        XCTAssertFalse(body.contains("Blind question"), "the question moved to the card")
+        XCTAssertFalse(browser.summaryTextView.string.contains("OpenAI"), "no provider leaks")
+
+        var copied: String?
+        controller.historyBrowser.pasteboardWriter = { text in
+            copied = text
+            return true
+        }
+        browser.copyButton.performClick(nil)
+        XCTAssertEqual(copied, summary)
+
+        returnToTwoColumn()
+        XCTAssertTrue(
+            browser.summaryTextView.string.contains("Blind question"),
+            "the two-column layout keeps its compact question prefix"
+        )
+    }
+
+    func testReturningRestoresTheTwoColumnSelectionAndScrollPositions() throws {
+        try requireWindowServer()
+        let items: [(text: String, summary: String?)] = (0..<8).map {
+            ("Question \($0)", longSummary(30))
+        }
+        seedHistoryWithSummaries(items)
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        browser.listScrollView.contentView.scroll(to: NSPoint(x: 0, y: 40))
+        browser.listScrollView.reflectScrolledClipView(browser.listScrollView.contentView)
+        browser.summaryScrollView.contentView.scroll(to: NSPoint(x: 0, y: 30))
+        browser.summaryScrollView.reflectScrolledClipView(browser.summaryScrollView.contentView)
+        let selection = NSRange(location: 6, length: 5)
+        browser.summaryTextView.setSelectedRange(selection)
+        let savedListY = browser.listScrollView.contentView.bounds.origin.y
+        let savedSummaryY = browser.summaryScrollView.contentView.bounds.origin.y
+        XCTAssertGreaterThan(savedListY, 0, "the list has room to scroll")
+        XCTAssertGreaterThan(savedSummaryY, 0, "the summary has room to scroll")
+
+        zoomHistoryBrowser()
+        XCTAssertEqual(
+            browser.summaryScrollView.contentView.bounds.origin.y,
+            0,
+            accuracy: 0.5,
+            "the expanded view opens at the top"
+        )
+
+        returnToTwoColumn()
+        XCTAssertEqual(browser.summaryTextView.selectedRange(), selection)
+        XCTAssertEqual(
+            browser.listScrollView.contentView.bounds.origin.y,
+            savedListY,
+            accuracy: 0.5
+        )
+        XCTAssertEqual(
+            browser.summaryScrollView.contentView.bounds.origin.y,
+            savedSummaryY,
+            accuracy: 0.5
+        )
+    }
+
+    func testUnchangedContentKeepsTheZoomReadingPosition() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("Long question", longSummary())])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        sendKey(125)
+        sendKey(125)
+        let readY = browser.summaryScrollView.contentView.bounds.origin.y
+        XCTAssertGreaterThan(readY, 0)
+
+        controller.historyDidChange(historyStore.loadRecords())
+        XCTAssertTrue(browser.isZoomed)
+        XCTAssertEqual(
+            browser.summaryScrollView.contentView.bounds.origin.y,
+            readY,
+            accuracy: 0.5,
+            "an unrelated refresh keeps the reader's position"
+        )
+    }
+
+    func testChangedContentDuringZoomDropsTheSnapshotAndResets() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("Long question", longSummary())])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        sendKey(125)
+        XCTAssertGreaterThan(browser.summaryScrollView.contentView.bounds.origin.y, 0)
+
+        let now = Date().timeIntervalSince1970 * 1000
+        let changed = historyStore.loadRecords().map { record in
+            PromptHistoryRecord(
+                text: record.text,
+                createdAtMillis: record.createdAtMillis,
+                updatedAtMillis: record.updatedAtMillis,
+                summary: PromptHistorySummary(
+                    blind: false,
+                    formattedText: "A refreshed summary.",
+                    createdAtMillis: now
+                )
+            )
+        }
+        controller.historyDidChange(changed)
+        controller.window?.contentView?.layoutSubtreeIfNeeded()
+        XCTAssertTrue(browser.isZoomed)
+        XCTAssertTrue(browser.summaryTextView.string.contains("A refreshed summary."))
+        XCTAssertEqual(
+            browser.summaryScrollView.contentView.bounds.origin.y,
+            0,
+            accuracy: 0.5,
+            "content changes reset the expanded reading position"
+        )
+
+        returnToTwoColumn()
+        XCTAssertEqual(
+            browser.summaryScrollView.contentView.bounds.origin.y,
+            0,
+            accuracy: 0.5,
+            "the stale two-column snapshot was discarded"
+        )
+    }
+
+    func testLosingTheSummaryLeavesZoomBeforeRenderingTheRecord() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([
+            ("First question", "First summary."),
+            ("Second question", "Second summary.")
+        ])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        let withoutSummary = historyStore.loadRecords().map { record in
+            PromptHistoryRecord(
+                text: record.text,
+                createdAtMillis: record.createdAtMillis,
+                updatedAtMillis: record.updatedAtMillis
+            )
+        }
+        controller.historyDidChange(withoutSummary)
+        pump(0.4)
+        controller.window?.contentView?.layoutSubtreeIfNeeded()
+
+        XCTAssertFalse(browser.isZoomed)
+        XCTAssertFalse(browser.isHidden)
+        XCTAssertEqual(browser.selectedRecord?.text, "First question")
+        XCTAssertTrue(browser.summaryTextView.string.contains("暂无总结"))
+        XCTAssertFalse(browser.copyButton.isEnabled)
+    }
+
+    func testSelectionDisappearingFromHistoryClampsToTheNeighbour() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([
+            ("First question", "First summary."),
+            ("Second question", "Second summary.")
+        ])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        pressKey(125)
+        XCTAssertEqual(controller.content.historyBrowserView.selectedRecord?.text, "Second question")
+        zoomHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        let onlyFirst = historyStore.loadRecords().filter { $0.text == "First question" }
+        controller.historyDidChange(onlyFirst)
+        pump(0.4)
+        controller.window?.contentView?.layoutSubtreeIfNeeded()
+
+        XCTAssertFalse(browser.isZoomed)
+        XCTAssertFalse(browser.isHidden)
+        XCTAssertEqual(browser.records.count, 1)
+        XCTAssertEqual(browser.selectedRecord?.text, "First question")
+    }
+
+    func testClearingHistoryClosesTheBrowserAndRestoresTheInputFocus() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("First question", "First summary.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        controller.historyDidChange([])
+        pump(0.4)
+        let browser = controller.content.historyBrowserView
+        XCTAssertTrue(browser.isHidden)
+        XCTAssertFalse(browser.isZoomed)
+        XCTAssertTrue(controller.window?.isVisible == true)
+        XCTAssertTrue(controller.window?.firstResponder === controller.content.textView)
+    }
+
+    func testReopeningAlwaysStartsInTwoColumns() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("First question", "First summary.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        sendKey(53)
+        pump(0.5)
+        sendKey(53)
+        pump(0.3)
+        let browser = controller.content.historyBrowserView
+        XCTAssertTrue(browser.isHidden)
+
+        pressKey(126)
+        pump(0.4)
+        XCTAssertFalse(browser.isHidden)
+        XCTAssertFalse(browser.isZoomed)
+        XCTAssertEqual(browser.hintLabel.stringValue, "↑↓ 切换 · ↵ 填入 · esc 关闭")
+    }
+
+    func testZoomedArrowAndPageKeysScrollAndClampWhileKeepingTheSelection() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("Long question", longSummary())])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        let textView = browser.summaryTextView
+        textView.setSelectedRange(NSRange(location: 10, length: 4))
+        let selectedText = browser.selectedRecord?.text
+
+        sendKey(125)
+        let afterLine = browser.summaryScrollView.contentView.bounds.origin.y
+        XCTAssertGreaterThan(afterLine, 0)
+
+        for _ in 0..<80 { sendKey(125) }
+        let maxY = max(
+            0,
+            textView.frame.height - browser.summaryScrollView.contentView.bounds.height
+        )
+        XCTAssertEqual(
+            browser.summaryScrollView.contentView.bounds.origin.y,
+            maxY,
+            accuracy: 1,
+            "ArrowDown clamps at the end of the body"
+        )
+
+        sendKey(116) // PageUp
+        XCTAssertLessThan(browser.summaryScrollView.contentView.bounds.origin.y, maxY)
+        sendKey(121) // PageDown
+        XCTAssertEqual(
+            browser.summaryScrollView.contentView.bounds.origin.y,
+            maxY,
+            accuracy: 1
+        )
+        for _ in 0..<200 { sendKey(126) }
+        XCTAssertEqual(
+            browser.summaryScrollView.contentView.bounds.origin.y,
+            0,
+            accuracy: 0.5,
+            "ArrowUp clamps at the top"
+        )
+
+        XCTAssertEqual(textView.selectedRange(), NSRange(location: 10, length: 4))
+        XCTAssertEqual(browser.selectedRecord?.text, selectedText)
+    }
+
+    func testRepeatedEscapeInsideTheZoomIsIgnored() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("First question", "First summary.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        sendKey(53, isARepeat: true)
+        XCTAssertTrue(browser.isZoomed, "held Escape must not close the browser")
+        sendKey(53)
+        XCTAssertFalse(browser.isZoomed)
+        sendKey(53, isARepeat: true)
+        XCTAssertFalse(browser.isHidden, "held Escape must not close the browser")
+    }
+
+    func testZoomedEnterFillsWithoutSending() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("First question", "First summary.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        sendKey(36, characters: "\r")
+        pump(0.3)
+        XCTAssertTrue(controller.content.historyBrowserView.isHidden)
+        XCTAssertEqual(controller.content.textView.string, "First question")
+        XCTAssertTrue(bridge.submitted.isEmpty, "expanded Enter must never send")
+    }
+
+    func testZoomedPlainCharacterTypesOnceAndKeepsTheBrowserClosed() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("First question", "First summary.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        sendKey(0, characters: "a")
+        pump(0.2)
+        XCTAssertTrue(controller.content.historyBrowserView.isHidden)
+        XCTAssertEqual(controller.content.textView.string, "a")
+        XCTAssertTrue(bridge.submitted.isEmpty)
+    }
+
+    func testMarkedTextPassesHotkeysThroughWhileComposing() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("First question", "First summary.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let input = controller.content.textView
+        input.setMarkedText(
+            "ni",
+            selectedRange: NSRange(location: 0, length: 2),
+            replacementRange: NSRange(location: NSNotFound, length: 0)
+        )
+        XCTAssertTrue(input.hasMarkedText())
+
+        var copied: String?
+        controller.historyBrowser.pasteboardWriter = { text in
+            copied = text
+            return true
+        }
+        sendKey(53)
+        XCTAssertTrue(controller.content.historyBrowserView.isZoomed, "Esc is not intercepted mid-composition")
+        sendKey(8, characters: "c", modifiers: .command)
+        XCTAssertNil(copied, "⌘C is not intercepted mid-composition")
+
+        input.unmarkText()
+        sendKey(53)
+        XCTAssertFalse(controller.content.historyBrowserView.isZoomed)
+    }
+
+    func testZoomedCopyAndAccessibilityLabels() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("First question", "First summary body.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        XCTAssertEqual(browser.zoomIconButton.accessibilityLabel(), "放大展示总结全文")
+        XCTAssertEqual(browser.zoomButton.accessibilityLabel(), "放大总结")
+        XCTAssertEqual(browser.backButton.accessibilityLabel(), "返回列表")
+        XCTAssertEqual(browser.summaryTextView.accessibilityLabel(), "AI 总结")
+        XCTAssertEqual(browser.questionOverlay.textView.accessibilityLabel(), "完整原始提问")
+
+        var copied: String?
+        controller.historyBrowser.pasteboardWriter = { text in
+            copied = text
+            return true
+        }
+        browser.copyButton.performClick(nil)
+        XCTAssertEqual(copied, "First summary body.")
+        let successStatus = controller.content.statusLabel.stringValue
+        XCTAssertEqual(successStatus, "总结已复制")
+
+        controller.historyBrowser.pasteboardWriter = { _ in false }
+        browser.copyButton.performClick(nil)
+        XCTAssertEqual(controller.content.statusLabel.stringValue, successStatus)
+    }
+
+    func testZoomedCopyWithASelectionCopiesOnlyTheSelection() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("First question", "Selection target text.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let textView = controller.content.historyBrowserView.summaryTextView
+        let selection = NSRange(location: 0, length: 9)
+        textView.setSelectedRange(selection)
+        let expected = (textView.string as NSString).substring(with: selection)
+
+        var wholeCopy: String?
+        controller.historyBrowser.pasteboardWriter = { text in
+            wholeCopy = text
+            return true
+        }
+        withGeneralPasteboard {
+            NSPasteboard.general.clearContents()
+            sendKey(8, characters: "c", modifiers: .command)
+            XCTAssertEqual(NSPasteboard.general.string(forType: .string), expected)
+        }
+        XCTAssertNil(wholeCopy)
     }
 
     // MARK: - New chat checkbox

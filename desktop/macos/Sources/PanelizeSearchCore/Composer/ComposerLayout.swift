@@ -22,8 +22,30 @@ public let composerHistoryPanelOverlap: CGFloat = 6
 // The two-column history browser shown by ArrowUp on an empty input. Its
 // preferred height shrinks when the screen has no room above the composer.
 public let composerHistoryBrowserPreferredHeight: CGFloat = 336
+/// The expanded, full-width reading view asks for more room.
+public let composerHistoryBrowserZoomedPreferredHeight: CGFloat = 520
 public let composerHistoryBrowserMinimumHeight: CGFloat = 160
+/// Below this the browser cannot show its header, one body line and the
+/// footer, so it is better to keep the two-column view or stay closed.
+public let composerHistoryBrowserMinimumUsableHeight: CGFloat = 96
 public let composerHistoryBrowserTopMargin: CGFloat = 12
+
+/// Which of the browser's two layouts is being measured.
+public enum ComposerHistoryBrowserMode: Equatable {
+    case twoColumn
+    case zoomed
+}
+
+public func composerHistoryBrowserPreferredHeight(
+    for mode: ComposerHistoryBrowserMode
+) -> CGFloat {
+    switch mode {
+    case .twoColumn:
+        return composerHistoryBrowserPreferredHeight
+    case .zoomed:
+        return composerHistoryBrowserZoomedPreferredHeight
+    }
+}
 
 public func composerInputHeight(forTextHeight textHeight: CGFloat) -> CGFloat {
     min(max(ceil(textHeight), composerBaseInputHeight), composerMaxInputHeight)
@@ -91,4 +113,17 @@ public func composerHistoryBrowserHeight(
 ) -> CGFloat {
     guard maxAvailable > 0 else { return 0 }
     return max(0, min(max(preferred, minimum), maxAvailable))
+}
+
+/// The same clamp with the preferred height chosen by the browser's mode.
+public func composerHistoryBrowserHeight(
+    maxAvailable: CGFloat,
+    mode: ComposerHistoryBrowserMode,
+    minimum: CGFloat = composerHistoryBrowserMinimumHeight
+) -> CGFloat {
+    composerHistoryBrowserHeight(
+        maxAvailable: maxAvailable,
+        preferred: composerHistoryBrowserPreferredHeight(for: mode),
+        minimum: minimum
+    )
 }

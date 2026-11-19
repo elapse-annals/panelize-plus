@@ -135,8 +135,7 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
             submit: { [weak self] in self?.submit() },
             handleEscape: { [weak self] in
                 guard let self else { return }
-                if self.historyBrowser.isVisible {
-                    self.historyBrowser.close(restoreFocus: true)
+                if self.historyBrowser.handleEscape() {
                     return
                 }
                 self.suggestions.handleEscape()
@@ -146,7 +145,13 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
             moveHistorySelection: { [weak self] delta in
                 guard let self else { return false }
                 if self.historyBrowser.isVisible {
-                    self.historyBrowser.moveSelection(delta)
+                    // Expanded reading keeps the selected record and scrolls
+                    // the summary body instead of switching rows.
+                    if self.historyBrowser.isZoomed {
+                        self.historyBrowser.scrollSummary(delta)
+                    } else {
+                        self.historyBrowser.moveSelection(delta)
+                    }
                     return true
                 }
                 if delta < 0,
@@ -241,7 +246,6 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         // before positioning the panel, including history suggestions.
         suggestions.suppressHistory = false
         suggestions.refreshHistorySuggestions()
-        content.layout.updateInputHeight(animated: false)
 
         // NSScreen.main follows the key window, which can be on another
         // display when the shortcut fires. Show on the display with the mouse.
@@ -255,6 +259,11 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
             visibleFrame: visible,
             contentSize: content.layout.composerContentSize,
             shadowInset: ComposerMetrics.shadowInset
+        )
+        // Measure the history browser against where the panel is about to sit.
+        content.layout.updateInputHeight(
+            animated: false,
+            targetContentBottom: targetOrigin.y + ComposerMetrics.shadowInset
         )
         let targetFrame = CGRect(origin: targetOrigin, size: content.layout.composerWindowSize)
 
@@ -315,17 +324,29 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         guard let panel = window,
               panel.isVisible,
               let screen = panel.screen ?? NSScreen.main else { return }
-        // Re-clamp the history browser before measuring the window.
-        content.layout.updateInputHeight(animated: false)
+        // Measure against the destination before re-clamping the history
+        // browser, then position the panel there.
         let origin = composerWindowOrigin(
             visibleFrame: screen.visibleFrame,
             contentSize: content.layout.composerContentSize,
             shadowInset: ComposerMetrics.shadowInset
         )
+        content.layout.updateInputHeight(
+            animated: false,
+            targetContentBottom: origin.y + ComposerMetrics.shadowInset
+        )
         var frame = panel.frame
         frame.origin = origin
         frame.size = content.layout.composerWindowSize
         panel.setFrame(frame, display: true)
+    }
+
+    /// Dragging the panel changes how much room the history browser has above
+    /// it; re-clamp the height against the real bottom edge, keeping the card
+    /// where the user put it.
+    func windowDidMove(_ notification: Notification) {
+        guard let panel = window, panel.isVisible, historyBrowser.isVisible else { return }
+        content.layout.updateInputHeight(animated: false)
     }
 
     func hide() {
