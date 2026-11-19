@@ -359,14 +359,32 @@ final class SearchPanelControllerTests: XCTestCase {
                   timestamp: 0,
                   windowNumber: window.windowNumber,
                   context: nil,
-                  characters: characters,
-                  charactersIgnoringModifiers: characters,
+                  characters: characters.isEmpty ? Self.functionKeyCharacters(for: keyCode) : characters,
+                  charactersIgnoringModifiers: characters.isEmpty ? Self.functionKeyCharacters(for: keyCode) : characters,
                   isARepeat: isARepeat,
                   keyCode: keyCode
               ) else {
             return XCTFail("Could not create a key event")
         }
         NSApp.sendEvent(event)
+    }
+
+    /// Real key events for navigation keys carry these private-use scalars;
+    /// AppKit's text system needs them to treat the event as a key press
+    /// rather than an empty character.
+    private static func functionKeyCharacters(for keyCode: UInt16) -> String {
+        switch keyCode {
+        case 126: return "\u{F700}" // ArrowUp
+        case 125: return "\u{F701}" // ArrowDown
+        case 123: return "\u{F702}" // ArrowLeft
+        case 124: return "\u{F703}" // ArrowRight
+        case 116: return "\u{F72C}" // PageUp
+        case 121: return "\u{F72D}" // PageDown
+        case 53: return "\u{1B}" // Escape
+        case 36: return "\r" // Return
+        case 76: return "\u{3}" // keypad Enter
+        default: return ""
+        }
     }
 
     private func openHistoryBrowser() {
@@ -734,6 +752,21 @@ final class SearchPanelControllerTests: XCTestCase {
         ) else {
             return XCTFail("Could not create a mouse event")
         }
+        // When the click is not consumed by the zoom entry it reaches
+        // NSTextView's native tracking loop, which needs a mouse-up to end.
+        if let up = NSEvent.mouseEvent(
+            with: .leftMouseUp,
+            location: point,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: window.windowNumber,
+            context: nil,
+            eventNumber: 0,
+            clickCount: 2,
+            pressure: 0
+        ) {
+            NSApp.postEvent(up, atStart: false)
+        }
         textView.mouseDown(with: event)
         pump(0.3)
         controller.window?.contentView?.layoutSubtreeIfNeeded()
@@ -788,6 +821,10 @@ final class SearchPanelControllerTests: XCTestCase {
 
         zoomHistoryBrowser()
         XCTAssertTrue(browser.isZoomed)
+        XCTAssertTrue(
+            panel.firstResponder === browser.summaryTextView,
+            "expanding moves focus into the reading body"
+        )
         XCTAssertTrue(browser.listScrollView.isHidden)
         XCTAssertTrue(browser.questionCard.isHidden == false)
         XCTAssertEqual(browser.hintLabel.stringValue, "← / esc 返回列表 · ↑↓ 滚动 · ↵ 填入")
@@ -844,6 +881,50 @@ final class SearchPanelControllerTests: XCTestCase {
         XCTAssertFalse(browser.isZoomed, "the back button returns to two columns")
     }
 
+    func testRapidModeSwitchingSettlesOnTheLastRequestedMode() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("Long question", longSummary())])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        guard let panel = controller.window,
+              let screen = panel.screen ?? NSScreen.main else {
+            return XCTFail("Missing screen")
+        }
+        let cardBottom = panel.frame.minY
+
+        sendKey(124)
+        sendKey(123)
+        sendKey(124)
+        pump(0.6)
+        controller.window?.contentView?.layoutSubtreeIfNeeded()
+
+        XCTAssertTrue(browser.isZoomed, "the last request wins")
+        XCTAssertTrue(browser.listScrollView.isHidden)
+        XCTAssertTrue(browser.questionCard.isHidden == false)
+        XCTAssertFalse(browser.backButton.isHidden)
+        XCTAssertEqual(
+            browser.summaryScrollView.frame.width,
+            browser.bounds.width - 24,
+            accuracy: 1,
+            "the body reflowed once at the expanded width"
+        )
+        XCTAssertEqual(panel.frame.minY, cardBottom, accuracy: 0.5, "the card bottom stays fixed")
+        XCTAssertLessThanOrEqual(
+            panel.frame.maxY,
+            screen.visibleFrame.maxY - composerHistoryBrowserTopMargin + 0.5,
+            "the window top never leaves the screen"
+        )
+
+        sendKey(53)
+        pump(0.5)
+        sendKey(53)
+        pump(0.3)
+        XCTAssertTrue(browser.isHidden)
+    }
+
     func testZoomIsDisabledWithoutASummary() throws {
         try requireWindowServer()
         seedHistoryWithSummaries([("Plain question", nil)])
@@ -855,11 +936,9 @@ final class SearchPanelControllerTests: XCTestCase {
         XCTAssertFalse(browser.zoomButton.isEnabled)
         XCTAssertFalse(browser.zoomIconButton.isEnabled)
         XCTAssertFalse(browser.canZoom)
-        print("DEBUG after open hidden=\(browser.isHidden) responder=\(String(describing: controller.window?.firstResponder))")
 
         sendKey(124)
         pump(0.2)
-        print("DEBUG after right hidden=\(browser.isHidden) responder=\(String(describing: controller.window?.firstResponder))")
         XCTAssertFalse(browser.isZoomed)
         XCTAssertFalse(browser.isHidden, "→ without a summary must not close history")
 
@@ -880,7 +959,9 @@ final class SearchPanelControllerTests: XCTestCase {
 
     func testZoomedQuestionCardShowsTheQuestionAndTimeAndOpensAFullOverlay() throws {
         try requireWindowServer()
-        let question = String(repeating: "A very long original question. ", count: 12)
+        let question = (0..<12)
+            .map { _ in "A very long original question." }
+            .joined(separator: " ")
         seedHistoryWithSummaries([(question, "A summary body.")])
         controller.show()
         pump()
@@ -985,10 +1066,9 @@ final class SearchPanelControllerTests: XCTestCase {
         XCTAssertGreaterThan(savedSummaryY, 0, "the summary has room to scroll")
 
         zoomHistoryBrowser()
-        XCTAssertEqual(
+        XCTAssertLessThan(
             browser.summaryScrollView.contentView.bounds.origin.y,
-            0,
-            accuracy: 0.5,
+            20,
             "the expanded view opens at the top"
         )
 
@@ -1169,6 +1249,34 @@ final class SearchPanelControllerTests: XCTestCase {
         XCTAssertEqual(browser.hintLabel.stringValue, "↑↓ 切换 · ↵ 填入 · esc 关闭")
     }
 
+    func testZoomedHotkeysAlsoWorkWhileTheInputHasFocus() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("Long question", longSummary())])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        let input = controller.content.textView
+        controller.window?.makeFirstResponder(input)
+        XCTAssertTrue(controller.window?.firstResponder === input)
+
+        sendKey(125)
+        XCTAssertGreaterThan(
+            browser.summaryScrollView.contentView.bounds.origin.y,
+            0,
+            "ArrowDown scrolls the expanded body from the input focus"
+        )
+        XCTAssertEqual(browser.selectedRecord?.text, "Long question")
+
+        sendKey(53)
+        pump(0.5)
+        XCTAssertFalse(browser.isZoomed, "Esc returns to two columns from the input focus")
+        XCTAssertFalse(browser.isHidden)
+        XCTAssertTrue(controller.window?.firstResponder === input)
+    }
+
     func testZoomedArrowAndPageKeysScrollAndClampWhileKeepingTheSelection() throws {
         try requireWindowServer()
         seedHistoryWithSummaries([("Long question", longSummary())])
@@ -1187,10 +1295,11 @@ final class SearchPanelControllerTests: XCTestCase {
         XCTAssertGreaterThan(afterLine, 0)
 
         for _ in 0..<80 { sendKey(125) }
-        let maxY = max(
-            0,
-            textView.frame.height - browser.summaryScrollView.contentView.bounds.height
-        )
+        let clipView = browser.summaryScrollView.contentView
+        var probe = clipView.bounds
+        probe.origin.y = 1_000_000
+        let maxY = clipView.constrainBoundsRect(probe).origin.y
+        XCTAssertGreaterThan(maxY, 0, "the long body can scroll")
         XCTAssertEqual(
             browser.summaryScrollView.contentView.bounds.origin.y,
             maxY,
@@ -1243,11 +1352,100 @@ final class SearchPanelControllerTests: XCTestCase {
         openHistoryBrowser()
         zoomHistoryBrowser()
 
+        let browser = controller.content.historyBrowserView
+        sendKey(36, characters: "\r", isARepeat: true)
+        XCTAssertFalse(browser.isHidden, "held Return must not fill before it is released")
+        XCTAssertTrue(browser.isZoomed)
+
         sendKey(36, characters: "\r")
         pump(0.3)
-        XCTAssertTrue(controller.content.historyBrowserView.isHidden)
+        XCTAssertTrue(browser.isHidden)
         XCTAssertEqual(controller.content.textView.string, "First question")
         XCTAssertTrue(bridge.submitted.isEmpty, "expanded Enter must never send")
+    }
+
+    func testRepeatedEnterDoesNotFillOrSendAfterTheBrowserCloses() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("First question", "First summary.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        let input = controller.content.textView
+        sendKey(36, characters: "\r", isARepeat: true)
+        XCTAssertFalse(browser.isHidden, "held Return must not fill before it is released")
+        XCTAssertEqual(input.string, "")
+
+        sendKey(36, characters: "\r")
+        pump(0.2)
+        XCTAssertTrue(browser.isHidden)
+        XCTAssertEqual(input.string, "First question")
+
+        // Repeats that were already queued when the browser closed still reach
+        // the input; they must not submit the freshly filled question.
+        sendKey(36, characters: "\r", isARepeat: true)
+        pump(0.2)
+        XCTAssertTrue(bridge.submitted.isEmpty)
+    }
+
+    func testZoomedQuestionCardShowsTheRelativeTimeOfAnOlderRecord() throws {
+        try requireWindowServer()
+        let now = Date().timeIntervalSince1970 * 1000
+        _ = historyStore.merge([PromptHistoryRecord(
+            text: "An older question",
+            createdAtMillis: now - 2 * 3_600_000 - 300_000,
+            updatedAtMillis: now - 2 * 3_600_000 - 300_000,
+            summary: PromptHistorySummary(
+                blind: false,
+                formattedText: "An older summary.",
+                createdAtMillis: now
+            )
+        )], nowMillis: now)
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let card = controller.content.historyBrowserView.questionCard
+        XCTAssertEqual(card.questionText, "An older question")
+        XCTAssertEqual(card.timeText, "2 小时前")
+    }
+
+    func testZoomedBodyKeepsTheMarkdownHeadingListAndParagraphStyles() throws {
+        try requireWindowServer()
+        let summary = "## Overview\n- first point\nA plain body line."
+        seedHistoryWithSummaries([("Markdown question", summary)])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let storage = controller.content.historyBrowserView.summaryTextView.textStorage
+        guard let storage else { return XCTFail("Missing text storage") }
+        let text = storage.string as NSString
+
+        let heading = text.range(of: "Overview")
+        XCTAssertNotEqual(heading.location, NSNotFound)
+        XCTAssertEqual(
+            storage.attributes(at: heading.location, effectiveRange: nil)[.font] as? NSFont,
+            ComposerFonts.historyBrowserHeading
+        )
+
+        let bullet = text.range(of: "• first point")
+        XCTAssertNotEqual(bullet.location, NSNotFound)
+        let bulletStyle = storage.attributes(
+            at: bullet.location,
+            effectiveRange: nil
+        )[.paragraphStyle] as? NSParagraphStyle
+        XCTAssertGreaterThan(bulletStyle?.headIndent ?? 0, 0)
+
+        let body = text.range(of: "A plain body line.")
+        XCTAssertNotEqual(body.location, NSNotFound)
+        XCTAssertEqual(
+            storage.attributes(at: body.location, effectiveRange: nil)[.font] as? NSFont,
+            ComposerFonts.historyBrowserBody
+        )
     }
 
     func testZoomedPlainCharacterTypesOnceAndKeepsTheBrowserClosed() throws {
@@ -1262,6 +1460,56 @@ final class SearchPanelControllerTests: XCTestCase {
         pump(0.2)
         XCTAssertTrue(controller.content.historyBrowserView.isHidden)
         XCTAssertEqual(controller.content.textView.string, "a")
+        XCTAssertTrue(bridge.submitted.isEmpty)
+    }
+
+    func testMarkedTextChangeKeepsTheBrowserOpen() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("First question", "First summary.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        let input = controller.content.textView
+        input.setMarkedText(
+            "ni",
+            selectedRange: NSRange(location: 0, length: 2),
+            replacementRange: NSRange(location: NSNotFound, length: 0)
+        )
+        XCTAssertTrue(input.hasMarkedText())
+        controller.textDidChange(Notification(
+            name: NSText.didChangeNotification,
+            object: input
+        ))
+        XCTAssertFalse(browser.isHidden, "an uncommitted composition keeps the history open")
+
+        input.unmarkText()
+        controller.textDidChange(Notification(
+            name: NSText.didChangeNotification,
+            object: input
+        ))
+        XCTAssertTrue(browser.isHidden, "committing the composition closes the history")
+    }
+
+    func testZoomedTypingFromTheInputStillDismissesThroughTextDidChange() throws {
+        try requireWindowServer()
+        seedHistoryWithSummaries([("First question", "First summary.")])
+        controller.show()
+        pump()
+        openHistoryBrowser()
+        zoomHistoryBrowser()
+
+        let browser = controller.content.historyBrowserView
+        let input = controller.content.textView
+        controller.window?.makeFirstResponder(input)
+        XCTAssertTrue(controller.window?.firstResponder === input)
+
+        sendKey(0, characters: "b")
+        pump(0.3)
+        XCTAssertEqual(input.string, "b", "the character is typed exactly once")
+        XCTAssertTrue(browser.isHidden, "textDidChange closes the browser")
+        XCTAssertFalse(browser.isZoomed)
         XCTAssertTrue(bridge.submitted.isEmpty)
     }
 

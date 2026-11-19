@@ -258,8 +258,18 @@ final class ComposerHistoryBrowser {
         }
 
         // Two-column → expands the reading view before the input sees it.
+        // A held key must not repeat the switch.
         if event.keyCode == 124, isBareKey(event), browser.canZoom {
+            guard !event.isARepeat else { return true }
             zoomIfPossible()
+            return true
+        }
+
+        // Escape closes from any focus. A held key must not cascade into
+        // closing the browser right after a mode switch.
+        if event.keyCode == 53, isBareKey(event) {
+            guard !event.isARepeat else { return true }
+            close(restoreFocus: true)
             return true
         }
 
@@ -281,6 +291,7 @@ final class ComposerHistoryBrowser {
             moveSelection(event.keyCode == 126 ? -1 : 1)
             return true
         case 36, 76: // Return / keypad Enter
+            guard !event.isARepeat else { return true }
             onFillRequested?()
             return true
         default:
@@ -321,8 +332,13 @@ final class ComposerHistoryBrowser {
                 break
             }
             if isPlainCharacter(event) {
-                // Typing leaves the reading view and continues in the input;
-                // AppKit delivers the returned event exactly once.
+                // The main input keeps its own textDidChange path, which also
+                // leaves an unfinished composition alone. Typing from the body
+                // or a button closes the browser and AppKit delivers the same
+                // event once, now to the input.
+                guard content.rootView.window?.firstResponder !== content.textView else {
+                    return false
+                }
                 close(restoreFocus: true)
                 return false
             }

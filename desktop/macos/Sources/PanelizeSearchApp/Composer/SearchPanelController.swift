@@ -459,7 +459,9 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
     }
 
     func textDidChange(_ notification: Notification) {
-        if historyBrowser.isVisible {
+        // An unfinished input-method composition keeps the browser open; the
+        // committed text closes it once composition ends.
+        if historyBrowser.isVisible, !content.textView.hasMarkedText() {
             historyBrowser.close(restoreFocus: false)
         }
         content.placeholder.isHidden = !content.textView.string.isEmpty

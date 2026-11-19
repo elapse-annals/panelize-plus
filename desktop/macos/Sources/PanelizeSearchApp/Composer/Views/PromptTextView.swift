@@ -90,6 +90,9 @@ final class PromptTextView: NSTextView {
                 super.keyDown(with: event)
                 return
             }
+            // A held Return must not submit again once a history fill has
+            // closed the browser and returned focus to the input.
+            if event.isARepeat { return }
             onEnter?()
             return
         }

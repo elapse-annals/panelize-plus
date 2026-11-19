@@ -233,6 +233,13 @@ final class HistoryQuestionCardView: NSView {
         onOpen?()
     }
 
+    /// VoiceOver treats this view as a button, so pressing it opens the full
+    /// question overlay too.
+    override func accessibilityPerformPress() -> Bool {
+        onOpen?()
+        return true
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         let options = ComposerAccessibilityOptions.current
         let path = NSBezierPath(
@@ -514,6 +521,13 @@ final class PromptHistoryBrowserView: NSView {
     private var readingSnapshots: [String: ReadingSnapshot] = [:]
     private var pendingRestoreKey: String?
     private var questionOverlayRecordKey: String?
+    /// While the side column fades, the zoomed body keeps the two-column
+    /// geometry so long text reflows only once, at the target width.
+    private var isSideColumnTransitioning = false
+
+    private var showsZoomedLayout: Bool {
+        isZoomed && !isSideColumnTransitioning
+    }
 
     override var isFlipped: Bool { false }
     override var acceptsFirstResponder: Bool { false }
@@ -663,7 +677,7 @@ final class PromptHistoryBrowserView: NSView {
         layoutFooter(width: width, buttonY: buttonY)
 
         let headerHeight: CGFloat
-        if isZoomed {
+        if showsZoomedLayout {
             let questionHeight = Self.questionCardHeight
             questionCard.frame = NSRect(
                 x: Self.zoomHorizontalInset,
@@ -894,20 +908,68 @@ final class PromptHistoryBrowserView: NSView {
             pendingRestoreKey = nil
             isZoomed = true
             dismissQuestionOverlay(refocus: false)
+            // Fade the side column out first and keep the body's two-column
+            // geometry until it is gone; the expanded body then reflows once
+            // at its target width instead of on every animation frame.
+            beginSideColumnTransition(hiding: true, generation: generation)
+            applyModeVisibility()
+            needsLayout = true
+            refresh()
+        } else {
+            pendingRestoreKey = selectedRecord?.key
+            isZoomed = false
+            isSideColumnTransitioning = false
+            dismissQuestionOverlay(refocus: false)
+            applyModeVisibility()
+            needsLayout = true
+            refresh()
+            beginSideColumnTransition(hiding: false, generation: generation)
+        }
+        return generation
+    }
+
+    /// Crossfades the left column and separator with the same 0.16s window
+    /// animation. Reduce Motion applies the end state immediately.
+    private func beginSideColumnTransition(hiding: Bool, generation: Int) {
+        isSideColumnTransitioning = hiding
+        listScrollView.isHidden = false
+        separator.isHidden = false
+        listScrollView.alphaValue = hiding ? 1 : 0
+        separator.alphaValue = hiding ? 1 : 0
+        guard !ComposerAccessibilityOptions.current.reduceMotion else {
+            completeSideColumnTransition(hiding: hiding, generation: generation)
+            return
+        }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.16
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            listScrollView.animator().alphaValue = hiding ? 0 : 1
+            separator.animator().alphaValue = hiding ? 0 : 1
+        } completionHandler: { [weak self] in
+            self?.completeSideColumnTransition(hiding: hiding, generation: generation)
+        }
+    }
+
+    private func completeSideColumnTransition(hiding: Bool, generation: Int) {
+        guard generation == modeTransitionGeneration else { return }
+        listScrollView.alphaValue = 1
+        separator.alphaValue = 1
+        if hiding {
+            guard isZoomed else { return }
+            isSideColumnTransitioning = false
             applyModeVisibility()
             needsLayout = true
             refresh()
             summaryTextView.setSelectedRange(NSRange(location: 0, length: 0))
             summaryTextView.scrollToBeginningOfDocument(nil)
+            layoutSubtreeIfNeeded()
         } else {
-            pendingRestoreKey = selectedRecord?.key
-            isZoomed = false
-            dismissQuestionOverlay(refocus: false)
+            guard !isZoomed else { return }
+            isSideColumnTransitioning = false
+            listScrollView.isHidden = false
+            separator.isHidden = false
             applyModeVisibility()
-            needsLayout = true
-            refresh()
         }
-        return generation
     }
 
     /// Restores the two-column reading position once the height animation has
@@ -937,10 +999,11 @@ final class PromptHistoryBrowserView: NSView {
 
     private func scrollSummary(toY value: CGFloat) {
         let content = summaryScrollView.contentView
-        let documentHeight = summaryTextView.frame.height
-        let maxY = max(0, documentHeight - content.bounds.height)
-        let target = min(max(0, value), maxY)
-        content.scroll(to: NSPoint(x: content.bounds.origin.x, y: target))
+        var proposed = content.bounds
+        proposed.origin.y = value
+        // Let the clip view apply its own document bounds (including any
+        // scroller and inset adjustments) instead of guessing the maximum.
+        content.scroll(to: content.constrainBoundsRect(proposed).origin)
         summaryScrollView.reflectScrolledClipView(content)
     }
 
@@ -989,6 +1052,9 @@ final class PromptHistoryBrowserView: NSView {
         readingSnapshots.removeAll()
         pendingRestoreKey = nil
         isZoomed = false
+        isSideColumnTransitioning = false
+        listScrollView.alphaValue = 1
+        separator.alphaValue = 1
         dismissQuestionOverlay(refocus: false)
         renderedSummaryIdentity = nil
         summaryTextView.setSelectedRange(NSRange(location: 0, length: 0))
@@ -996,12 +1062,15 @@ final class PromptHistoryBrowserView: NSView {
     }
 
     private func applyModeVisibility() {
-        headerLabel.isHidden = isZoomed
-        listScrollView.isHidden = isZoomed
-        separator.isHidden = isZoomed
+        let zoomedLayout = showsZoomedLayout
+        headerLabel.isHidden = zoomedLayout
+        listScrollView.isHidden = zoomedLayout
+        separator.isHidden = zoomedLayout
+        questionCard.isHidden = !zoomedLayout
+        // The bottom bar and the expand icon follow the target mode right
+        // away, so the available action is clear during the column fade.
         zoomIconButton.isHidden = isZoomed
         zoomButton.isHidden = isZoomed
-        questionCard.isHidden = !isZoomed
         backButton.isHidden = !isZoomed
         hintLabel.stringValue = isZoomed ? Self.zoomedHint : Self.twoColumnHint
         hintLabel.setAccessibilityLabel(hintLabel.stringValue)
@@ -1036,13 +1105,9 @@ final class PromptHistoryBrowserView: NSView {
 
     private func scrollView(_ scrollView: NSScrollView, to origin: NSPoint) {
         let content = scrollView.contentView
-        let documentSize = scrollView.documentView?.frame.size ?? .zero
-        let maxX = max(0, documentSize.width - content.bounds.width)
-        let maxY = max(0, documentSize.height - content.bounds.height)
-        content.scroll(to: NSPoint(
-            x: min(max(0, origin.x), maxX),
-            y: min(max(0, origin.y), maxY)
-        ))
+        var proposed = content.bounds
+        proposed.origin = origin
+        content.scroll(to: content.constrainBoundsRect(proposed).origin)
         scrollView.reflectScrolledClipView(content)
     }
 
@@ -1118,7 +1183,7 @@ final class PromptHistoryBrowserView: NSView {
     }
 
     private func summaryIdentity(for record: PromptHistoryRecord?) -> String {
-        contentIdentity(for: record) + (isZoomed ? "\u{1}zoom" : "\u{1}columns")
+        contentIdentity(for: record) + (showsZoomedLayout ? "\u{1}zoom" : "\u{1}columns")
     }
 
     private func contentIdentity(for record: PromptHistoryRecord?) -> String {
@@ -1135,7 +1200,7 @@ final class PromptHistoryBrowserView: NSView {
         let text = NSMutableAttributedString()
         // The expanded view shows the question in its own top card; the
         // two-column layout keeps the compact prefix above the body.
-        if !isZoomed {
+        if !showsZoomedLayout {
             let question = NSAttributedString(
                 string: record.text.replacingOccurrences(of: "\n", with: " ") + "\n\n",
                 attributes: [

@@ -255,6 +255,47 @@ final class ComposerLayoutTests: XCTestCase {
         XCTAssertEqual(windowTop, visible.maxY - composerHistoryBrowserTopMargin, accuracy: 0.001)
     }
 
+    func testZoomedBrowserClampsToAPartiallyAvailableScreen() {
+        // A medium screen leaves less than the 520pt preference but more than
+        // the minimum, so the browser takes exactly what is available.
+        let visible = CGRect(x: 0, y: 0, width: 1440, height: 500)
+        let contentOrigin = composerOrigin(
+            visibleFrame: visible,
+            panelSize: CGSize(width: 680, height: 180)
+        )
+        let maxHeight = composerHistoryBrowserMaxHeight(
+            visibleFrame: visible,
+            contentOrigin: contentOrigin,
+            cardHeight: composerCardHeight(inputHeight: 74),
+            shadowInset: 28
+        )
+        XCTAssertEqual(maxHeight, 226, accuracy: 0.001)
+        XCTAssertGreaterThan(maxHeight, composerHistoryBrowserMinimumUsableHeight)
+        XCTAssertLessThan(maxHeight, composerHistoryBrowserZoomedPreferredHeight)
+
+        XCTAssertEqual(
+            composerHistoryBrowserHeight(maxAvailable: maxHeight, mode: .twoColumn),
+            maxHeight,
+            accuracy: 0.001
+        )
+        let zoomed = composerHistoryBrowserHeight(maxAvailable: maxHeight, mode: .zoomed)
+        XCTAssertEqual(zoomed, maxHeight, accuracy: 0.001)
+
+        // The card bottom stays put and the window top stops 12pt below the
+        // visible frame.
+        let contentHeight = composerContentHeight(inputHeight: 74, suggestionHeight: zoomed)
+        let origin = composerWindowOrigin(
+            visibleFrame: visible,
+            contentSize: CGSize(width: 680, height: contentHeight),
+            shadowInset: 28
+        )
+        XCTAssertEqual(origin.y + 28, contentOrigin.y, accuracy: 0.001)
+        XCTAssertLessThanOrEqual(
+            origin.y + contentHeight + 28,
+            visible.maxY - composerHistoryBrowserTopMargin + 0.001
+        )
+    }
+
     func testZoomedBrowserOnANegativeOriginScreen() {
         let visible = CGRect(x: -1920, y: -25, width: 1920, height: 1055)
         let contentOrigin = composerOrigin(
