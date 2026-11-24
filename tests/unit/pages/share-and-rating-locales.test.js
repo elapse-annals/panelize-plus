@@ -215,6 +215,11 @@ const FEATURE_KEYS = [
   'labelGitHubRepo',
   'panelPromptModeInherit',
   'panelCloneTitle',
+  'panelRemoveTitle',
+  'panelEmptyTitle',
+  'panelEmptyHint',
+  'panelEmptyAdd',
+  'composerNoPanels',
   'addPanelNoProviders'
 ];
 

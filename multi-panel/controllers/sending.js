@@ -111,6 +111,10 @@ export function createSendingController({
   }
 
   async function broadcastMessage(typedText, autoSubmit = true, { promptMode: promptModeOverride } = {}) {
+    if (getPanelsController().panels.length === 0) {
+      showToast(getLocalizedText('composerNoPanels', 'No AI panels are open. Add one to send a question.'));
+      return { ok: false, reason: 'no-panels', sent: 0, total: 0 };
+    }
     if (getConversationsController().isNewChatBusy) {
       // The draft and textarea stay untouched so the user can keep typing.
       showToast(getLocalizedText('composerSendBlockedNewChat', 'New conversations are starting. Your draft is kept; send when they are ready.'));
@@ -594,13 +598,14 @@ export function createSendingController({
   // explains why nothing was sent.
   function updateSendHold() {
     const isPreparing = isSendHeldByReadiness(summarizePanelReadiness(getPanelsController().panels));
+    const hasNoPanels = getPanelsController().panels.length === 0;
     const inputBar = document.getElementById('input-bar');
     inputBar?.toggleAttribute('data-new-chat-busy', getConversationsController().isNewChatBusy);
     inputBar?.toggleAttribute('data-ai-preparing', isPreparing);
     ['send-all-btn', 'fill-input-btn'].forEach(id => {
       const button = document.getElementById(id);
       if (!button) return;
-      if (getConversationsController().isNewChatBusy || isPreparing) button.setAttribute('aria-disabled', 'true');
+      if (getConversationsController().isNewChatBusy || isPreparing || hasNoPanels) button.setAttribute('aria-disabled', 'true');
       else button.removeAttribute('aria-disabled');
     });
   }

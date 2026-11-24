@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.98.0 - 2026-11-24
+- The top AI chips can now close the last remaining panel. Closing every panel shows an empty grid with its own "Add AI panel" button that opens the add-provider menu under it, and Send All/Fill explain the empty grid with a toast instead of starting an empty round.
+- A closed-everything state survives reopening the page while the Settings startup selection is unchanged; choosing a different startup selection brings its providers back as before. The chip's close button also gets a localized tooltip and accessible name.
+
 ## 2.97.0 - 2026-11-19
 - Panelize Link: the two-column history browser can now expand into a full-width reading view. Press `→`, click the top-right expand icon or "放大总结", or double-click the summary text; the list and separator hide, the panel grows upward to 520pt (clamped to the screen without moving the input card), and the summary reflows to the full width.
 - The expanded view puts the original question and its relative time in a top card; clicking it opens a scrollable, selectable full-question overlay (Esc closes it and returns focus). The bottom bar shows "返回列表", "复制总结" and "填入提问" with "← / esc 返回列表 · ↑↓ 滚动 · ↵ 填入" on the right. Esc or ← returns to two columns before a second Esc closes the browser, ↑/↓ and PageUp/PageDown scroll the body with clamped bounds, Enter fills without sending, and a plain keystroke still dismisses the browser and reaches the input exactly once. Held keys do not repeat fills or switches, and an unfinished input-method composition keeps the browser open until it commits.

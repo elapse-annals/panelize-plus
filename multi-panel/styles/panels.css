@@ -39,6 +39,48 @@
   position: relative;
 }
 
+/* Empty grid after closing every AI panel: covers the layout's own columns and
+   leaves the AI summary card its implicit trailing column. */
+.panel-empty-state {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  text-align: center;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.panel-empty-state[hidden] {
+  display: none;
+}
+
+.panel-empty-icon {
+  color: var(--text-muted);
+  font-size: 40px;
+}
+
+.panel-empty-title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+}
+
+.panel-empty-hint {
+  max-width: 360px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.panel-empty-add {
+  margin-top: 8px;
+}
+
 /* Light edge buttons jump to the first or last panel when the grid overflows. */
 .panel-edge-btn {
   position: absolute;

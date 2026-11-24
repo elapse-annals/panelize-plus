@@ -197,6 +197,11 @@ describe('Layout Auto-Adjust', () => {
         expect(getAutoShrunkLayout('1x4', 3)).toBe('1x3');
       });
 
+      it('should shrink to 1x1 when the last panel is closed (0 remain)', () => {
+        expect(getAutoShrunkLayout('1x3', 0)).toBe('1x1');
+        expect(getAutoShrunkLayout('1x1', 0)).toBe('1x1');
+      });
+
       it('should shrink from 1x5 to 1x4 when removing panel (4 panels remain)', () => {
         expect(getAutoShrunkLayout('1x5', 4)).toBe('1x4');
       });

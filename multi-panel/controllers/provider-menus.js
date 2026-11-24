@@ -92,7 +92,9 @@ export function createProviderMenusController({
     setTimeout(() => document.addEventListener('click', closeMenu), 0);
   }
 
-  async function showAddPanelMenu() {
+  // `anchor` is the element the menu opens under; plain click handlers pass
+  // their MouseEvent, which falls back to the toolbar's add button.
+  async function showAddPanelMenu(anchor) {
     if (getPanelsController().panels.length >= MAX_PANELS) {
       showToast(`Maximum number of panels reached (${MAX_PANELS})`);
       return;
@@ -105,7 +107,9 @@ export function createProviderMenusController({
       return;
     }
 
-    const btn = document.getElementById('add-panel-btn');
+    const btn = anchor instanceof Element && anchor.isConnected
+      ? anchor
+      : document.getElementById('add-panel-btn');
     const rect = btn.getBoundingClientRect();
     const palette = getDropdownThemePalette();
 

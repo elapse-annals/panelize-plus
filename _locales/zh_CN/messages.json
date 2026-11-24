@@ -1454,6 +1454,9 @@
   "composerSendBlockedPreparing": {
     "message": "AI 仍在加载，草稿已保留，就绪后再发送。"
   },
+  "composerNoPanels": {
+    "message": "当前没有 AI 面板，请先添加一个再发送问题。"
+  },
   "composerStartingChatsHold": {
     "message": "正在新建对话… 暂停发送，可继续输入。"
   },
@@ -1465,6 +1468,18 @@
   },
   "panelCloneTitle": {
     "message": "复制此 AI 面板"
+  },
+  "panelRemoveTitle": {
+    "message": "关闭此 AI 面板"
+  },
+  "panelEmptyTitle": {
+    "message": "没有 AI 面板"
+  },
+  "panelEmptyHint": {
+    "message": "添加一个 AI，开始并排对比回答。"
+  },
+  "panelEmptyAdd": {
+    "message": "添加 AI 面板"
   },
   "composerInputPlaceholder": {
     "message": "输入问题，发送给所有 AI..."

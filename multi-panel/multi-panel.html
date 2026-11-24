@@ -107,6 +107,14 @@
       <div id="panel-grid" class="layout-2x2">
         <!-- Panels will be dynamically generated -->
 
+        <!-- Shown when every AI panel has been closed; the button opens the add panel menu. -->
+        <section id="panel-empty-state" class="panel-empty-state" hidden aria-labelledby="panel-empty-title">
+          <span class="material-symbols-outlined panel-empty-icon" aria-hidden="true">add</span>
+          <h3 id="panel-empty-title" class="panel-empty-title" data-i18n="panelEmptyTitle">No AI panels</h3>
+          <p class="panel-empty-hint" data-i18n="panelEmptyHint">Add an AI to compare answers side by side.</p>
+          <button type="button" id="panel-empty-add-btn" class="btn-primary panel-empty-add" data-i18n="panelEmptyAdd">Add AI panel</button>
+        </section>
+
         <!-- AI summary answer: always the last card in the grid. -->
         <section id="ai-summary-panel" class="ai-summary-panel" hidden aria-labelledby="ai-summary-title-text">
           <div class="panel-header ai-summary-header">

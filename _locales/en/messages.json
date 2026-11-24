@@ -1475,6 +1475,9 @@
   "composerSendBlockedPreparing": {
     "message": "The AIs are still loading. Your draft is kept; send when they are ready."
   },
+  "composerNoPanels": {
+    "message": "No AI panels are open. Add one to send a question."
+  },
   "composerStartingChatsHold": {
     "message": "Starting new conversations… Sending is paused; keep typing."
   },
@@ -1486,6 +1489,18 @@
   },
   "panelCloneTitle": {
     "message": "Duplicate this AI panel"
+  },
+  "panelRemoveTitle": {
+    "message": "Close this AI panel"
+  },
+  "panelEmptyTitle": {
+    "message": "No AI panels"
+  },
+  "panelEmptyHint": {
+    "message": "Add an AI to compare answers side by side."
+  },
+  "panelEmptyAdd": {
+    "message": "Add AI panel"
   },
   "composerInputPlaceholder": {
     "message": "Enter your question to send to all AI providers..."

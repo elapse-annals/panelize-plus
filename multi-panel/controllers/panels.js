@@ -147,6 +147,10 @@ export function createPanelsController({
           .slice(0, MAX_PANELS)
           .map(entry => ({ providerId: entry.providerId, promptMode: entry.promptMode }));
         if (entries.length) return entries;
+        // Closing every panel leaves an empty snapshot. While the startup
+        // selection is unchanged it stays authoritative, so the empty state
+        // survives reopening the page.
+        if (snapshot.panels.length === 0) return [];
       }
     }
 
@@ -604,6 +608,13 @@ export function createPanelsController({
     await getPresentationController().saveProviderConfiguration();
   }
 
+  // The grid shows an empty state with an add button while every AI panel is
+  // closed, so the page never looks stuck without a way back.
+  function togglePanelEmptyState() {
+    const emptyState = document.getElementById('panel-empty-state');
+    if (emptyState) emptyState.hidden = panels.length > 0;
+  }
+
   function updatePanelSelectors() {
     const selectorsContainer = document.getElementById('panel-selectors');
     selectorsContainer.innerHTML = '';
@@ -615,6 +626,7 @@ export function createPanelsController({
       const selector = document.createElement('div');
       selector.className = 'panel-selector';
       selector.dataset.panelId = panel.id;
+      const removePanelTitle = getLocalizedText('panelRemoveTitle', 'Close this AI panel');
       selector.innerHTML = `
       <span class="provider-icon-wrap">
         <img src="${getThemeAwareProviderIcon(provider)}" alt="${provider.name}" class="provider-icon" data-provider-id="${provider.id}">
@@ -625,7 +637,7 @@ export function createPanelsController({
       </span>
       <span class="provider-name">${escapeHtml(getPresentationController().getPanelDisplayName(panel, { short: true }))}</span>
       <span class="blind-label" aria-hidden="true"></span>
-      <button class="remove-panel" title="Remove panel">
+      <button class="remove-panel" title="${escapeHtml(removePanelTitle)}" aria-label="${escapeHtml(removePanelTitle)}">
         <span class="material-symbols-outlined">close</span>
       </button>
     `;
@@ -642,15 +654,12 @@ export function createPanelsController({
       const removeBtn = selector.querySelector('.remove-panel');
       removeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (panels.length > 1) {
-          removePanel(panel.id);
-        } else {
-          showToast('At least one panel is required');
-        }
+        removePanel(panel.id);
       });
 
       selectorsContainer.appendChild(selector);
     });
+    togglePanelEmptyState();
     setFocusedPanel(focusedPanelId);
     getPresentationController().renderBlindLabels();
   }

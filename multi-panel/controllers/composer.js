@@ -85,7 +85,10 @@ export function createComposerController({
     });
 
     // Add panel button
-    document.getElementById('add-panel-btn').addEventListener('click', getProviderMenusController().showAddPanelMenu);
+    document.getElementById('add-panel-btn').addEventListener('click', () => getProviderMenusController().showAddPanelMenu());
+    // The empty grid's button anchors the same menu under itself.
+    const emptyAddPanelBtn = document.getElementById('panel-empty-add-btn');
+    emptyAddPanelBtn?.addEventListener('click', () => getProviderMenusController().showAddPanelMenu(emptyAddPanelBtn));
     document.getElementById('scroll-panels-start-btn')?.addEventListener('click', () => getPresentationController().scrollPanels('start'));
     document.getElementById('scroll-panels-end-btn')?.addEventListener('click', () => getPresentationController().scrollPanels('end'));
     getPresentationController().setupPanelEdgeNavigation();
