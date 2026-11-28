@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.98.1 - 2026-11-24
+- Panelize Link no longer opens the Multi-Panel page in the background just because the browser reconnected. With "新建会话" checked, the reset still starts when the composer is shown or a send carries the new-chat flag.
+
 ## 2.98.0 - 2026-11-24
 - The top AI chips can now close the last remaining panel. Closing every panel shows an empty grid with its own "Add AI panel" button that opens the add-provider menu under it, and Send All/Fill explain the empty grid with a toast instead of starting an empty round.
 - A closed-everything state survives reopening the page while the Settings startup selection is unchanged; choosing a different startup selection brings its providers back as before. The chip's close button also gets a localized tooltip and accessible name.

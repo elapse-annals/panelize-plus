@@ -1649,6 +1649,21 @@ final class SearchPanelControllerTests: XCTestCase {
         XCTAssertEqual(bridge.newChatRequestIds.count, 2)
     }
 
+    func testExtensionConnectionDoesNotPrepareNewChatForAHiddenComposer() {
+        bridge.supportsNewChat = true
+        toggleNewChat(on: true)
+        bridge.completeNewChat(ok: true, ready: 3, total: 3)
+
+        controller.content.textView.string = "Round one"
+        controller.submit()
+        bridge.emit(.succeeded(SendOutcome(requestId: "request", ok: true, sent: 1, total: 1)))
+        XCTAssertEqual(bridge.newChatRequestIds.count, 1)
+
+        controller.handleExtensionConnected()
+
+        XCTAssertEqual(bridge.newChatRequestIds.count, 1)
+    }
+
     func testCheckingNewChatWithLegacyHostShowsReinstallHintAndSkipsRequest() {
         bridge.supportsNewChat = false
         bridge.hostSupportsNewChat = false

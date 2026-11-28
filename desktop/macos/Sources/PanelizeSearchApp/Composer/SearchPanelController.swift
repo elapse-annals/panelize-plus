@@ -206,13 +206,11 @@ final class SearchPanelController: NSWindowController, NSTextViewDelegate, NSWin
         updateConnection(label: text, ready: ready, hint: versionHint)
     }
 
-    /// Called when the extension handshake completes; a checked box can now
-    /// prepare the next round.
+    /// Called when the extension handshake completes so history can sync.
+    /// New-chat preparation stays tied to showing the composer or sending; a
+    /// browser reconnect alone must not open Multi-Panel in the background.
     func handleExtensionConnected() {
         bridge.requestHistorySync(force: false)
-        if newChatState.enabled {
-            prepareNewChatIfNeeded()
-        }
     }
 
     /// The bridge merged new history; refresh a visible browser and the
